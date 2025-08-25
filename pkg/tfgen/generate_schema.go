@@ -685,37 +685,12 @@ func (g *schemaGenerator) genDocComment(comment string) string {
 	return buffer.String()
 }
 
-func (g *schemaGenerator) genRawDocComment(comment string) string {
-	if comment == "" {
-		return ""
-	}
-
-	buffer := &bytes.Buffer{}
-
-	curr := 0
-	for _, word := range strings.Fields(comment) {
-		if curr > 0 {
-			if curr+len(word)+1 > maxWidth {
-				curr = 0
-				fmt.Fprintf(buffer, "\n")
-			} else {
-				fmt.Fprintf(buffer, " ")
-				curr++
-			}
-		}
-		fmt.Fprintf(buffer, "%s", word)
-		curr += len(word)
-	}
-	fmt.Fprintf(buffer, "\n")
-	return buffer.String()
-}
-
 func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 	description := ""
 	if prop.doc != "" && prop.doc != elidedDocComment {
 		description = g.genDocComment(prop.doc)
 	} else if prop.rawdoc != "" {
-		description = g.genRawDocComment(prop.rawdoc)
+		description = prop.rawdoc
 	}
 
 	language := map[string]pschema.RawMessage{}

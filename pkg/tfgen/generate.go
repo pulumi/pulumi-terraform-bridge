@@ -55,7 +55,6 @@ import (
 const (
 	tfgen         = "the Pulumi Terraform Bridge (tfgen) Tool"
 	defaultOutDir = "sdk/"
-	maxWidth      = 120 // the ideal maximum width of the generated file.
 )
 
 type Generator struct {

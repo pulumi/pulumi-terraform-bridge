@@ -52,7 +52,7 @@
         "variables": {
             "proxy": {
                 "$ref": "#/types/tls:config/proxy:proxy",
-                "description": "Proxy used by resources and data sources that connect to external endpoints.\n"
+                "description": "Proxy used by resources and data sources that connect to external endpoints."
             }
         }
     },
@@ -251,13 +251,13 @@
         "properties": {
             "proxy": {
                 "$ref": "#/types/tls:index/ProviderProxy:ProviderProxy",
-                "description": "Proxy used by resources and data sources that connect to external endpoints.\n"
+                "description": "Proxy used by resources and data sources that connect to external endpoints."
             }
         },
         "inputProperties": {
             "proxy": {
                 "$ref": "#/types/tls:index/ProviderProxy:ProviderProxy",
-                "description": "Proxy used by resources and data sources that connect to external endpoints.\n"
+                "description": "Proxy used by resources and data sources that connect to external endpoints."
             }
         },
         "methods": {
@@ -275,18 +275,18 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "ipAddresses": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "keyAlgorithm": {
                     "type": "string",
-                    "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`.\n"
+                    "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`."
                 },
                 "privateKeyPem": {
                     "type": "string",
@@ -294,14 +294,14 @@
                 },
                 "subject": {
                     "$ref": "#/types/tls:index/CertRequestSubject:CertRequestSubject",
-                    "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is\nbased upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n"
+                    "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section."
                 },
                 "uris": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects)."
                 }
             },
             "required": [
@@ -315,14 +315,14 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "ipAddresses": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "privateKeyPem": {
                     "type": "string",
@@ -330,14 +330,14 @@
                 },
                 "subject": {
                     "$ref": "#/types/tls:index/CertRequestSubject:CertRequestSubject",
-                    "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is\nbased upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n"
+                    "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section."
                 },
                 "uris": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects)."
                 }
             },
             "requiredInputs": [
@@ -354,18 +354,18 @@
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
+                        "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects)."
                     },
                     "ipAddresses": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n"
+                        "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects)."
                     },
                     "keyAlgorithm": {
                         "type": "string",
-                        "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`.\n"
+                        "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`."
                     },
                     "privateKeyPem": {
                         "type": "string",
@@ -373,14 +373,14 @@
                     },
                     "subject": {
                         "$ref": "#/types/tls:index/CertRequestSubject:CertRequestSubject",
-                        "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is\nbased upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n"
+                        "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section."
                     },
                     "uris": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n"
+                        "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects)."
                     }
                 },
                 "type": "object"
@@ -393,19 +393,19 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC\n5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`,\n`cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`,\n`decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`,\n`ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`,\n`microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
+                    "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`."
                 },
                 "caCertPem": {
                     "type": "string",
-                    "description": "Certificate data of the Certificate Authority (CA) in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421)\nformat.\n"
+                    "description": "Certificate data of the Certificate Authority (CA) in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format."
                 },
                 "caKeyAlgorithm": {
                     "type": "string",
-                    "description": "Name of the algorithm used when generating the private key provided in `ca_private_key_pem`.\n"
+                    "description": "Name of the algorithm used when generating the private key provided in `ca_private_key_pem`."
                 },
                 "caPrivateKeyPem": {
                     "type": "string",
-                    "description": "Private key of the Certificate Authority (CA) used to sign the certificate, in [PEM (RFC\n1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+                    "description": "Private key of the Certificate Authority (CA) used to sign the certificate, in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.",
                     "secret": true
                 },
                 "certPem": {
@@ -413,34 +413,34 @@
                 },
                 "certRequestPem": {
                     "type": "string",
-                    "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n"
+                    "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format."
                 },
                 "earlyRenewalHours": {
                     "type": "integer"
                 },
                 "isCaCertificate": {
                     "type": "boolean",
-                    "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n"
+                    "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`)."
                 },
                 "readyForRenewal": {
                     "type": "boolean",
-                    "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within\nthe `early_renewal_hours`)?\n"
+                    "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within the `early_renewal_hours`)?"
                 },
                 "setSubjectKeyId": {
                     "type": "boolean",
-                    "description": "Should the generated certificate include a [subject key\nidentifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n"
+                    "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`)."
                 },
                 "validityEndTime": {
                     "type": "string",
-                    "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339)\ntimestamp.\n"
+                    "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp."
                 },
                 "validityPeriodHours": {
                     "type": "integer",
-                    "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n"
+                    "description": "Number of hours, after initial issuing, that the certificate will remain valid for."
                 },
                 "validityStartTime": {
                     "type": "string",
-                    "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+                    "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp."
                 }
             },
             "required": [
@@ -464,35 +464,35 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC\n5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`,\n`cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`,\n`decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`,\n`ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`,\n`microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
+                    "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`."
                 },
                 "caCertPem": {
                     "type": "string",
-                    "description": "Certificate data of the Certificate Authority (CA) in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421)\nformat.\n"
+                    "description": "Certificate data of the Certificate Authority (CA) in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format."
                 },
                 "caPrivateKeyPem": {
                     "type": "string",
-                    "description": "Private key of the Certificate Authority (CA) used to sign the certificate, in [PEM (RFC\n1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+                    "description": "Private key of the Certificate Authority (CA) used to sign the certificate, in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.",
                     "secret": true
                 },
                 "certRequestPem": {
                     "type": "string",
-                    "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n"
+                    "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format."
                 },
                 "earlyRenewalHours": {
                     "type": "integer"
                 },
                 "isCaCertificate": {
                     "type": "boolean",
-                    "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n"
+                    "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`)."
                 },
                 "setSubjectKeyId": {
                     "type": "boolean",
-                    "description": "Should the generated certificate include a [subject key\nidentifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n"
+                    "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`)."
                 },
                 "validityPeriodHours": {
                     "type": "integer",
-                    "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n"
+                    "description": "Number of hours, after initial issuing, that the certificate will remain valid for."
                 }
             },
             "requiredInputs": [
@@ -510,19 +510,19 @@
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC\n5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`,\n`cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`,\n`decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`,\n`ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`,\n`microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
+                        "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`."
                     },
                     "caCertPem": {
                         "type": "string",
-                        "description": "Certificate data of the Certificate Authority (CA) in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421)\nformat.\n"
+                        "description": "Certificate data of the Certificate Authority (CA) in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format."
                     },
                     "caKeyAlgorithm": {
                         "type": "string",
-                        "description": "Name of the algorithm used when generating the private key provided in `ca_private_key_pem`.\n"
+                        "description": "Name of the algorithm used when generating the private key provided in `ca_private_key_pem`."
                     },
                     "caPrivateKeyPem": {
                         "type": "string",
-                        "description": "Private key of the Certificate Authority (CA) used to sign the certificate, in [PEM (RFC\n1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+                        "description": "Private key of the Certificate Authority (CA) used to sign the certificate, in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.",
                         "secret": true
                     },
                     "certPem": {
@@ -530,34 +530,34 @@
                     },
                     "certRequestPem": {
                         "type": "string",
-                        "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n"
+                        "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format."
                     },
                     "earlyRenewalHours": {
                         "type": "integer"
                     },
                     "isCaCertificate": {
                         "type": "boolean",
-                        "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n"
+                        "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`)."
                     },
                     "readyForRenewal": {
                         "type": "boolean",
-                        "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within\nthe `early_renewal_hours`)?\n"
+                        "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within the `early_renewal_hours`)?"
                     },
                     "setSubjectKeyId": {
                         "type": "boolean",
-                        "description": "Should the generated certificate include a [subject key\nidentifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n"
+                        "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`)."
                     },
                     "validityEndTime": {
                         "type": "string",
-                        "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339)\ntimestamp.\n"
+                        "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp."
                     },
                     "validityPeriodHours": {
                         "type": "integer",
-                        "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n"
+                        "description": "Number of hours, after initial issuing, that the certificate will remain valid for."
                     },
                     "validityStartTime": {
                         "type": "string",
-                        "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+                        "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp."
                     }
                 },
                 "type": "object"
@@ -567,34 +567,34 @@
             "properties": {
                 "algorithm": {
                     "type": "string",
-                    "description": "Name of the algorithm to use when generating the private key. Currently-supported values are: `RSA`, `ECDSA`, `ED25519`.\n"
+                    "description": "Name of the algorithm to use when generating the private key. Currently-supported values are: `RSA`, `ECDSA`, `ED25519`."
                 },
                 "ecdsaCurve": {
                     "type": "string",
-                    "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are: `P224`, `P256`,\n`P384`, `P521`. (default: `P224`).\n"
+                    "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are: `P224`, `P256`, `P384`, `P521`. (default: `P224`)."
                 },
                 "privateKeyOpenssh": {
                     "type": "string",
-                    "description": "Private key data in [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format.\n",
+                    "description": "Private key data in [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format.",
                     "secret": true
                 },
                 "privateKeyPem": {
                     "type": "string",
-                    "description": "Private key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+                    "description": "Private key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.",
                     "secret": true
                 },
                 "privateKeyPemPkcs8": {
                     "type": "string",
-                    "description": "Private key data in [PKCS#8 PEM (RFC 5208)](https://datatracker.ietf.org/doc/html/rfc5208) format.\n",
+                    "description": "Private key data in [PKCS#8 PEM (RFC 5208)](https://datatracker.ietf.org/doc/html/rfc5208) format.",
                     "secret": true
                 },
                 "publicKeyFingerprintMd5": {
                     "type": "string",
-                    "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
+                    "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected private key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations."
                 },
                 "publicKeyFingerprintSha256": {
                     "type": "string",
-                    "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
+                    "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected private key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations."
                 },
                 "publicKeyOpenssh": {
                     "type": "string"
@@ -604,7 +604,7 @@
                 },
                 "rsaBits": {
                     "type": "integer",
-                    "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).\n"
+                    "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`)."
                 }
             },
             "required": [
@@ -622,15 +622,15 @@
             "inputProperties": {
                 "algorithm": {
                     "type": "string",
-                    "description": "Name of the algorithm to use when generating the private key. Currently-supported values are: `RSA`, `ECDSA`, `ED25519`.\n"
+                    "description": "Name of the algorithm to use when generating the private key. Currently-supported values are: `RSA`, `ECDSA`, `ED25519`."
                 },
                 "ecdsaCurve": {
                     "type": "string",
-                    "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are: `P224`, `P256`,\n`P384`, `P521`. (default: `P224`).\n"
+                    "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are: `P224`, `P256`, `P384`, `P521`. (default: `P224`)."
                 },
                 "rsaBits": {
                     "type": "integer",
-                    "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).\n"
+                    "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`)."
                 }
             },
             "requiredInputs": [
@@ -641,34 +641,34 @@
                 "properties": {
                     "algorithm": {
                         "type": "string",
-                        "description": "Name of the algorithm to use when generating the private key. Currently-supported values are: `RSA`, `ECDSA`, `ED25519`.\n"
+                        "description": "Name of the algorithm to use when generating the private key. Currently-supported values are: `RSA`, `ECDSA`, `ED25519`."
                     },
                     "ecdsaCurve": {
                         "type": "string",
-                        "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are: `P224`, `P256`,\n`P384`, `P521`. (default: `P224`).\n"
+                        "description": "When `algorithm` is `ECDSA`, the name of the elliptic curve to use. Currently-supported values are: `P224`, `P256`, `P384`, `P521`. (default: `P224`)."
                     },
                     "privateKeyOpenssh": {
                         "type": "string",
-                        "description": "Private key data in [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format.\n",
+                        "description": "Private key data in [OpenSSH PEM (RFC 4716)](https://datatracker.ietf.org/doc/html/rfc4716) format.",
                         "secret": true
                     },
                     "privateKeyPem": {
                         "type": "string",
-                        "description": "Private key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n",
+                        "description": "Private key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.",
                         "secret": true
                     },
                     "privateKeyPemPkcs8": {
                         "type": "string",
-                        "description": "Private key data in [PKCS#8 PEM (RFC 5208)](https://datatracker.ietf.org/doc/html/rfc5208) format.\n",
+                        "description": "Private key data in [PKCS#8 PEM (RFC 5208)](https://datatracker.ietf.org/doc/html/rfc5208) format.",
                         "secret": true
                     },
                     "publicKeyFingerprintMd5": {
                         "type": "string",
-                        "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
+                        "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected private key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations."
                     },
                     "publicKeyFingerprintSha256": {
                         "type": "string",
-                        "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
+                        "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected private key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations."
                     },
                     "publicKeyOpenssh": {
                         "type": "string"
@@ -678,7 +678,7 @@
                     },
                     "rsaBits": {
                         "type": "integer",
-                        "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`).\n"
+                        "description": "When `algorithm` is `RSA`, the size of the generated RSA key, in bits (default: `2048`)."
                     }
                 },
                 "type": "object"
@@ -691,7 +691,7 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC\n5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`,\n`cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`,\n`decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`,\n`ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`,\n`microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
+                    "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`."
                 },
                 "certPem": {
                     "type": "string"
@@ -701,7 +701,7 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "earlyRenewalHours": {
                     "type": "integer"
@@ -711,15 +711,15 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "isCaCertificate": {
                     "type": "boolean",
-                    "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n"
+                    "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`)."
                 },
                 "keyAlgorithm": {
                     "type": "string",
-                    "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`.\n"
+                    "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`."
                 },
                 "privateKeyPem": {
                     "type": "string",
@@ -727,38 +727,38 @@
                 },
                 "readyForRenewal": {
                     "type": "boolean",
-                    "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within\nthe `early_renewal_hours`)?\n"
+                    "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within the `early_renewal_hours`)?"
                 },
                 "setAuthorityKeyId": {
                     "type": "boolean",
-                    "description": "Should the generated certificate include an [authority key\nidentifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1): for self-signed certificates this is the\nsame value as the [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default:\n`false`).\n"
+                    "description": "Should the generated certificate include an [authority key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1): for self-signed certificates this is the same value as the [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`)."
                 },
                 "setSubjectKeyId": {
                     "type": "boolean",
-                    "description": "Should the generated certificate include a [subject key\nidentifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n"
+                    "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`)."
                 },
                 "subject": {
                     "$ref": "#/types/tls:index/SelfSignedCertSubject:SelfSignedCertSubject",
-                    "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is\nbased upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n"
+                    "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section."
                 },
                 "uris": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "validityEndTime": {
                     "type": "string",
-                    "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339)\ntimestamp.\n"
+                    "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp."
                 },
                 "validityPeriodHours": {
                     "type": "integer",
-                    "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n"
+                    "description": "Number of hours, after initial issuing, that the certificate will remain valid for."
                 },
                 "validityStartTime": {
                     "type": "string",
-                    "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+                    "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp."
                 }
             },
             "required": [
@@ -781,14 +781,14 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC\n5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`,\n`cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`,\n`decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`,\n`ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`,\n`microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
+                    "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`."
                 },
                 "dnsNames": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "earlyRenewalHours": {
                     "type": "integer"
@@ -798,11 +798,11 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "isCaCertificate": {
                     "type": "boolean",
-                    "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n"
+                    "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`)."
                 },
                 "privateKeyPem": {
                     "type": "string",
@@ -810,26 +810,26 @@
                 },
                 "setAuthorityKeyId": {
                     "type": "boolean",
-                    "description": "Should the generated certificate include an [authority key\nidentifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1): for self-signed certificates this is the\nsame value as the [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default:\n`false`).\n"
+                    "description": "Should the generated certificate include an [authority key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1): for self-signed certificates this is the same value as the [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`)."
                 },
                 "setSubjectKeyId": {
                     "type": "boolean",
-                    "description": "Should the generated certificate include a [subject key\nidentifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n"
+                    "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`)."
                 },
                 "subject": {
                     "$ref": "#/types/tls:index/SelfSignedCertSubject:SelfSignedCertSubject",
-                    "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is\nbased upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n"
+                    "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section."
                 },
                 "uris": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n"
+                    "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "validityPeriodHours": {
                     "type": "integer",
-                    "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n"
+                    "description": "Number of hours, after initial issuing, that the certificate will remain valid for."
                 }
             },
             "requiredInputs": [
@@ -845,7 +845,7 @@
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC\n5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`,\n`cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`,\n`decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`,\n`ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`,\n`microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
+                        "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`, `cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`, `decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`, `ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`, `microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`."
                     },
                     "certPem": {
                         "type": "string"
@@ -855,7 +855,7 @@
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
+                        "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects)."
                     },
                     "earlyRenewalHours": {
                         "type": "integer"
@@ -865,15 +865,15 @@
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects).\n"
+                        "description": "List of IP addresses for which a certificate is being requested (i.e. certificate subjects)."
                     },
                     "isCaCertificate": {
                         "type": "boolean",
-                        "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`).\n"
+                        "description": "Is the generated certificate representing a Certificate Authority (CA) (default: `false`)."
                     },
                     "keyAlgorithm": {
                         "type": "string",
-                        "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`.\n"
+                        "description": "Name of the algorithm used when generating the private key provided in `private_key_pem`."
                     },
                     "privateKeyPem": {
                         "type": "string",
@@ -881,38 +881,38 @@
                     },
                     "readyForRenewal": {
                         "type": "boolean",
-                        "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within\nthe `early_renewal_hours`)?\n"
+                        "description": "Is the certificate either expired (i.e. beyond the `validity_period_hours`) or ready for an early renewal (i.e. within the `early_renewal_hours`)?"
                     },
                     "setAuthorityKeyId": {
                         "type": "boolean",
-                        "description": "Should the generated certificate include an [authority key\nidentifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1): for self-signed certificates this is the\nsame value as the [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default:\n`false`).\n"
+                        "description": "Should the generated certificate include an [authority key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.1): for self-signed certificates this is the same value as the [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`)."
                     },
                     "setSubjectKeyId": {
                         "type": "boolean",
-                        "description": "Should the generated certificate include a [subject key\nidentifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`).\n"
+                        "description": "Should the generated certificate include a [subject key identifier](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.2) (default: `false`)."
                     },
                     "subject": {
                         "$ref": "#/types/tls:index/SelfSignedCertSubject:SelfSignedCertSubject",
-                        "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is\nbased upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section.\n"
+                        "description": "The subject for which a certificate is being requested. The acceptable arguments are all optional and their naming is based upon [Issuer Distinguished Names (RFC5280)](https://tools.ietf.org/html/rfc5280#section-4.1.2.4) section."
                     },
                     "uris": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects).\n"
+                        "description": "List of URIs for which a certificate is being requested (i.e. certificate subjects)."
                     },
                     "validityEndTime": {
                         "type": "string",
-                        "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339)\ntimestamp.\n"
+                        "description": "The time until which the certificate is invalid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp."
                     },
                     "validityPeriodHours": {
                         "type": "integer",
-                        "description": "Number of hours, after initial issuing, that the certificate will remain valid for.\n"
+                        "description": "Number of hours, after initial issuing, that the certificate will remain valid for."
                     },
                     "validityStartTime": {
                         "type": "string",
-                        "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp.\n"
+                        "description": "The time after which the certificate is valid, expressed as an [RFC3339](https://tools.ietf.org/html/rfc3339) timestamp."
                     }
                 },
                 "type": "object"

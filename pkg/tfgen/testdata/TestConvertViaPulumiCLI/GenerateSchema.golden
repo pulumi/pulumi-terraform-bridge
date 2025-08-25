@@ -91,7 +91,7 @@
         "description": "A collection of values returned by dataSource.\n",
         "properties": {
           "id": {
-            "description": "The provider-assigned unique ID for this managed resource.\n",
+            "description": "The provider-assigned unique ID for this managed resource.",
             "type": "string"
           }
         },

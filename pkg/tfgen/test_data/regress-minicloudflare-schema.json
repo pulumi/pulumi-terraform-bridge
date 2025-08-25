@@ -87,18 +87,18 @@
       "properties": {
         "description": {
           "type": "string",
-          "description": "Brief summary of the ruleset and its intended use.\n"
+          "description": "Brief summary of the ruleset and its intended use."
         },
         "name": {
           "type": "string",
-          "description": "Name of the ruleset.\n"
+          "description": "Name of the ruleset."
         },
         "rules": {
           "type": "array",
           "items": {
             "$ref": "#/types/cloudflare:index/RulesetRule:RulesetRule"
           },
-          "description": "List of rules to apply to the ruleset.\n"
+          "description": "List of rules to apply to the ruleset."
         }
       },
       "required": [
@@ -107,11 +107,11 @@
       "inputProperties": {
         "description": {
           "type": "string",
-          "description": "Brief summary of the ruleset and its intended use.\n"
+          "description": "Brief summary of the ruleset and its intended use."
         },
         "name": {
           "type": "string",
-          "description": "Name of the ruleset.\n",
+          "description": "Name of the ruleset.",
           "willReplaceOnChanges": true
         },
         "rules": {
@@ -119,7 +119,7 @@
           "items": {
             "$ref": "#/types/cloudflare:index/RulesetRule:RulesetRule"
           },
-          "description": "List of rules to apply to the ruleset.\n"
+          "description": "List of rules to apply to the ruleset."
         }
       },
       "requiredInputs": [
@@ -130,11 +130,11 @@
         "properties": {
           "description": {
             "type": "string",
-            "description": "Brief summary of the ruleset and its intended use.\n"
+            "description": "Brief summary of the ruleset and its intended use."
           },
           "name": {
             "type": "string",
-            "description": "Name of the ruleset.\n",
+            "description": "Name of the ruleset.",
             "willReplaceOnChanges": true
           },
           "rules": {
@@ -142,7 +142,7 @@
             "items": {
               "$ref": "#/types/cloudflare:index/RulesetRule:RulesetRule"
             },
-            "description": "List of rules to apply to the ruleset.\n"
+            "description": "List of rules to apply to the ruleset."
           }
         },
         "type": "object"
