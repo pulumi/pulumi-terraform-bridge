@@ -20,7 +20,7 @@
 // packages.
 package info
 
-import (
+import ( 
 	"context"
 	"os"
 
@@ -98,7 +98,7 @@ type Provider struct {
 	Python                  *Python            // optional overlay information for augmented Python code-generation.
 	Golang                  *Golang            // optional overlay information for augmented Golang code-generation.
 	CSharp                  *CSharp            // optional overlay information for augmented C# code-generation.
-	Java                    *Java              // optional overlay information for augmented C# code-generation.
+	Java                    *Java              // optional overlay information for augmented Java code-generation.
 	TFProviderVersion       string             // the version of the TF provider on which this was based
 	TFProviderLicense       *TFProviderLicense // license that the TF provider is distributed under. Default `MPL 2.0`.
 	TFProviderModuleVersion string             // the Go module version of the provider. Default is unversioned e.g. v1
