@@ -20,7 +20,7 @@
 // packages.
 package info
 
-import ( 
+import (
 	"context"
 	"os"
 
