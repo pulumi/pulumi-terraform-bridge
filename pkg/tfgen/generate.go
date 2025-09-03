@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ryboe/q"
 	"io"
 	"io/fs"
 	"os"
@@ -1044,48 +1045,46 @@ type GenerateOptions struct {
 }
 
 // note: if we do this and pass the top-level schema, we WILL have code choosers and translated examples handed to sdk gen so I'm not sure what's going on there yet
-func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult) (*GenerateSchemaResult, error) {
-	// Get the schema bytes
-	bytes, err := json.MarshalIndent(genSchemaResult.PackageSpec, "", "    ")
-	if err != nil {
-		// Return original if marshaling fails
-		return nil, err
-	}
+func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) (*GenerateSchemaResult, error) {
 
 	// Convert bytes to string for regex processing
-	schemaStr := string(bytes)
+	schemaStr := string(schemaBytes)
+	// The span string looks as follows:
+	// <span pulumi-lang-typescript="firstProperty" pulumi-lang-go="FirstProperty" ...>firstProperty</span>
+	// When rendered in schema it uses escapes:
+	// \u003cspan pulumi-lang-typescript=\"`random.RandomBytes`\" pulumi-lang-dotnet=\"`random.RandomBytes`\" pulumi-lang-go=\"`RandomBytes`\" pulumi-lang-python=\"`RandomBytes`\" pulumi-lang-yaml=\"`random.RandomBytes`\" pulumi-lang-java=\"`random.RandomBytes`\"\u003e`random.RandomBytes`\u003c/span\u003e
 
 	// Regex to find span tags with language-specific attributes
-	// Matches: <span pulumi-lang-typescript="..." pulumi-lang-python="..." ...>content</span>
-	spanRegex := regexp.MustCompile(`<span[^>]*pulumi-lang-([^=]+)="([^"]*)"[^>]*>([^<]*)</span>`)
+	spanRegex := regexp.MustCompile("\\\\u003cspan pulumi-lang-typescript=\\\\\"`[^`]*`\\\\\" pulumi-lang-dotnet=\\\\\"`[^`]*`\\\\\" pulumi-lang-go=\\\\\"`[^`]*`\\\\\" pulumi-lang-python=\\\\\"`[^`]*`\\\\\" pulumi-lang-yaml=\\\\\"`[^`]*`\\\\\" pulumi-lang-java=\\\\\"`[^`]*`\\\\\"\\\\u003e`[^`]*`\\\\u003c/span\\\\u003e")
 
 	// Process each match
 	schemaStr = spanRegex.ReplaceAllStringFunc(schemaStr, func(match string) string {
-		// Extract the language and value from the span
-		matches := spanRegex.FindStringSubmatch(match)
-		if len(matches) < 4 {
-			return match // Return original if regex doesn't match expected groups
+		//q.Q("in match func for " + g.language)
+		//q.Q(match)
+
+		// We know that each language has its version after "pulumi-lang-foo=".
+		// TODO: fix naming for node/typescript
+		l := g.language
+		if l == "nodejs" {
+			l = "typescript"
 		}
 
-		// Check if this span contains the target language
-		langPattern := fmt.Sprintf(`pulumi-lang-%s="([^"]*)"`, string(g.language))
-		langRegex := regexp.MustCompile(langPattern)
-		langMatches := langRegex.FindStringSubmatch(match)
+		languageKey := fmt.Sprintf("pulumi-lang-%s=\\\"", l)
+		//q.Q(languageKey)
 
-		if len(langMatches) >= 2 {
-			// Found the target language, return its value
-			return langMatches[1]
+		_, after, found := strings.Cut(match, languageKey)
+		if !found {
+			return "BANANAS"
 		}
-
-		// If target language not found, return the original content
-		return matches[3]
+		before, _, found := strings.Cut(after, "\\\"")
+		return before
 	})
 
 	// Parse the filtered schema back into PackageSpec
 	var filteredPackageSpec pschema.PackageSpec
-	err = json.Unmarshal([]byte(schemaStr), &filteredPackageSpec)
+	err := json.Unmarshal([]byte(schemaStr), &filteredPackageSpec)
 	if err != nil {
-		// Return original if unmarshaling fails
+		// Return error if unmarshaling fails
 		return nil, err
 	}
 
@@ -1097,12 +1096,27 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() (*GenerateSchemaResult, error) {
-	genSchemaResult, err := g.generateSchemaResult(context.Background())
+	var genSchemaResult *GenerateSchemaResult
+	var err error
+
+	if g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi" {
+		genSchemaResult, err = g.generateSchemaResult(context.Background())
+		if err != nil {
+			panic("FAILED TO MAKE DOCS SCHEMA AND EXAMPLES AND WHATNOT: " + err.Error())
+		}
+	}
 
 	// Filter by language now, but only SDK languages
 	if !(g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi") {
 
-		genSchemaResult, err = g.FilterSchemaByLanguage(genSchemaResult)
+		// Read the schema from file!
+		schemaBytes, err := os.ReadFile("provider/cmd/pulumi-resource-random/schema.json")
+		if err != nil {
+			panic("FAILED TO READ SCHEMA: " + err.Error())
+		}
+		q.Q("read schema from file")
+
+		genSchemaResult, err = g.FilterSchemaByLanguage(schemaBytes)
 		if err != nil {
 			panic("STOP HALT AL IS STUPID")
 		}
@@ -1114,9 +1128,7 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "failed to marshal schema")
 		}
-		os.WriteFile("test-python-span-with-filter.json", bytes, 0666)
-
-		//panic("Generator language: " + g.language)
+		os.WriteFile("test-python-span-with-filter-but-reading-from-docsschema.json", bytes, 0666)
 
 	}
 
