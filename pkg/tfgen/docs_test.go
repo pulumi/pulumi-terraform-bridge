@@ -2745,3 +2745,90 @@ resource "aws_ami" "example" {
 		})
 	}
 }
+
+func TestFixupPropertyReference(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name     string
+		input    string
+		expected string
+		ctx      infoContext
+	}
+
+	tests := []testCase{
+		{
+			name:     "resource name with backticks",
+			input:    "Use the `random_pet` resource to generate pet names.",
+			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\">`random.RandomPet`</span> resource to generate pet names.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
+					},
+				},
+			},
+		},
+		{
+			name:     "data source name with backticks",
+			input:    "Use the `random_id` data source to get random IDs.",
+			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\">`random.RandomId`</span> data source to get random IDs.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					DataSources: map[string]*tfbridge.DataSourceInfo{
+						"random_id": {Tok: "random:index/randomId:RandomId"},
+					},
+				},
+			},
+		},
+		{
+			name:     "property name with backticks",
+			input:    "The `length` property controls the output length.",
+			expected: "The <span pulumi-lang-nodejs=\"`length`\" pulumi-lang-dotnet=\"`length`\" pulumi-lang-go=\"`length`\" pulumi-lang-python=\"`length`\" pulumi-lang-yaml=\"`length`\" pulumi-lang-java=\"`length`\">`length`</span> property controls the output length.",
+			ctx: infoContext{
+				pkg:  "random",
+				info: tfbridge.ProviderInfo{},
+			},
+		},
+		{
+			name:     "resource name without backticks",
+			input:    "Use random_pet resource to generate pet names.",
+			expected: "Use<span pulumi-lang-nodejs=\" random.RandomPet \" pulumi-lang-dotnet=\" random.RandomPet \" pulumi-lang-go=\" RandomPet \" pulumi-lang-python=\" RandomPet \" pulumi-lang-yaml=\" random.RandomPet \" pulumi-lang-java=\" random.RandomPet \"> random.RandomPet </span>resource to generate pet names.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
+					},
+				},
+			},
+		},
+		{
+			name:     "multiple resource references",
+			input:    "Use `random_pet` and `random_id` together.",
+			expected: "Use <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\">`random.RandomPet`</span> and <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\">`random.RandomId`</span> together.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
+					},
+					DataSources: map[string]*tfbridge.DataSourceInfo{
+						"random_id": {Tok: "random:index/randomId:RandomId"},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual := tt.ctx.fixupPropertyReference(tt.input)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
