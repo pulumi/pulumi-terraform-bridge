@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"fmt"
+	"github.com/hexops/autogold/v2"
 	"io"
 	"os"
 	"path/filepath"
@@ -913,5 +914,74 @@ func TestExtraMappingError(t *testing.T) {
 				require.NoError(t, err)
 			}
 		})
+	}
+}
+
+func TestFilterSchemaByLanguage(t *testing.T) {
+	testCases := []struct {
+		name                        string
+		inputSchema                 []byte
+		expectedLanguageSchemaBytes []byte
+		generator                   *Generator
+	}{
+		{
+			name:        "Generates nodejs schema",
+			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
+			generator: &Generator{
+				version:  "1.2.3-test",
+				language: "nodejs",
+			},
+		},
+		{
+			name:        "Generates python schema",
+			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
+			generator: &Generator{
+				version:  "1.2.3-test",
+				language: "python",
+			},
+		},
+		{
+			name:        "Generates dotnet schema",
+			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
+			generator: &Generator{
+				version:  "1.2.3-test",
+				language: "python",
+			},
+		},
+		{
+			name:        "Generates go schema",
+			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
+			generator: &Generator{
+				version:  "1.2.3-test",
+				language: "python",
+			},
+		},
+		{
+			name:        "Generates yaml schema",
+			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
+			generator: &Generator{
+				version:  "1.2.3-test",
+				language: "python",
+			},
+		},
+		{
+			name:        "Generates java schema",
+			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
+			generator: &Generator{
+				version:  "1.2.3-test",
+				language: "python",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			// TODO: implement me
+			actual := tc.generator.FilterSchemaByLanguage(tc.inputSchema)
+			autogold.ExpectFile(t, autogold.Raw(actual))
+		})
+
 	}
 }

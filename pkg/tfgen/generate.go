@@ -1044,7 +1044,7 @@ type GenerateOptions struct {
 	ModuleFormat string
 }
 
-func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) (*GenerateSchemaResult, error) {
+func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 
 	// Convert bytes to string for regex processing //TODO: make this just Bytes
 	schemaStr := string(schemaBytes)
@@ -1072,22 +1072,7 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) (*GenerateSchemaR
 	codeChooserEndRegex := regexp.MustCompile("\\\\u003c!--End PulumiCodeChooser --\\\\u003e")
 	schemaStr = codeChooserEndRegex.ReplaceAllString(schemaStr, "")
 
-	// Parse the filtered schema back into PackageSpec
-	var filteredPackageSpec pschema.PackageSpec
-	err := json.Unmarshal([]byte(schemaStr), &filteredPackageSpec)
-	if err != nil {
-		// Return error if unmarshaling fails
-		return nil, err
-	}
-	// In order to ensure stability, the docs schema, which we're using as a source for this filter function,
-	// removes the Version field in UnstableGenerateFromSchema.
-	// For our local schemas, we want to add the version back in.
-	filteredPackageSpec.Version = g.version
-
-	// Create new GenerateSchemaResult with filtered schema
-	return &GenerateSchemaResult{
-		PackageSpec: filteredPackageSpec,
-	}, nil
+	return []byte(schemaStr)
 }
 
 // Generate creates Pulumi packages from the information it was initialized with.
@@ -1102,22 +1087,38 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 		return g.UnstableGenerateFromSchema(genSchemaResult)
 	} else {
 		// Read the provider schema from file
+		// TODO: genericize
 		schemaBytes, err := os.ReadFile("provider/cmd/pulumi-resource-random/schema.json")
 		if err != nil {
 			return nil, err
 		}
 		// Generate the language-specific file
-		languageSchemaResult, err := g.FilterSchemaByLanguage(schemaBytes)
+		languageSchemaBytes := g.FilterSchemaByLanguage(schemaBytes)
+
+		// Parse the filtered schema bytes back into PackageSpec
+		var languagePackageSpec pschema.PackageSpec
+		err = json.Unmarshal(languageSchemaBytes, &languagePackageSpec)
 		if err != nil {
+			// Return error if unmarshaling fails
 			return nil, err
 		}
+		// In order to ensure stability, the docs schema, which we're using as a source for this filter function,
+		// removes the Version field in UnstableGenerateFromSchema.
+		// For our local schemas, we want to add the version back in.
+		languagePackageSpec.Version = g.version
+
 		// TODO: remove this; it's for debugging
 		//bytes, err := json.MarshalIndent(genSchemaResult.PackageSpec, "", "    ")
 		//if err != nil {
 		//	return nil, err
 		//}
 		//os.WriteFile("test-python-span-with-filter-but-reading-from-docsschema.json", bytes, 0666)
-		return languageSchemaResult, nil
+
+		// Create new GenerateSchemaResult with filtered schema
+		return &GenerateSchemaResult{
+			PackageSpec: languagePackageSpec,
+		}, nil
+
 	}
 }
 
