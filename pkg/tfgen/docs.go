@@ -2224,18 +2224,17 @@ func (c infoContext) fixupPropertyReference(text string) string {
 		}
 		// Else just treat as a property name
 		pname := propertyName(name, nil, nil)
-		nodeOrGoFormat := open + pname + close
-		allOtherLangs := match
+		camelCaseFormat := open + pname + close
 
 		// Build span
 		span := buildSpan(
-			nodeOrGoFormat,
-			allOtherLangs,
-			nodeOrGoFormat,
-			allOtherLangs,
-			allOtherLangs,
-			allOtherLangs,
-			allOtherLangs,
+			camelCaseFormat,
+			camelCaseFormat,
+			camelCaseFormat,
+			match,
+			camelCaseFormat,
+			camelCaseFormat,
+			match,
 		)
 		return span
 	})

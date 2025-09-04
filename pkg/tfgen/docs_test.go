@@ -2793,6 +2793,15 @@ func TestFixupPropertyReference(t *testing.T) {
 			},
 		},
 		{
+			name:     "property name with underscores",
+			input:    "The length must also be greater than `min_upper`.",
+			expected: "The length must also be greater than <span pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`minUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\">`min_upper`</span>.",
+			ctx: infoContext{
+				pkg:  "random",
+				info: tfbridge.ProviderInfo{},
+			},
+		},
+		{
 			name:     "resource name without backticks",
 			input:    "Use random_pet resource to generate pet names.",
 			expected: "Use<span pulumi-lang-nodejs=\" random.RandomPet \" pulumi-lang-dotnet=\" random.RandomPet \" pulumi-lang-go=\" RandomPet \" pulumi-lang-python=\" RandomPet \" pulumi-lang-yaml=\" random.RandomPet \" pulumi-lang-java=\" random.RandomPet \"> random.RandomPet </span>resource to generate pet names.",
