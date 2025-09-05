@@ -32,6 +32,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/ryboe/q"
+
 	"github.com/hashicorp/go-multierror"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -1061,13 +1063,46 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 		return languageValue
 	})
 
-	// Remove all PulumiCodeChoosers
-	codeChooserStartRegex := regexp.MustCompile(`\\u003c!--Start PulumiCodeChooser --\\u003e`)
-	schemaBytes = codeChooserStartRegex.ReplaceAll(schemaBytes, []byte(""))
-	codeChooserEndRegex := regexp.MustCompile(`\\u003c!--End PulumiCodeChooser --\\u003e`)
-	schemaBytes = codeChooserEndRegex.ReplaceAll(schemaBytes, []byte(""))
+	// Find code chooser blocks and filter to only keep the current language
+	codeChooserRegex := regexp.MustCompile(`\\u003c!--Start PulumiCodeChooser --\\u003e.*?\\u003c!--End PulumiCodeChooser --\\u003e`)
 
+	schemaBytes = codeChooserRegex.ReplaceAllFunc(schemaBytes, func(match []byte) []byte {
+
+		content := string(match)
+
+		// Fix nodejs
+		codeLang := g.language
+		if g.language == "nodejs" {
+			codeLang = "typescript"
+		}
+		// Fix dotnet
+		if g.language == "dotnet" {
+			codeLang = "csharp"
+		}
+		// Extract language-specific example only
+		_, after, found := strings.Cut(content, fmt.Sprintf("```%s", codeLang))
+		if !found {
+			return []byte("")
+		}
+		codeForLanguage, _, found := strings.Cut(after, "```")
+		if !found {
+			return []byte("")
+		}
+		codeForLanguage = fmt.Sprintf("```%s", codeLang) + codeForLanguage + "```"
+
+		return []byte(codeForLanguage)
+
+	})
+
+	examplesChooserStartRegex := regexp.MustCompile(`{{% examples %}}`)
+
+	allExamplesTags := examplesChooserStartRegex.FindAllString(string(schemaBytes), -1)
+
+	for _, examplesTag := range allExamplesTags {
+		q.Q(examplesTag)
+	}
 	return schemaBytes
+
 }
 
 // Generate creates Pulumi packages from the information it was initialized with.
@@ -1100,6 +1135,8 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 		// removes the Version field in UnstableGenerateFromSchema.
 		// For our local schemas, we want to add the version back in.
 		languagePackageSpec.Version = g.version
+
+		g.skipExamples = true
 
 		// TODO: remove this; it's for debugging
 		bytes, err := json.MarshalIndent(languagePackageSpec, "", "    ")
@@ -1166,8 +1203,12 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		return nil, err
 	}
 	// Convert examples.
+	// || !(g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi")
 	if !g.skipExamples {
+		q.Q("Not skipping examples because debugging")
 		pulumiPackageSpec = g.convertExamplesInSchema(pulumiPackageSpec)
+	} else {
+		q.Q("yes skipping examples because we already have them")
 	}
 
 	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
