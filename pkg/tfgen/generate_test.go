@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/hexops/autogold/v2"
 	"io"
@@ -945,7 +946,7 @@ func TestFilterSchemaByLanguage(t *testing.T) {
 			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
 			generator: &Generator{
 				version:  "1.2.3-test",
-				language: "python",
+				language: "dotnet",
 			},
 		},
 		{
@@ -953,7 +954,7 @@ func TestFilterSchemaByLanguage(t *testing.T) {
 			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
 			generator: &Generator{
 				version:  "1.2.3-test",
-				language: "python",
+				language: "go",
 			},
 		},
 		{
@@ -961,7 +962,7 @@ func TestFilterSchemaByLanguage(t *testing.T) {
 			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
 			generator: &Generator{
 				version:  "1.2.3-test",
-				language: "python",
+				language: "yaml",
 			},
 		},
 		{
@@ -969,7 +970,15 @@ func TestFilterSchemaByLanguage(t *testing.T) {
 			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
 			generator: &Generator{
 				version:  "1.2.3-test",
-				language: "python",
+				language: "java",
+			},
+		},
+		{
+			name:        "Handles property names that are not surrounded by back ticks",
+			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema-no-backticks.json")),
+			generator: &Generator{
+				version:  "1.2.3-test",
+				language: "nodejs",
 			},
 		},
 	}
@@ -980,6 +989,10 @@ func TestFilterSchemaByLanguage(t *testing.T) {
 			t.Parallel()
 			// TODO: implement me
 			actual := tc.generator.FilterSchemaByLanguage(tc.inputSchema)
+			hasSpan := bytes.Contains(actual, []byte("span"))
+			require.False(t, hasSpan, "there should be no spans in the generated schema")
+			hasCodeChoosers := bytes.Contains(actual, []byte("PulumiCodeChooser"))
+			require.False(t, hasCodeChoosers)
 			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
 

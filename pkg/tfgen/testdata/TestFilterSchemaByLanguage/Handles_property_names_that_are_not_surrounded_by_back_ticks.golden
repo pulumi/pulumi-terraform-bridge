@@ -1,0 +1,266 @@
+{
+  "name": "random",
+  "description": "A Pulumi package to safely use randomness in Pulumi programs.",
+  "keywords": [
+    "pulumi",
+    "random"
+  ],
+  "homepage": "https://pulumi.io",
+  "license": "Apache-2.0",
+  "attribution": "This Pulumi package is based on the [`random` Terraform Provider](https://github.com/terraform-providers/terraform-provider-random).",
+  "repository": "https://github.com/pulumi/pulumi-random",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.*"
+      },
+      "namespaces": {
+        "random": "Random"
+      },
+      "compatibility": "tfbridge20",
+      "respectSchemaVersion": true
+    },
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi-random/sdk/v4/go/random",
+      "generateResourceContainerTypes": true,
+      "generateExtraInputTypes": true,
+      "respectSchemaVersion": true
+    },
+    "nodejs": {
+      "packageDescription": "A Pulumi package to safely use randomness in Pulumi programs.",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](https://github.com/pulumi/pulumi-random/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues).",
+      "devDependencies": {
+        "@types/node": "^10.0.0"
+      },
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true,
+      "respectSchemaVersion": true
+    },
+    "python": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](https://github.com/pulumi/pulumi-random/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues).",
+      "compatibility": "tfbridge20",
+      "respectSchemaVersion": true,
+      "pyproject": {
+        "enabled": true
+      }
+    }
+  },
+  "config": {},
+  "provider": {
+    "description": "The provider type for the random package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+    "methods": {
+      "terraformConfig": "pulumi:providers:random/terraformConfig"
+    }
+  },
+  "resources": {
+    "random:index/randomPassword:RandomPassword": {
+      "description": "## Example Usage\n\n\n```typescript\nimport * as pulumi from \"@pulumi/pulumi\";\nimport * as aws from \"@pulumi/aws\";\nimport * as random from \"@pulumi/random\";\n\nconst password = new random.RandomPassword(\"password\", {\n    length: 16,\n    special: true,\n    overrideSpecial: \"!#$%\u0026*()-_=+[]{}\u003c\u003e:?\",\n});\nconst example = new aws.rds.Instance(\"example\", {\n    instanceClass: aws.rds.InstanceType.T3_Micro,\n    allocatedStorage: 64,\n    engine: \"mysql\",\n    username: \"someone\",\n    password: password.result,\n});\n```\n```python\nimport pulumi\nimport pulumi_aws as aws\nimport pulumi_random as random\n\npassword = random.RandomPassword(\"password\",\n    length=16,\n    special=True,\n    override_special=\"!#$%\u0026*()-_=+[]{}\u003c\u003e:?\")\nexample = aws.rds.Instance(\"example\",\n    instance_class=aws.rds.InstanceType.T3_MICRO,\n    allocated_storage=64,\n    engine=\"mysql\",\n    username=\"someone\",\n    password=password.result)\n```\n```csharp\nusing System.Collections.Generic;\nusing System.Linq;\nusing Pulumi;\nusing Aws = Pulumi.Aws;\nusing Random = Pulumi.Random;\n\nreturn await Deployment.RunAsync(() =\u003e \n{\n    var password = new Random.RandomPassword(\"password\", new()\n    {\n        Length = 16,\n        Special = true,\n        OverrideSpecial = \"!#$%\u0026*()-_=+[]{}\u003c\u003e:?\",\n    });\n\n    var example = new Aws.Rds.Instance(\"example\", new()\n    {\n        InstanceClass = Aws.Rds.InstanceType.T3_Micro,\n        AllocatedStorage = 64,\n        Engine = \"mysql\",\n        Username = \"someone\",\n        Password = password.Result,\n    });\n\n});\n```\n```go\npackage main\n\nimport (\n\t\"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/rds\"\n\t\"github.com/pulumi/pulumi-random/sdk/v4/go/random\"\n\t\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n)\n\nfunc main() {\n\tpulumi.Run(func(ctx *pulumi.Context) error {\n\t\tpassword, err := random.NewRandomPassword(ctx, \"password\", \u0026random.RandomPasswordArgs{\n\t\t\tLength:          pulumi.Int(16),\n\t\t\tSpecial:         pulumi.Bool(true),\n\t\t\tOverrideSpecial: pulumi.String(\"!#$%\u0026*()-_=+[]{}\u003c\u003e:?\"),\n\t\t})\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\t_, err = rds.NewInstance(ctx, \"example\", \u0026rds.InstanceArgs{\n\t\t\tInstanceClass:    pulumi.String(rds.InstanceType_T3_Micro),\n\t\t\tAllocatedStorage: pulumi.Int(64),\n\t\t\tEngine:           pulumi.String(\"mysql\"),\n\t\t\tUsername:         pulumi.String(\"someone\"),\n\t\t\tPassword:         password.Result,\n\t\t})\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\treturn nil\n\t})\n}\n```\n```java\npackage generated_program;\n\nimport com.pulumi.Context;\nimport com.pulumi.Pulumi;\nimport com.pulumi.core.Output;\nimport com.pulumi.random.RandomPassword;\nimport com.pulumi.random.RandomPasswordArgs;\nimport com.pulumi.aws.rds.Instance;\nimport com.pulumi.aws.rds.InstanceArgs;\nimport java.util.List;\nimport java.util.ArrayList;\nimport java.util.Map;\nimport java.io.File;\nimport java.nio.file.Files;\nimport java.nio.file.Paths;\n\npublic class App {\n    public static void main(String[] args) {\n        Pulumi.run(App::stack);\n    }\n\n    public static void stack(Context ctx) {\n        var password = new RandomPassword(\"password\", RandomPasswordArgs.builder()\n            .length(16)\n            .special(true)\n            .overrideSpecial(\"!#$%\u0026*()-_=+[]{}\u003c\u003e:?\")\n            .build());\n\n        var example = new Instance(\"example\", InstanceArgs.builder()\n            .instanceClass(\"db.t3.micro\")\n            .allocatedStorage(64)\n            .engine(\"mysql\")\n            .username(\"someone\")\n            .password(password.result())\n            .build());\n\n    }\n}\n```\n```yaml\nresources:\n  password:\n    type: random:RandomPassword\n    properties:\n      length: 16\n      special: true\n      overrideSpecial: '!#$%\u0026*()-_=+[]{}\u003c\u003e:?'\n  example:\n    type: aws:rds:Instance\n    properties:\n      instanceClass: db.t3.micro\n      allocatedStorage: 64\n      engine: mysql\n      username: someone\n      password: ${password.result}\n```\n\n\n## Import\n\nYou can import external passwords into your Pulumi programs as follows:\n\n```sh\u003cbreak\u003e\n$ import random:index/randomPassword:RandomPassword newPassword supersecret\n\u003cbreak\u003e```\n\nThis command will encode the `supersecret` token in Pulumi state and generate a code suggestion to\ninclude a new RandomPassword resource in your Pulumi program. Include the suggested code and do a\n`pulumi up`. Your secret password is now securely stored in Pulumi, and you can reference it in your\nPulumi program as `newPassword.result`.\n```",
+      "properties": {
+        "bcryptHash": {
+          "type": "string",
+          "description": "A bcrypt hash of the generated random string. **NOTE**: If the generated random string is greater than 72 bytes in length, `bcryptHash` will contain a hash of the first 72 bytes.\n",
+          "secret": true
+        },
+        "keepers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information.\n"
+        },
+        "length": {
+          "type": "integer",
+          "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= ( minUpper  +  minLower  +  minNumeric  + `minSpecial`).\n"
+        },
+        "lower": {
+          "type": "boolean",
+          "description": "Include lowercase alphabet characters in the result. Default value is `true`.\n"
+        },
+        "minLower": {
+          "type": "integer",
+          "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`.\n"
+        },
+        "minNumeric": {
+          "type": "integer",
+          "description": "Minimum number of numeric characters in the result. Default value is `0`.\n"
+        },
+        "minSpecial": {
+          "type": "integer",
+          "description": "Minimum number of special characters in the result. Default value is `0`.\n"
+        },
+        "minUpper": {
+          "type": "integer",
+          "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`.\n"
+        },
+        "number": {
+          "type": "boolean",
+          "description": "Include numeric characters in the result. Default value is `true`. If `number`, `upper`, `lower`, and `special` are all configured, at least one of them must be set to `true`. **NOTE**: This is deprecated, use `numeric` instead.\n",
+          "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+        },
+        "numeric": {
+          "type": "boolean",
+          "description": "Include numeric characters in the result. Default value is `true`. If `numeric`, `upper`, `lower`, and `special` are all configured, at least one of them must be set to `true`.\n"
+        },
+        "overrideSpecial": {
+          "type": "string",
+          "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The `special` argument must still be set to true for any overwritten characters to be used in generation.\n"
+        },
+        "result": {
+          "type": "string",
+          "description": "The generated random string.\n",
+          "secret": true
+        },
+        "special": {
+          "type": "boolean",
+          "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+        },
+        "upper": {
+          "type": "boolean",
+          "description": "Include uppercase alphabet characters in the result. Default value is `true`.\n"
+        }
+      },
+      "required": [
+        "bcryptHash",
+        "length",
+        "lower",
+        "minLower",
+        "minNumeric",
+        "minSpecial",
+        "minUpper",
+        "number",
+        "numeric",
+        "result",
+        "special",
+        "upper"
+      ],
+      "inputProperties": {
+        "keepers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information.\n"
+        },
+        "length": {
+          "type": "integer",
+          "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= ( minUpper  +  minLower  +  minNumeric  + `minSpecial`).\n"
+        },
+        "lower": {
+          "type": "boolean",
+          "description": "Include lowercase alphabet characters in the result. Default value is `true`.\n"
+        },
+        "minLower": {
+          "type": "integer",
+          "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`.\n"
+        },
+        "minNumeric": {
+          "type": "integer",
+          "description": "Minimum number of numeric characters in the result. Default value is `0`.\n"
+        },
+        "minSpecial": {
+          "type": "integer",
+          "description": "Minimum number of special characters in the result. Default value is `0`.\n"
+        },
+        "minUpper": {
+          "type": "integer",
+          "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`.\n"
+        },
+        "number": {
+          "type": "boolean",
+          "description": "Include numeric characters in the result. Default value is `true`. If `number`, `upper`, `lower`, and `special` are all configured, at least one of them must be set to `true`. **NOTE**: This is deprecated, use `numeric` instead.\n",
+          "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+        },
+        "numeric": {
+          "type": "boolean",
+          "description": "Include numeric characters in the result. Default value is `true`. If `numeric`, `upper`, `lower`, and `special` are all configured, at least one of them must be set to `true`.\n"
+        },
+        "overrideSpecial": {
+          "type": "string",
+          "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The `special` argument must still be set to true for any overwritten characters to be used in generation.\n"
+        },
+        "special": {
+          "type": "boolean",
+          "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+        },
+        "upper": {
+          "type": "boolean",
+          "description": "Include uppercase alphabet characters in the result. Default value is `true`.\n"
+        }
+      },
+      "requiredInputs": [
+        "length"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering RandomPassword resources.\n",
+        "properties": {
+          "bcryptHash": {
+            "type": "string",
+            "description": "A bcrypt hash of the generated random string. **NOTE**: If the generated random string is greater than 72 bytes in length, `bcryptHash` will contain a hash of the first 72 bytes.\n",
+            "secret": true
+          },
+          "keepers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information.\n"
+          },
+          "length": {
+            "type": "integer",
+            "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= ( minUpper  +  minLower  +  minNumeric  + `minSpecial`).\n"
+          },
+          "lower": {
+            "type": "boolean",
+            "description": "Include lowercase alphabet characters in the result. Default value is `true`.\n"
+          },
+          "minLower": {
+            "type": "integer",
+            "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`.\n"
+          },
+          "minNumeric": {
+            "type": "integer",
+            "description": "Minimum number of numeric characters in the result. Default value is `0`.\n"
+          },
+          "minSpecial": {
+            "type": "integer",
+            "description": "Minimum number of special characters in the result. Default value is `0`.\n"
+          },
+          "minUpper": {
+            "type": "integer",
+            "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`.\n"
+          },
+          "number": {
+            "type": "boolean",
+            "description": "Include numeric characters in the result. Default value is `true`. If `number`, `upper`, `lower`, and `special` are all configured, at least one of them must be set to `true`. **NOTE**: This is deprecated, use `numeric` instead.\n",
+            "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+          },
+          "numeric": {
+            "type": "boolean",
+            "description": "Include numeric characters in the result. Default value is `true`. If `numeric`, `upper`, `lower`, and `special` are all configured, at least one of them must be set to `true`.\n"
+          },
+          "overrideSpecial": {
+            "type": "string",
+            "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The `special` argument must still be set to true for any overwritten characters to be used in generation.\n"
+          },
+          "result": {
+            "type": "string",
+            "description": "The generated random string.\n",
+            "secret": true
+          },
+          "special": {
+            "type": "boolean",
+            "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+          },
+          "upper": {
+            "type": "boolean",
+            "description": "Include uppercase alphabet characters in the result. Default value is `true`.\n"
+          }
+        },
+        "type": "object"
+      }
+    },
+  },
+}

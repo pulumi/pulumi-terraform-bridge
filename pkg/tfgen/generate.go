@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ryboe/q"
 	"io"
 	"io/fs"
 	"os"
@@ -1046,33 +1045,29 @@ type GenerateOptions struct {
 
 func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 
-	// Convert bytes to string for regex processing //TODO: make this just Bytes
-	schemaStr := string(schemaBytes)
-	// The span string looks as follows:
-	// <span pulumi-lang-nodejs="firstProperty" pulumi-lang-go="FirstProperty" ...>firstProperty</span>
-	// When rendered in schema it uses escapes:
-	// \u003cspan pulumi-lang-nodejs=\"`random.RandomBytes`\" pulumi-lang-dotnet=\"`random.RandomBytes`\" pulumi-lang-go=\"`RandomBytes`\" pulumi-lang-python=\"`RandomBytes`\" pulumi-lang-yaml=\"`random.RandomBytes`\" pulumi-lang-java=\"`random.RandomBytes`\"\u003e`random.RandomBytes`\u003c/span\u003e
+	// The span string stems from g.fixUpPropertyReference in docsgen and looks as follows:
+	// <span pulumi-lang-nodejs="firstProperty" pulumi-lang-go="FirstProperty" ...>first_property</span>
+	// When rendered in schema it uses escapes and unicode chars for the angle brackets:
+	// \u003cspan pulumi-lang-nodejs=\"`random.RandomBytes`\" pulumi-lang-dotnet=\"`random.RandomBytes`\" ... \u003e ...
 
-	// Regex to find span tags with language-specific attributes //TODO: can we make this into a literal?
-	spanRegex := regexp.MustCompile("\\\\u003cspan pulumi-lang-nodejs=\\\\\"`[^`]*`\\\\\" pulumi-lang-dotnet=\\\\\"`[^`]*`\\\\\" pulumi-lang-go=\\\\\"`[^`]*`\\\\\" pulumi-lang-python=\\\\\"`[^`]*`\\\\\" pulumi-lang-yaml=\\\\\"`[^`]*`\\\\\" pulumi-lang-java=\\\\\"`[^`]*`\\\\\"\\\\u003e`[^`]*`\\\\u003c/span\\\\u003e")
+	spanRegex := regexp.MustCompile(`\\u003cspan pulumi-lang-nodejs=.*?\\u003c/span\\u003e`)
 
 	// Extract the language-specific inflection for the found inflection span
-	schemaStr = spanRegex.ReplaceAllStringFunc(schemaStr, func(match string) string {
+	schemaBytes = spanRegex.ReplaceAllFunc(schemaBytes, func(match []byte) []byte {
+		languageKey := []byte(fmt.Sprintf("pulumi-lang-%s=\\\"", g.language))
 
-		q.Q(match)
-		languageKey := fmt.Sprintf("pulumi-lang-%s=\\\"", g.language)
-		_, startLanguageValue, _ := strings.Cut(match, languageKey)
-		languageValue, _, _ := strings.Cut(startLanguageValue, "\\\"")
+		_, startLanguageValue, _ := bytes.Cut(match, languageKey)
+		languageValue, _, _ := bytes.Cut(startLanguageValue, []byte("\\\""))
 		return languageValue
 	})
 
 	// Remove all PulumiCodeChoosers
-	codeChooserStartRegex := regexp.MustCompile("\\\\u003c!--Start PulumiCodeChooser --\\\\u003e")
-	schemaStr = codeChooserStartRegex.ReplaceAllString(schemaStr, "")
-	codeChooserEndRegex := regexp.MustCompile("\\\\u003c!--End PulumiCodeChooser --\\\\u003e")
-	schemaStr = codeChooserEndRegex.ReplaceAllString(schemaStr, "")
+	codeChooserStartRegex := regexp.MustCompile(`\\u003c!--Start PulumiCodeChooser --\\u003e`)
+	schemaBytes = codeChooserStartRegex.ReplaceAll(schemaBytes, []byte(""))
+	codeChooserEndRegex := regexp.MustCompile(`\\u003c!--End PulumiCodeChooser --\\u003e`)
+	schemaBytes = codeChooserEndRegex.ReplaceAll(schemaBytes, []byte(""))
 
-	return []byte(schemaStr)
+	return schemaBytes
 }
 
 // Generate creates Pulumi packages from the information it was initialized with.
@@ -1087,19 +1082,18 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 		return g.UnstableGenerateFromSchema(genSchemaResult)
 	} else {
 		// Read the provider schema from file
-		// TODO: genericize
-		schemaBytes, err := os.ReadFile("provider/cmd/pulumi-resource-random/schema.json")
+		schemaBytes, err := os.ReadFile(fmt.Sprintf("provider/cmd/pulumi-resource-%s/schema.json", g.info.Name))
 		if err != nil {
 			return nil, err
 		}
-		// Generate the language-specific file
+
+		// Generate the language-specific bytes
 		languageSchemaBytes := g.FilterSchemaByLanguage(schemaBytes)
 
 		// Parse the filtered schema bytes back into PackageSpec
 		var languagePackageSpec pschema.PackageSpec
 		err = json.Unmarshal(languageSchemaBytes, &languagePackageSpec)
 		if err != nil {
-			// Return error if unmarshaling fails
 			return nil, err
 		}
 		// In order to ensure stability, the docs schema, which we're using as a source for this filter function,
@@ -1108,17 +1102,14 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 		languagePackageSpec.Version = g.version
 
 		// TODO: remove this; it's for debugging
-		//bytes, err := json.MarshalIndent(genSchemaResult.PackageSpec, "", "    ")
-		//if err != nil {
-		//	return nil, err
-		//}
-		//os.WriteFile("test-python-span-with-filter-but-reading-from-docsschema.json", bytes, 0666)
+		bytes, err := json.MarshalIndent(languagePackageSpec, "", "    ")
+		if err != nil {
+			return nil, err
+		}
+		os.WriteFile("test-node-span-with-filter-but-reading-from-docsschema.json", bytes, 0666)
 
-		// Create new GenerateSchemaResult with filtered schema
-		return &GenerateSchemaResult{
-			PackageSpec: languagePackageSpec,
-		}, nil
-
+		// Use filtered schema to generate SDK
+		return g.UnstableGenerateFromSchema(&GenerateSchemaResult{PackageSpec: languagePackageSpec})
 	}
 }
 
