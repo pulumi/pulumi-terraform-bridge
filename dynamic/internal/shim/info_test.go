@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package shim
 
 import (
 	"context"
@@ -27,6 +27,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
+
+const baseProviderName = "baseProvider"
 
 func TestInferResourcePrefix(t *testing.T) {
 	t.Parallel()
@@ -72,7 +74,7 @@ func TestInferResourcePrefix(t *testing.T) {
 				resourceSchemas[tf] = &tfprotov6.Schema{Block: &tfprotov6.SchemaBlock{}}
 			}
 
-			info, err := providerInfo(context.Background(), schemaOnlyProvider{
+			info, err := ProviderInfo(context.Background(), baseProviderName, schemaOnlyProvider{
 				name:    "test",
 				version: "1.0.0",
 				schema: &tfprotov6.GetProviderSchemaResponse{
@@ -89,7 +91,7 @@ func TestInferResourcePrefix(t *testing.T) {
 func TestFixTokenOverrides(t *testing.T) {
 	t.Parallel()
 
-	p, err := providerInfo(context.Background(), schemaOnlyProvider{
+	p, err := ProviderInfo(context.Background(), baseProviderName, schemaOnlyProvider{
 		name:    "test",
 		version: "1.0.0",
 		schema: &tfprotov6.GetProviderSchemaResponse{
@@ -118,7 +120,7 @@ func TestFixTokenOverrides(t *testing.T) {
 func TestFixHyphenToken(t *testing.T) {
 	t.Parallel()
 
-	p, err := providerInfo(context.Background(), schemaOnlyProvider{
+	p, err := ProviderInfo(context.Background(), baseProviderName, schemaOnlyProvider{
 		name:    "test",
 		version: "1.0.0",
 		schema: &tfprotov6.GetProviderSchemaResponse{

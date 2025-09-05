@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package shim
 
 import (
 	"context"
@@ -31,7 +31,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
+func ProviderInfo(ctx context.Context, baseProviderName string, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
 	provider := proto.New(ctx, p)
 
 	prov := tfbridge.ProviderInfo{

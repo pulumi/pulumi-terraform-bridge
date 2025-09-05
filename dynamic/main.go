@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/run"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/version"
@@ -185,7 +186,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 
 			tfServer = p
 			if tfServer != nil {
-				info, err = providerInfo(ctx, tfServer, value)
+				info, err = shim.ProviderInfo(ctx, baseProviderName, tfServer, value)
 				if err != nil {
 					return plugin.ParameterizeResponse{}, err
 				}

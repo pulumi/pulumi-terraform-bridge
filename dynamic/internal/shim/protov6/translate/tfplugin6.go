@@ -42,16 +42,41 @@ func GetMetadataResult(i *tfplugin6.GetMetadata_Response) *tfprotov6.GetMetadata
 	}
 }
 
+func GetMetadata_Response(i *tfprotov6.GetMetadataResponse) *tfplugin6.GetMetadata_Response {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.GetMetadata_Response{
+		ServerCapabilities: pluginServerCapabilities(i.ServerCapabilities),
+		Diagnostics:        pluginDiagnostics(i.Diagnostics),
+		DataSources:        applyArray(i.DataSources, pluginDataSourceMetadata),
+		Functions:          applyArray(i.Functions, pluginFunctionMetadata),
+		Resources:          applyArray(i.Resources, pluginResourceMetadata),
+	}
+}
+
 func dataSourceMetadata(i *tfplugin6.GetMetadata_DataSourceMetadata) tfprotov6.DataSourceMetadata {
 	return tfprotov6.DataSourceMetadata{TypeName: i.GetTypeName()}
+}
+
+func pluginDataSourceMetadata(i tfprotov6.DataSourceMetadata) *tfplugin6.GetMetadata_DataSourceMetadata {
+	return &tfplugin6.GetMetadata_DataSourceMetadata{TypeName: i.TypeName}
 }
 
 func functionMetadata(i *tfplugin6.GetMetadata_FunctionMetadata) tfprotov6.FunctionMetadata {
 	return tfprotov6.FunctionMetadata{Name: i.GetName()}
 }
 
+func pluginFunctionMetadata(i tfprotov6.FunctionMetadata) *tfplugin6.GetMetadata_FunctionMetadata {
+	return &tfplugin6.GetMetadata_FunctionMetadata{Name: i.Name}
+}
+
 func resourceMetadata(i *tfplugin6.GetMetadata_ResourceMetadata) tfprotov6.ResourceMetadata {
 	return tfprotov6.ResourceMetadata{TypeName: i.GetTypeName()}
+}
+
+func pluginResourceMetadata(i tfprotov6.ResourceMetadata) *tfplugin6.GetMetadata_ResourceMetadata {
+	return &tfplugin6.GetMetadata_ResourceMetadata{TypeName: i.TypeName}
 }
 
 func applyArray[From, To any, F func(From) To](arr []From, f F) []To {
@@ -81,6 +106,17 @@ func serverCapabilities(i *tfplugin6.ServerCapabilities) *tfprotov6.ServerCapabi
 	}
 }
 
+func pluginServerCapabilities(i *tfprotov6.ServerCapabilities) *tfplugin6.ServerCapabilities {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.ServerCapabilities{
+		GetProviderSchemaOptional: i.GetProviderSchemaOptional,
+		MoveResourceState:         i.MoveResourceState,
+		PlanDestroy:               i.PlanDestroy,
+	}
+}
+
 func diagnostics(i []*tfplugin6.Diagnostic) []*tfprotov6.Diagnostic {
 	return applyArray(i, diagnostic)
 }
@@ -97,6 +133,22 @@ func diagnostic(i *tfplugin6.Diagnostic) *tfprotov6.Diagnostic {
 	}
 }
 
+func pluginDiagnostics(i []*tfprotov6.Diagnostic) []*tfplugin6.Diagnostic {
+	return applyArray(i, pluginDiagnostic)
+}
+
+func pluginDiagnostic(i *tfprotov6.Diagnostic) *tfplugin6.Diagnostic {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.Diagnostic{
+		Severity:  pluginDiagnosticSeverity(i.Severity),
+		Summary:   i.Summary,
+		Detail:    i.Detail,
+		Attribute: pluginAttributePath(i.Attribute),
+	}
+}
+
 func diagnosticSeverity(i tfplugin6.Diagnostic_Severity) tfprotov6.DiagnosticSeverity {
 	switch i {
 	case tfplugin6.Diagnostic_ERROR:
@@ -105,6 +157,17 @@ func diagnosticSeverity(i tfplugin6.Diagnostic_Severity) tfprotov6.DiagnosticSev
 		return tfprotov6.DiagnosticSeverityWarning
 	default:
 		return tfprotov6.DiagnosticSeverityInvalid
+	}
+}
+
+func pluginDiagnosticSeverity(i tfprotov6.DiagnosticSeverity) tfplugin6.Diagnostic_Severity {
+	switch i {
+	case tfprotov6.DiagnosticSeverityError:
+		return tfplugin6.Diagnostic_ERROR
+	case tfprotov6.DiagnosticSeverityWarning:
+		return tfplugin6.Diagnostic_WARNING
+	default:
+		return tfplugin6.Diagnostic_INVALID
 	}
 }
 
@@ -127,11 +190,45 @@ func attributePathRequest(i *tfplugin6.AttributePath) *tftypes.AttributePath {
 	return tftypes.NewAttributePathWithSteps(path)
 }
 
+func pluginAttributePath(i *tftypes.AttributePath) *tfplugin6.AttributePath {
+	if i == nil {
+		return nil
+	}
+	path := make([]*tfplugin6.AttributePath_Step, len(i.Steps()))
+	for i, step := range i.Steps() {
+		switch s := step.(type) {
+		case tftypes.AttributeName:
+			path[i] = &tfplugin6.AttributePath_Step{Selector: &tfplugin6.AttributePath_Step_AttributeName{AttributeName: string(s)}}
+		case tftypes.ElementKeyInt:
+			path[i] = &tfplugin6.AttributePath_Step{Selector: &tfplugin6.AttributePath_Step_ElementKeyInt{ElementKeyInt: int64(s)}}
+		case tftypes.ElementKeyString:
+			path[i] = &tfplugin6.AttributePath_Step{Selector: &tfplugin6.AttributePath_Step_ElementKeyString{ElementKeyString: string(s)}}
+		}
+	}
+
+	return &tfplugin6.AttributePath{Steps: path}
+}
+
 func GetProviderSchemaRequest(i *tfprotov6.GetProviderSchemaRequest) *tfplugin6.GetProviderSchema_Request {
 	if i == nil {
 		return nil
 	}
 	return &tfplugin6.GetProviderSchema_Request{}
+}
+
+func GetProviderSchema_Response(i *tfprotov6.GetProviderSchemaResponse) *tfplugin6.GetProviderSchema_Response {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.GetProviderSchema_Response{
+		ServerCapabilities: pluginServerCapabilities(i.ServerCapabilities),
+		Provider:           pluginSchema(i.Provider),
+		ProviderMeta:       pluginSchema(i.ProviderMeta),
+		ResourceSchemas:    applyMap(i.ResourceSchemas, pluginSchema),
+		DataSourceSchemas:  applyMap(i.DataSourceSchemas, pluginSchema),
+		Functions:          applyMap(i.Functions, pluginFunction),
+		Diagnostics:        pluginDiagnostics(i.Diagnostics),
+	}
 }
 
 func GetProviderSchemaResponse(i *tfplugin6.GetProviderSchema_Response) *tfprotov6.GetProviderSchemaResponse {
@@ -159,6 +256,16 @@ func schema(i *tfplugin6.Schema) *tfprotov6.Schema {
 	}
 }
 
+func pluginSchema(i *tfprotov6.Schema) *tfplugin6.Schema {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.Schema{
+		Version: i.Version,
+		Block:   pluginSchemaBlock(i.Block),
+	}
+}
+
 func schemaBlock(i *tfplugin6.Schema_Block) *tfprotov6.SchemaBlock {
 	if i == nil {
 		return nil
@@ -169,6 +276,20 @@ func schemaBlock(i *tfplugin6.Schema_Block) *tfprotov6.SchemaBlock {
 		BlockTypes:      applyArray(i.BlockTypes, schemaNestedBlock),
 		Description:     i.Description,
 		DescriptionKind: stringKind(i.DescriptionKind),
+		Deprecated:      i.Deprecated,
+	}
+}
+
+func pluginSchemaBlock(i *tfprotov6.SchemaBlock) *tfplugin6.Schema_Block {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.Schema_Block{
+		Version:         i.Version,
+		Attributes:      applyArray(i.Attributes, pluginSchemaAttribute),
+		BlockTypes:      applyArray(i.BlockTypes, pluginSchemaNestedBlock),
+		Description:     i.Description,
+		DescriptionKind: pluginStringKind(i.DescriptionKind),
 		Deprecated:      i.Deprecated,
 	}
 }
@@ -184,6 +305,17 @@ func stringKind(i tfplugin6.StringKind) tfprotov6.StringKind {
 	}
 }
 
+func pluginStringKind(i tfprotov6.StringKind) tfplugin6.StringKind {
+	switch i {
+	case tfprotov6.StringKindMarkdown:
+		return tfplugin6.StringKind_MARKDOWN
+	case tfprotov6.StringKindPlain:
+		return tfplugin6.StringKind_PLAIN
+	default:
+		return tfplugin6.StringKind_PLAIN
+	}
+}
+
 func _type(i []byte) tftypes.Type {
 	if i == nil {
 		return nil
@@ -196,6 +328,20 @@ func _type(i []byte) tftypes.Type {
 		panic(err) // TODO: Handle invalid type
 	}
 	return t
+}
+
+func pluginType(i tftypes.Type) []byte {
+	if i == nil {
+		return nil
+	}
+	// This function isn't really deprecated, but it is supposed to be private.
+	//
+	//nolint:staticcheck
+	bytes, err := i.MarshalJSON()
+	if err != nil {
+		panic(err) // TODO: Handle invalid type
+	}
+	return bytes
 }
 
 func schemaAttribute(i *tfplugin6.Schema_Attribute) *tfprotov6.SchemaAttribute {
@@ -217,6 +363,25 @@ func schemaAttribute(i *tfplugin6.Schema_Attribute) *tfprotov6.SchemaAttribute {
 	}
 }
 
+func pluginSchemaAttribute(i *tfprotov6.SchemaAttribute) *tfplugin6.Schema_Attribute {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.Schema_Attribute{
+		Name:            i.Name,
+		Type:            pluginType(i.Type),
+		NestedType:      pluginSchemaObject(i.NestedType),
+		Description:     i.Description,
+		Required:        i.Required,
+		Optional:        i.Optional,
+		Computed:        i.Computed,
+		Sensitive:       i.Sensitive,
+		DescriptionKind: pluginStringKind(i.DescriptionKind),
+		Deprecated:      i.Deprecated,
+	}
+}
+
 func schemaObject(i *tfplugin6.Schema_Object) *tfprotov6.SchemaObject {
 	if i == nil {
 		return nil
@@ -224,6 +389,16 @@ func schemaObject(i *tfplugin6.Schema_Object) *tfprotov6.SchemaObject {
 	return &tfprotov6.SchemaObject{
 		Attributes: applyArray(i.Attributes, schemaAttribute),
 		Nesting:    schemaObjectNestingModel(i.Nesting),
+	}
+}
+
+func pluginSchemaObject(i *tfprotov6.SchemaObject) *tfplugin6.Schema_Object {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.Schema_Object{
+		Attributes: applyArray(i.Attributes, pluginSchemaAttribute),
+		Nesting:    pluginSchemaObjectNestingModel(i.Nesting),
 	}
 }
 
@@ -242,6 +417,21 @@ func schemaObjectNestingModel(i tfplugin6.Schema_Object_NestingMode) tfprotov6.S
 	}
 }
 
+func pluginSchemaObjectNestingModel(i tfprotov6.SchemaObjectNestingMode) tfplugin6.Schema_Object_NestingMode {
+	switch i {
+	case tfprotov6.SchemaObjectNestingModeList:
+		return tfplugin6.Schema_Object_LIST
+	case tfprotov6.SchemaObjectNestingModeMap:
+		return tfplugin6.Schema_Object_MAP
+	case tfprotov6.SchemaObjectNestingModeSet:
+		return tfplugin6.Schema_Object_SET
+	case tfprotov6.SchemaObjectNestingModeSingle:
+		return tfplugin6.Schema_Object_SINGLE
+	default:
+		return tfplugin6.Schema_Object_INVALID
+	}
+}
+
 func schemaNestedBlock(i *tfplugin6.Schema_NestedBlock) *tfprotov6.SchemaNestedBlock {
 	if i == nil {
 		return nil
@@ -250,6 +440,19 @@ func schemaNestedBlock(i *tfplugin6.Schema_NestedBlock) *tfprotov6.SchemaNestedB
 		TypeName: i.TypeName,
 		Block:    schemaBlock(i.Block),
 		Nesting:  schemaNestedBlockNestingMode(i.Nesting),
+		MinItems: i.MinItems,
+		MaxItems: i.MaxItems,
+	}
+}
+
+func pluginSchemaNestedBlock(i *tfprotov6.SchemaNestedBlock) *tfplugin6.Schema_NestedBlock {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.Schema_NestedBlock{
+		TypeName: i.TypeName,
+		Block:    pluginSchemaBlock(i.Block),
+		Nesting:  pluginSchemaNestedBlockNestingMode(i.Nesting),
 		MinItems: i.MinItems,
 		MaxItems: i.MaxItems,
 	}
@@ -272,13 +475,30 @@ func schemaNestedBlockNestingMode(i tfplugin6.Schema_NestedBlock_NestingMode) tf
 	}
 }
 
+func pluginSchemaNestedBlockNestingMode(i tfprotov6.SchemaNestedBlockNestingMode) tfplugin6.Schema_NestedBlock_NestingMode {
+	switch i {
+	case tfprotov6.SchemaNestedBlockNestingModeGroup:
+		return tfplugin6.Schema_NestedBlock_GROUP
+	case tfprotov6.SchemaNestedBlockNestingModeList:
+		return tfplugin6.Schema_NestedBlock_LIST
+	case tfprotov6.SchemaNestedBlockNestingModeMap:
+		return tfplugin6.Schema_NestedBlock_MAP
+	case tfprotov6.SchemaNestedBlockNestingModeSet:
+		return tfplugin6.Schema_NestedBlock_SET
+	case tfprotov6.SchemaNestedBlockNestingModeSingle:
+		return tfplugin6.Schema_NestedBlock_SINGLE
+	default:
+		return tfplugin6.Schema_NestedBlock_INVALID
+	}
+}
+
 func function(i *tfplugin6.Function) *tfprotov6.Function {
 	if i == nil {
 		return nil
 	}
 	return &tfprotov6.Function{
-		Parameters:         applyArray(i.Parameters, funcionParameter),
-		VariadicParameter:  funcionParameter(i.VariadicParameter),
+		Parameters:         applyArray(i.Parameters, functionParameter),
+		VariadicParameter:  functionParameter(i.VariadicParameter),
 		Return:             functionReturn(i.Return),
 		Summary:            i.Summary,
 		Description:        i.Description,
@@ -287,7 +507,22 @@ func function(i *tfplugin6.Function) *tfprotov6.Function {
 	}
 }
 
-func funcionParameter(i *tfplugin6.Function_Parameter) *tfprotov6.FunctionParameter {
+func pluginFunction(i *tfprotov6.Function) *tfplugin6.Function {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.Function{
+		Parameters:         applyArray(i.Parameters, pluginFunctionParameter),
+		VariadicParameter:  pluginFunctionParameter(i.VariadicParameter),
+		Return:             pluginFunctionReturn(i.Return),
+		Summary:            i.Summary,
+		Description:        i.Description,
+		DescriptionKind:    pluginStringKind(i.DescriptionKind),
+		DeprecationMessage: i.DeprecationMessage,
+	}
+}
+
+func functionParameter(i *tfplugin6.Function_Parameter) *tfprotov6.FunctionParameter {
 	if i == nil {
 		return nil
 	}
@@ -301,12 +536,35 @@ func funcionParameter(i *tfplugin6.Function_Parameter) *tfprotov6.FunctionParame
 	}
 }
 
+func pluginFunctionParameter(i *tfprotov6.FunctionParameter) *tfplugin6.Function_Parameter {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.Function_Parameter{
+		AllowNullValue:     i.AllowNullValue,
+		AllowUnknownValues: i.AllowUnknownValues,
+		Description:        i.Description,
+		DescriptionKind:    pluginStringKind(i.DescriptionKind),
+		Name:               i.Name,
+		Type:               pluginType(i.Type),
+	}
+}
+
 func functionReturn(i *tfplugin6.Function_Return) *tfprotov6.FunctionReturn {
 	if i == nil {
 		return nil
 	}
 	return &tfprotov6.FunctionReturn{
 		Type: _type(i.Type),
+	}
+}
+
+func pluginFunctionReturn(i *tfprotov6.FunctionReturn) *tfplugin6.Function_Return {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.Function_Return{
+		Type: pluginType(i.Type),
 	}
 }
 

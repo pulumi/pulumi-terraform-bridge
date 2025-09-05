@@ -99,6 +99,15 @@ func LocalProvider(ctx context.Context, path string) (Provider, error) {
 	})
 }
 
+// SchemaProvider loads a schema-only provider. Any provider methods that require runtime behavior will fail (e.g. ResourceServer methods).
+func SchemaProvider(s TFProviderSchema) Provider {
+	return provider{
+		newSchemaClient(s),
+		s.Name, s.Version, s.URL,
+		func() error { return nil },
+	}
+}
+
 func cutLast(s, sep string) (string, string, bool) {
 	if i := strings.LastIndex(s, sep); i >= 0 {
 		return s[:i], s[i+len(sep):], true
