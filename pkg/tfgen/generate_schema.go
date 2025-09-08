@@ -107,6 +107,9 @@ func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 		nt.gatherFromProperties(p.Results(), member, member.name, member.rets, false)
 	case *variable:
 		contract.Assertf(member.config, `member.config`)
+		if member.typ == nil {
+			return
+		}
 		p := paths.NewProperyPath(paths.NewConfigPath(), member.propertyName)
 		nt.gatherFromPropertyType(p, member, member.name, "", member.typ, false)
 	}

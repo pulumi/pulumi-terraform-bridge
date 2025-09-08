@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"io"
 	"runtime"
 	"sort"
@@ -723,6 +725,54 @@ func TestRegress1626(t *testing.T) {
 	s, err := GenerateSchema(info, sink)
 	t.Logf("SPEC: %v", s)
 	require.NoError(t, err)
+}
+
+func Test_DynamicAttributeHandling(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should not panic when processing variable with dynamic attribute", func(t *testing.T) {
+		dynamicVar := &variable{
+			name:         "dynamic_attr",
+			config:       true,
+			propertyName: paths.PropertyName{Key: "dynamic_attr", Name: tokens.Name("dynamicAttr")},
+			typ:          nil, // This represents a dynamic attribute
+		}
+
+		nt := &schemaNestedTypes{
+			nameToType: make(map[string]*schemaNestedType),
+		}
+		assert.NotPanics(t, func() { nt.gatherFromMember(dynamicVar) })
+		nt.gatherFromMember(dynamicVar)
+		assert.Empty(t, nt.nameToType, "Dynamic attributes should not generate nested types")
+	})
+
+	t.Run("should handle mixed variable types including dynamic", func(t *testing.T) {
+		strVar := &variable{
+			name:         "string_attr",
+			config:       true,
+			propertyName: paths.PropertyName{Key: "string_attr", Name: tokens.Name("stringAttr")},
+			typ: &propertyType{
+				kind: kindString,
+			},
+		}
+
+		dynamicVar := &variable{
+			name:         "dynamic_attr",
+			config:       true,
+			propertyName: paths.PropertyName{Key: "dynamic_attr", Name: tokens.Name("dynamicAttr")},
+			typ:          nil, // Dynamic attribute
+		}
+
+		// Create a module with both variables
+		mod := &module{
+			members: []moduleMember{strVar, dynamicVar},
+		}
+
+		assert.NotPanics(t, func() { gatherSchemaNestedTypesForModule(mod) })
+		result := gatherSchemaNestedTypesForModule(mod)
+		assert.NotNil(t, result, "Result should not be nil")
+		assert.Empty(t, result, "Dynamic attributes should not generate nested types")
+	})
 }
 
 func TestSinkHclDiagnostics(t *testing.T) {
