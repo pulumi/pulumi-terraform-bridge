@@ -297,15 +297,15 @@ type conversionContext struct {
 	DropUnknowns bool
 }
 
-type makeTerraformInputsOptions struct {
+type MakeTerraformInputsOptions struct {
 	DisableDefaults   bool
 	DisableTFDefaults bool
 }
 
-func makeTerraformInputsWithOptions(
+func MakeTerraformInputsWithOptions(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	opts makeTerraformInputsOptions,
+	opts MakeTerraformInputsOptions,
 ) (map[string]interface{}, AssetTable, error) {
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {
@@ -339,7 +339,7 @@ func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps, makeTerraformInputsOptions{})
+	return MakeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps, MakeTerraformInputsOptions{})
 }
 
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
@@ -1233,8 +1233,8 @@ func MakeTerraformOutput(
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (shim.ResourceConfig, AssetTable, error) {
-	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
-		makeTerraformInputsOptions{
+	inputs, assets, err := MakeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
+		MakeTerraformInputsOptions{
 			DisableDefaults: true, DisableTFDefaults: true,
 		})
 	if err != nil {
@@ -1282,12 +1282,12 @@ func makeConfig(v interface{}) interface{} {
 	}
 }
 
-type MakeTerraformInputsOptions struct {
+type MakeTerraformConfigOptions struct {
 	ProviderConfig bool
 }
 
 func MakeTerraformConfigFromInputsWithOpts(
-	ctx context.Context, p shim.Provider, inputs map[string]interface{}, opts MakeTerraformInputsOptions,
+	ctx context.Context, p shim.Provider, inputs map[string]interface{}, opts MakeTerraformConfigOptions,
 ) shim.ResourceConfig {
 	raw := makeConfig(inputs).(map[string]interface{})
 	if opts.ProviderConfig {
@@ -1300,15 +1300,15 @@ func MakeTerraformConfigFromInputsWithOpts(
 func MakeTerraformConfigFromInputs(
 	ctx context.Context, p shim.Provider, inputs map[string]interface{},
 ) shim.ResourceConfig {
-	return MakeTerraformConfigFromInputsWithOpts(ctx, p, inputs, MakeTerraformInputsOptions{})
+	return MakeTerraformConfigFromInputsWithOpts(ctx, p, inputs, MakeTerraformConfigOptions{})
 }
 
-type makeTerraformStateOptions struct {
-	defaultZeroSchemaVersion bool
+type MakeTerraformStateOptions struct {
+	DefaultZeroSchemaVersion bool
 }
 
 // Parse out any metadata from the state.
-func parseMeta(m resource.PropertyMap, res Resource, opts makeTerraformStateOptions) (map[string]interface{}, error) {
+func parseMeta(m resource.PropertyMap, res Resource, opts MakeTerraformStateOptions) (map[string]interface{}, error) {
 	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[reservedkeys.Meta]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
@@ -1319,7 +1319,7 @@ func parseMeta(m resource.PropertyMap, res Resource, opts makeTerraformStateOpti
 		// schema version, return a meta bag with the current schema version. This
 		// helps avoid migration issues.
 		defaultSchemaVersion := strconv.Itoa(res.TF.SchemaVersion())
-		if opts.defaultZeroSchemaVersion {
+		if opts.DefaultZeroSchemaVersion {
 			defaultSchemaVersion = "0"
 		}
 		meta = map[string]interface{}{"schema_version": defaultSchemaVersion}
@@ -1352,13 +1352,13 @@ func makeTerraformStateWithAssetsWithOpts(
 	res Resource,
 	id string,
 	m resource.PropertyMap,
-	opts makeTerraformStateOptions,
+	opts MakeTerraformStateOptions,
 ) (shim.InstanceState, AssetTable, error) {
 	// Turn the resource properties into a map. For the most part, this is a straight
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses
 	// ints, to represent numbers.
-	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+	inputs, assets, err := MakeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
+		MakeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1373,13 +1373,14 @@ func makeTerraformStateWithAssetsWithOpts(
 	return instanceState, assets, nil
 }
 
-// The old method used when [makeTerraformStateViaUpgrade] is not available.
-func makeTerraformStateWithOpts(
+// MakeTerraformStateWithOptions converts a Pulumi property bag into its Terraform equivalent.
+// This is the exported version of makeTerraformStateWithOpts.
+func MakeTerraformStateWithOptions(
 	ctx context.Context,
 	res Resource,
 	id string,
 	m resource.PropertyMap,
-	opts makeTerraformStateOptions,
+	opts MakeTerraformStateOptions,
 ) (shim.InstanceState, error) {
 	state, _, err := makeTerraformStateWithAssetsWithOpts(ctx, res, id, m, opts)
 	return state, err
@@ -1424,7 +1425,7 @@ func makeTerraformStateViaUpgrade(
 			err))
 		contract.AssertNoErrorf(err, "Failed to recover raw state")
 	}
-	meta, err := parseMeta(m, res, makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+	meta, err := parseMeta(m, res, MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 	if err != nil {
 		return nil, err
 	}
@@ -1438,7 +1439,7 @@ func makeTerraformStateViaUpgrade(
 func MakeTerraformState(
 	ctx context.Context, res Resource, id string, m resource.PropertyMap,
 ) (shim.InstanceState, error) {
-	return makeTerraformStateWithOpts(ctx, res, id, m, makeTerraformStateOptions{})
+	return MakeTerraformStateWithOptions(ctx, res, id, m, MakeTerraformStateOptions{})
 }
 
 // UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
@@ -1459,7 +1460,7 @@ func UnmarshalTerraformState(
 		return nil, err
 	}
 
-	return makeTerraformStateWithOpts(ctx, r, id, props, makeTerraformStateOptions{})
+	return MakeTerraformStateWithOptions(ctx, r, id, props, MakeTerraformStateOptions{})
 }
 
 // IsMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project
