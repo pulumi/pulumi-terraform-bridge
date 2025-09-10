@@ -294,15 +294,17 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		}
 		return runPulumiPackageGenSDK(l, pkg, extraFiles)
 	case Java:
-		// TODO overlays are not supported it looks like; see
-		// https://github.com/pulumi/pulumi-java/blob/main/pkg/codegen/java/package_info.go#L35C1-L108C1 documenting
-		// supported options.
+		if psi := info.Java; psi != nil && psi.Overlay != nil {
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".java", root)
+			if err != nil {
+				return nil, err
+			}
+		}
 		err = cleanDir(root, "", nil)
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		// No extra files; see above
-		return runPulumiPackageGenSDK(l, pkg, nil)
+		return runPulumiPackageGenSDK(l, pkg, extraFiles)
 
 	default:
 		return nil, fmt.Errorf("%v does not support SDK generation", l)
@@ -1758,7 +1760,9 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 			overlay = csharpinfo.Overlay
 		}
 	case Java:
-		overlay = nil
+		if javainfo := g.info.Java; javainfo != nil {
+			overlay = javainfo.Overlay
+		}
 	case Schema, PCL, RegistryDocs:
 		// N/A
 	default:
