@@ -89,7 +89,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 			"and generate all of the Pulumi metadata necessary to consume the resources.\n" +
 			"\n" +
 			"<LANGUAGE> indicates which language/runtime to target; the current supported set of\n" +
-			"languages is " + fmt.Sprintf("%v", AllLanguages) + ".\n" +
+			"languages is " + fmt.Sprintf("%v", AllSDKLanguages) + ".\n" +
 			"\n" +
 			"Note that there is no custom Pulumi provider code required, because the generated\n" +
 			"provider plugin is metadata-driven and thus works against all Terraform providers.\n",

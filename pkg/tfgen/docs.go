@@ -2031,6 +2031,8 @@ func genLanguageToSlice(input Language) []string {
 		return []string{convert.LanguageCSharp}
 	case Golang:
 		return []string{convert.LanguageGo}
+	case Java:
+		return []string{convert.LanguageJava}
 	case PCL:
 		return []string{convert.LanguagePulumi}
 	case Schema, RegistryDocs:
