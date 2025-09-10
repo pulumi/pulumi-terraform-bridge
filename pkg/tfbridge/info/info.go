@@ -914,11 +914,10 @@ type CSharp struct {
 	RespectSchemaVersion bool
 }
 
-// See https://github.com/pulumi/pulumi-java/blob/main/pkg/codegen/java/package_info.go#L35C1-L108C1 documenting
-// supported options.
+// Java contains optional overlay information for Java code-generation.
 type Java struct {
-	BasePackage string // the Base package for the Java SDK
-
+	BasePackage string   // the Base package for the Java SDK
+	Overlay     *Overlay // optional overlay information for augmented code-generation.
 	// If set to "gradle" enables a generation of a basic set of
 	// Gradle build files.
 	BuildFiles string

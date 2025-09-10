@@ -91,6 +91,7 @@ const (
 	NodeJS Language = "nodejs"
 	Python Language = "python"
 	CSharp Language = "dotnet"
+	Java   Language = "java"
 	Schema Language = "schema"
 	PCL    Language = "pulumi"
 	// RegistryDocs
@@ -105,7 +106,7 @@ const (
 
 func (l Language) shouldConvertExamples() bool {
 	switch l {
-	case Golang, NodeJS, Python, CSharp, Schema, PCL:
+	case Golang, NodeJS, Python, CSharp, Java, Schema, PCL:
 		return true
 	}
 	return false
@@ -292,12 +293,25 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 			return nil, err
 		}
 		return runPulumiPackageGenSDK(l, pkg, extraFiles)
+	case Java:
+		if psi := info.Java; psi != nil && psi.Overlay != nil {
+			extraFiles, err = getOverlayFiles(psi.Overlay, ".java", root)
+			if err != nil {
+				return nil, err
+			}
+		}
+		err = cleanDir(root, "", nil)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		return runPulumiPackageGenSDK(l, pkg, extraFiles)
+
 	default:
 		return nil, fmt.Errorf("%v does not support SDK generation", l)
 	}
 }
 
-var AllLanguages = []Language{Golang, NodeJS, Python, CSharp}
+var AllSDKLanguages = []Language{Golang, NodeJS, Python, CSharp, Java}
 
 // pkg is a directory containing one or more modules.
 type pkg struct {
@@ -935,7 +949,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	// Ensure the language is valid.
 	switch lang {
-	case Golang, NodeJS, Python, CSharp, Schema, PCL, RegistryDocs:
+	case Golang, NodeJS, Python, CSharp, Java, Schema, PCL, RegistryDocs:
 		// OK
 	default:
 		return nil, fmt.Errorf("unrecognized language runtime: %s", lang)
@@ -1744,6 +1758,10 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 	case CSharp:
 		if csharpinfo := g.info.CSharp; csharpinfo != nil {
 			overlay = csharpinfo.Overlay
+		}
+	case Java:
+		if javainfo := g.info.Java; javainfo != nil {
+			overlay = javainfo.Overlay
 		}
 	case Schema, PCL, RegistryDocs:
 		// N/A
