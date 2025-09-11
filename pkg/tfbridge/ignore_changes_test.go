@@ -85,11 +85,12 @@ func diffAndUpdateTest(t *testing.T, tc diffAndUpdateTestCase) {
 		IgnoreChanges: tc.ignoreChanges,
 	})
 	require.NoError(t, err)
-	//
+
 	outs, err := plugin.UnmarshalProperties(updateResp.GetProperties(), plugin.MarshalOptions{})
 	require.NoError(t, err)
 
 	assert.Equal(t, tc.expectedDiffChanges, resp.Changes)
+	delete(outs, "__pulumi_raw_state_delta")
 	if tc.expectedUpdateProps != nil {
 		assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
 			"id":    "myResource",
@@ -99,7 +100,10 @@ func diffAndUpdateTest(t *testing.T, tc diffAndUpdateTestCase) {
 	require.Equal(t, tc.expected, resp.DetailedDiff)
 }
 
-func TestIgnoreChanges_UsesOlds(t *testing.T) {
+// Collection of tests that test ignoreChanges functionality _without_ core involved.
+// Both core and bridge process ignoreChanges. These tests test _only_ the bridge behavior
+// These tests compliment the tests in `tests/ignore_changes_test.go`
+func TestIgnoreChanges_bridge(t *testing.T) {
 	t.Parallel()
 
 	type tc struct {
@@ -217,6 +221,47 @@ func TestIgnoreChanges_UsesOlds(t *testing.T) {
 			expectedUpdateProps: []interface{}{
 				map[string]any{"weight": 100},
 				map[string]any{"weight": 300},
+			},
+		},
+		{
+			name: "ListIndexNestedFieldAdditionIgnored",
+			schema: map[string]*v2Schema.Schema{
+				"items": {
+					Type: v2Schema.TypeList,
+					Elem: &v2Schema.Resource{
+						Schema: map[string]*v2Schema.Schema{
+							"weight": {Type: v2Schema.TypeInt, Optional: true},
+						},
+					},
+				},
+			},
+			olds: resource.PropertyMap{
+				"items": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"weight": resource.NewNumberProperty(100),
+					}),
+				}),
+			},
+			news: resource.PropertyMap{
+				"items": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"weight": resource.NewNumberProperty(200),
+					}),
+					resource.NewObjectProperty(resource.PropertyMap{
+						"weight": resource.NewNumberProperty(300),
+					}),
+				}),
+			},
+			ignoreChanges:       []string{"items[0].weight", "items[1].weight"},
+			expectedDiffChanges: pulumirpc.DiffResponse_DIFF_SOME,
+			expected: map[string]*pulumirpc.PropertyDiff{
+				"items[1]": {},
+			},
+			expectedUpdateProps: []interface{}{
+				map[string]any{"weight": 100},
+				// TODO: [pulumi/pulumi-terraform-bridge#3186]
+				// new items should not be removed
+				map[string]any{"weight": nil},
 			},
 		},
 		{

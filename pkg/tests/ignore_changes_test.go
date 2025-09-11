@@ -18,7 +18,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 )
 
-func TestIgnoreChangesCollections(t *testing.T) {
+// Collection of tests that test ignoreChanges functionality _with_ core involved.
+// Both core and bridge process ignoreChanges.
+// These tests compliment the tests in `pkg/tfbridge/ignore_changes_test.go`
+func TestIgnoreChanges_withCore(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
 		name                string
@@ -78,7 +81,7 @@ func TestIgnoreChangesCollections(t *testing.T) {
 			ignoreChanges: `["items[*].weight"]`,
 		},
 		{
-			name: "ListIndexNestedFieldWildcard",
+			name: "SetIndexNestedFieldWildcard",
 			itemsSchema: &schema.Schema{
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -343,6 +346,7 @@ func extractDiff(t *testing.T, pt *pulumitest.PulumiTest, name string) diffResul
 		u := &updates[i]
 		if u.Request.Name == name {
 			updateProps = u.Response.Properties.AsMap()
+			delete(updateProps, "__pulumi_raw_state_delta")
 		}
 	}
 	diffs, err := grpc.Diffs()
