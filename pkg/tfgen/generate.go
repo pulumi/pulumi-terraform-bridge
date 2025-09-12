@@ -32,8 +32,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/ryboe/q"
-
 	"github.com/hashicorp/go-multierror"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -1051,15 +1049,24 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 	// <span pulumi-lang-nodejs="firstProperty" pulumi-lang-go="FirstProperty" ...>first_property</span>
 	// When rendered in schema it uses escapes and unicode chars for the angle brackets:
 	// \u003cspan pulumi-lang-nodejs=\"`random.RandomBytes`\" pulumi-lang-dotnet=\"`random.RandomBytes`\" ... \u003e ...
-
 	spanRegex := regexp.MustCompile(`\\u003cspan pulumi-lang-nodejs=.*?\\u003c/span\\u003e`)
 
 	// Extract the language-specific inflection for the found inflection span
 	schemaBytes = spanRegex.ReplaceAllFunc(schemaBytes, func(match []byte) []byte {
-		languageKey := []byte(fmt.Sprintf("pulumi-lang-%s=\\\"", g.language))
 
+		languageKey := []byte(fmt.Sprintf(`pulumi-lang-%s=\"`, g.language))
 		_, startLanguageValue, _ := bytes.Cut(match, languageKey)
-		languageValue, _, _ := bytes.Cut(startLanguageValue, []byte("\\\""))
+		var languageValue []byte
+
+		//Sometimes we have double quotes in our language span. Handle this case so that we return the quotes.
+		doubleEscapedQuotes := []byte(`\"\"`)
+		singleEscapedQuotes := []byte(`\"`)
+		if loc := bytes.Index(startLanguageValue, doubleEscapedQuotes); loc > 0 {
+			//Cut after the first quote to include it in the result
+			languageValue = startLanguageValue[:loc+(len(singleEscapedQuotes))]
+		} else {
+			languageValue, _, _ = bytes.Cut(startLanguageValue, singleEscapedQuotes)
+		}
 		return languageValue
 	})
 
@@ -1067,15 +1074,14 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 	codeChooserRegex := regexp.MustCompile(`\\u003c!--Start PulumiCodeChooser --\\u003e.*?\\u003c!--End PulumiCodeChooser --\\u003e`)
 
 	schemaBytes = codeChooserRegex.ReplaceAllFunc(schemaBytes, func(match []byte) []byte {
-
 		content := string(match)
 
-		// Fix nodejs
+		// In code choosers for registry docsgen, "nodejs" is "typescript"
 		codeLang := g.language
 		if g.language == "nodejs" {
 			codeLang = "typescript"
 		}
-		// Fix dotnet
+		// In code choosers, "dotnet" is "csharp"
 		if g.language == "dotnet" {
 			codeLang = "csharp"
 		}
@@ -1093,14 +1099,6 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 		return []byte(codeForLanguage)
 
 	})
-
-	examplesChooserStartRegex := regexp.MustCompile(`{{% examples %}}`)
-
-	allExamplesTags := examplesChooserStartRegex.FindAllString(string(schemaBytes), -1)
-
-	for _, examplesTag := range allExamplesTags {
-		q.Q(examplesTag)
-	}
 	return schemaBytes
 
 }
@@ -1135,16 +1133,8 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 		// removes the Version field in UnstableGenerateFromSchema.
 		// For our local schemas, we want to add the version back in.
 		languagePackageSpec.Version = g.version
-
+		// We already have translated our examples.
 		g.skipExamples = true
-
-		// TODO: remove this; it's for debugging
-		bytes, err := json.MarshalIndent(languagePackageSpec, "", "    ")
-		if err != nil {
-			return nil, err
-		}
-		os.WriteFile("test-node-span-with-filter-but-reading-from-docsschema.json", bytes, 0666)
-
 		// Use filtered schema to generate SDK
 		return g.UnstableGenerateFromSchema(&GenerateSchemaResult{PackageSpec: languagePackageSpec})
 	}
@@ -1203,14 +1193,9 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		return nil, err
 	}
 	// Convert examples.
-	// || !(g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi")
 	if !g.skipExamples {
-		q.Q("Not skipping examples because debugging")
 		pulumiPackageSpec = g.convertExamplesInSchema(pulumiPackageSpec)
-	} else {
-		q.Q("yes skipping examples because we already have them")
 	}
-
 	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
 	// it out.
 	files := make(map[string][]byte)

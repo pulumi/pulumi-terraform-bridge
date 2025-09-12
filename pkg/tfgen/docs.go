@@ -1591,8 +1591,8 @@ func (g *Generator) convertExamplesInner(
 	docs string,
 	path examplePath,
 	convertHCL func(
-	e *Example, hcl, path string, languages []string,
-) (string, error),
+		e *Example, hcl, path string, languages []string,
+	) (string, error),
 	useCoverageTracker bool,
 ) string {
 	output := &bytes.Buffer{}
