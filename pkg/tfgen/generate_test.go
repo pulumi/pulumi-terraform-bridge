@@ -981,16 +981,23 @@ func TestFilterSchemaByLanguage(t *testing.T) {
 				language: "nodejs",
 			},
 		},
+		{
+			name:        "Handles property names that are surrounded by back ticks AND double quotes",
+			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema-backticks-and-quotes.json")),
+			generator: &Generator{
+				version:  "1.2.3-test",
+				language: "nodejs",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			// TODO: implement me
 			actual := tc.generator.FilterSchemaByLanguage(tc.inputSchema)
 			hasSpan := bytes.Contains(actual, []byte("span"))
-			require.False(t, hasSpan, "there should be no spans in the generated schema")
+			require.False(t, hasSpan, "there should be no spans in the filtered schema")
 			hasCodeChoosers := bytes.Contains(actual, []byte("PulumiCodeChooser"))
 			require.False(t, hasCodeChoosers)
 			autogold.ExpectFile(t, autogold.Raw(actual))

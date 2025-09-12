@@ -61,7 +61,7 @@
       "properties": {
         "length": {
           "type": "integer",
-          "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (\u003cspan pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`min_upper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`min_upper`\" pulumi-lang-java=\"`min_upper`\"\u003e`min_upper`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minLower`\" pulumi-lang-dotnet=\"`min_lower`\" pulumi-lang-go=\"`minLower`\" pulumi-lang-python=\"`min_lower`\" pulumi-lang-yaml=\"`min_lower`\" pulumi-lang-java=\"`min_lower`\"\u003e`min_lower`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minNumeric`\" pulumi-lang-dotnet=\"`min_numeric`\" pulumi-lang-go=\"`minNumeric`\" pulumi-lang-python=\"`min_numeric`\" pulumi-lang-yaml=\"`min_numeric`\" pulumi-lang-java=\"`min_numeric`\"\u003e`min_numeric`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minSpecial`\" pulumi-lang-dotnet=\"`min_special`\" pulumi-lang-go=\"`minSpecial`\" pulumi-lang-python=\"`min_special`\" pulumi-lang-yaml=\"`min_special`\" pulumi-lang-java=\"`min_special`\"\u003e`min_special`\u003c/span\u003e).\n"
+          "description": "Indicates whether cross zone load balancing is enabled. The value is `\"true\"`, `\"false\"` or `\u003cspan pulumi-lang-nodejs=\"\"useLoadBalancerConfiguration\"\" pulumi-lang-dotnet=\"\"useLoadBalancerConfiguration\"\" pulumi-lang-go=\"\"useLoadBalancerConfiguration\"\" pulumi-lang-python=\"\"use_load_balancer_configuration\"\" pulumi-lang-yaml=\"\"useLoadBalancerConfiguration\"\" pulumi-lang-java=\"\"useLoadBalancerConfiguration\"\"\u003e\"use_load_balancer_configuration\"\u003c/span\u003e`. "
         }
       }
     }
