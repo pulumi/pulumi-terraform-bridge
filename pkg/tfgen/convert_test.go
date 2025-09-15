@@ -97,7 +97,7 @@ const regionNumber = config.getObject<{us-east-1?: number}>("regionNumber") || {
 		// since for some reason including the resource was
 		// needed to reproduce non-nil `err` in the orignal
 		// bug.
-		_, _, err := checkErr(`
+		_, diags, _ = checkErr(`
 		  variable "region_number" {
 		    default = {
 		      us-east-1 = 1
@@ -107,7 +107,7 @@ const regionNumber = config.getObject<{us-east-1?: number}>("regionNumber") || {
 		  resource "aws_vpc" "example" {
 		    cidr_block = cidrsubnet("10.0.0.0/8", 4, 2)
 		  }`)
-		require.Error(t, err)
+		require.True(t, diags.All.HasErrors())
 	})
 
 	t.Run("regress no empty resource plugin found", func(t *testing.T) {
