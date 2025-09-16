@@ -75,39 +75,26 @@ func TestConvert(t *testing.T) {
                     default = {
                       us-east-1 = 1
                     }
+                  }
+                  resource "aws_vpc" "example" {
+                    cidr_block = "10.0.0.0/16"
                   }`)
 
 		expectedCode := `
 import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
 
 const config = new pulumi.Config();
 const regionNumber = config.getObject<{us-east-1?: number}>("regionNumber") || {
     "us-east-1": 1,
-};`
+};
+const example = new aws.ec2/vpc.Vpc("example", {cidrBlock: "10.0.0.0/16"});`
 
 		require.False(t, diags.All.HasErrors())
 
 		require.Equal(t,
 			strings.TrimSpace(expectedCode),
 			strings.TrimSpace(string(files["index.ts"])))
-
-		// The test extended with a random resource does
-		// currently produce erroring diags about an unknown
-		// resource (bad test setup), but is included here
-		// since for some reason including the resource was
-		// needed to reproduce non-nil `err` in the orignal
-		// bug.
-		_, _, err := checkErr(`
-		  variable "region_number" {
-		    default = {
-		      us-east-1 = 1
-		    }
-		  }
-
-		  resource "aws_vpc" "example" {
-		    cidr_block = cidrsubnet("10.0.0.0/8", 4, 2)
-		  }`)
-		require.Error(t, err)
 	})
 
 	t.Run("regress no empty resource plugin found", func(t *testing.T) {
