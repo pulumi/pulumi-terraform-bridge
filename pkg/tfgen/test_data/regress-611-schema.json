@@ -4101,7 +4101,7 @@
         "properties": {
           "overrideJson": {
             "type": "string",
-            "deprecationMessage": "Use the attribute \"override_policy_documents\" instead."
+            "deprecationMessage": "Use the attribute \u003cspan pulumi-lang-nodejs=\"\"overridePolicyDocuments\"\" pulumi-lang-dotnet=\"\"OverridePolicyDocuments\"\" pulumi-lang-go=\"\"overridePolicyDocuments\"\" pulumi-lang-python=\"\"override_policy_documents\"\" pulumi-lang-yaml=\"\"overridePolicyDocuments\"\" pulumi-lang-java=\"\"overridePolicyDocuments\"\"\u003e\"override_policy_documents\"\u003c/span\u003e instead."
           },
           "overridePolicyDocuments": {
             "type": "array",
@@ -4114,7 +4114,7 @@
           },
           "sourceJson": {
             "type": "string",
-            "deprecationMessage": "Use the attribute \"source_policy_documents\" instead."
+            "deprecationMessage": "Use the attribute \u003cspan pulumi-lang-nodejs=\"\"sourcePolicyDocuments\"\" pulumi-lang-dotnet=\"\"SourcePolicyDocuments\"\" pulumi-lang-go=\"\"sourcePolicyDocuments\"\" pulumi-lang-python=\"\"source_policy_documents\"\" pulumi-lang-yaml=\"\"sourcePolicyDocuments\"\" pulumi-lang-java=\"\"sourcePolicyDocuments\"\"\u003e\"source_policy_documents\"\u003c/span\u003e instead."
           },
           "sourcePolicyDocuments": {
             "type": "array",
@@ -4146,7 +4146,7 @@
           },
           "overrideJson": {
             "type": "string",
-            "deprecationMessage": "Use the attribute \"override_policy_documents\" instead."
+            "deprecationMessage": "Use the attribute \u003cspan pulumi-lang-nodejs=\"\"overridePolicyDocuments\"\" pulumi-lang-dotnet=\"\"OverridePolicyDocuments\"\" pulumi-lang-go=\"\"overridePolicyDocuments\"\" pulumi-lang-python=\"\"override_policy_documents\"\" pulumi-lang-yaml=\"\"overridePolicyDocuments\"\" pulumi-lang-java=\"\"overridePolicyDocuments\"\"\u003e\"override_policy_documents\"\u003c/span\u003e instead."
           },
           "overridePolicyDocuments": {
             "type": "array",
@@ -4159,7 +4159,7 @@
           },
           "sourceJson": {
             "type": "string",
-            "deprecationMessage": "Use the attribute \"source_policy_documents\" instead."
+            "deprecationMessage": "Use the attribute \u003cspan pulumi-lang-nodejs=\"\"sourcePolicyDocuments\"\" pulumi-lang-dotnet=\"\"SourcePolicyDocuments\"\" pulumi-lang-go=\"\"sourcePolicyDocuments\"\" pulumi-lang-python=\"\"source_policy_documents\"\" pulumi-lang-yaml=\"\"sourcePolicyDocuments\"\" pulumi-lang-java=\"\"sourcePolicyDocuments\"\"\u003e\"source_policy_documents\"\u003c/span\u003e instead."
           },
           "sourcePolicyDocuments": {
             "type": "array",

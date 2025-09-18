@@ -59,7 +59,7 @@
         },
         "translateField": {
           "type": "string",
-          "description": "When cloudflare.Ruleset is mentioned, it should be translated.\n"
+          "description": "When\u003cspan pulumi-lang-nodejs=\" cloudflare.Ruleset \" pulumi-lang-dotnet=\" cloudflare.Ruleset \" pulumi-lang-go=\" Ruleset \" pulumi-lang-python=\" Ruleset \" pulumi-lang-yaml=\" cloudflare.Ruleset \" pulumi-lang-java=\" cloudflare.Ruleset \"\u003e cloudflare.Ruleset \u003c/span\u003eis mentioned, it should be translated.\n"
         }
       },
       "type": "object"

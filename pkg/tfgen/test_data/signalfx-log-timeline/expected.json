@@ -8,7 +8,7 @@
       "description": "Description of the log timeline."
     },
     "end_time": {
-      "description": "Seconds since epoch. Used for visualization. Conflicts with `time_range`."
+      "description": "Seconds since epoch. Used for visualization. Conflicts with \u003cspan pulumi-lang-nodejs=\"`timeRange`\" pulumi-lang-dotnet=\"`TimeRange`\" pulumi-lang-go=\"`timeRange`\" pulumi-lang-python=\"`time_range`\" pulumi-lang-yaml=\"`timeRange`\" pulumi-lang-java=\"`timeRange`\"\u003e`time_range`\u003c/span\u003e."
     },
     "name": {
       "description": "Name of the log timeline."
@@ -17,10 +17,10 @@
       "description": "Signalflow program text for the log timeline. More info at https://dev.splunk.com/observability/docs/."
     },
     "start_time": {
-      "description": "Seconds since epoch. Used for visualization. Conflicts with `time_range`."
+      "description": "Seconds since epoch. Used for visualization. Conflicts with \u003cspan pulumi-lang-nodejs=\"`timeRange`\" pulumi-lang-dotnet=\"`TimeRange`\" pulumi-lang-go=\"`timeRange`\" pulumi-lang-python=\"`time_range`\" pulumi-lang-yaml=\"`timeRange`\" pulumi-lang-java=\"`timeRange`\"\u003e`time_range`\u003c/span\u003e."
     },
     "time_range": {
-      "description": "From when to display data. Splunk Observability Cloud time syntax (e.g. `\"-5m\"`, `\"-1h\"`). Conflicts with `start_time` and `end_time`."
+      "description": "From when to display data. Splunk Observability Cloud time syntax (e.g. `\"-5m\"`, `\"-1h\"`). Conflicts with \u003cspan pulumi-lang-nodejs=\"`startTime`\" pulumi-lang-dotnet=\"`StartTime`\" pulumi-lang-go=\"`startTime`\" pulumi-lang-python=\"`start_time`\" pulumi-lang-yaml=\"`startTime`\" pulumi-lang-java=\"`startTime`\"\u003e`start_time`\u003c/span\u003e and \u003cspan pulumi-lang-nodejs=\"`endTime`\" pulumi-lang-dotnet=\"`EndTime`\" pulumi-lang-go=\"`endTime`\" pulumi-lang-python=\"`end_time`\" pulumi-lang-yaml=\"`endTime`\" pulumi-lang-java=\"`endTime`\"\u003e`end_time`\u003c/span\u003e."
     }
   },
   "Attributes": {
