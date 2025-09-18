@@ -2830,6 +2830,20 @@ func TestFixupPropertyReference(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:     "returns no span for registry docs",
+			input:    "Use random_pet resource to generate pet names.",
+			expected: "Use random.RandomPet resource to generate pet names.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
+					},
+				},
+				language: RegistryDocs,
+			},
+		},
 	}
 
 	for _, tt := range tests {

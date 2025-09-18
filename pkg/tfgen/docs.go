@@ -2190,17 +2190,21 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			goAndPyFormat := open + modname + resname.String() + close
 			// Use `aws.ec2.Instance` format
 			allOtherLangs := open + c.pkg.String() + "." + modname + resname.String() + close
-			span := buildSpan(
-				allOtherLangs,
-				allOtherLangs,
-				goAndPyFormat,
-				goAndPyFormat,
-				allOtherLangs,
-				allOtherLangs,
-				allOtherLangs,
-			)
-			return span
 
+			// We use the NodeJS default for registry docs.
+			if c.language == RegistryDocs {
+				return allOtherLangs
+			} else {
+				return buildSpan(
+					allOtherLangs,
+					allOtherLangs,
+					goAndPyFormat,
+					goAndPyFormat,
+					allOtherLangs,
+					allOtherLangs,
+					allOtherLangs,
+				)
+			}
 		} else if dataInfo, hasDatasourceInfo := c.info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
 			getname, mod := dataSourceName(c.info.GetResourcePrefix(), name, dataInfo)
@@ -2211,16 +2215,19 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			pyFormat := open + python.PyName(modname+getname.String()) + close
 			// Use `aws.ec2.Instance` format
 			allOtherLangs := open + c.pkg.String() + "." + modname + getname.String() + close
-			span := buildSpan(
-				allOtherLangs,
-				allOtherLangs,
-				goFormat,
-				pyFormat,
-				allOtherLangs,
-				allOtherLangs,
-				allOtherLangs,
-			)
-			return span
+			if c.language == RegistryDocs {
+				return allOtherLangs
+			} else {
+				return buildSpan(
+					allOtherLangs,
+					allOtherLangs,
+					goFormat,
+					pyFormat,
+					allOtherLangs,
+					allOtherLangs,
+					allOtherLangs,
+				)
+			}
 		}
 		// Else just treat as a property name
 		pname := propertyName(name, nil, nil)
@@ -2230,17 +2237,20 @@ func (c infoContext) fixupPropertyReference(text string) string {
 		firstLetter := string(pname[0])
 		dotnetFormat := open + strings.ToUpper(firstLetter) + pname[1:] + close
 
-		// Build span
-		span := buildSpan(
-			camelCaseFormat,
-			dotnetFormat,
-			camelCaseFormat,
-			match,
-			camelCaseFormat,
-			camelCaseFormat,
-			match,
-		)
-		return span
+		if c.language == RegistryDocs {
+			return camelCaseFormat
+		} else {
+
+			return buildSpan(
+				camelCaseFormat,
+				dotnetFormat,
+				camelCaseFormat,
+				match,
+				camelCaseFormat,
+				camelCaseFormat,
+				match,
+			)
+		}
 	})
 }
 
