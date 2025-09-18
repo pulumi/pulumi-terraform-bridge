@@ -2786,7 +2786,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "property name with backticks",
 			input:    "The `length` property controls the output length.",
-			expected: "The <span pulumi-lang-nodejs=\"`length`\" pulumi-lang-dotnet=\"`length`\" pulumi-lang-go=\"`length`\" pulumi-lang-python=\"`length`\" pulumi-lang-yaml=\"`length`\" pulumi-lang-java=\"`length`\">`length`</span> property controls the output length.",
+			expected: "The <span pulumi-lang-nodejs=\"`length`\" pulumi-lang-dotnet=\"`Length`\" pulumi-lang-go=\"`length`\" pulumi-lang-python=\"`length`\" pulumi-lang-yaml=\"`length`\" pulumi-lang-java=\"`length`\">`length`</span> property controls the output length.",
 			ctx: infoContext{
 				pkg:  "random",
 				info: tfbridge.ProviderInfo{},
@@ -2795,7 +2795,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "property name with underscores",
 			input:    "The length must also be greater than `min_upper`.",
-			expected: "The length must also be greater than <span pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`minUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\">`min_upper`</span>.",
+			expected: "The length must also be greater than <span pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\">`min_upper`</span>.",
 			ctx: infoContext{
 				pkg:  "random",
 				info: tfbridge.ProviderInfo{},

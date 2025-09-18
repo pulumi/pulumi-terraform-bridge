@@ -2226,10 +2226,14 @@ func (c infoContext) fixupPropertyReference(text string) string {
 		pname := propertyName(name, nil, nil)
 		camelCaseFormat := open + pname + close
 
+		// Capitalize dotnet properties
+		firstLetter := string(pname[0])
+		dotnetFormat := open + strings.ToUpper(firstLetter) + pname[1:] + close
+
 		// Build span
 		span := buildSpan(
 			camelCaseFormat,
-			camelCaseFormat,
+			dotnetFormat,
 			camelCaseFormat,
 			match,
 			camelCaseFormat,
