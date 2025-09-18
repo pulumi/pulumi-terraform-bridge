@@ -1044,7 +1044,6 @@ type GenerateOptions struct {
 }
 
 func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
-
 	// The span string stems from g.fixUpPropertyReference in docsgen and looks as follows:
 	// <span pulumi-lang-nodejs="firstProperty" pulumi-lang-go="FirstProperty" ...>first_property</span>
 	// When rendered in schema it uses escapes and unicode chars for the angle brackets:
@@ -1053,16 +1052,15 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 
 	// Extract the language-specific inflection for the found inflection span
 	schemaBytes = spanRegex.ReplaceAllFunc(schemaBytes, func(match []byte) []byte {
-
 		languageKey := []byte(fmt.Sprintf(`pulumi-lang-%s=\"`, g.language))
 		_, startLanguageValue, _ := bytes.Cut(match, languageKey)
 		var languageValue []byte
 
-		//Sometimes we have double quotes in our language span. Handle this case so that we return the quotes.
+		// Sometimes we have double quotes in our language span. Handle this case so that we return the quotes.
 		doubleEscapedQuotes := []byte(`\"\"`)
 		singleEscapedQuotes := []byte(`\"`)
 		if loc := bytes.Index(startLanguageValue, doubleEscapedQuotes); loc > 0 {
-			//Cut after the first quote to include it in the result
+			// Cut after the first quote to include it in the result
 			languageValue = startLanguageValue[:loc+(len(singleEscapedQuotes))]
 		} else {
 			languageValue, _, _ = bytes.Cut(startLanguageValue, singleEscapedQuotes)
@@ -1097,17 +1095,13 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 		codeForLanguage = fmt.Sprintf("```%s", codeLang) + codeForLanguage + "```"
 
 		return []byte(codeForLanguage)
-
 	})
 	return schemaBytes
-
 }
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() (*GenerateSchemaResult, error) {
-
 	if g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi" {
-
 		genSchemaResult, err := g.generateSchemaResult(context.Background())
 		if err != nil {
 			return nil, err

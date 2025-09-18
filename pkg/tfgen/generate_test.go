@@ -17,7 +17,6 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
-	"github.com/hexops/autogold/v2"
 	"io"
 	"os"
 	"path/filepath"
@@ -25,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hexops/autogold/v2"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -1002,6 +1002,5 @@ func TestFilterSchemaByLanguage(t *testing.T) {
 			require.False(t, hasCodeChoosers)
 			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
-
 	}
 }
