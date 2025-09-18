@@ -153,6 +153,43 @@ func Test_Generate(t *testing.T) {
 		root = afero.NewBasePathFs(afero.NewOsFs(), absOutDir)
 	}
 
+	// First, generate the schema file that the NodeJS generator expects
+	// Use a separate in-memory filesystem for schema generation to avoid conflicts
+	schemaRoot := afero.NewMemMapFs()
+	schemaGen, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
+		Package:       "prov",
+		Version:       "0.0.1",
+		ProviderInfo:  p,
+		Root:          schemaRoot,
+		Language:      tfgen.Schema,
+		XInMemoryDocs: true,
+		SkipDocs:      true,
+		SkipExamples:  true,
+		Sink:          sink,
+		Debug:         true,
+	})
+	require.NoError(t, err)
+
+	schemaResult, err := schemaGen.Generate()
+	require.NoError(t, err)
+
+	// Write the schema to the expected location
+	schemaBytes, err := json.MarshalIndent(schemaResult.PackageSpec, "", "    ")
+	require.NoError(t, err)
+
+	// Create the directory structure and write the schema file in the current working directory
+	// since the Generate() function uses os.ReadFile() which reads from the current working directory
+	schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
+	require.NoError(t, os.MkdirAll(schemaDir, 0o755))
+	schemaPath := filepath.Join(schemaDir, "schema.json")
+	require.NoError(t, os.WriteFile(schemaPath, schemaBytes, 0o644))
+
+	// Clean up the provider directory after the test
+	t.Cleanup(func() {
+		os.RemoveAll("provider")
+	})
+
+	// Now create the NodeJS generator and run it
 	gen, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
 		Package:       "prov",
 		Version:       "0.0.1",
@@ -380,6 +417,42 @@ func Test_GenerateWithOverlay(t *testing.T) {
 			err = afero.WriteFile(root, filepath.Join(moduleName, tc.overlayModFileName), tc.overlayModFileContent, 0o600)
 			require.NoError(t, err)
 
+			// First, generate the schema file that the language generator expects
+			schemaRoot := afero.NewMemMapFs()
+			schemaGen, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
+				Package:       "prov",
+				Version:       "0.0.1",
+				ProviderInfo:  p,
+				Root:          schemaRoot,
+				Language:      tfgen.Schema,
+				XInMemoryDocs: true,
+				SkipDocs:      true,
+				SkipExamples:  true,
+				Sink:          sink,
+				Debug:         true,
+			})
+			require.NoError(t, err)
+
+			schemaResult, err := schemaGen.Generate()
+			require.NoError(t, err)
+
+			// Write the schema to the expected location
+			schemaBytes, err := json.MarshalIndent(schemaResult.PackageSpec, "", "    ")
+			require.NoError(t, err)
+
+			// Create the directory structure and write the schema file in the current working directory
+			// since the Generate() function uses os.ReadFile() which reads from the current working directory
+			schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
+			require.NoError(t, os.MkdirAll(schemaDir, 0o755))
+			schemaPath := filepath.Join(schemaDir, "schema.json")
+			require.NoError(t, os.WriteFile(schemaPath, schemaBytes, 0o644))
+
+			// Clean up the provider directory after the test
+			t.Cleanup(func() {
+				os.RemoveAll("provider")
+			})
+
+			// Now create the language-specific generator and run it
 			gen, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
 				Package:       "prov",
 				Version:       "0.0.1",
