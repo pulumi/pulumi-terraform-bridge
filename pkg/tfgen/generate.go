@@ -1107,6 +1107,7 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 
 	if g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi" {
+
 		genSchemaResult, err := g.generateSchemaResult(context.Background())
 		if err != nil {
 			return nil, err
