@@ -407,7 +407,7 @@
             "properties": {
                 "bcryptHash": {
                     "type": "string",
-                    "description": "A bcrypt hash of the generated random string. **NOTE**: If the generated random string is greater than 72 bytes in length, `bcrypt_hash` will contain a hash of the first 72 bytes.",
+                    "description": "A bcrypt hash of the generated random string. **NOTE**: If the generated random string is greater than 72 bytes in length, \u003cspan pulumi-lang-nodejs=\"`bcryptHash`\" pulumi-lang-dotnet=\"`BcryptHash`\" pulumi-lang-go=\"`bcryptHash`\" pulumi-lang-python=\"`bcrypt_hash`\" pulumi-lang-yaml=\"`bcryptHash`\" pulumi-lang-java=\"`bcryptHash`\"\u003e`bcrypt_hash`\u003c/span\u003e will contain a hash of the first 72 bytes.",
                     "secret": true
                 },
                 "keepers": {
@@ -419,40 +419,40 @@
                 },
                 "length": {
                     "type": "integer",
-                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` + `min_lower` + `min_numeric` + `min_special`)."
+                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (\u003cspan pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\"\u003e`min_upper`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minLower`\" pulumi-lang-dotnet=\"`MinLower`\" pulumi-lang-go=\"`minLower`\" pulumi-lang-python=\"`min_lower`\" pulumi-lang-yaml=\"`minLower`\" pulumi-lang-java=\"`minLower`\"\u003e`min_lower`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minNumeric`\" pulumi-lang-dotnet=\"`MinNumeric`\" pulumi-lang-go=\"`minNumeric`\" pulumi-lang-python=\"`min_numeric`\" pulumi-lang-yaml=\"`minNumeric`\" pulumi-lang-java=\"`minNumeric`\"\u003e`min_numeric`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minSpecial`\" pulumi-lang-dotnet=\"`MinSpecial`\" pulumi-lang-go=\"`minSpecial`\" pulumi-lang-python=\"`min_special`\" pulumi-lang-yaml=\"`minSpecial`\" pulumi-lang-java=\"`minSpecial`\"\u003e`min_special`\u003c/span\u003e)."
                 },
                 "lower": {
                     "type": "boolean",
-                    "description": "Include lowercase alphabet characters in the result. Default value is `true`."
+                    "description": "Include lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "minLower": {
                     "type": "integer",
-                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`."
+                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minNumeric": {
                     "type": "integer",
-                    "description": "Minimum number of numeric characters in the result. Default value is `0`."
+                    "description": "Minimum number of numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minSpecial": {
                     "type": "integer",
-                    "description": "Minimum number of special characters in the result. Default value is `0`."
+                    "description": "Minimum number of special characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minUpper": {
                     "type": "integer",
-                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`."
+                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "number": {
                     "type": "boolean",
-                    "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.",
-                    "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                    "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e. **NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead.",
+                    "deprecationMessage": "**NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead."
                 },
                 "numeric": {
                     "type": "boolean",
-                    "description": "Include numeric characters in the result. Default value is `true`."
+                    "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "overrideSpecial": {
                     "type": "string",
-                    "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The `special` argument must still be set to true for any overwritten characters to be used in generation."
+                    "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The \u003cspan pulumi-lang-nodejs=\"`special`\" pulumi-lang-dotnet=\"`Special`\" pulumi-lang-go=\"`special`\" pulumi-lang-python=\"`special`\" pulumi-lang-yaml=\"`special`\" pulumi-lang-java=\"`special`\"\u003e`special`\u003c/span\u003e argument must still be set to true for any overwritten characters to be used in generation."
                 },
                 "result": {
                     "type": "string",
@@ -461,11 +461,11 @@
                 },
                 "special": {
                     "type": "boolean",
-                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`."
+                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "upper": {
                     "type": "boolean",
-                    "description": "Include uppercase alphabet characters in the result. Default value is `true`."
+                    "description": "Include uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 }
             },
             "required": [
@@ -492,48 +492,48 @@
                 },
                 "length": {
                     "type": "integer",
-                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` + `min_lower` + `min_numeric` + `min_special`)."
+                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (\u003cspan pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\"\u003e`min_upper`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minLower`\" pulumi-lang-dotnet=\"`MinLower`\" pulumi-lang-go=\"`minLower`\" pulumi-lang-python=\"`min_lower`\" pulumi-lang-yaml=\"`minLower`\" pulumi-lang-java=\"`minLower`\"\u003e`min_lower`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minNumeric`\" pulumi-lang-dotnet=\"`MinNumeric`\" pulumi-lang-go=\"`minNumeric`\" pulumi-lang-python=\"`min_numeric`\" pulumi-lang-yaml=\"`minNumeric`\" pulumi-lang-java=\"`minNumeric`\"\u003e`min_numeric`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minSpecial`\" pulumi-lang-dotnet=\"`MinSpecial`\" pulumi-lang-go=\"`minSpecial`\" pulumi-lang-python=\"`min_special`\" pulumi-lang-yaml=\"`minSpecial`\" pulumi-lang-java=\"`minSpecial`\"\u003e`min_special`\u003c/span\u003e)."
                 },
                 "lower": {
                     "type": "boolean",
-                    "description": "Include lowercase alphabet characters in the result. Default value is `true`."
+                    "description": "Include lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "minLower": {
                     "type": "integer",
-                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`."
+                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minNumeric": {
                     "type": "integer",
-                    "description": "Minimum number of numeric characters in the result. Default value is `0`."
+                    "description": "Minimum number of numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minSpecial": {
                     "type": "integer",
-                    "description": "Minimum number of special characters in the result. Default value is `0`."
+                    "description": "Minimum number of special characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minUpper": {
                     "type": "integer",
-                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`."
+                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "number": {
                     "type": "boolean",
-                    "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.",
-                    "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                    "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e. **NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead.",
+                    "deprecationMessage": "**NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead."
                 },
                 "numeric": {
                     "type": "boolean",
-                    "description": "Include numeric characters in the result. Default value is `true`."
+                    "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "overrideSpecial": {
                     "type": "string",
-                    "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The `special` argument must still be set to true for any overwritten characters to be used in generation."
+                    "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The \u003cspan pulumi-lang-nodejs=\"`special`\" pulumi-lang-dotnet=\"`Special`\" pulumi-lang-go=\"`special`\" pulumi-lang-python=\"`special`\" pulumi-lang-yaml=\"`special`\" pulumi-lang-java=\"`special`\"\u003e`special`\u003c/span\u003e argument must still be set to true for any overwritten characters to be used in generation."
                 },
                 "special": {
                     "type": "boolean",
-                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`."
+                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "upper": {
                     "type": "boolean",
-                    "description": "Include uppercase alphabet characters in the result. Default value is `true`."
+                    "description": "Include uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 }
             },
             "requiredInputs": [
@@ -544,7 +544,7 @@
                 "properties": {
                     "bcryptHash": {
                         "type": "string",
-                        "description": "A bcrypt hash of the generated random string. **NOTE**: If the generated random string is greater than 72 bytes in length, `bcrypt_hash` will contain a hash of the first 72 bytes.",
+                        "description": "A bcrypt hash of the generated random string. **NOTE**: If the generated random string is greater than 72 bytes in length, \u003cspan pulumi-lang-nodejs=\"`bcryptHash`\" pulumi-lang-dotnet=\"`BcryptHash`\" pulumi-lang-go=\"`bcryptHash`\" pulumi-lang-python=\"`bcrypt_hash`\" pulumi-lang-yaml=\"`bcryptHash`\" pulumi-lang-java=\"`bcryptHash`\"\u003e`bcrypt_hash`\u003c/span\u003e will contain a hash of the first 72 bytes.",
                         "secret": true
                     },
                     "keepers": {
@@ -556,40 +556,40 @@
                     },
                     "length": {
                         "type": "integer",
-                        "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` + `min_lower` + `min_numeric` + `min_special`)."
+                        "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (\u003cspan pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\"\u003e`min_upper`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minLower`\" pulumi-lang-dotnet=\"`MinLower`\" pulumi-lang-go=\"`minLower`\" pulumi-lang-python=\"`min_lower`\" pulumi-lang-yaml=\"`minLower`\" pulumi-lang-java=\"`minLower`\"\u003e`min_lower`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minNumeric`\" pulumi-lang-dotnet=\"`MinNumeric`\" pulumi-lang-go=\"`minNumeric`\" pulumi-lang-python=\"`min_numeric`\" pulumi-lang-yaml=\"`minNumeric`\" pulumi-lang-java=\"`minNumeric`\"\u003e`min_numeric`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minSpecial`\" pulumi-lang-dotnet=\"`MinSpecial`\" pulumi-lang-go=\"`minSpecial`\" pulumi-lang-python=\"`min_special`\" pulumi-lang-yaml=\"`minSpecial`\" pulumi-lang-java=\"`minSpecial`\"\u003e`min_special`\u003c/span\u003e)."
                     },
                     "lower": {
                         "type": "boolean",
-                        "description": "Include lowercase alphabet characters in the result. Default value is `true`."
+                        "description": "Include lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                     },
                     "minLower": {
                         "type": "integer",
-                        "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`."
+                        "description": "Minimum number of lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                     },
                     "minNumeric": {
                         "type": "integer",
-                        "description": "Minimum number of numeric characters in the result. Default value is `0`."
+                        "description": "Minimum number of numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                     },
                     "minSpecial": {
                         "type": "integer",
-                        "description": "Minimum number of special characters in the result. Default value is `0`."
+                        "description": "Minimum number of special characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                     },
                     "minUpper": {
                         "type": "integer",
-                        "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`."
+                        "description": "Minimum number of uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                     },
                     "number": {
                         "type": "boolean",
-                        "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.",
-                        "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                        "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e. **NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead.",
+                        "deprecationMessage": "**NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead."
                     },
                     "numeric": {
                         "type": "boolean",
-                        "description": "Include numeric characters in the result. Default value is `true`."
+                        "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                     },
                     "overrideSpecial": {
                         "type": "string",
-                        "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The `special` argument must still be set to true for any overwritten characters to be used in generation."
+                        "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The \u003cspan pulumi-lang-nodejs=\"`special`\" pulumi-lang-dotnet=\"`Special`\" pulumi-lang-go=\"`special`\" pulumi-lang-python=\"`special`\" pulumi-lang-yaml=\"`special`\" pulumi-lang-java=\"`special`\"\u003e`special`\u003c/span\u003e argument must still be set to true for any overwritten characters to be used in generation."
                     },
                     "result": {
                         "type": "string",
@@ -598,11 +598,11 @@
                     },
                     "special": {
                         "type": "boolean",
-                        "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`."
+                        "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                     },
                     "upper": {
                         "type": "boolean",
-                        "description": "Include uppercase alphabet characters in the result. Default value is `true`."
+                        "description": "Include uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                     }
                 },
                 "type": "object"
@@ -699,14 +699,14 @@
                 },
                 "resultCount": {
                     "type": "integer",
-                    "description": "The number of results to return. Defaults to the number of items in the `input` list. If fewer items are requested, some elements will be excluded from the result. If more items are requested, items will be repeated in the result but not more frequently than the number of items in the input list."
+                    "description": "The number of results to return. Defaults to the number of items in the \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\"\u003e`input`\u003c/span\u003e list. If fewer items are requested, some elements will be excluded from the result. If more items are requested, items will be repeated in the result but not more frequently than the number of items in the input list."
                 },
                 "results": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "Random permutation of the list of strings given in `input`."
+                    "description": "Random permutation of the list of strings given in \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\"\u003e`input`\u003c/span\u003e."
                 },
                 "seed": {
                     "type": "string"
@@ -733,7 +733,7 @@
                 },
                 "resultCount": {
                     "type": "integer",
-                    "description": "The number of results to return. Defaults to the number of items in the `input` list. If fewer items are requested, some elements will be excluded from the result. If more items are requested, items will be repeated in the result but not more frequently than the number of items in the input list."
+                    "description": "The number of results to return. Defaults to the number of items in the \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\"\u003e`input`\u003c/span\u003e list. If fewer items are requested, some elements will be excluded from the result. If more items are requested, items will be repeated in the result but not more frequently than the number of items in the input list."
                 },
                 "seed": {
                     "type": "string"
@@ -761,14 +761,14 @@
                     },
                     "resultCount": {
                         "type": "integer",
-                        "description": "The number of results to return. Defaults to the number of items in the `input` list. If fewer items are requested, some elements will be excluded from the result. If more items are requested, items will be repeated in the result but not more frequently than the number of items in the input list."
+                        "description": "The number of results to return. Defaults to the number of items in the \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\"\u003e`input`\u003c/span\u003e list. If fewer items are requested, some elements will be excluded from the result. If more items are requested, items will be repeated in the result but not more frequently than the number of items in the input list."
                     },
                     "results": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         },
-                        "description": "Random permutation of the list of strings given in `input`."
+                        "description": "Random permutation of the list of strings given in \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\"\u003e`input`\u003c/span\u003e."
                     },
                     "seed": {
                         "type": "string"
@@ -788,40 +788,40 @@
                 },
                 "length": {
                     "type": "integer",
-                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` + `min_lower` + `min_numeric` + `min_special`)."
+                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (\u003cspan pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\"\u003e`min_upper`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minLower`\" pulumi-lang-dotnet=\"`MinLower`\" pulumi-lang-go=\"`minLower`\" pulumi-lang-python=\"`min_lower`\" pulumi-lang-yaml=\"`minLower`\" pulumi-lang-java=\"`minLower`\"\u003e`min_lower`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minNumeric`\" pulumi-lang-dotnet=\"`MinNumeric`\" pulumi-lang-go=\"`minNumeric`\" pulumi-lang-python=\"`min_numeric`\" pulumi-lang-yaml=\"`minNumeric`\" pulumi-lang-java=\"`minNumeric`\"\u003e`min_numeric`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minSpecial`\" pulumi-lang-dotnet=\"`MinSpecial`\" pulumi-lang-go=\"`minSpecial`\" pulumi-lang-python=\"`min_special`\" pulumi-lang-yaml=\"`minSpecial`\" pulumi-lang-java=\"`minSpecial`\"\u003e`min_special`\u003c/span\u003e)."
                 },
                 "lower": {
                     "type": "boolean",
-                    "description": "Include lowercase alphabet characters in the result. Default value is `true`."
+                    "description": "Include lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "minLower": {
                     "type": "integer",
-                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`."
+                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minNumeric": {
                     "type": "integer",
-                    "description": "Minimum number of numeric characters in the result. Default value is `0`."
+                    "description": "Minimum number of numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minSpecial": {
                     "type": "integer",
-                    "description": "Minimum number of special characters in the result. Default value is `0`."
+                    "description": "Minimum number of special characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minUpper": {
                     "type": "integer",
-                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`."
+                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "number": {
                     "type": "boolean",
-                    "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.",
-                    "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                    "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e. **NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead.",
+                    "deprecationMessage": "**NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead."
                 },
                 "numeric": {
                     "type": "boolean",
-                    "description": "Include numeric characters in the result. Default value is `true`."
+                    "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "overrideSpecial": {
                     "type": "string",
-                    "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The `special` argument must still be set to true for any overwritten characters to be used in generation."
+                    "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The \u003cspan pulumi-lang-nodejs=\"`special`\" pulumi-lang-dotnet=\"`Special`\" pulumi-lang-go=\"`special`\" pulumi-lang-python=\"`special`\" pulumi-lang-yaml=\"`special`\" pulumi-lang-java=\"`special`\"\u003e`special`\u003c/span\u003e argument must still be set to true for any overwritten characters to be used in generation."
                 },
                 "result": {
                     "type": "string",
@@ -829,11 +829,11 @@
                 },
                 "special": {
                     "type": "boolean",
-                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`."
+                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "upper": {
                     "type": "boolean",
-                    "description": "Include uppercase alphabet characters in the result. Default value is `true`."
+                    "description": "Include uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 }
             },
             "required": [
@@ -859,48 +859,48 @@
                 },
                 "length": {
                     "type": "integer",
-                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` + `min_lower` + `min_numeric` + `min_special`)."
+                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (\u003cspan pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\"\u003e`min_upper`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minLower`\" pulumi-lang-dotnet=\"`MinLower`\" pulumi-lang-go=\"`minLower`\" pulumi-lang-python=\"`min_lower`\" pulumi-lang-yaml=\"`minLower`\" pulumi-lang-java=\"`minLower`\"\u003e`min_lower`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minNumeric`\" pulumi-lang-dotnet=\"`MinNumeric`\" pulumi-lang-go=\"`minNumeric`\" pulumi-lang-python=\"`min_numeric`\" pulumi-lang-yaml=\"`minNumeric`\" pulumi-lang-java=\"`minNumeric`\"\u003e`min_numeric`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minSpecial`\" pulumi-lang-dotnet=\"`MinSpecial`\" pulumi-lang-go=\"`minSpecial`\" pulumi-lang-python=\"`min_special`\" pulumi-lang-yaml=\"`minSpecial`\" pulumi-lang-java=\"`minSpecial`\"\u003e`min_special`\u003c/span\u003e)."
                 },
                 "lower": {
                     "type": "boolean",
-                    "description": "Include lowercase alphabet characters in the result. Default value is `true`."
+                    "description": "Include lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "minLower": {
                     "type": "integer",
-                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`."
+                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minNumeric": {
                     "type": "integer",
-                    "description": "Minimum number of numeric characters in the result. Default value is `0`."
+                    "description": "Minimum number of numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minSpecial": {
                     "type": "integer",
-                    "description": "Minimum number of special characters in the result. Default value is `0`."
+                    "description": "Minimum number of special characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "minUpper": {
                     "type": "integer",
-                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`."
+                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                 },
                 "number": {
                     "type": "boolean",
-                    "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.",
-                    "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                    "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e. **NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead.",
+                    "deprecationMessage": "**NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead."
                 },
                 "numeric": {
                     "type": "boolean",
-                    "description": "Include numeric characters in the result. Default value is `true`."
+                    "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "overrideSpecial": {
                     "type": "string",
-                    "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The `special` argument must still be set to true for any overwritten characters to be used in generation."
+                    "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The \u003cspan pulumi-lang-nodejs=\"`special`\" pulumi-lang-dotnet=\"`Special`\" pulumi-lang-go=\"`special`\" pulumi-lang-python=\"`special`\" pulumi-lang-yaml=\"`special`\" pulumi-lang-java=\"`special`\"\u003e`special`\u003c/span\u003e argument must still be set to true for any overwritten characters to be used in generation."
                 },
                 "special": {
                     "type": "boolean",
-                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`."
+                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 },
                 "upper": {
                     "type": "boolean",
-                    "description": "Include uppercase alphabet characters in the result. Default value is `true`."
+                    "description": "Include uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                 }
             },
             "requiredInputs": [
@@ -918,40 +918,40 @@
                     },
                     "length": {
                         "type": "integer",
-                        "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` + `min_lower` + `min_numeric` + `min_special`)."
+                        "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (\u003cspan pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\"\u003e`min_upper`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minLower`\" pulumi-lang-dotnet=\"`MinLower`\" pulumi-lang-go=\"`minLower`\" pulumi-lang-python=\"`min_lower`\" pulumi-lang-yaml=\"`minLower`\" pulumi-lang-java=\"`minLower`\"\u003e`min_lower`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minNumeric`\" pulumi-lang-dotnet=\"`MinNumeric`\" pulumi-lang-go=\"`minNumeric`\" pulumi-lang-python=\"`min_numeric`\" pulumi-lang-yaml=\"`minNumeric`\" pulumi-lang-java=\"`minNumeric`\"\u003e`min_numeric`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minSpecial`\" pulumi-lang-dotnet=\"`MinSpecial`\" pulumi-lang-go=\"`minSpecial`\" pulumi-lang-python=\"`min_special`\" pulumi-lang-yaml=\"`minSpecial`\" pulumi-lang-java=\"`minSpecial`\"\u003e`min_special`\u003c/span\u003e)."
                     },
                     "lower": {
                         "type": "boolean",
-                        "description": "Include lowercase alphabet characters in the result. Default value is `true`."
+                        "description": "Include lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                     },
                     "minLower": {
                         "type": "integer",
-                        "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`."
+                        "description": "Minimum number of lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                     },
                     "minNumeric": {
                         "type": "integer",
-                        "description": "Minimum number of numeric characters in the result. Default value is `0`."
+                        "description": "Minimum number of numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                     },
                     "minSpecial": {
                         "type": "integer",
-                        "description": "Minimum number of special characters in the result. Default value is `0`."
+                        "description": "Minimum number of special characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                     },
                     "minUpper": {
                         "type": "integer",
-                        "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`."
+                        "description": "Minimum number of uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e."
                     },
                     "number": {
                         "type": "boolean",
-                        "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.",
-                        "deprecationMessage": "**NOTE**: This is deprecated, use `numeric` instead."
+                        "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e. **NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead.",
+                        "deprecationMessage": "**NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead."
                     },
                     "numeric": {
                         "type": "boolean",
-                        "description": "Include numeric characters in the result. Default value is `true`."
+                        "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                     },
                     "overrideSpecial": {
                         "type": "string",
-                        "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The `special` argument must still be set to true for any overwritten characters to be used in generation."
+                        "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The \u003cspan pulumi-lang-nodejs=\"`special`\" pulumi-lang-dotnet=\"`Special`\" pulumi-lang-go=\"`special`\" pulumi-lang-python=\"`special`\" pulumi-lang-yaml=\"`special`\" pulumi-lang-java=\"`special`\"\u003e`special`\u003c/span\u003e argument must still be set to true for any overwritten characters to be used in generation."
                     },
                     "result": {
                         "type": "string",
@@ -959,11 +959,11 @@
                     },
                     "special": {
                         "type": "boolean",
-                        "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`."
+                        "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                     },
                     "upper": {
                         "type": "boolean",
-                        "description": "Include uppercase alphabet characters in the result. Default value is `true`."
+                        "description": "Include uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\"\u003e`true`\u003c/span\u003e."
                     }
                 },
                 "type": "object"
