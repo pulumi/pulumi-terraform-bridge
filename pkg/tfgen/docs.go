@@ -2240,7 +2240,6 @@ func (c infoContext) fixupPropertyReference(text string) string {
 		if c.language == RegistryDocs {
 			return camelCaseFormat
 		} else {
-
 			return buildSpan(
 				camelCaseFormat,
 				dotnetFormat,
@@ -2264,7 +2263,6 @@ func buildSpan(node, dotnet, golang, python, yaml, java, unmodified string) stri
 		java,
 		unmodified,
 	)
-
 }
 
 // extractExamples attempts to separate the description proper from the "Example Usage" section of an entity's
