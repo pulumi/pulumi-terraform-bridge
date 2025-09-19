@@ -44,40 +44,41 @@ import (
 var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
 type testcase struct {
-	Input    string
-	Expected string
+	name     string
+	input    string
+	expected string
 }
 
 func TestReformatText(t *testing.T) {
 	t.Parallel()
-	tests := []testcase{
+	testCases := []testcase{
 		{
-			Input:    "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
-			Expected: "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
+			name:  "No changes on valid links",
+			input: "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
 		},
 		{
-			Input:    "It's recommended to specify `create_before_destroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by [`aws_lb_listener`](lb_listener.html)).", //nolint:lll
-			Expected: "It's recommended to specify `createBeforeDestroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by `awsLbListener`).",                         //nolint:lll
+			name:  "Translates input options to Pulumi formats",
+			input: "It's recommended to specify `create_before_destroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by [`aws_lb_listener`](lb_listener.html)).", //nolint:lll
 		},
 		{
-			Input:    "The execution ARN to be used in [`lambda_permission`](/docs/providers/aws/r/lambda_permission.html)'s `source_arn`",                       //nolint:lll
-			Expected: "The execution ARN to be used in [`lambdaPermission`](https://www.terraform.io/docs/providers/aws/r/lambda_permission.html)'s `sourceArn`", //nolint:lll
+			name:  "Fixes up link refs",
+			input: "The execution ARN to be used in [`lambda_permission`](/docs/providers/aws/r/lambda_permission.html)'s `source_arn`", //nolint:lll
 		},
 		{
-			Input:    "See google_container_node_pool for schema.",
-			Expected: "See google.container.NodePool for schema.",
+			name:  "Translates resource names to Pulumi formats",
+			input: "See google_container_node_pool for schema.",
 		},
 		{
-			Input:    "\n(Required)\nThe app_ip of name of the Firebase webApp.",
-			Expected: "The appIp of name of the Firebase webApp.",
+			name:  "Translates property types to Pulumi formats",
+			input: "\n(Required)\nThe app_ip of name of the Firebase webApp.",
 		},
 		{
-			Input:    "An example username is jdoa@hashicorp.com",
-			Expected: "",
+			name:  "Removes lines with @hashicorp.com in the text",
+			input: "An example username is jdoa@hashicorp.com",
 		},
 		{
-			Input:    "An example passowrd is Terraform-secret",
-			Expected: "",
+			name:  "Removes the word Terraform from text",
+			input: "An example password is Terraform-secret",
 		},
 	}
 
@@ -92,11 +93,18 @@ func TestReformatText(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		text, elided := reformatText(infoCtx, test.Input, nil)
-		assert.Equal(t, test.Expected, text)
-		assert.Equalf(t, text == "", elided,
-			"We should only see an empty result for non-empty inputs if we have elided text")
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			text, elided := reformatText(infoCtx, tc.input, nil)
+			autogold.ExpectFile(t, text)
+			assert.Equalf(t, text == "", elided,
+				"We should only see an empty result for non-empty inputs if we have elided text")
+		})
+
+		//assert.Equalf(t, text == "", elided,
+		//	"We should only see an empty result for non-empty inputs if we have elided text")
 	}
 }
 
