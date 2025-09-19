@@ -1591,8 +1591,8 @@ func (g *Generator) convertExamplesInner(
 	docs string,
 	path examplePath,
 	convertHCL func(
-	e *Example, hcl, path string, languages []string,
-) (string, error),
+		e *Example, hcl, path string, languages []string,
+	) (string, error),
 	useCoverageTracker bool,
 ) string {
 	output := &bytes.Buffer{}
@@ -2162,8 +2162,17 @@ type spanValues struct {
 }
 
 func buildSpan(values spanValues) string {
+	//nolint:lll
 	spanFormat := `<span pulumi-lang-nodejs="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`
-	return fmt.Sprintf(spanFormat, values.node, values.dotnet, values.golang, values.python, values.yaml, values.java, values.defaultDisplay)
+	return fmt.Sprintf(
+		spanFormat,
+		values.node,
+		values.dotnet,
+		values.golang,
+		values.python,
+		values.yaml,
+		values.java,
+		values.defaultDisplay)
 }
 
 func (c infoContext) fixupPropertyReference(text string) string {

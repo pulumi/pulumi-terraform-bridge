@@ -919,6 +919,7 @@ func TestExtraMappingError(t *testing.T) {
 }
 
 func TestFilterSchemaByLanguage(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name                        string
 		inputSchema                 []byte
@@ -994,7 +995,6 @@ func TestFilterSchemaByLanguage(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
 			actual := tc.generator.FilterSchemaByLanguage(tc.inputSchema)
 			hasSpan := bytes.Contains(actual, []byte("span"))
 			require.False(t, hasSpan, "there should be no spans in the filtered schema")

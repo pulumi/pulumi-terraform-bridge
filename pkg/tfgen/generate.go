@@ -1069,7 +1069,9 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) []byte {
 	})
 
 	// Find code chooser blocks and filter to only keep the current language
-	codeChooserRegex := regexp.MustCompile(`\\u003c!--Start PulumiCodeChooser --\\u003e.*?\\u003c!--End PulumiCodeChooser --\\u003e`)
+	codeChooserRegex := regexp.MustCompile(
+		`\\u003c!--Start PulumiCodeChooser --\\u003e.*?\\u003c!--End PulumiCodeChooser --\\u003e`,
+	)
 
 	schemaBytes = codeChooserRegex.ReplaceAllFunc(schemaBytes, func(match []byte) []byte {
 		content := string(match)
@@ -1108,31 +1110,29 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 		}
 		// Now push the schema through the rest of the generator.
 		return g.UnstableGenerateFromSchema(genSchemaResult)
-	} else {
-		// Read the provider schema from file
-		schemaBytes, err := os.ReadFile(fmt.Sprintf("provider/cmd/pulumi-resource-%s/schema.json", g.info.Name))
-		if err != nil {
-			return nil, err
-		}
-
-		// Generate the language-specific bytes
-		languageSchemaBytes := g.FilterSchemaByLanguage(schemaBytes)
-
-		// Parse the filtered schema bytes back into PackageSpec
-		var languagePackageSpec pschema.PackageSpec
-		err = json.Unmarshal(languageSchemaBytes, &languagePackageSpec)
-		if err != nil {
-			return nil, err
-		}
-		// In order to ensure stability, the docs schema, which we're using as a source for this filter function,
-		// removes the Version field in UnstableGenerateFromSchema.
-		// For our local schemas, we want to add the version back in.
-		languagePackageSpec.Version = g.version
-		// We already have translated our examples.
-		g.skipExamples = true
-		// Use filtered schema to generate SDK
-		return g.UnstableGenerateFromSchema(&GenerateSchemaResult{PackageSpec: languagePackageSpec})
 	}
+	// Read the provider schema from file
+	schemaBytes, err := os.ReadFile(fmt.Sprintf("provider/cmd/pulumi-resource-%s/schema.json", g.info.Name))
+	if err != nil {
+		return nil, err
+	}
+	// Generate the language-specific bytes
+	languageSchemaBytes := g.FilterSchemaByLanguage(schemaBytes)
+
+	// Parse the filtered schema bytes back into PackageSpec
+	var languagePackageSpec pschema.PackageSpec
+	err = json.Unmarshal(languageSchemaBytes, &languagePackageSpec)
+	if err != nil {
+		return nil, err
+	}
+	// In order to ensure stability, the docs schema, which we're using as a source for this filter function,
+	// removes the Version field in UnstableGenerateFromSchema.
+	// For our local schemas, we want to add the version back in.
+	languagePackageSpec.Version = g.version
+	// We already have translated our examples.
+	g.skipExamples = true
+	// Use filtered schema to generate SDK
+	return g.UnstableGenerateFromSchema(&GenerateSchemaResult{PackageSpec: languagePackageSpec})
 }
 
 func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaResult, error) {
