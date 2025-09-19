@@ -312,18 +312,32 @@ func TestPropertyDocumentationEdits(t *testing.T) {
 	}))
 	assert.NoError(t, err)
 
-	// asserts that `aws_s3_bucket_acl` has been changed to `aws.s3.BucketAclV2`
-	assert.Equal(t,
-		"The [canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) to apply."+
-			" Valid values are `private`, `public-read`, `public-read-write`, `aws-exec-read`, `authenticated-read`,"+
-			" and `log-delivery-write`. Defaults to `private`.  Conflicts with `grant`. The provider will only perform drift "+
-			"detection if a configuration value is provided. Use the resource `aws.s3.BucketAclV2` instead.\n",
+	//nolint:lll
+	// asserts that `aws_s3_bucket_acl` has been translated to the correct language-specific formats and marked up with a span
+	autogold.Expect("The [canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) to apply. Valid values are <span pulumi-lang-nodejs=\"`private`\" pulumi-lang-dotnet=\"`Private`\" pulumi-lang-go=\"`private`\" pulumi-lang-python=\"`private`\" pulumi-lang-yaml=\"`private`\" pulumi-lang-java=\"`private`\">`private`</span>, `public-read`, `public-read-write`, `aws-exec-read`, `authenticated-read`, and `log-delivery-write`. Defaults to <span pulumi-lang-nodejs=\"`private`\" pulumi-lang-dotnet=\"`Private`\" pulumi-lang-go=\"`private`\" pulumi-lang-python=\"`private`\" pulumi-lang-yaml=\"`private`\" pulumi-lang-java=\"`private`\">`private`</span>.  Conflicts with <span pulumi-lang-nodejs=\"`grant`\" pulumi-lang-dotnet=\"`Grant`\" pulumi-lang-go=\"`grant`\" pulumi-lang-python=\"`grant`\" pulumi-lang-yaml=\"`grant`\" pulumi-lang-java=\"`grant`\">`grant`</span>. The provider will only perform drift detection if a configuration value is provided. Use the resource <span pulumi-lang-nodejs=\"`aws.s3.BucketAclV2`\" pulumi-lang-dotnet=\"`aws.s3.BucketAclV2`\" pulumi-lang-go=\"`s3.BucketAclV2`\" pulumi-lang-python=\"`s3.BucketAclV2`\" pulumi-lang-yaml=\"`aws.s3.BucketAclV2`\" pulumi-lang-java=\"`aws.s3.BucketAclV2`\">`aws.s3.BucketAclV2`</span> instead.\n",
+	).Equal(
+		t,
 		schema.Resources["aws:s3/bucketV2:BucketV2"].InputProperties["acl"].Description,
 	)
-	assert.Equal(t,
-		"Use the aws.s3.BucketAclV2 resource instead",
+	//nolint:lll
+	autogold.Expect(`Use the<span pulumi-lang-nodejs=" aws.s3.BucketAclV2 " pulumi-lang-dotnet=" aws.s3.BucketAclV2 " pulumi-lang-go=" s3.BucketAclV2 " pulumi-lang-python=" s3.BucketAclV2 " pulumi-lang-yaml=" aws.s3.BucketAclV2 " pulumi-lang-java=" aws.s3.BucketAclV2 "> aws.s3.BucketAclV2 </span>resource instead`).Equal(
+		t,
 		schema.Resources["aws:s3/bucketV2:BucketV2"].InputProperties["acl"].DeprecationMessage,
 	)
+
+	// asserts that `aws_s3_bucket_acl` has been changed to `aws.s3.BucketAclV2`
+	//assert.Equal(t,
+	//	"The [canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) to apply."+
+	//		" Valid values are `private`, `public-read`, `public-read-write`, `aws-exec-read`, `authenticated-read`,"+
+	//		" and `log-delivery-write`. Defaults to `private`.  Conflicts with `grant`. The provider will only perform drift "+
+	//		"detection if a configuration value is provided. Use the resource `aws.s3.BucketAclV2` instead.\n",
+	//	schema.Resources["aws:s3/bucketV2:BucketV2"].InputProperties["acl"].Description,
+	//)
+	//assert.Equal(t,
+	//	"Use the aws.s3.BucketAclV2 resource instead",
+	//	schema.Resources["aws:s3/bucketV2:BucketV2"].InputProperties["acl"].DeprecationMessage,
+	//)
+
 }
 
 func TestNestedMaxItemsOne(t *testing.T) {
