@@ -78,9 +78,9 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Reformat field names. Configuration fields are camelCased like nodejs.
+	// Reformat field names.
 	contentStr, _ = reformatText(infoContext{
-		language: "nodejs",
+		language: RegistryDocs,
 		pkg:      g.pkg,
 		info:     g.info,
 	}, string(contentBytes), nil)
