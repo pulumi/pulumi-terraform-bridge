@@ -44,9 +44,8 @@ import (
 var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
 type testcase struct {
-	name     string
-	input    string
-	expected string
+	name  string
+	input string
 }
 
 func TestReformatText(t *testing.T) {
@@ -103,7 +102,7 @@ func TestReformatText(t *testing.T) {
 				"We should only see an empty result for non-empty inputs if we have elided text")
 		})
 
-		//assert.Equalf(t, text == "", elided,
+		// assert.Equalf(t, text == "", elided,
 		//	"We should only see an empty result for non-empty inputs if we have elided text")
 	}
 }

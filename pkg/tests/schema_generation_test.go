@@ -182,7 +182,7 @@ func Test_Generate(t *testing.T) {
 	schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
 	require.NoError(t, os.MkdirAll(schemaDir, 0o755))
 	schemaPath := filepath.Join(schemaDir, "schema.json")
-	require.NoError(t, os.WriteFile(schemaPath, schemaBytes, 0o644))
+	require.NoError(t, os.WriteFile(schemaPath, schemaBytes, 0o600))
 
 	// Clean up the provider directory after the test
 	t.Cleanup(func() {
@@ -445,7 +445,7 @@ func Test_GenerateWithOverlay(t *testing.T) {
 			schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
 			require.NoError(t, os.MkdirAll(schemaDir, 0o755))
 			schemaPath := filepath.Join(schemaDir, "schema.json")
-			require.NoError(t, os.WriteFile(schemaPath, schemaBytes, 0o644))
+			require.NoError(t, os.WriteFile(schemaPath, schemaBytes, 0o600))
 
 			// Clean up the provider directory after the test
 			t.Cleanup(func() {
