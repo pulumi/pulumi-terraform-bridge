@@ -126,7 +126,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
 	"github.com/pulumi/pulumi-pulumi-provider/sdks/go/random/v3/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
