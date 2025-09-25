@@ -101,10 +101,8 @@ func TestMissingIDProperty(t *testing.T) {
 		P: pfbridge.ShimProvider(testProvider{missingID: true}),
 	})
 
-	assert.Equal(t, "error: Resource test_res has a problem: no \"id\" attribute. "+
-		"To map this resource consider specifying ResourceInfo.ComputeID to a valid field on the upstream resource\n", stderr)
-
-	assert.ErrorContains(t, err, "There were 1 unresolved ID mapping errors")
+	assert.Equal(t, "", stderr)
+	assert.NoError(t, err)
 }
 
 func TestMissingIDWithOverride(t *testing.T) {

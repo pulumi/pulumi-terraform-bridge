@@ -46,7 +46,7 @@ func Provider(sink diag.Sink, info tfbridge.ProviderInfo) error {
 }
 
 func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource func(tfToken string) bool) error {
-	errors := 0
+	numErrors := 0
 
 	info.P.ResourcesMap().Range(func(rname string, resource shim.Resource) bool {
 		// Unmapped resources are not available, so they don't need to be correct.
@@ -67,14 +67,32 @@ func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource 
 			return true
 		}
 
-		errors++
+		// if the resource does not have an id, and the provider author has not
+		// added a ComputeID override, then fallback to using MissingID.
+		var missing errMissingIDAttribute
+		if errors.As(err, &missing) {
+			if info.Resources == nil {
+				info.Resources = map[string]*tfbridge.ResourceInfo{}
+			}
+			resInfo := info.Resources[rname]
+			if resInfo == nil {
+				resInfo = &tfbridge.ResourceInfo{}
+				info.Resources[rname] = resInfo
+			}
+			if resInfo.ComputeID == nil {
+				resInfo.ComputeID = tfbridge.MissingIDComputeID()
+			}
+			return true
+		}
+
+		numErrors++
 		sink.Errorf(&diag.Diag{Message: resourceError{rname, err}.Error()})
 
 		return true
 	})
 
-	if errors > 0 {
-		return fmt.Errorf("There were %d unresolved ID mapping errors", errors)
+	if numErrors > 0 {
+		return fmt.Errorf("There were %d unresolved ID mapping errors", numErrors)
 	}
 
 	return nil
