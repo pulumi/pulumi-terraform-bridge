@@ -47,15 +47,15 @@ import (
 func makeTerraformInputsNoDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+	return MakeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
+		MakeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 }
 
 func makeTerraformInputsForConfig(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
-		makeTerraformInputsOptions{})
+	return MakeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
+		MakeTerraformInputsOptions{})
 }
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
@@ -670,9 +670,9 @@ func TestSDKv2MetaProperties(t *testing.T) {
 
 			resInst := Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName}
 
-			state, err = makeTerraformStateWithOpts(
+			state, err = MakeTerraformStateWithOptions(
 				ctx, resInst, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -686,9 +686,9 @@ func TestSDKv2MetaProperties(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, reservedkeys.Meta)
 
-			state, err = makeTerraformStateWithOpts(
+			state, err = MakeTerraformStateWithOptions(
 				ctx, resInst, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -717,9 +717,9 @@ func TestSDKv2MetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = makeTerraformStateWithOpts(
+			state, err = MakeTerraformStateWithOptions(
 				ctx, resInst, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -750,9 +750,9 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			resInst := Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName}
 
-			state, err = makeTerraformStateWithOpts(
+			state, err = MakeTerraformStateWithOptions(
 				ctx, resInst, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -766,9 +766,9 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, reservedkeys.Meta)
 
-			state, err = makeTerraformStateWithOpts(
+			state, err = MakeTerraformStateWithOptions(
 				ctx, resInst, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -801,9 +801,9 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = makeTerraformStateWithOpts(
+			state, err = MakeTerraformStateWithOptions(
 				ctx, resInst, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -849,10 +849,10 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, props)
 
-		state, err = makeTerraformStateWithOpts(
+		state, err = MakeTerraformStateWithOptions(
 			ctx, Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName},
 			state.ID(), props,
-			makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+			MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 		assert.NoError(t, err)
 		assert.NotNil(t, state)
 
@@ -4110,8 +4110,8 @@ func Test_makeTerraformStateWithOptsMaxItemsOneRemoved(t *testing.T) {
 			"prop": sch,
 		})
 
-		inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
-			makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		inputs, _, err := MakeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
+			MakeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 		require.NoError(t, err)
 
 		autogold.Expect(map[string]interface{}{"prop": []interface{}{"X"}}).Equal(t, inputs)
@@ -4141,8 +4141,8 @@ func Test_makeTerraformStateWithOptsMaxItemsOneRemoved(t *testing.T) {
 			"prop": sch,
 		})
 
-		inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
-			makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		inputs, _, err := MakeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
+			MakeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 		require.NoError(t, err)
 
 		autogold.Expect(map[string]interface{}{"prop": []interface{}{[]interface{}{"X"}}}).Equal(t, inputs)
@@ -4178,8 +4178,8 @@ func Test_makeTerraformStateWithOptsMaxItemsOneRemoved(t *testing.T) {
 			"prop": sch,
 		})
 
-		inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
-			makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		inputs, _, err := MakeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
+			MakeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 		require.NoError(t, err)
 
 		autogold.Expect(map[string]interface{}{"prop": []interface{}{[]interface{}{[]interface{}{"X"}}}}).Equal(t, inputs)
@@ -4216,8 +4216,8 @@ func Test_makeTerraformStateWithOptsMaxItemsOneAdded(t *testing.T) {
 			"prop": sch,
 		})
 
-		inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
-			makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		inputs, _, err := MakeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
+			MakeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 		require.NoError(t, err)
 
 		autogold.Expect(map[string]interface{}{"props": []interface{}{"X"}}).Equal(t, inputs)
