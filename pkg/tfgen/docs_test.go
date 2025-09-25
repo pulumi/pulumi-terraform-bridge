@@ -43,49 +43,39 @@ import (
 
 var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
-type testcase struct {
-	name   string
-	input  string
-	expect autogold.Value
-}
-
 func TestReformatText(t *testing.T) {
 	t.Parallel()
-	testCases := []testcase{
+	tests := []struct {
+		name  string
+		input string
+	}{
 		{
-			name:   "No changes on valid links",
-			input:  "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).",                  //nolint:lll
-			expect: autogold.Expect("The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html)."), //nolint:lll
+			name:  "No changes on valid links",
+			input: "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
 		},
 		{
-			name:   "Translates input options to Pulumi formats",
-			input:  "It's recommended to specify `create_before_destroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by [`aws_lb_listener`](lb_listener.html)).",                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    //nolint:lll
-			expect: autogold.Expect("It's recommended to specify <span pulumi-lang-nodejs=\"`createBeforeDestroy \" pulumi-lang-dotnet=\"`CreateBeforeDestroy \" pulumi-lang-go=\"`createBeforeDestroy \" pulumi-lang-python=\"`create_before_destroy \" pulumi-lang-yaml=\"`createBeforeDestroy \" pulumi-lang-java=\"`createBeforeDestroy \">`create_before_destroy </span>= true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by <span pulumi-lang-nodejs=\"`awsLbListener`\" pulumi-lang-dotnet=\"`AwsLbListener`\" pulumi-lang-go=\"`awsLbListener`\" pulumi-lang-python=\"`aws_lb_listener`\" pulumi-lang-yaml=\"`awsLbListener`\" pulumi-lang-java=\"`awsLbListener`\">`aws_lb_listener`</span>)."), //nolint:lll
+			name:  "Translates input options to Pulumi formats",
+			input: "It's recommended to specify `create_before_destroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by [`aws_lb_listener`](lb_listener.html)).", //nolint:lll
 		},
 		{
-			name:   "Fixes up link refs",
-			input:  "The execution ARN to be used in [`lambda_permission`](/docs/providers/aws/r/lambda_permission.html)'s `source_arn`",                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    //nolint:lll
-			expect: autogold.Expect("The execution ARN to be used in [<span pulumi-lang-nodejs=\"`lambdaPermission`\" pulumi-lang-dotnet=\"`LambdaPermission`\" pulumi-lang-go=\"`lambdaPermission`\" pulumi-lang-python=\"`lambda_permission`\" pulumi-lang-yaml=\"`lambdaPermission`\" pulumi-lang-java=\"`lambdaPermission`\">`lambda_permission`</span>](https://www.terraform.io/docs/providers/aws/r/lambda_permission.html)'s <span pulumi-lang-nodejs=\"`sourceArn`\" pulumi-lang-dotnet=\"`SourceArn`\" pulumi-lang-go=\"`sourceArn`\" pulumi-lang-python=\"`source_arn`\" pulumi-lang-yaml=\"`sourceArn`\" pulumi-lang-java=\"`sourceArn`\">`source_arn`</span>"), //nolint:lll
+			name:  "Fixes up link refs",
+			input: "The execution ARN to be used in [`lambda_permission`](/docs/providers/aws/r/lambda_permission.html)'s `source_arn`", //nolint:lll
 		},
 		{
-			name:   "Translates resource names to Pulumi formats",
-			input:  "See google_container_node_pool for schema.",
-			expect: autogold.Expect(`See<span pulumi-lang-nodejs=" google.container.NodePool " pulumi-lang-dotnet=" google.container.NodePool " pulumi-lang-go=" container.NodePool " pulumi-lang-python=" container.NodePool " pulumi-lang-yaml=" google.container.NodePool " pulumi-lang-java=" google.container.NodePool "> google.container.NodePool </span>for schema.`),
+			name:  "Translates resource names to Pulumi formats",
+			input: "See google_container_node_pool for schema.",
 		},
 		{
-			name:   "Translates property types to Pulumi formats",
-			input:  "\n(Required)\nThe app_ip of name of the Firebase webApp.",
-			expect: autogold.Expect(`The<span pulumi-lang-nodejs=" appIp " pulumi-lang-dotnet=" AppIp " pulumi-lang-go=" appIp " pulumi-lang-python=" app_ip " pulumi-lang-yaml=" appIp " pulumi-lang-java=" appIp "> app_ip </span>of name of the Firebase webApp.`),
+			name:  "Translates property types to Pulumi formats",
+			input: "\n(Required)\nThe app_ip of name of the Firebase webApp.",
 		},
 		{
-			name:   "Removes lines with @hashicorp.com in the text",
-			input:  "An example username is jdoa@hashicorp.com",
-			expect: autogold.Expect(""),
+			name:  "Removes lines with @hashicorp.com in the text",
+			input: "An example username is jdoa@hashicorp.com",
 		},
 		{
-			name:   "Removes the word Terraform from text",
-			input:  "An example password is Terraform-secret",
-			expect: autogold.Expect(""),
+			name:  "Removes the word Terraform from text",
+			input: "An example password is Terraform-secret",
 		},
 	}
 
@@ -100,12 +90,11 @@ func TestReformatText(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		tc := tc
+	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			text, elided := reformatText(infoCtx, tc.input, nil)
-			tc.expect.Equal(t, text)
+			autogold.ExpectFile(t, text)
 			assert.Equalf(t, text == "", elided,
 				"We should only see an empty result for non-empty inputs if we have elided text")
 		})
@@ -2859,7 +2848,6 @@ func TestFixupPropertyReference(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := tt.ctx.fixupPropertyReference(tt.input)
