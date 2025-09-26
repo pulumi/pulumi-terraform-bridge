@@ -94,7 +94,7 @@ func TestReformatText(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			text, elided := reformatText(infoCtx, tc.input, nil)
-			autogold.ExpectFile(t, text)
+			autogold.ExpectFile(t, autogold.Raw(text))
 			assert.Equalf(t, text == "", elided,
 				"We should only see an empty result for non-empty inputs if we have elided text")
 		})

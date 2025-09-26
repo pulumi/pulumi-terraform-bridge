@@ -177,17 +177,12 @@ func Test_Generate(t *testing.T) {
 	schemaBytes, err := json.MarshalIndent(schemaResult.PackageSpec, "", "    ")
 	require.NoError(t, err)
 
-	// Create the directory structure and write the schema file in the current working directory
-	// since the Generate() function uses os.ReadFile() which reads from the current working directory
+	// Write the schema file in the temporary directory
+	require.NoError(t, os.Chdir(outDir))
 	schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
 	require.NoError(t, os.MkdirAll(schemaDir, 0o755))
 	schemaPath := filepath.Join(schemaDir, "schema.json")
 	require.NoError(t, os.WriteFile(schemaPath, schemaBytes, 0o600))
-
-	// Clean up the provider directory after the test
-	t.Cleanup(func() {
-		os.RemoveAll("provider")
-	})
 
 	// Now create the NodeJS generator and run it
 	gen, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
@@ -440,17 +435,14 @@ func Test_GenerateWithOverlay(t *testing.T) {
 			schemaBytes, err := json.MarshalIndent(schemaResult.PackageSpec, "", "    ")
 			require.NoError(t, err)
 
-			// Create the directory structure and write the schema file in the current working directory
-			// since the Generate() function uses os.ReadFile() which reads from the current working directory
+			// Create the directory structure and write the schema file in the temporary directory
+			// Change to the temporary directory so the Generate() function can find the schema file
+			require.NoError(t, os.Chdir(tempDir))
+
 			schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
 			require.NoError(t, os.MkdirAll(schemaDir, 0o755))
 			schemaPath := filepath.Join(schemaDir, "schema.json")
 			require.NoError(t, os.WriteFile(schemaPath, schemaBytes, 0o600))
-
-			// Clean up the provider directory after the test
-			t.Cleanup(func() {
-				os.RemoveAll("provider")
-			})
 
 			// Now create the language-specific generator and run it
 			gen, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
