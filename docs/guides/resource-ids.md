@@ -60,8 +60,14 @@ If the type of the `"id"` attribute is not coercible to a string, you must set `
 error: Resource test_res has a problem: no "id" attribute. To map this resource consider specifying ResourceInfo.ComputeID
 ```
 
-If the resource simply doesn't have an `"id"` attribute, you will need to set `ResourceInfo.ComputeID`.
-If you want to delegate the ID field in Pulumi to another attribute, you should use `tfbridge.DelegateIDField` to produce a `ResourceInfo.ComputeID` compatible function.
+This error should not occur anymore. For dynamic providers and Plugin Framework resources the bridge falls back to emitting a placeholder
+value (`"missing ID"`, exported as `tfbridge.MissingIDPlaceholder`) so schema generation and provider execution no longer fail.
+Providing an explicit `ComputeID` keeps the generated provider more aligned with the upstream import story. If you want to delegate the ID field
+in Pulumi to another attribute, you should use `tfbridge.DelegateIDField` to produce a `ResourceInfo.ComputeID` compatible function.
+
+When using `ResourceInfo.ComputeID` we typically map it to the "import id" of the resource, but there is nothing that requires it to be set to a
+specific value. The resource id and the import id do not need to match. Pulumi requires that each resource has an id (Terraform does not), but
+there is not requirement that the id mean anything. This is why we fall back to adding the `"missing ID"` value.
 
 ```go
 "test_res": {ComputeID: tfbridge.DelegateIDField("id", "testprovider", "https://github.com/pulumi/pulumi-testprovider")}

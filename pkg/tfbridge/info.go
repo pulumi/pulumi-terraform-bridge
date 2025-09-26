@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -24,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
@@ -34,6 +34,16 @@ import (
 type urnCtxKeyType struct{}
 
 var urnCtxKey = urnCtxKeyType{}
+
+// MissingIDPlaceholder is the fallback identifier used when a Terraform resource does not expose an "id" field.
+const MissingIDPlaceholder = "missing ID"
+
+// MissingIDComputeID returns a ComputeID implementation that always supplies MissingIDPlaceholder.
+func MissingIDComputeID() ComputeID {
+	return func(ctx context.Context, state resource.PropertyMap) (resource.ID, error) {
+		return resource.ID(MissingIDPlaceholder), nil
+	}
+}
 
 // XWithUrn returns a copy of ctx with the resource URN value.
 //

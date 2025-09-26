@@ -20,7 +20,6 @@
 package fixup
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -100,14 +99,10 @@ func fixMissingIDs(fixCtx fixCtx, p *info.Provider) error {
 			(id.Type() == shim.TypeString || getIDType(r.Schema) == "string") &&
 			id.Computed()
 		if !ok {
-			r.Schema.ComputeID = missingID
+			r.Schema.ComputeID = tfbridge.MissingIDComputeID()
 		}
 		return nil
 	})
-}
-
-func missingID(context.Context, resource.PropertyMap) (resource.ID, error) {
-	return "missing ID", nil
 }
 
 func fixPropertyConflict(fixCtx fixCtx, p *info.Provider) error {
