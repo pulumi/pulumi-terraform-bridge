@@ -177,8 +177,14 @@ func Test_Generate(t *testing.T) {
 	schemaBytes, err := json.MarshalIndent(schemaResult.PackageSpec, "", "    ")
 	require.NoError(t, err)
 
-	// Write the schema file in the temporary directory
+	// Create the directory structure and write the schema file in the test's temporary directory
+	// Change to the temporary directory so the Generate() function can find the schema file
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer os.Chdir(originalDir)
+
 	require.NoError(t, os.Chdir(outDir))
+
 	schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
 	require.NoError(t, os.MkdirAll(schemaDir, 0o755))
 	schemaPath := filepath.Join(schemaDir, "schema.json")
@@ -435,8 +441,12 @@ func Test_GenerateWithOverlay(t *testing.T) {
 			schemaBytes, err := json.MarshalIndent(schemaResult.PackageSpec, "", "    ")
 			require.NoError(t, err)
 
-			// Create the directory structure and write the schema file in the temporary directory
+			// Create the directory structure and write the schema file in the test's temporary directory
 			// Change to the temporary directory so the Generate() function can find the schema file
+			originalDir, err := os.Getwd()
+			require.NoError(t, err)
+			defer os.Chdir(originalDir)
+
 			require.NoError(t, os.Chdir(tempDir))
 
 			schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
