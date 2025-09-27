@@ -1,0 +1,69 @@
+{
+  "name": "random",
+  "description": "A Pulumi package to safely use randomness in Pulumi programs.",
+  "keywords": [
+    "pulumi",
+    "random"
+  ],
+  "homepage": "https://pulumi.io",
+  "license": "Apache-2.0",
+  "attribution": "This Pulumi package is based on the [`random` Terraform Provider](https://github.com/terraform-providers/terraform-provider-random).",
+  "repository": "https://github.com/pulumi/pulumi-random",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.*"
+      },
+      "namespaces": {
+        "random": "Random"
+      },
+      "compatibility": "tfbridge20",
+      "respectSchemaVersion": true
+    },
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi-random/sdk/v4/go/random",
+      "generateResourceContainerTypes": true,
+      "generateExtraInputTypes": true,
+      "respectSchemaVersion": true
+    },
+    "nodejs": {
+      "packageDescription": "A Pulumi package to safely use randomness in Pulumi programs.",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](https://github.com/pulumi/pulumi-random/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues).",
+      "devDependencies": {
+        "@types/node": "^10.0.0"
+      },
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true,
+      "respectSchemaVersion": true
+    },
+    "python": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](https://github.com/pulumi/pulumi-random/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues).",
+      "compatibility": "tfbridge20",
+      "respectSchemaVersion": true,
+      "pyproject": {
+        "enabled": true
+      }
+    }
+  },
+  "config": {},
+  "provider": {
+    "description": "The provider type for the random package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+    "methods": {
+      "terraformConfig": "pulumi:providers:random/terraformConfig"
+    }
+  },
+  "resources": {
+    "random:index/randomPassword:RandomPassword": {
+      "description": "## Example Usage\n\n```python\nimport pulumi\nimport pulumi_aws as aws\nimport pulumi_random as random\n\npassword = random.RandomPassword(\"password\",\n    length=16,\n    special=True,\n    override_special=\"!#$%\u0026*()-_=+[]{}\u003c\u003e:?\")\nexample = aws.rds.Instance(\"example\",\n    instance_class=aws.rds.InstanceType.T3_MICRO,\n    allocated_storage=64,\n    engine=\"mysql\",\n    username=\"someone\",\n    password=password.result)\n```\n\n## Import\n\nYou can import external passwords into your Pulumi programs as follows:\n\n```sh\u003cbreak\u003e\n$ import random:index/randomPassword:RandomPassword newPassword supersecret\n\u003cbreak\u003e```\n\nThis command will encode the `supersecret` token in Pulumi state and generate a code suggestion to\ninclude a new RandomPassword resource in your Pulumi program. Include the suggested code and do a\n`pulumi up`. Your secret password is now securely stored in Pulumi, and you can reference it in your\nPulumi program as `newPassword.result`.\n```",
+      "properties": {
+        "length": {
+          "type": "integer",
+          "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` + `min_lower` + `min_numeric` + `min_special`).\n"
+        }
+      }
+    }
+  }
+}
