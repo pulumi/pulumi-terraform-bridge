@@ -206,11 +206,8 @@ Some tests assert against generated output stored alongside fixtures. When behav
 
 - Set `PULUMI_DEBUG_GRPC=1` for verbose Pulumi provider logs.
 - Enable Terraform tracing with `TF_LOG=DEBUG` or `TF_LOG=TRACE` when Terraform behavior is surprising.
-- Capture temporary files via `pulcheck.WithTempDir` helpers to inspect Terraform state or HCL.
-- For cross-tests, compare witness recordings under `pkg/internal/tests/cross-tests/witness`.
 
 ## Continuous Integration
 
 - GitHub Actions run `make lint` and `make test` with caching.
-- Longer suites (cross-tests, property tests) can be flaky; reproduce locally before retrying CI.
 - Coverage reports aggregate into `coverage.txt` and feed the configuration in `codecov.yml`.

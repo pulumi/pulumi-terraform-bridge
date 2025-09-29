@@ -19,7 +19,7 @@ Optional but recommended:
 
 1. Clone the repo and optionally run `make go.work` to set up a Go workspace that includes nested modules.
 2. Run `make build` once; it tidies modules and ensures packages compile.
-3. Run `make test RUN_TEST_CMD=./pkg/tfbridge -run TestSmoke` (or another targeted test) to validate your local
+3. Run `make test RUN_TEST_CMD=./pkg/tfbridge -run TestProviderPreview` (or another targeted test) to validate your local
    environment before tackling larger changes. Full `make test` is heavy (downloads plugins and runs integration suites).
 
 ## Repository Tour
