@@ -19,7 +19,8 @@ A change to either half can impact the other. Treat the bridge as one product wi
 | ----- | -------- | ---- |
 | Build-time | `pkg/tfgen`, `docs/guides/*`, `pkg/convert`, `pkg/tf2pulumi` | Introspect Terraform provider schemas, emit Pulumi schema, SDKs, and docs. |
 | Runtime (SDKv2) | `pkg/tfbridge`, `pkg/tfshim/sdk-v{1,2}`, `pkg/providerserver` | Drive Terraform Plugin SDK providers via Pulumi RPC entry points. |
-| Runtime (PF) | `pkg/pf/*`, `pkg/tfshim/schema`, `pkg/x/muxer` | Bridge Terraform Plugin Framework providers and mixed muxed providers. |
+| Runtime (PF) | `pkg/pf/*`, `pkg/tfshim/schema` | Bridge Terraform Plugin Framework providers. |
+| Hybrid / muxing | `pkg/x/muxer`, `docs/guides/upgrade-sdk-to-mux.md` | Compose multiple runtime pipelines (SDKv2, PF, dynamic) into a single provider surface. |
 | Dynamic bridge | `dynamic/*` | Parameterizable provider that downloads and hosts Terraform providers at runtime. |
 | Testing | `pkg/tests`, `pkg/internal/tests/cross-tests`, `pkg/pf/tests` | Harnesses that keep behavior aligned with Terraform and Pulumi expectations. |
 | Ops & Tooling | `Makefile`, `scripts/`, `docs/operations` | Build, lint, test, release, and operational playbooks. |
@@ -59,7 +60,6 @@ Responsibilities:
 - **Lifecycle RPCs** – `Create`, `Read`, `Update`, `Delete`, `Invoke`, `Plan`, `CheckConfig`, etc. live in
   `pkg/tfbridge/provider_*.go` with shared helpers in `pkg/tfbridge/diff.go`, `pkg/tfbridge/schema.go`, etc.
 - **Shim layers** – `pkg/tfshim/sdk-v{1,2}` normalize Terraform Plugin SDK APIs into bridge-friendly interfaces.
-- **Muxing / Migration** – `pkg/x/muxer` combines SDKv2 + PF implementations during migrations.
 - **Panic recovery** – `pkg/providerserver/panic_recovering_provider.go` guards against provider panics.
 - **Diff & plan semantics** – core logic in `pkg/tfbridge/diff.go`, `pkg/tfbridge/detailed_diff.go`, and related helpers.
 
@@ -78,7 +78,6 @@ Responsibilities:
   to the bridge.
 - **Run-time metadata** – `pkg/pf/internal/runtypes`, `pkg/pf/internal/configencoding`, and `pkg/pf/internal/plugin` feed
   resource/data source registration, configuration types, and muxing details.
-- **Muxing / Migration** – Shared muxer (`pkg/x/muxer`) composes PF + SDKv2 providers during resource-by-resource moves.
 - **Panic recovery** – Reuses `pkg/providerserver` guards.
 
 ### Cross-Cutting Concerns
@@ -86,6 +85,7 @@ Responsibilities:
 - **State translation** (`pkg/tfbridge/state.go`, `pkg/tfshim/sdk-v2/upgrade_state.go`).
 - **Secrets & defaults** (`pkg/convert/secret.go`, `pkg/tfbridge/secrets.go`).
 - **Logging** (`internal/logging`).
+- **Runtime composition** (`pkg/x/muxer`) stitches together SDKv2, PF, and dynamic providers under one logical bridge.
 
 ## Bridging Modes
 
