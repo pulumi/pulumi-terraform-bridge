@@ -131,7 +131,7 @@
                 },
                 "isFileLockEnabled": {
                     "type": "boolean",
-                    "description": "If present, the boolean value specifies whether bucket is File Lock-enabled. Defaults to `false`.\n"
+                    "description": "If present, the boolean value specifies whether bucket is File Lock-enabled. Defaults to \u003cspan pulumi-lang-nodejs=\"`false`\" pulumi-lang-dotnet=\"`False`\" pulumi-lang-go=\"`false`\" pulumi-lang-python=\"`false`\" pulumi-lang-yaml=\"`false`\" pulumi-lang-java=\"`false`\"\u003e`false`\u003c/span\u003e.\n"
                 }
             },
             "type": "object"

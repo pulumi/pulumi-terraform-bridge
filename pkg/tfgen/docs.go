@@ -2157,6 +2157,24 @@ type infoContext struct {
 	info     tfbridge.ProviderInfo
 }
 
+type spanValues struct {
+	node, dotnet, golang, python, yaml, java, defaultDisplay string
+}
+
+func buildSpan(values spanValues) string {
+	//nolint:lll
+	spanFormat := `<span pulumi-lang-nodejs="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`
+	return fmt.Sprintf(
+		spanFormat,
+		values.node,
+		values.dotnet,
+		values.golang,
+		values.python,
+		values.yaml,
+		values.java,
+		values.defaultDisplay)
+}
+
 func (c infoContext) fixupPropertyReference(text string) string {
 	formatModulePrefix := func(mod tokens.ModuleName) string {
 		modname := mod.String()
@@ -2183,39 +2201,67 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			// This is a resource name
 			resname, mod := resourceName(c.info.GetResourcePrefix(), name, resInfo, false)
 			modname := formatModulePrefix(parentModuleName(mod))
-			switch c.language {
-			case Golang, Python:
-				// Use `ec2.Instance` format
-				return open + modname + resname.String() + close
-			default:
-				// Use `aws.ec2.Instance` format
-				return open + c.pkg.String() + "." + modname + resname.String() + close
+
+			// Use `ec2.Instance` format for Go and Python
+			goAndPyFormat := open + modname + resname.String() + close
+			// Use `aws.ec2.Instance` format for all other languages
+			allOtherLangs := open + c.pkg.String() + "." + modname + resname.String() + close
+
+			// We use the NodeJS default for registry docs.
+			if c.language == RegistryDocs {
+				return allOtherLangs
 			}
+			return buildSpan(spanValues{
+				node:           allOtherLangs,
+				dotnet:         allOtherLangs,
+				golang:         goAndPyFormat,
+				python:         goAndPyFormat,
+				yaml:           allOtherLangs,
+				java:           allOtherLangs,
+				defaultDisplay: allOtherLangs,
+			})
 		} else if dataInfo, hasDatasourceInfo := c.info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
 			getname, mod := dataSourceName(c.info.GetResourcePrefix(), name, dataInfo)
 			modname := formatModulePrefix(parentModuleName(mod))
-			switch c.language {
-			case Golang:
-				// Use `ec2.getAmi` format
-				return open + modname + getname.String() + close
-			case Python:
-				// Use `ec2.get_ami` format
-				return open + python.PyName(modname+getname.String()) + close
-			default:
-				// Use `aws.ec2.getAmi` format
-				return open + c.pkg.String() + "." + modname + getname.String() + close
+
+			goFormat := open + modname + getname.String() + close
+			pyFormat := open + python.PyName(modname+getname.String()) + close
+			// Use `aws.ec2.Instance` format
+			allOtherLangs := open + c.pkg.String() + "." + modname + getname.String() + close
+			if c.language == RegistryDocs {
+				return allOtherLangs
 			}
+			return buildSpan(spanValues{
+				node:           allOtherLangs,
+				dotnet:         allOtherLangs,
+				golang:         goFormat,
+				python:         pyFormat,
+				yaml:           allOtherLangs,
+				java:           allOtherLangs,
+				defaultDisplay: allOtherLangs,
+			})
 		}
 		// Else just treat as a property name
-		switch c.language {
-		case NodeJS, Golang:
-			// Use `camelCase` format
-			pname := propertyName(name, nil, nil)
-			return open + pname + close
-		default:
-			return match
+		pname := propertyName(name, nil, nil)
+		camelCaseFormat := open + pname + close
+
+		// Capitalize dotnet properties
+		firstLetter := string(pname[0])
+		dotnetFormat := open + strings.ToUpper(firstLetter) + pname[1:] + close
+
+		if c.language == RegistryDocs {
+			return camelCaseFormat
 		}
+		return buildSpan(spanValues{
+			node:           camelCaseFormat,
+			dotnet:         dotnetFormat,
+			golang:         camelCaseFormat,
+			python:         match,
+			yaml:           camelCaseFormat,
+			java:           camelCaseFormat,
+			defaultDisplay: match,
+		})
 	})
 }
 

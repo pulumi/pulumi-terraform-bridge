@@ -804,7 +804,7 @@
                 },
                 "singleNestedAttrJsonCopy": {
                     "type": "string",
-                    "description": "Computed as a JSON-ified copy of single_nested_attr input"
+                    "description": "Computed as a JSON-ified copy of\u003cspan pulumi-lang-nodejs=\" singleNestedAttr \" pulumi-lang-dotnet=\" SingleNestedAttr \" pulumi-lang-go=\" singleNestedAttr \" pulumi-lang-python=\" single_nested_attr \" pulumi-lang-yaml=\" singleNestedAttr \" pulumi-lang-java=\" singleNestedAttr \"\u003e single_nested_attr \u003c/span\u003einput"
                 },
                 "statedir": {
                     "type": "string",
@@ -970,7 +970,7 @@
                     },
                     "singleNestedAttrJsonCopy": {
                         "type": "string",
-                        "description": "Computed as a JSON-ified copy of single_nested_attr input"
+                        "description": "Computed as a JSON-ified copy of\u003cspan pulumi-lang-nodejs=\" singleNestedAttr \" pulumi-lang-dotnet=\" SingleNestedAttr \" pulumi-lang-go=\" singleNestedAttr \" pulumi-lang-python=\" single_nested_attr \" pulumi-lang-yaml=\" singleNestedAttr \" pulumi-lang-java=\" singleNestedAttr \"\u003e single_nested_attr \u003c/span\u003einput"
                     },
                     "statedir": {
                         "type": "string",

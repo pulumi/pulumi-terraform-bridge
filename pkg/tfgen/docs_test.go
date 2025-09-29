@@ -43,41 +43,39 @@ import (
 
 var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
-type testcase struct {
-	Input    string
-	Expected string
-}
-
 func TestReformatText(t *testing.T) {
 	t.Parallel()
-	tests := []testcase{
+	tests := []struct {
+		name  string
+		input string
+	}{
 		{
-			Input:    "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
-			Expected: "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
+			name:  "No changes on valid links",
+			input: "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
 		},
 		{
-			Input:    "It's recommended to specify `create_before_destroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by [`aws_lb_listener`](lb_listener.html)).", //nolint:lll
-			Expected: "It's recommended to specify `createBeforeDestroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by `awsLbListener`).",                         //nolint:lll
+			name:  "Translates input options to Pulumi formats",
+			input: "It's recommended to specify `create_before_destroy = true` in a [lifecycle][1] block to replace a certificate which is currently in use (eg, by [`aws_lb_listener`](lb_listener.html)).", //nolint:lll
 		},
 		{
-			Input:    "The execution ARN to be used in [`lambda_permission`](/docs/providers/aws/r/lambda_permission.html)'s `source_arn`",                       //nolint:lll
-			Expected: "The execution ARN to be used in [`lambdaPermission`](https://www.terraform.io/docs/providers/aws/r/lambda_permission.html)'s `sourceArn`", //nolint:lll
+			name:  "Fixes up link refs",
+			input: "The execution ARN to be used in [`lambda_permission`](/docs/providers/aws/r/lambda_permission.html)'s `source_arn`", //nolint:lll
 		},
 		{
-			Input:    "See google_container_node_pool for schema.",
-			Expected: "See google.container.NodePool for schema.",
+			name:  "Translates resource names to Pulumi formats",
+			input: "See google_container_node_pool for schema.",
 		},
 		{
-			Input:    "\n(Required)\nThe app_ip of name of the Firebase webApp.",
-			Expected: "The appIp of name of the Firebase webApp.",
+			name:  "Translates property types to Pulumi formats",
+			input: "\n(Required)\nThe app_ip of name of the Firebase webApp.",
 		},
 		{
-			Input:    "An example username is jdoa@hashicorp.com",
-			Expected: "",
+			name:  "Removes lines with @hashicorp.com in the text",
+			input: "An example username is jdoa@hashicorp.com",
 		},
 		{
-			Input:    "An example passowrd is Terraform-secret",
-			Expected: "",
+			name:  "Removes the word Terraform from text",
+			input: "An example password is Terraform-secret",
 		},
 	}
 
@@ -92,11 +90,14 @@ func TestReformatText(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		text, elided := reformatText(infoCtx, test.Input, nil)
-		assert.Equal(t, test.Expected, text)
-		assert.Equalf(t, text == "", elided,
-			"We should only see an empty result for non-empty inputs if we have elided text")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			text, elided := reformatText(infoCtx, tc.input, nil)
+			autogold.ExpectFile(t, autogold.Raw(text))
+			assert.Equalf(t, text == "", elided,
+				"We should only see an empty result for non-empty inputs if we have elided text")
+		})
 	}
 }
 
@@ -2742,6 +2743,115 @@ resource "aws_ami" "example" {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			actual := guessIsHCL(tc.code)
 			assert.Equal(t, tc.hcl, actual)
+		})
+	}
+}
+
+func TestFixupPropertyReference(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name     string
+		input    string
+		expected string
+		ctx      infoContext
+	}
+
+	tests := []testCase{
+		{
+			name:     "resource name with backticks",
+			input:    "Use the `random_pet` resource to generate pet names.",
+			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\">`random.RandomPet`</span> resource to generate pet names.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
+					},
+				},
+			},
+		},
+		{
+			name:     "data source name with backticks",
+			input:    "Use the `random_id` data source to get random IDs.",
+			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\">`random.RandomId`</span> data source to get random IDs.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					DataSources: map[string]*tfbridge.DataSourceInfo{
+						"random_id": {Tok: "random:index/randomId:RandomId"},
+					},
+				},
+			},
+		},
+		{
+			name:     "property name with backticks",
+			input:    "The `length` property controls the output length.",
+			expected: "The <span pulumi-lang-nodejs=\"`length`\" pulumi-lang-dotnet=\"`Length`\" pulumi-lang-go=\"`length`\" pulumi-lang-python=\"`length`\" pulumi-lang-yaml=\"`length`\" pulumi-lang-java=\"`length`\">`length`</span> property controls the output length.",
+			ctx: infoContext{
+				pkg:  "random",
+				info: tfbridge.ProviderInfo{},
+			},
+		},
+		{
+			name:     "property name with underscores",
+			input:    "The length must also be greater than `min_upper`.",
+			expected: "The length must also be greater than <span pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\">`min_upper`</span>.",
+			ctx: infoContext{
+				pkg:  "random",
+				info: tfbridge.ProviderInfo{},
+			},
+		},
+		{
+			name:     "resource name without backticks",
+			input:    "Use random_pet resource to generate pet names.",
+			expected: "Use<span pulumi-lang-nodejs=\" random.RandomPet \" pulumi-lang-dotnet=\" random.RandomPet \" pulumi-lang-go=\" RandomPet \" pulumi-lang-python=\" RandomPet \" pulumi-lang-yaml=\" random.RandomPet \" pulumi-lang-java=\" random.RandomPet \"> random.RandomPet </span>resource to generate pet names.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
+					},
+				},
+			},
+		},
+		{
+			name:     "multiple resource references",
+			input:    "Use `random_pet` and `random_id` together.",
+			expected: "Use <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\">`random.RandomPet`</span> and <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\">`random.RandomId`</span> together.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
+					},
+					DataSources: map[string]*tfbridge.DataSourceInfo{
+						"random_id": {Tok: "random:index/randomId:RandomId"},
+					},
+				},
+			},
+		},
+		{
+			name:     "returns no span for registry docs",
+			input:    "Use random_pet resource to generate pet names.",
+			expected: "Use random.RandomPet resource to generate pet names.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					Resources: map[string]*tfbridge.ResourceInfo{
+						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
+					},
+				},
+				language: RegistryDocs,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual := tt.ctx.fixupPropertyReference(tt.input)
+			assert.Equal(t, tt.expected, actual)
 		})
 	}
 }
