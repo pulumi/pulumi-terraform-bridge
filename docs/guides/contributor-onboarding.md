@@ -26,8 +26,8 @@ Optional but recommended:
 
 - **Runtime bridge** – `pkg/tfbridge`, `pkg/tfshim`: Pulumi RPC handlers + Terraform shims.
 - **Plugin Framework support** – `pkg/pf`, `pkg/x/muxer`.
-- **Design-time tooling** – `pkg/tfgen`, `pkg/convert`, `pkg/tf2pulumi`.
-- **Dynamic provider** – `dynamic/` binary that parameterizes arbitrary Terraform providers.
+- **Compile-time tooling** – `pkg/tfgen`, `pkg/convert`, `pkg/tf2pulumi`.
+- **Dynamically bridged provider** – `dynamic/` binary that parameterizes arbitrary Terraform providers.
 - **Tests** – `pkg/tests` (schema + program), `pkg/internal/tests/cross-tests`, `pkg/pf/tests`, plus replay/unit suites.
 - **Documentation** – `docs/` (Sphinx + Markdown), with guides referenced from the main README.
 
@@ -45,9 +45,6 @@ Optional but recommended:
 
 - **Pulumi <-> Provider traffic** – Use `PULUMI_DEBUG_GRPC=1` during tests to inspect gRPC payloads.
 - **Terraform behavior** – Reproduce using Terraform CLI or cross-tests to confirm parity gaps.
-- **Schema diffs** – Leverage `pkg/tfgen/difftest` utilities and golden outputs.
-- **Panics / crashes** – Wrap providers with `providerserver.PanicRecoveringProvider` (already done in production) and
-  look for stack traces in test logs.
 
 ## Coding Standards
 

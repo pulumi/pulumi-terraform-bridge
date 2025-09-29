@@ -47,7 +47,6 @@ Key extension points:
 
 - Adding a new Terraform resource → update ProviderInfo + rerun `tfgen` via provider repo.
 - Debugging doc generation → reproduce with `make test RUN_TEST_CMD=./pkg/tfgen` and inspect `COVERAGE_OUTPUT_DIR` output.
-- Investigating schema deltas → use `pkg/tfgen/diff` utilities and golden tests.
 
 ## Runtime Pipeline
 
