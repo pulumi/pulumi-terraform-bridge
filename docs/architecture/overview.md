@@ -47,22 +47,40 @@ Key extension points:
 - Adding a new Terraform resource → update ProviderInfo + rerun `tfgen` via provider repo.
 - Debugging doc generation → reproduce with `make test RUN_TEST_CMD=./pkg/tfgen` and inspect `COVERAGE_OUTPUT_DIR` output.
 
-## Runtime Pipeline
+## Runtime Pipeline (Plugin SDK v2)
 
 ```
-Pulumi Engine ─► `pkg/tfbridge.Provider` ─► `pkg/tfshim` ─► Terraform Provider
-            (gRPC)           (resource RPC)        (SDKv{1,2} or PF protocol)
+Pulumi Engine ─► `pkg/tfbridge.Provider` ─► `pkg/tfshim/sdk-v2` ─► Terraform Plugin SDK provider
+            (Pulumi gRPC)        (shim interfaces)        (Terraform RPC)
 ```
 
 Responsibilities:
 
 - **Lifecycle RPCs** – `Create`, `Read`, `Update`, `Delete`, `Invoke`, `Plan`, `CheckConfig`, etc. live in
   `pkg/tfbridge/provider_*.go` with shared helpers in `pkg/tfbridge/diff.go`, `pkg/tfbridge/schema.go`, etc.
-- **Shim layers** – `pkg/tfshim/sdk-v2` (and legacy `sdk-v1`) normalize Terraform Plugin SDK APIs; PF runtime uses
-  `pkg/pf/tfbridge` alongside `pkg/tfshim/schema`.
+- **Shim layers** – `pkg/tfshim/sdk-v{1,2}` normalize Terraform Plugin SDK APIs into bridge-friendly interfaces.
 - **Muxing / Migration** – `pkg/x/muxer` combines SDKv2 + PF implementations during migrations.
 - **Panic recovery** – `pkg/providerserver/panic_recovering_provider.go` guards against provider panics.
-- **Diff & plan semantics** (`pkg/tfbridge/diff.go`, `pkg/pf/tfbridge/provider_diff.go`).
+- **Diff & plan semantics** – core logic in `pkg/tfbridge/diff.go`, `pkg/tfbridge/detailed_diff.go`, and related helpers.
+
+## Runtime Pipeline (Plugin Framework)
+
+```
+Pulumi Engine ─► `pkg/pf/tfbridge.Provider` ─► `pf.ShimProvider` / `pkg/pf/internal/schemashim` ─► `tfprotov6.ProviderServer` ─► Terraform Plugin Framework provider
+            (Pulumi gRPC)               (PF shim + metadata)                   (Terraform PF RPC)
+```
+
+Responsibilities:
+
+- **Lifecycle RPCs** – Implemented in `pkg/pf/tfbridge/provider_*.go` with PF-specific diffing in
+  `pkg/pf/tfbridge/provider_diff.go`.
+- **PF shims** – `pf.ShimProvider`, `pkg/pf/internal/schemashim`, and `pkg/tfshim/schema` expose PF metadata and schema
+  to the bridge.
+- **Run-time metadata** – `pkg/pf/internal/runtypes`, `pkg/pf/internal/configencoding`, and `pkg/pf/internal/plugin` feed
+  resource/data source registration, configuration types, and muxing details.
+- **Muxing / Migration** – Shared muxer (`pkg/x/muxer`) composes PF + SDKv2 providers during resource-by-resource moves.
+- **Panic recovery** – Reuses `pkg/providerserver` guards.
+
 ### Cross-Cutting Concerns
 
 - **State translation** (`pkg/tfbridge/state.go`, `pkg/tfshim/sdk-v2/upgrade_state.go`).
