@@ -26,7 +26,7 @@ Optional but recommended:
 
 - **Runtime bridge** – `pkg/tfbridge`, `pkg/tfshim`: Pulumi RPC handlers + Terraform shims.
 - **Plugin Framework support** – `pkg/pf`, `pkg/x/muxer`.
-- **Compile-time tooling** – `pkg/tfgen`, `pkg/convert`, `pkg/tf2pulumi`.
+- **Build-time tooling** – `pkg/tfgen`, `pkg/convert`, `pkg/tf2pulumi`.
 - **Dynamically bridged provider** – `dynamic/` binary that parameterizes arbitrary Terraform providers.
 - **Tests** – `pkg/tests` (schema + program), `pkg/internal/tests/cross-tests`, `pkg/pf/tests`, plus replay/unit suites.
 - **Documentation** – `docs/` (Sphinx + Markdown), with guides referenced from the main README.

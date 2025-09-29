@@ -7,7 +7,7 @@ intended as a launchpad: each section links to the code, docs, or playbooks that
 
 The bridge has two equally important responsibilities:
 
-1. **Compile-time generation** – Translate a Terraform provider's schema and metadata into a Pulumi schema, SDKs, and docs so Pulumi users can program against the provider.
+1. **Build-time generation** – Translate a Terraform provider's schema and metadata into a Pulumi schema, SDKs, and docs so Pulumi users can program against the provider.
 2. **Runtime translation** – Act as a Pulumi resource provider that speaks Pulumi's gRPC protocol while driving the
    Terraform provider implementation under the hood.
 
@@ -17,14 +17,14 @@ A change to either half can impact the other. Treat the bridge as one product wi
 
 | Layer | Location | Role |
 | ----- | -------- | ---- |
-| Compile-time | `pkg/tfgen`, `docs/guides/*`, `pkg/convert`, `pkg/tf2pulumi` | Introspect Terraform provider schemas, emit Pulumi schema, SDKs, and docs. |
+| Build-time | `pkg/tfgen`, `docs/guides/*`, `pkg/convert`, `pkg/tf2pulumi` | Introspect Terraform provider schemas, emit Pulumi schema, SDKs, and docs. |
 | Runtime (SDKv2) | `pkg/tfbridge`, `pkg/tfshim/sdk-v{1,2}`, `pkg/providerserver` | Drive Terraform Plugin SDK providers via Pulumi RPC entry points. |
 | Runtime (PF) | `pkg/pf/*`, `pkg/tfshim/schema`, `pkg/x/muxer` | Bridge Terraform Plugin Framework providers and mixed muxed providers. |
 | Dynamic bridge | `dynamic/*` | Parameterizable provider that downloads and hosts Terraform providers at runtime. |
 | Testing | `pkg/tests`, `pkg/internal/tests/cross-tests`, `pkg/pf/tests` | Harnesses that keep behavior aligned with Terraform and Pulumi expectations. |
 | Ops & Tooling | `Makefile`, `scripts/`, `docs/operations` | Build, lint, test, release, and operational playbooks. |
 
-## Compile-Time Pipeline
+## Build-Time Pipeline
 
 ```
 Terraform Provider ──► Schema Introspection (`tfgen/schema.go`)
@@ -89,7 +89,7 @@ Each mode shares testing harnesses but has mode-specific fixtures (see `docs/gui
 ## Where to Learn More
 
 - Runtime deep dive (planned) → `docs/architecture/runtime.md` (placeholder).
-- Compile-time cookbook → `docs/guides/new-provider.md`, `docs/guides/new-pf-provider.md`.
+- Build-time cookbook → `docs/guides/new-provider.md`, `docs/guides/new-pf-provider.md`.
 - Testing strategy → `docs/guides/testing.md` (this repo) + `pkg/tests` examples.
 - Maintaining TODOs & deprecations → `docs/operations/todo-triage.md`.
 
