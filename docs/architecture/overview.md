@@ -7,8 +7,7 @@ intended as a launchpad: each section links to the code, docs, or playbooks that
 
 The bridge has two equally important responsibilities:
 
-1. **Design-time generation** – Translate a Terraform provider's schema and metadata into a Pulumi schema, SDKs, and
-   docs so Pulumi users can program against the provider.
+1. **Compile-time generation** – Translate a Terraform provider's schema and metadata into a Pulumi schema, SDKs, and docs so Pulumi users can program against the provider.
 2. **Runtime translation** – Act as a Pulumi resource provider that speaks Pulumi's gRPC protocol while driving the
    Terraform provider implementation under the hood.
 
@@ -18,14 +17,14 @@ A change to either half can impact the other. Treat the bridge as one product wi
 
 | Layer | Location | Role |
 | ----- | -------- | ---- |
-| Design-time | `pkg/tfgen`, `docs/guides/*`, `pkg/convert`, `pkg/tf2pulumi` | Introspect Terraform provider schemas, emit Pulumi schema, SDKs, and docs. |
+| Compile-time | `pkg/tfgen`, `docs/guides/*`, `pkg/convert`, `pkg/tf2pulumi` | Introspect Terraform provider schemas, emit Pulumi schema, SDKs, and docs. |
 | Runtime (SDKv2) | `pkg/tfbridge`, `pkg/tfshim/sdk-v{1,2}`, `pkg/providerserver` | Drive Terraform Plugin SDK providers via Pulumi RPC entry points. |
 | Runtime (PF) | `pkg/pf/*`, `pkg/tfshim/schema`, `pkg/x/muxer` | Bridge Terraform Plugin Framework providers and mixed muxed providers. |
 | Dynamic bridge | `dynamic/*` | Parameterizable provider that downloads and hosts Terraform providers at runtime. |
 | Testing | `pkg/tests`, `pkg/internal/tests/cross-tests`, `pkg/pf/tests` | Harnesses that keep behavior aligned with Terraform and Pulumi expectations. |
 | Ops & Tooling | `Makefile`, `scripts/`, `docs/operations` | Build, lint, test, release, and operational playbooks. |
 
-## Design-Time Pipeline
+## Compile-Time Pipeline
 
 ```
 Terraform Provider ──► Schema Introspection (`tfgen/schema.go`)
@@ -63,11 +62,10 @@ Responsibilities:
   `pkg/pf/tfbridge` alongside `pkg/tfshim/schema`.
 - **Muxing / Migration** – `pkg/x/muxer` combines SDKv2 + PF implementations during migrations.
 - **Panic recovery** – `pkg/providerserver/panic_recovering_provider.go` guards against provider panics.
-
+- **Diff & plan semantics** (`pkg/tfbridge/diff.go`, `pkg/pf/tfbridge/provider_diff.go`).
 ### Cross-Cutting Concerns
 
 - **State translation** (`pkg/tfbridge/state.go`, `pkg/tfshim/sdk-v2/upgrade_state.go`).
-- **Diff & plan semantics** (`pkg/tfbridge/diff.go`, `pkg/pf/tfbridge/provider_diff.go`).
 - **Secrets & defaults** (`pkg/convert/secret.go`, `pkg/tfbridge/secrets.go`).
 - **Logging** (`internal/logging`).
 
@@ -85,14 +83,13 @@ Each mode shares testing harnesses but has mode-specific fixtures (see `docs/gui
 ## Operational Flows
 
 - **Build & test** – `make build`, `make lint`, `make test`. See `AGENTS.md` and `docs/guides/contributor-onboarding.md`.
-- **Plugin pinning** – `make pin_upstream_sdk` keeps SDKv2 shims aligned with Pulumi fork.
 - **Releases** – Follow platform providers playbook (link in root README); capture bridge-specific steps in
   `docs/operations/maintainability-playbook.md`.
 
 ## Where to Learn More
 
 - Runtime deep dive (planned) → `docs/architecture/runtime.md` (placeholder).
-- Design-time cookbook → `docs/guides/new-provider.md`, `docs/guides/new-pf-provider.md`.
+- Compile-time cookbook → `docs/guides/new-provider.md`, `docs/guides/new-pf-provider.md`.
 - Testing strategy → `docs/guides/testing.md` (this repo) + `pkg/tests` examples.
 - Maintaining TODOs & deprecations → `docs/operations/todo-triage.md`.
 

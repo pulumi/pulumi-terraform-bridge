@@ -41,7 +41,7 @@ test:: install_plugins
 # tests. In case where system behavior changes intentionally this can
 # be useful to run to review the differences with git diff.
 test_accept::
-	PULUMI_ACCEPT=1 go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD) -update
+	PULUMI_ACCEPT=1 go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
 
 generate_builtins_test::
 	if [ ! -d ./scripts/venv ]; then python -m venv ./scripts/venv; fi

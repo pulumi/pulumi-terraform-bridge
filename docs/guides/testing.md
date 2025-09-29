@@ -41,6 +41,9 @@ make test RUN_TEST_CMD=./pkg/internal/tests/cross-tests
 
 # Accept golden updates after intentional diff changes
 make test_accept
+
+# Accept autogold updates after intentional diff changes
+make test RUN_TEST_CMD='./pkg/pf/tests/internal/cross-tests -run TestWritePFHCLProvider -update'
 ```
 
 `make test` installs required Pulumi plugins and builds the test provider binary, so the first run can take several minutes.
@@ -185,8 +188,9 @@ Examples worth consulting:
 ## Property-Based Tests
 
 Property-based tests extend cross-tests with randomized inputs using the
-[Rapid](https://github.com/flyingmutant/rapid) library (`pkg/internal/tests/cross-tests/rapid_test.go`). Because they
-explore many scenarios, they take longer to run and can be noisy; prefer them when chasing subtle schema interactions.
+[Rapid](https://github.com/flyingmutant/rapid) library (`pkg/internal/tests/cross-tests/rapid_test.go`). These tests
+are currently intended to be used as a local tool. They are not yet in a stable place where
+we can run these in CI without failures.
 
 ## gRPC Replay Tests (Legacy)
 
@@ -196,9 +200,10 @@ use schema + program or cross-tests instead. Treat replays as stop-gaps and back
 
 ## Golden Files & Accepting Changes
 
-Some tests assert against generated output stored alongside fixtures. When behavior changes intentionally:
+Some tests assert against generated output stored alongside fixtures, while others use the [autogold](https://github.com/hexops/autogold) package. When behavior changes intentionally:
 
 1. Run `make test_accept` (sets `PULUMI_ACCEPT=1`) to update goldens.
+  - For `autogold` tests, update individual tests using the `-update` flag (e.g. `make test RUN_TEST_CMD='./pkg/pf/tests/internal/cross-tests -run TestWritePFHCLProvider -update'`)
 2. Inspect diffs carefully and justify them in your PR description.
 3. Coordinate with maintainers when changes could affect downstream providers.
 
