@@ -127,8 +127,7 @@ func skipOnWindows(t *testing.T) {
 	}
 }
 
-func Test_Generate(t *testing.T) {
-	t.Parallel()
+func Test_Generate(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared working directory for schema file
 	skipOnWindows(t)
 
 	p := pulcheck.BridgedProvider(t, "prov", &schema.Provider{
@@ -177,14 +176,9 @@ func Test_Generate(t *testing.T) {
 	schemaBytes, err := json.MarshalIndent(schemaResult.PackageSpec, "", "    ")
 	require.NoError(t, err)
 
-	// Create the directory structure and write the schema file in the test's temporary directory
-	// Change to the temporary directory so the Generate() function can find the schema file
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
-
-	require.NoError(t, os.Chdir(outDir))
-
+	t.Chdir(outDir)
+	// Create the directory structure and write the schema file in the current working directory
+	// since the Generate() function uses os.ReadFile() which reads from the current working directory
 	schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
 	require.NoError(t, os.MkdirAll(schemaDir, 0o755))
 	schemaPath := filepath.Join(schemaDir, "schema.json")
@@ -231,8 +225,7 @@ func Test_Generate(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_GenerateWithOverlay(t *testing.T) {
-	t.Parallel()
+func Test_GenerateWithOverlay(t *testing.T) { //nolint:paralleltest // Cannot run in parallel due to shared working directory for schema file
 	skipOnWindows(t)
 
 	p := pulcheck.BridgedProvider(t, "prov", &schema.Provider{
@@ -441,14 +434,9 @@ func Test_GenerateWithOverlay(t *testing.T) {
 			schemaBytes, err := json.MarshalIndent(schemaResult.PackageSpec, "", "    ")
 			require.NoError(t, err)
 
-			// Create the directory structure and write the schema file in the test's temporary directory
-			// Change to the temporary directory so the Generate() function can find the schema file
-			originalDir, err := os.Getwd()
-			require.NoError(t, err)
-			defer os.Chdir(originalDir)
-
-			require.NoError(t, os.Chdir(tempDir))
-
+			t.Chdir(tempDir)
+			// Create the directory structure and write the schema file in the current working directory
+			// since the Generate() function uses os.ReadFile() which reads from the current working directory
 			schemaDir := filepath.Join("provider", "cmd", "pulumi-resource-prov")
 			require.NoError(t, os.MkdirAll(schemaDir, 0o755))
 			schemaPath := filepath.Join(schemaDir, "schema.json")
