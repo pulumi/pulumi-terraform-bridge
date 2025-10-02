@@ -50,10 +50,11 @@ make test RUN_TEST_CMD='./pkg/pf/tests/internal/cross-tests -run TestWritePFHCLP
 
 ## Choosing the Right Layer
 
-1. **Start simple** – If logic can be isolated, write a pure Go unit test.
-2. **Touching resource CRUD, diffing, or provider config** – use schema + program tests to exercise Pulumi RPC flows.
-3. **Parity regression** – Write or update a cross-test so Terraform CLI and Pulumi remain aligned.
-4. **Protocol edge cases** – If reproducing a live gRPC sequence is easiest, add a replay test but translate it into a higher-level test when possible.
+1. **Regression Tests** - uses schema + program tests and create individual test cases
+2. **Proactive Hardening** - uses rapid/property based testing. For when you are trying to figure out edge cases. Only appropriate for the stable core of the system
+3. **Matching TF** - use cross-tests. _Anytime_ you are wanting to ensure that Pulumi and Terraform CLI remain aligned you should use cross-tests.
+4. **Regular Tests** - use schema + program tests. Simple Go unit tests are not as useful for this codebase. There is test infrastructure in place
+   to make these integration tests pretty fast to run.
 
 ## Schema + Program Integration Tests
 
