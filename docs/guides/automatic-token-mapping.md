@@ -39,6 +39,32 @@ Each built-in strategy decides how to assign Terraform tokens to Pulumi modules,
 
 `tokens.SingleModule` is a strategy that assigns all tokens to a specific module. 
 
+### Case-Insensitive Token Deduplication
+
+Some Terraform providers define resources whose names only differ by underscores or
+capitalization—for example `foo_bar` and `foo_bar_`. When `MakeStandard` converts these
+names to Pulumi tokens, they collide (`foo:index/bar:Bar`). To opt in to automatic
+deduplication, wrap your strategy with `tokens.WithCaseInsensitiveDedup`, passing the same
+`Make` function you used originally plus the provider metadata store (if available):
+
+```go
+makeStandard := tokens.MakeStandard("foo")
+strategy := tokens.WithCaseInsensitiveDedup(
+    tokens.SingleModule("foo_", "index", makeStandard),
+    makeStandard,
+    prov.MetadataInfo.Data,
+)
+
+prov.MustComputeTokens(strategy)
+```
+
+The first token keeps its original name; subsequent collisions receive a deterministic
+`Vn` suffix (e.g., `BarV2`). Manual overrides remain untouched. When metadata is
+supplied, previously generated tokens are replayed on later tfgen runs so the same resource
+keeps the unsuffixed name. Without metadata (for example when using the dynamic provider
+CLI) the deduper still prevents collisions within a run, but the winner of the unsuffixed
+name may change after the schema evolves.
+
 ### `tokens.KnownModules`
 
 `tokens.KnownModules` is a strategy that assigns tokens to a hand-authored set of modules based on prefix in the Terraform token. 
