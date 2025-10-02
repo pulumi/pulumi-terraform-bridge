@@ -17,9 +17,9 @@ A change to either half can impact the other. Treat the bridge as one product wi
 
 | Layer | Location | Role |
 | ----- | -------- | ---- |
-| Build-time | `pkg/tfgen`, `docs/guides/*`, `pkg/convert`, `pkg/tf2pulumi` | Introspect Terraform provider schemas, emit Pulumi schema, SDKs, and docs. |
+| Build-time | `pkg/tfgen`, `pkg/pf/tfgen`, `docs/guides/*`, `pkg/convert`, `pkg/tf2pulumi` | Introspect Terraform provider schemas, emit Pulumi schema, SDKs, and docs. |
 | Runtime (SDKv2) | `pkg/tfbridge`, `pkg/tfshim/sdk-v{1,2}`, `pkg/providerserver` | Drive Terraform Plugin SDK providers via Pulumi RPC entry points. |
-| Runtime (PF) | `pkg/pf/*`, `pkg/tfshim/schema` | Bridge Terraform Plugin Framework providers. |
+| Runtime (PF) | `pkg/pf/tfbridge`, `pkg/tfshim/schema` | Bridge Terraform Plugin Framework providers. |
 | Hybrid / muxing | `pkg/x/muxer`, `docs/guides/upgrade-sdk-to-mux.md` | Compose multiple runtime pipelines (SDKv2, PF, dynamic) into a single provider surface. |
 | Dynamic bridge | `dynamic/*` | Parameterizable provider that downloads and hosts Terraform providers at runtime. |
 | Testing | `pkg/tests`, `pkg/internal/tests/cross-tests`, `pkg/pf/tests` | Harnesses that keep behavior aligned with Terraform and Pulumi expectations. |
@@ -30,8 +30,7 @@ A change to either half can impact the other. Treat the bridge as one product wi
 ```
 Terraform Provider ──► Schema Introspection (`tfgen/schema.go`)
       │                 │
-      │                 ├─► Pulumi PackageSpec (`pkg/tfgen/generate.go`)
-      │                 ├─► Language SDKs (`pkg/tfgen/generate_<lang>.go`)
+      │                 ├─► Pulumi Schema (`pkg/tfgen/generate.go`)
       │                 └─► Docs + Examples (`pkg/tfgen/docs.go`, `pkg/convert`)
       ▼
 Pulumi SDK + Schema Artifacts

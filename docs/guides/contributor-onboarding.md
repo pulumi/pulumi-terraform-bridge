@@ -8,7 +8,6 @@ assumes you are comfortable with Go and have Pulumi/Terraform installed, but are
 - Go version from `go.mod` (install via `mise` or your package manager).
 - Pulumi CLI ≥ 3.x (required for tests and plugin installs).
 - Terraform / OpenTofu CLI (helps when debugging or running cross-tests locally).
-- `golangci-lint` (installed automatically via `make lint`).
 
 Optional but recommended:
 
