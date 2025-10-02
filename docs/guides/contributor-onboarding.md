@@ -49,7 +49,6 @@ Optional but recommended:
 ## Coding Standards
 
 - Run `make fmt` (gofmt -s) and `make lint` (golangci-lint) before sending a PR.
-- Favor explicit module paths under `github.com/pulumi/pulumi-terraform-bridge/v3/...`.
 - Wrap returned errors with context: `fmt.Errorf("failed to diff %s: %w", name, err)`.
 - Avoid `panic` in library code; prefer returning errors.
 - Tests should be table-driven when practical and run in parallel (`t.Parallel()`).
