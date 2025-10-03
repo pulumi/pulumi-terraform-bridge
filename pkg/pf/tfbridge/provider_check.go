@@ -108,6 +108,9 @@ func (p *provider) validateResourceConfig(
 	req := tfprotov6.ValidateResourceConfigRequest{
 		TypeName: rh.terraformResourceName,
 		Config:   encodedInputs,
+		ClientCapabilities: &tfprotov6.ValidateResourceConfigClientCapabilities{
+			WriteOnlyAttributesAllowed: true,
+		},
 	}
 
 	resp, err := p.tfServer.ValidateResourceConfig(ctx, &req)

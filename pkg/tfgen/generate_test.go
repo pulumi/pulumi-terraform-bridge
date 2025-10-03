@@ -473,7 +473,7 @@ func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
 	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
 	})
-	_, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+	schemaResult, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
 		DiagnosticsSink: nilSink,
 		ProviderInfo: tfbridge.ProviderInfo{
 			Name: "test",
@@ -483,9 +483,12 @@ func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
 			},
 		},
 	})
-	require.Error(t, err)
-	//nolint:lll
-	require.ErrorContains(t, err, "required property \"password_wo[pulumi:\\\"passwordWo\\\"]\" (@ resource[key=\"test_res_wo\",token=\"test:index:WriteOnly\"].outputs.password_wo[pulumi:\"passwordWo\"]) may not be omitted from binding generation\n\n")
+	require.NoError(t, err)
+	// With WriteOnly fields now being automatically omitted, the schema should generate successfully
+	// and the WriteOnly field should not appear in the input properties
+	spec := schemaResult.PackageSpec
+	assert.Len(t, spec.Resources, 1)
+	assert.Len(t, spec.Resources["test:index:WriteOnly"].InputProperties, 0)
 }
 
 func TestModulePlacementForType(t *testing.T) {
