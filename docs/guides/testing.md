@@ -1,158 +1,219 @@
-# Testing in the Pulumi Terraform Bridge
+# Testing the Pulumi Terraform Bridge
 
-The Pulumi Terraform Bridge has a few different testing frameworks. This documents attempts to help developers understand how to best test their features.
+The bridge relies on several complementary test layers to make sure Pulumi behavior stays aligned with Terraform while
+honoring Pulumi semantics. This guide explains when to reach for each layer, how to run it locally, and where to look for
+examples.
 
-## Integration Tests Using a Terraform Schema and a Pulumi YAML Program
+## Quick Reference
 
-The preferred way to test new features and reproduce bugs is to author an integration test using a Terraform schema and a Pulumi YAML program. This is the best way to test end-to-end scenarios, including multi-step workflows.
-The two bridge frameworks (The Plugin SDK and the Plugin Framework) have slight differences in the APIs but the core concepts are the same.
+### Recommended suites
 
-We need:
-1. A Terraform provider schema - this is the way Terraform providers are authored and allows us to extract only the relevant parts of the Terraform provider code.
-1. A Pulumi program - this is the way Pulumi programs are authored and allows us to test the bridged provider through a minimal Pulumi program.
-1. A set of pulumi operations performed on the program - these are meant to simulate a real user workflow, which either exercises the feature under test or reproduces the bug.
+| Use case | Recommended suite | Location | Notes |
+| -------- | ----------------- | -------- | ----- |
+| Unit logic (helpers, conversions) | Go unit tests | Same package (`*_test.go`) | Fast feedback without Pulumi/Terraform harnesses. |
+| Runtime behavior with Pulumi engine (SDKv2) | Schema + program integration tests | `pkg/tests/` | Runs Pulumi programs via Automation API to exercise full engine↔provider flows; default choice for bridge work. |
+| Runtime behavior with Pulumi engine (PF) | PF schema + program tests | `pkg/pf/tests/` | Mirrors SDKv2 harness with PF builders and Pulumi Automation. |
+| Terraform parity | Cross-tests | `pkg/internal/tests/cross-tests/`, `pkg/pf/tests/internal/cross-tests/` | Compares Terraform CLI vs Pulumi for the same provider. |
+| Property fuzzing | Rapid-based cross-tests | `pkg/internal/tests/cross-tests/rapid_test.go` | Generates many input combos; slower but valuable for tricky schemas. |
 
-These tests use the [`pulumiTest` library](https://github.com/pulumi/providertest/tree/main/pulumitest) to run the Pulumi program.
+### Special-case / legacy suites
 
-### Example from the Plugin SDK
+| Use case | Suite | Location | Notes |
+| -------- | ----- | -------- | ----- |
+| Provider-only runtime behavior (SDKv2) | Provider server tests | `pkg/tfbridge/tests/` | Calls the bridge directly without Pulumi; use only when Automation-backed tests cannot cover the scenario. |
+| Repro recorded RPCs | Replay tests | `pkg/tfbridge/provider_test.go` | Legacy gRPC recordings; prefer higher-level harnesses whenever possible. |
 
-From [./pkg/tests/schema_pulumi_test.go](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/tests/schema_pulumi_test.go):
+## Local Test Commands
+
+```bash
+# Fast lint + unit
+make lint
+make test RUN_TEST_CMD=./pkg/tfbridge -run TestSomeUnit
+
+# SDKv2 integration (single file)
+make test RUN_TEST_CMD='./pkg/tests -run TestFoo'
+
+# PF integration
+make test RUN_TEST_CMD='./pkg/pf/tests -run TestBar'
+
+# Cross-tests (SDKv2)
+make test RUN_TEST_CMD=./pkg/internal/tests/cross-tests
+
+# Accept golden updates after intentional diff changes
+make test_accept
+
+# Accept autogold updates after intentional diff changes
+make test RUN_TEST_CMD='./pkg/pf/tests/internal/cross-tests -run TestWritePFHCLProvider -update'
+```
+
+`make test` installs required Pulumi plugins and builds the test provider binary, so the first run can take several minutes.
+
+## Choosing the Right Layer
+
+1. **Regression Tests** - uses schema + program tests and create individual test cases
+2. **Proactive Hardening** - uses rapid/property based testing. For when you are trying to figure out edge cases. Only appropriate for the stable core of the system
+3. **Matching TF** - use cross-tests. _Anytime_ you are wanting to ensure that Pulumi and Terraform CLI remain aligned you should use cross-tests.
+4. **Regular Tests** - use schema + program tests. Simple Go unit tests are not as useful for this codebase. There is test infrastructure in place
+   to make these integration tests pretty fast to run.
+
+## Schema + Program Integration Tests
+
+Integration tests spin up a minimal Terraform provider schema and drive it through a Pulumi program using
+[`pulumiTest`](https://github.com/pulumi/providertest/tree/main/pulumitest). They are the preferred way to cover
+end-to-end scenarios, including multi-step workflows.
+
+### SDKv2 Example
+
+`pkg/tests/schema_pulumi_test.go` shows the basic pattern:
 
 ```go
-import (
-	"testing"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
-)
-
 func TestBasic(t *testing.T) {
-	t.Parallel()
-	tfResourceMap := map[string]*schema.Resource{
-		"prov_test": {
-			Schema: map[string]*schema.Schema{
-				"test": {
-					Type:     schema.TypeString,
-					Optional: true,
-				},
-			},
-		},
-	}
-	tfProvider := &schema.Provider{ResourcesMap: tfResourceMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfProvider)
-	program := `
+    t.Parallel()
+
+    tfResourceMap := map[string]*schema.Resource{
+        "prov_test": {
+            Schema: map[string]*schema.Schema{
+                "test": {Type: schema.TypeString, Optional: true},
+            },
+        },
+    }
+    tfProvider := &schema.Provider{ResourcesMap: tfResourceMap}
+    bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfProvider)
+
+    program := `
 name: test
 runtime: yaml
 resources:
   mainRes:
     type: prov:index:Test
-	properties:
-	  test: "hello"
+    properties:
+      test: "hello"
 outputs:
   testOut: ${mainRes.test}
 `
-	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	upResult := pt.Up(t)
-	require.Equal(t, "hello", upResult.Outputs["testOut"].Value)
+    pt := pulcheck.PulCheck(t, bridgedProvider, program)
+    upResult := pt.Up(t)
+    require.Equal(t, "hello", upResult.Outputs["testOut"].Value)
 }
 ```
 
-#### Explanation
+Key points:
 
-`tfResourceMap` is a map of Terraform resource types to their schemas. This can be adapted from an existing Terraform provider or created ad-hoc. `tfProvider` is the Terraform provider which uses `tfResourceMap` to construct the provider.
+- Build the minimal Terraform schema necessary to exercise the behavior under test.
+- Wrap the Terraform provider with `pulcheck.BridgedProvider` to obtain a Pulumi provider.
+- Use a short Pulumi program (YAML works well) and assert on outputs, state transitions, or logs through the
+  `pulumiTest` harness.
 
-`bridgedProvider` is a wrapper around a Terraform provider that has been instrumented to work with Pulumi. The `pulcheck` package provides a helper to create a bridged provider.
+### Plugin Framework Example
 
-`program` is a Pulumi program that uses the bridged provider. In this example, it creates a single resource and exports its output.
-
-`pt` is an instance of the [`pulumiTest` library](https://github.com/pulumi/providertest/tree/main/pulumitest) which uses Automation API to run the Pulumi program. It is returned by the `PulCheck` helper, which is a wrapper around the `pulumiTest` library specifically for testing bridged providers.
-
-`upResult` is the result of running the Pulumi program. It contains the outputs of the program as well as GRPC logs and other useful information which can help us assert that the program behaves as expected.
-
-
-### Example from the Plugin Framework
-
-From [./pkg/pf/tests/schema_and_program_test.go](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/pf/tests/schema_and_program_test.go):
+PF tests follow the same pattern with different helpers (`pkg/pf/tests/schema_and_program_test.go`):
 
 ```go
-import (
-	"testing"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/providerbuilder"
-)
-
 func TestBasic(t *testing.T) {
     t.Parallel()
-	provBuilder := providerbuilder.NewProvider(
-		providerbuilder.NewProviderArgs{
-			AllResources: []providerbuilder.Resource{
-				{
-					Name: "test",
-					ResourceSchema: rschema.Schema{
-						Attributes: map[string]rschema.Attribute{
-							"s": rschema.StringAttribute{Optional: true},
-						},
-					},
-				},
-			},
-		})
 
-	prov := bridgedProvider(provBuilder)
+    provBuilder := providerbuilder.NewProvider(providerbuilder.NewProviderArgs{
+        AllResources: []providerbuilder.Resource{
+            {
+                Name: "test",
+                ResourceSchema: rschema.Schema{
+                    Attributes: map[string]rschema.Attribute{
+                        "s": rschema.StringAttribute{Optional: true},
+                    },
+                },
+            },
+        },
+    })
 
-	program := `
+    prov := bridgedProvider(provBuilder)
+
+    program := `
 name: test
 runtime: yaml
 resources:
-    mainRes:
-        type: testprovider:index:Test
-        properties:
-            s: "hello"
+  mainRes:
+    type: testprovider:index:Test
+    properties:
+      s: "hello"
 outputs:
-  testOut: ${mainRes.s}`
+  testOut: ${mainRes.s}
+`
 
-	pt, err := pulcheck.PulCheck(t, prov, program)
-	require.NoError(t, err)
+    pt, err := pulcheck.PulCheck(t, prov, program)
+    require.NoError(t, err)
 
-	upResult := pt.Up(t)
-	require.Equal(t, "hello", upResult.Outputs["testOut"].Value)
+    upResult := pt.Up(t)
+    require.Equal(t, "hello", upResult.Outputs["testOut"].Value)
 }
 ```
 
-#### Explanation
+PF adds builders to compose provider resources and separate `pulcheck` helpers, but the assertions and workflow match the
+SDKv2 pattern.
 
-The Plugin Framework uses a different set of helpers to create a bridged provider but the core concepts are the same.
+When you need to validate the full Pulumi engine ↔ provider interaction, prefer these Pulumi-backed suites (`pkg/tests/`
+for Plugin SDK and `pkg/pf/tests/` for Plugin Framework). They surface Automation API behavior, secrets handling, and
+multi-step workflows exactly as users experience them and should be the default choice for new coverage.
 
-`provBuilder` is a helper to create a PF Terraform provider from a set of resources. The TF API is a bit more involved than the SDKv2 API, so we have a separate helper for that.
+## Provider-Only Runtime Tests
 
-`prov` is the bridged provider. This uses the `pulcheck` helper to create a bridged provider. Notice that `pf` has a separate `pulcheck` helper.
+`pkg/tfbridge/tests/` exercises the bridge without running a Pulumi program. Tests construct a provider server directly
+via helpers such as `newTestProvider` or `crosstests.MakeConfigure`, then call RPCs (or feed gRPC recordings) to inspect
+the raw bridge behavior. See `pkg/tfbridge/tests/provider_configure_test.go` for configure parity coverage and
+`pkg/tfbridge/tests/provider_test.go` for gRPC replay and regression scenarios.
 
-`program` is a Pulumi program that uses the bridged provider. In this example, it creates a single resource and exports its output.
+> If you are not certain you need a provider-only test, you almost certainly want a Pulumi-backed test in `pkg/tests/`
+> instead.
 
-`pt` is an instance of the [`pulumiTest` library](https://github.com/pulumi/providertest/tree/main/pulumitest).
+Use this suite when:
 
+- You have a specific reason to bypass Automation API.
+- You maintain paired coverage: a Pulumi-backed test in `pkg/tests/` plus a provider-only variant in
+  `pkg/tfbridge/tests/` to isolate whether a regression requires Pulumi in the loop.
+
+Provider-only tests complement, not replace, Pulumi-backed coverage: once behavior is stable, ensure user-visible flows
+still pass under `pkg/tests/` so Pulumi integration remains exercised end-to-end.
 
 ## Cross-Tests
 
-Another useful framework for testing the bridge are the cross-tests. These are integration tests that run a Terraform provider both through the Terraform CLI and through the Pulumi Bridge and then compare the outputs of the two. There is a detailed explanation of the specifics of cross-tests in the [cross-tests README](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/internal/tests/cross-tests/README.md) and the [pf cross-tests README](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/pf/tests/internal/cross-tests/README.md).
+Cross-tests run Terraform CLI and the Pulumi bridge against the same inputs, then compare results. They live under
+`pkg/internal/tests/cross-tests/` (SDKv2) and `pkg/pf/tests/internal/cross-tests/` (PF). Use them when validating parity
+or investigating production regressions.
 
-Examples of cross-tests include:
+Examples worth consulting:
 
-- [SDKv2 Diff](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/internal/tests/cross-tests/diff_cross_test.go)
-- [SDKv2 Create](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/tfbridge/tests/provider_test.go#L405)
-- [SDKv2 Configure](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/tfbridge/tests/provider_configure_test.go)
-- [PF Configure](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/pf/tests/provider_configure_test.go)
-- [PF Diff](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/pf/tests/diff_test.go)
+- Diff parity (`pkg/internal/tests/cross-tests/diff_cross_test.go`)
+- Create/Update flows (`pkg/tfbridge/tests/provider_test.go`)
+- Provider configuration (`pkg/tfbridge/tests/provider_configure_test.go`, `pkg/pf/tests/provider_configure_test.go`)
+- PF-specific diffing (`pkg/pf/tests/diff_test.go`)
 
+## Property-Based Tests
 
-## Property-Based Testing
+Property-based tests extend cross-tests with randomized inputs using the
+[Rapid](https://github.com/flyingmutant/rapid) library (`pkg/internal/tests/cross-tests/rapid_test.go`). These tests
+are currently intended to be used as a local tool. They are not yet in a stable place where
+we can run these in CI without failures.
 
-Building on the cross-tests, we also have property based tests using the [Rapid](https://github.com/flyingmutant/rapid) library. These tests are useful for covering a wide variety of inputs and outputs. These are still somewhat experimental and found under [./pkg/internal/tests/cross-tests/rapid_test.go](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/internal/tests/cross-tests/rapid_test.go#L30).
+## gRPC Replay Tests (Legacy)
 
+Replay tests feed recorded Pulumi Engine ↔ Provider RPC traces back through the bridge (see
+`pkg/tfbridge/provider_test.go`). They are helpful when higher-level harnesses are impractical, but new coverage should
+use schema + program or cross-tests instead. Treat replays as stop-gaps and backfill more maintainable coverage later.
 
-## GRPC Replay Tests
+## Golden Files & Accepting Changes
 
-These are discouraged. New tests should prefer [full schema and program tests](##-integration-tests-using-a-terraform-schema-and-a-pulumi-yaml-program)
+Some tests assert against generated output stored alongside fixtures, while others use the [autogold](https://github.com/hexops/autogold) package. When behavior changes intentionally:
 
-The bridge and bridged providers also supports GRPC replay tests. These tests are useful for testing the bridge against a specific GRPC request/response pair. 
-Examples can be found under [`./pkg/tfbridge/tests/provider_test.go`](https://github.com/pulumi/pulumi-terraform-bridge/blob/317d4b819f12d4bc66adc5fb248bfb77a3cc7ba7/pkg/tfbridge/provider_test.go#L190). These use the [`providertest.replay` module](https://github.com/pulumi/providertest/tree/main/replay) to replay a specific request/response pair from the Engine <-> Provider GRPC conversation.
+1. Run `make test_accept` (sets `PULUMI_ACCEPT=1`) to update goldens.
+  - For `autogold` tests, update individual tests using the `-update` flag (e.g. `make test RUN_TEST_CMD='./pkg/pf/tests/internal/cross-tests -run TestWritePFHCLProvider -update'`)
+2. Inspect diffs carefully and justify them in your PR description.
+3. Coordinate with maintainers when changes could affect downstream providers.
+
+## Debugging Failures
+
+- Set `PULUMI_DEBUG_GRPC=1` for verbose Pulumi provider logs.
+- Enable Terraform tracing with `TF_LOG=DEBUG` or `TF_LOG=TRACE` when Terraform behavior is surprising.
+
+## Continuous Integration
+
+- GitHub Actions run `make lint` and `make test` with caching.
+- Coverage reports aggregate into `coverage.txt` and feed the configuration in `codecov.yml`.

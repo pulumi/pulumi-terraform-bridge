@@ -33,9 +33,9 @@ bring up a new provider that is available in Terraform but not yet Pulumi, we wo
 
 ## How It Works
 
-There are two major things involved in this bridge: design-time and runtime.
+There are two major things involved in this bridge: build-time and runtime.
 
-At design-time, we code-generate packages by dynamic inspection of a Terraform Provider's schema.  This only works for
+At build-time, we code-generate packages by dynamic inspection of a Terraform Provider's schema.  This only works for
 providers that are built using static schemas.  It is possible to write Terraform Providers without this, which means
 the ability to create packages would not exist, but in practice all interesting providers use it.
 
@@ -74,7 +74,7 @@ This repo on its own isn't particularly interesting, until it is used to create 
 
 See [playbook](https://github.com/pulumi/platform-providers-team/blob/main/playbooks/Release%3A%20Terraform%20Bridge.md).
 
-## Design Time Options
+## Build Time Options
 
 tfgen, the command that generates Pulumi schema/code for a bridged provider supports the following environment variables:
 
