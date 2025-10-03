@@ -1112,7 +1112,7 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 		return g.UnstableGenerateFromSchema(genSchemaResult)
 	}
 	// Read the provider schema from file
-	schemaBytes, err := os.ReadFile(fmt.Sprintf("provider/cmd/pulumi-resource-%s/schema.json", g.info.Name))
+	schemaBytes, err := os.ReadFile(fmt.Sprintf("provider/cmd/pulumi-resource-%s/schema.json", g.pkg.Name().String()))
 	if err != nil {
 		return nil, err
 	}
