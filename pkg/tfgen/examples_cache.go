@@ -29,6 +29,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -180,34 +181,29 @@ func (ec *examplesCache) inferBuildFileHashes() map[string]string {
 }
 
 func (ec *examplesCache) inferSoftwareVersions() map[string]string {
-	used := []string{
-		"github.com/pulumi/pulumi/pkg/v3",
-		"github.com/pulumi/pulumi-terraform-bridge/v3",
-		"github.com/pulumi/pulumi-terraform-bridge/v3/pf",
+	v := map[string]string{}
+
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return v
 	}
-	p := map[string]string{}
-	for _, u := range used {
-		cmd := exec.Command("go", "list", "-m", "-json", u)
-		cmd.Dir = "provider"
-		j, err := cmd.CombinedOutput()
-		if err != nil {
-			continue
+
+	for _, mod := range bi.Deps {
+		if mod.Replace != nil {
+			mod = mod.Replace
 		}
-		type result struct {
-			Version string `json:"Version"`
-			Replace struct {
-				Version string `json:"Version"`
-			} `json:"Replace"`
-		}
-		var r result
-		err = json.Unmarshal(j, &r)
-		contract.AssertNoErrorf(err, "go list -json -m <pkg> result parsing failed")
-		p[u] = r.Version
-		if r.Replace.Version != "" {
-			p[u] = r.Replace.Version
+
+		switch mod.Path {
+		case "github.com/pulumi/pulumi/pkg/v3",
+			"github.com/pulumi/pulumi/sdk/v3",
+			"github.com/pulumi/pulumi-terraform-bridge/v3":
+
+			v[mod.Path] = mod.Version
+		default:
 		}
 	}
-	return p
+
+	return v
 }
 
 func (ec *examplesCache) filehash(p string) string {
