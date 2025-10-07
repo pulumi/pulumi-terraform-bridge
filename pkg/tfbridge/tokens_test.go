@@ -763,6 +763,56 @@ func TestCaseInsensitiveDedupDataSources(t *testing.T) {
 	}, info.DataSources)
 }
 
+func TestCaseInsensitiveDedupMonotonicSuffixes(t *testing.T) {
+	t.Parallel()
+
+	provider := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"pkg_example_a":          nil,
+				"pkg_example_b":          nil,
+				"pkg_example_c":          nil,
+				"pkg_example_literal_v2": nil,
+			},
+		}).Shim(),
+	}
+
+	makeStandard := tokens.MakeStandard("pkg")
+	exampleToken, err := makeStandard("index", "Example")
+	require.NoError(t, err)
+	exampleV2Token, err := makeStandard("index", "ExampleV2")
+	require.NoError(t, err)
+	exampleV3Token, err := makeStandard("index", "ExampleV3")
+	require.NoError(t, err)
+	exampleV2V2Token, err := makeStandard("index", "ExampleV2V2")
+	require.NoError(t, err)
+
+	base := tokens.Strategy{
+		Resource: func(tfToken string, elem *tfbridge.ResourceInfo) error {
+			if elem == nil {
+				return nil
+			}
+			switch tfToken {
+			case "pkg_example_literal_v2":
+				elem.Tok = ptokens.Type(exampleV2Token)
+			default:
+				elem.Tok = ptokens.Type(exampleToken)
+			}
+			return nil
+		},
+	}
+
+	strategy := tokens.WithCaseInsensitiveDedup(base, makeStandard, nil)
+	require.NoError(t, provider.ComputeTokens(strategy))
+
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_example_a":          {Tok: ptokens.Type(exampleToken)},
+		"pkg_example_b":          {Tok: ptokens.Type(exampleV2Token)},
+		"pkg_example_c":          {Tok: ptokens.Type(exampleV3Token)},
+		"pkg_example_literal_v2": {Tok: ptokens.Type(exampleV2V2Token)},
+	}, provider.Resources)
+}
+
 func makeAutoAliasing(t *testing.T) (
 	*md.Data, func(*tfbridge.ProviderInfo, tfbridge.ProviderMetadata),
 ) {
