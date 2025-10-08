@@ -4,13 +4,13 @@ Follow these steps if you have a Pulumi provider that was bridged from a Terrafo
 provider built against [Terraform Plugin
 SDK](https://github.com/hashicorp/terraform-plugin-sdk) and you want to upgrade it to a
 version that has migrated some but not all resources/datasources to the [Plugin
-Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file).
+Framework](https://github.com/hashicorp/terraform-plugin-framework?tab=readme).
 
 1. Ensure you have access to the
    `github.com/hashicorp/terraform-plugin-framework/provider.Provider` from the upstream
    provider.  If the provider is shimmed (or needs to be), you can follow step (1) from
    ["How to Upgrade a Bridged Provider to Plugin
-   Framework"](./upgrade-sdk-to-mux.md).
+   Framework"](./upgrade-sdk-to-pf.md).
 
 1. Find the tfgen binary `main` that calls `tfgen.Main` from
    `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen` and update it to call

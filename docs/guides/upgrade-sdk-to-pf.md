@@ -3,7 +3,7 @@
 Follow these steps if you have a Pulumi provider that was bridged from a Terraform provider built against
 [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) and you want to upgrade it to a version that has migrated to the Plugin Framework.
 
-1. Ensure you have access to the [`github.com/hashicorp/terraform-plugin-framework/provider.Provider`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework@v1.13.0/provider#Provider) from
+1. Ensure you have access to the [`github.com/hashicorp/terraform-plugin-framework/provider.Provider`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework@v1.16.0/provider#Provider) from
    the upstream provider.  Make sure the module is now depending on
    `"github.com/hashicorp/terraform-plugin-framework"` instead of
    `"github.com/hashicorp/terraform-plugin-sdk/v2"`.  If the provider is shimmed (or needs to be), update the
