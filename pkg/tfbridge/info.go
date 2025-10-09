@@ -73,6 +73,8 @@ const (
 // ProviderInfo contains information about a Terraform provider plugin that we will use to
 // generate the Pulumi metadata.  It primarily contains a pointer to the Terraform schema,
 // but can also contain specific name translations.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Provider instead.
 type ProviderInfo = info.Provider
 
 type (
@@ -97,17 +99,26 @@ func GetLogger(ctx context.Context) Logger {
 //	func(defaults []DocsEdit) []DocsEdit {
 //		return append(customEdits, append(defaults, validityCheck)...)
 //	}
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MakeEditRules instead.
 type MakeEditRules = info.MakeEditRules
 
 // DocRuleInfo controls file discovery and edits for any subset of docs in a provider.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.DocRule instead.
 type DocRuleInfo = info.DocRule
 
 // Information for file lookup.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.DocsPath instead.
 type DocsPathInfo = info.DocsPath
 
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.DocsEdit instead.
 type DocsEdit = info.DocsEdit
 
 // TFProviderLicense is a way to be able to pass a license type for the upstream Terraform provider.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.TFProviderLicense instead.
 type TFProviderLicense = info.TFProviderLicense
 
 // AliasInfo is a partial description of prior named used for a resource. It can be processed in the
@@ -116,29 +127,44 @@ type TFProviderLicense = info.TFProviderLicense
 // It can be used by Pulumi resource providers to change the aspects of it (i.e. what module it is
 // contained in), without causing resources to be recreated for customers who migrate from the
 // original resource to the current resource.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Alias instead.
 type AliasInfo = info.Alias
 
 // ResourceOrDataSourceInfo is a shared interface to ResourceInfo and DataSourceInfo mappings
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.ResourceOrDataSource instead.
 type ResourceOrDataSourceInfo = info.ResourceOrDataSource
 
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
 // also give custom metadata for fields, using the SchemaInfo structure below.  Finally, a set of composite keys can be
 // given; this is used when Terraform needs more than just the ID to uniquely identify and query for a resource.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Resource instead.
 type ResourceInfo = info.Resource
 
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.ComputeID instead.
 type ComputeID = info.ComputeID
 
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.PropertyTransform instead.
 type PropertyTransform = info.PropertyTransform
 
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.PreCheckCallback instead.
 type PreCheckCallback = info.PreCheckCallback
 
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.DataSource instead.
 type DataSourceInfo = info.DataSource
 
 // SchemaInfo contains optional name transformations to apply.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Schema instead.
 type SchemaInfo = info.Schema
 
 // ConfigInfo represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Config instead.
 type ConfigInfo = info.Config
 
 // Transformer is given the option to transform a value in situ before it is processed by the bridge. This
@@ -147,26 +173,40 @@ type ConfigInfo = info.Config
 // JSON-stringable map; a resource provider may opt to store the raw string, but let users pass in maps as
 // a convenience mechanism, and have the transformer stringify them on the fly. This is safe to do because
 // the raw string is still accepted as a possible input value.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Transformer instead.
 type Transformer = info.Transformer
 
 // DocInfo contains optional overrides for finding and mapping TF docs.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Doc instead.
 type DocInfo = info.Doc
 
 // DefaultInfo lets fields get default values at runtime, before they are even passed to Terraform.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Default instead.
 type DefaultInfo = info.Default
 
 // Configures [DefaultInfo.ComputeDefault].
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.ComputeDefaultOptions instead.
 type ComputeDefaultOptions = info.ComputeDefaultOptions
 
 // PulumiResource is just a little bundle that carries URN, seed and properties around.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.PulumiResource instead.
 type PulumiResource = info.PulumiResource
 
 // OverlayInfo contains optional overlay information.  Each info has a 1:1 correspondence with a module and
 // permits extra files to be included from the overlays/ directory when building up packs/.  This allows augmented
 // code-generation for convenient things like helper functions, modules, and gradual typing.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Overlay instead.
 type OverlayInfo = info.Overlay
 
 // JavaScriptInfo contains optional overlay information for Python code-generation.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.JavaScript instead.
 type JavaScriptInfo = info.JavaScript
 
 const (
@@ -179,22 +219,34 @@ const (
 )
 
 // PythonInfo contains optional overlay information for Python code-generation.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Python instead.
 type PythonInfo = info.Python
 
 // GolangInfo contains optional overlay information for Golang code-generation.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Golang instead.
 type GolangInfo = info.Golang
 
 // CSharpInfo contains optional overlay information for C# code-generation.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.CSharp instead.
 type CSharpInfo = info.CSharp
 
 // See https://github.com/pulumi/pulumi-java/blob/main/pkg/codegen/java/package_info.go#L35C1-L108C1 documenting
 // supported options.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.Java instead.
 type JavaInfo = info.Java
 
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.PreCheckCallback instead.
 type PreConfigureCallback = info.PreCheckCallback
 
 // PreConfigureCallbackWithLogger is a function to invoke prior to calling the T
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.PreConfigureCallbackWithLogger instead.
 type PreConfigureCallbackWithLogger = info.PreConfigureCallbackWithLogger
 
 // The types below are marshallable versions of the schema descriptions associated with a provider. These are used when
@@ -202,24 +254,32 @@ type PreConfigureCallbackWithLogger = info.PreConfigureCallbackWithLogger
 // with a ProviderInfo; thus, a ProviderInfo cannot be round-tripped through JSON.
 
 // MarshallableSchema is the JSON-marshallable form of a Terraform schema.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MarshallableSchemaShim instead.
 type MarshallableSchema = info.MarshallableSchemaShim
 
 // MarshalSchema converts a Terraform schema into a MarshallableSchema.
 func MarshalSchema(s shim.Schema) *MarshallableSchema { return info.MarshalSchemaShim(s) }
 
 // MarshallableResource is the JSON-marshallable form of a Terraform resource schema.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MarshallableResourceShim instead.
 type MarshallableResource = info.MarshallableResourceShim
 
 // MarshalResource converts a Terraform resource schema into a MarshallableResource.
 func MarshalResource(r shim.Resource) MarshallableResource { return info.MarshalResourceShim(r) }
 
 // MarshallableElem is the JSON-marshallable form of a Terraform schema's element field.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MarshallableElemShim instead.
 type MarshallableElem = info.MarshallableElemShim
 
 // MarshalElem converts a Terraform schema's element field into a MarshallableElem.
 func MarshalElem(e interface{}) *MarshallableElem { return info.MarshalElemShim(e) }
 
 // MarshallableProvider is the JSON-marshallable form of a Terraform provider schema.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MarshallableProviderShim instead.
 type MarshallableProvider = info.MarshallableProviderShim
 
 // MarshalProvider converts a Terraform provider schema into a MarshallableProvider.
@@ -228,18 +288,24 @@ func MarshalProvider(p shim.Provider) *MarshallableProvider {
 }
 
 // MarshallableSchemaInfo is the JSON-marshallable form of a Pulumi SchemaInfo value.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MarshallableSchema instead.
 type MarshallableSchemaInfo = info.MarshallableSchema
 
 // MarshalSchemaInfo converts a Pulumi SchemaInfo value into a MarshallableSchemaInfo value.
 func MarshalSchemaInfo(s *SchemaInfo) *MarshallableSchemaInfo { return info.MarshalSchema(s) }
 
 // MarshallableDefaultInfo is the JSON-marshallable form of a Pulumi DefaultInfo value.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MarshallableDefault instead.
 type MarshallableDefaultInfo = info.MarshallableDefault
 
 // MarshalDefaultInfo converts a Pulumi DefaultInfo value into a MarshallableDefaultInfo value.
 func MarshalDefaultInfo(d *DefaultInfo) *MarshallableDefaultInfo { return info.MarshalDefault(d) }
 
 // MarshallableResourceInfo is the JSON-marshallable form of a Pulumi ResourceInfo value.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MarshallableResource instead.
 type MarshallableResourceInfo = info.MarshallableResource
 
 // MarshalResourceInfo converts a Pulumi ResourceInfo value into a MarshallableResourceInfo value.
@@ -248,6 +314,8 @@ func MarshalResourceInfo(r *ResourceInfo) *MarshallableResourceInfo {
 }
 
 // MarshallableDataSourceInfo is the JSON-marshallable form of a Pulumi DataSourceInfo value.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MarshallableDataSource instead.
 type MarshallableDataSourceInfo = info.MarshallableDataSource
 
 // MarshalDataSourceInfo converts a Pulumi DataSourceInfo value into a MarshallableDataSourceInfo value.
@@ -256,6 +324,8 @@ func MarshalDataSourceInfo(d *DataSourceInfo) *MarshallableDataSourceInfo {
 }
 
 // MarshallableProviderInfo is the JSON-marshallable form of a Pulumi ProviderInfo value.
+//
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.MarshallableProvider instead.
 type MarshallableProviderInfo = info.MarshallableProvider
 
 // MarshalProviderInfo converts a Pulumi ProviderInfo value into a MarshallableProviderInfo value.
@@ -411,7 +481,9 @@ func ConfigBoolValue(vars resource.PropertyMap, prop resource.PropertyKey, envs 
 //
 // See also: https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework/resource/schema#Schema.Version
 type (
-	PreStateUpgradeHook     = info.PreStateUpgradeHook
+	// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.PreStateUpgradeHook instead.
+	PreStateUpgradeHook = info.PreStateUpgradeHook
+	// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.PreStateUpgradeHookArgs instead.
 	PreStateUpgradeHookArgs = info.PreStateUpgradeHookArgs
 )
 
