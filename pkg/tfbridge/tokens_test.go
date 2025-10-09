@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
@@ -558,6 +559,258 @@ func TestTokensInferredModules(t *testing.T) {
 			assert.Equal(t, tt.resourceMapping, mapping)
 		})
 	}
+}
+
+func TestCaseInsensitiveDedupSingleModule(t *testing.T) {
+	t.Parallel()
+
+	info := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"fortios_firewall_security_policy": nil,
+				"fortios_firewall_securitypolicy":  nil,
+			},
+		}).Shim(),
+	}
+
+	makeStandard := tokens.MakeStandard("fortios")
+	strategy := tokens.WithCaseInsensitiveDedup(
+		tokens.SingleModule("fortios_", "index", makeStandard), makeStandard, nil)
+
+	require.NoError(t, info.ComputeTokens(strategy))
+
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"fortios_firewall_security_policy": {
+			Tok: "fortios:index/firewallSecurityPolicy:FirewallSecurityPolicy",
+		},
+		"fortios_firewall_securitypolicy": {
+			Tok: "fortios:index/firewallSecuritypolicyV2:FirewallSecuritypolicyV2",
+		},
+	}, info.Resources)
+}
+
+func TestCaseInsensitiveDedupRespectsManualToken(t *testing.T) {
+	t.Parallel()
+
+	info := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"pkg_examplealt":  nil,
+				"pkg_example_alt": nil,
+			},
+		}).Shim(),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"pkg_examplealt": {
+				Tok: "pkg:index/example:Example",
+			},
+		},
+	}
+
+	makeStandard := tokens.MakeStandard("pkg")
+	strategy := tokens.WithCaseInsensitiveDedup(
+		tokens.SingleModule("pkg_", "index", makeStandard), makeStandard, nil)
+
+	require.NoError(t, info.ComputeTokens(strategy))
+
+	require.Contains(t, info.Resources, "pkg_examplealt")
+	require.Contains(t, info.Resources, "pkg_example_alt")
+	assert.Equal(t, "pkg:index/example:Example", string(info.Resources["pkg_examplealt"].Tok))
+	// Automatic mapping still runs for the other resource, but should not disturb the manual token.
+	assert.Equal(t, "pkg:index/exampleAlt:ExampleAlt", string(info.Resources["pkg_example_alt"].Tok))
+}
+
+func TestCaseInsensitiveDedupSeedsFromMetadata(t *testing.T) {
+	t.Parallel()
+
+	type aliasTokenSnapshot struct {
+		Current string `json:"current"`
+	}
+	type aliasHistorySnapshot struct {
+		Resources   map[string]aliasTokenSnapshot `json:"resources,omitempty"`
+		DataSources map[string]aliasTokenSnapshot `json:"datasources,omitempty"`
+	}
+
+	metadataStore, err := md.New(nil)
+	require.NoError(t, err)
+	err = metadata.Set(metadataStore, "auto-aliasing", aliasHistorySnapshot{
+		Resources: map[string]aliasTokenSnapshot{
+			"pkg_example_b": {Current: "pkg:index/exampleB2:ExampleB2"},
+		},
+	})
+	require.NoError(t, err)
+
+	metaInfo := &tfbridge.MetadataInfo{Data: metadataStore, Path: "must be non-empty"}
+
+	makeStandard := tokens.MakeStandard("pkg")
+	strategy := func() tokens.Strategy {
+		return tokens.WithCaseInsensitiveDedup(
+			tokens.SingleModule("pkg_", "index", makeStandard),
+			makeStandard,
+			metaInfo.Data,
+		)
+	}
+
+	providerOne := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"pkg_example_b": nil,
+			},
+		}).Shim(),
+		MetadataInfo: metaInfo,
+	}
+
+	require.NoError(t, providerOne.ComputeTokens(strategy()))
+	require.Contains(t, providerOne.Resources, "pkg_example_b")
+	require.Equal(t,
+		"pkg:index/exampleB2:ExampleB2",
+		string(providerOne.Resources["pkg_example_b"].Tok),
+	)
+	require.NoError(t, providerOne.ApplyAutoAliases())
+
+	providerTwo := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"pkg_example_B": nil,
+				"pkg_example_b": nil,
+			},
+		}).Shim(),
+		MetadataInfo: metaInfo,
+	}
+
+	require.NoError(t, providerTwo.ComputeTokens(strategy()))
+	require.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_example_b": {Tok: "pkg:index/exampleB2:ExampleB2"},
+		"pkg_example_B": {Tok: "pkg:index/exampleB:ExampleB"},
+	}, providerTwo.Resources)
+}
+
+func TestCaseInsensitiveDedupSeedsFromEmptyMetadata(t *testing.T) {
+	t.Parallel()
+
+	metadataStore, err := md.New(nil)
+	require.NoError(t, err)
+
+	metaInfo := &tfbridge.MetadataInfo{Data: metadataStore, Path: "must be non-empty"}
+
+	makeStandard := tokens.MakeStandard("pkg")
+	strategy := func() tokens.Strategy {
+		return tokens.WithCaseInsensitiveDedup(
+			tokens.SingleModule("pkg_", "index", makeStandard),
+			makeStandard,
+			metaInfo.Data,
+		)
+	}
+
+	providerOne := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"pkg_example_b": nil,
+			},
+		}).Shim(),
+		MetadataInfo: metaInfo,
+	}
+
+	require.NoError(t, providerOne.ComputeTokens(strategy()))
+	require.Contains(t, providerOne.Resources, "pkg_example_b")
+	require.Equal(t,
+		"pkg:index/exampleB:ExampleB",
+		string(providerOne.Resources["pkg_example_b"].Tok),
+	)
+	require.NoError(t, providerOne.ApplyAutoAliases())
+
+	providerTwo := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"pkg_example_B": nil,
+				"pkg_example_b": nil,
+			},
+		}).Shim(),
+		MetadataInfo: metaInfo,
+	}
+
+	require.NoError(t, providerTwo.ComputeTokens(strategy()))
+	require.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_example_b": {Tok: "pkg:index/exampleB:ExampleB"},
+		"pkg_example_B": {Tok: "pkg:index/exampleBV2:ExampleBV2"},
+	}, providerTwo.Resources)
+}
+
+func TestCaseInsensitiveDedupDataSources(t *testing.T) {
+	t.Parallel()
+
+	info := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			DataSourcesMap: schema.ResourceMap{
+				"fortios_firewall_security_policy": nil,
+				"fortios_firewall_securitypolicy":  nil,
+			},
+		}).Shim(),
+	}
+
+	makeStandard := tokens.MakeStandard("fortios")
+	strategy := tokens.WithCaseInsensitiveDedup(
+		tokens.SingleModule("fortios_", "index", makeStandard), makeStandard, nil)
+
+	require.NoError(t, info.ComputeTokens(strategy))
+
+	assert.Equal(t, map[string]*tfbridge.DataSourceInfo{
+		"fortios_firewall_security_policy": {
+			Tok: "fortios:index/getFirewallSecurityPolicy:getFirewallSecurityPolicy",
+		},
+		"fortios_firewall_securitypolicy": {
+			Tok: "fortios:index/getFirewallSecuritypolicyV2:getFirewallSecuritypolicyV2",
+		},
+	}, info.DataSources)
+}
+
+func TestCaseInsensitiveDedupMonotonicSuffixes(t *testing.T) {
+	t.Parallel()
+
+	provider := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"pkg_example_a":          nil,
+				"pkg_example_b":          nil,
+				"pkg_example_c":          nil,
+				"pkg_example_literal_v2": nil,
+			},
+		}).Shim(),
+	}
+
+	makeStandard := tokens.MakeStandard("pkg")
+	exampleToken, err := makeStandard("index", "Example")
+	require.NoError(t, err)
+	exampleV2Token, err := makeStandard("index", "ExampleV2")
+	require.NoError(t, err)
+	exampleV3Token, err := makeStandard("index", "ExampleV3")
+	require.NoError(t, err)
+	exampleV2V2Token, err := makeStandard("index", "ExampleV2V2")
+	require.NoError(t, err)
+
+	base := tokens.Strategy{
+		Resource: func(tfToken string, elem *tfbridge.ResourceInfo) error {
+			if elem == nil {
+				return nil
+			}
+			switch tfToken {
+			case "pkg_example_literal_v2":
+				elem.Tok = ptokens.Type(exampleV2Token)
+			default:
+				elem.Tok = ptokens.Type(exampleToken)
+			}
+			return nil
+		},
+	}
+
+	strategy := tokens.WithCaseInsensitiveDedup(base, makeStandard, nil)
+	require.NoError(t, provider.ComputeTokens(strategy))
+
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"pkg_example_a":          {Tok: ptokens.Type(exampleToken)},
+		"pkg_example_b":          {Tok: ptokens.Type(exampleV2Token)},
+		"pkg_example_c":          {Tok: ptokens.Type(exampleV3Token)},
+		"pkg_example_literal_v2": {Tok: ptokens.Type(exampleV2V2Token)},
+	}, provider.Resources)
 }
 
 func makeAutoAliasing(t *testing.T) (
