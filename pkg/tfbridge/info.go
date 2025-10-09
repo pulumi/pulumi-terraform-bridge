@@ -246,7 +246,8 @@ type PreConfigureCallback = info.PreCheckCallback
 
 // PreConfigureCallbackWithLogger is a function to invoke prior to calling the T
 //
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.PreConfigureCallbackWithLogger instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info.PreConfigureCallbackWithLogger
+// instead.
 type PreConfigureCallbackWithLogger = info.PreConfigureCallbackWithLogger
 
 // The types below are marshallable versions of the schema descriptions associated with a provider. These are used when
@@ -275,7 +276,7 @@ func MarshalResource(r shim.Resource) MarshallableResource { return info.Marshal
 type MarshallableElem = info.MarshallableElemShim
 
 // MarshalElem converts a Terraform schema's element field into a MarshallableElem.
-func MarshalElem(e interface{}) *MarshallableElem { return info.MarshalElemShim(e) }
+func MarshalElem(e any) *MarshallableElem { return info.MarshalElemShim(e) }
 
 // MarshallableProvider is the JSON-marshallable form of a Terraform provider schema.
 //
