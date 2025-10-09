@@ -26,13 +26,13 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
-	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestPFGetMapping(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	info := testprovider.RandomProvider()
+	providerInfo := testprovider.RandomProvider()
 
 	var p plugin.Provider
 
@@ -40,9 +40,9 @@ func TestPFGetMapping(t *testing.T) {
 		// This generates the schema on the fly but shells out to go mod download and
 		// generates spurious warnings; for separating into separate sub-test.
 		var err error
-		gen, err := genMetadata(t, info)
+		gen, err := genMetadata(t, providerInfo)
 		assert.NoError(t, err)
-		p, err = tfbridge.NewProvider(ctx, info, gen)
+		p, err = tfbridge.NewProvider(ctx, providerInfo, gen)
 		assert.NoError(t, err)
 	})
 
@@ -75,14 +75,14 @@ func TestPFGetMapping(t *testing.T) {
 
 			assert.Equal(t, "random", m.Provider)
 
-			var info tfbridge0.MarshallableProviderInfo
-			err = json.Unmarshal(m.Data, &info)
+			var mappingInfo info.MarshallableProvider
+			err = json.Unmarshal(m.Data, &mappingInfo)
 			assert.NoError(t, err)
 
-			assert.Equal(t, "random", info.Name)
-			assert.Contains(t, info.Resources, "random_integer")
+			assert.Equal(t, "random", mappingInfo.Name)
+			assert.Contains(t, mappingInfo.Resources, "random_integer")
 			assert.Equal(t, "random:index/randomInteger:RandomInteger",
-				string(info.Resources["random_integer"].Tok))
+				string(mappingInfo.Resources["random_integer"].Tok))
 		}
 	}
 }
@@ -91,9 +91,9 @@ func TestMuxedGetMapping(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	info := testprovider.MuxedRandomProvider()
+	providerInfo := testprovider.MuxedRandomProvider()
 
-	server, err := tfbridge.MakeMuxedServer(ctx, "muxedrandom", info, genSDKSchema(t, info))(nil)
+	server, err := tfbridge.MakeMuxedServer(ctx, "muxedrandom", providerInfo, genSDKSchema(t, providerInfo))(nil)
 	require.NoError(t, err)
 
 	req := func(key, provider string) (context.Context, *pulumirpc.GetMappingRequest) {
@@ -125,20 +125,20 @@ func TestMuxedGetMapping(t *testing.T) {
 
 			assert.Equal(t, "muxedrandom", resp.Provider)
 
-			var info tfbridge0.MarshallableProviderInfo
-			err = json.Unmarshal(resp.Data, &info)
+			var mappingInfo info.MarshallableProvider
+			err = json.Unmarshal(resp.Data, &mappingInfo)
 			assert.NoError(t, err)
 
-			assert.Equal(t, "muxedrandom", info.Name)
-			assert.Contains(t, info.Resources, "random_integer")
-			assert.Contains(t, info.Resources, "random_human_number")
+			assert.Equal(t, "muxedrandom", mappingInfo.Name)
+			assert.Contains(t, mappingInfo.Resources, "random_integer")
+			assert.Contains(t, mappingInfo.Resources, "random_human_number")
 
 			// A PF based resource
 			assert.Equal(t, "muxedrandom:index/randomInteger:RandomInteger",
-				string(info.Resources["random_integer"].Tok))
+				string(mappingInfo.Resources["random_integer"].Tok))
 			// An SDK bases resource
 			assert.Equal(t, "muxedrandom:index/randomHumanNumber:RandomHumanNumber",
-				string(info.Resources["random_human_number"].Tok))
+				string(mappingInfo.Resources["random_human_number"].Tok))
 		}
 	}
 }

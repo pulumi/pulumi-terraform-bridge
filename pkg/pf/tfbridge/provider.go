@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/providerserver"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
@@ -80,7 +81,7 @@ func getProviderOptions(opts []providerOption) (providerOptions, error) {
 // https://www.terraform.io/plugin/framework
 type provider struct {
 	tfServer      tfprotov6.ProviderServer
-	info          tfbridge.ProviderInfo
+	info          info.Provider
 	resources     runtypes.Resources
 	datasources   runtypes.DataSources
 	pulumiSchema  func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
@@ -107,7 +108,7 @@ var _ pl.ProviderWithContext = &provider{}
 // functional binary.
 //
 // info.P must be constructed with ShimProvider or ShimProviderWithContext.
-func NewProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) (plugin.Provider, error) {
+func NewProvider(ctx context.Context, info info.Provider, meta ProviderMetadata) (plugin.Provider, error) {
 	pwc, err := newProviderWithContext(ctx, info, meta)
 	if err != nil {
 		return nil, err
@@ -125,7 +126,7 @@ func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Pr
 	return schemashim.ShimSchemaOnlyProvider(ctx, p)
 }
 
-func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
+func newProviderWithContext(ctx context.Context, info info.Provider,
 	meta ProviderMetadata,
 ) (configencoding.Provider[*provider], error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
@@ -212,7 +213,7 @@ func (p *provider) GetConfigEncoding(context.Context) *tfbridge.ConfigEncoding {
 func NewProviderServer(
 	ctx context.Context,
 	logSink logging.Sink,
-	info tfbridge.ProviderInfo,
+	info info.Provider,
 	meta ProviderMetadata,
 ) (pulumirpc.ResourceProviderServer, error) {
 	p, err := newProviderWithContext(ctx, info, meta)
@@ -243,13 +244,13 @@ func (p *provider) Pkg() tokens.Package {
 
 type xResetProviderKey struct{}
 
-type xParameterizeResetProviderFunc = func(context.Context, tfbridge.ProviderInfo, ProviderMetadata) error
+type xParameterizeResetProviderFunc = func(context.Context, info.Provider, ProviderMetadata) error
 
 // XParameterizeResetProvider resets the enclosing PF provider with a new info and meta combination.
 //
 // XParameterizeResetProvider is an unstable method and may change in any bridge
 // release. It is intended only for internal use.
-func XParameterizeResetProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
+func XParameterizeResetProvider(ctx context.Context, info info.Provider, meta ProviderMetadata) error {
 	return ctx.Value(xResetProviderKey{}).(xParameterizeResetProviderFunc)(ctx, info, meta)
 }
 
@@ -262,7 +263,7 @@ func (p *provider) ParameterizeWithContext(
 	}
 
 	ctx = context.WithValue(ctx, xResetProviderKey{},
-		func(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
+		func(ctx context.Context, info info.Provider, meta ProviderMetadata) error {
 			pp, err := newProviderWithContext(ctx, info, meta)
 			if err != nil {
 				return err

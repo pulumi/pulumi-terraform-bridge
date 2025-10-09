@@ -22,7 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -33,7 +33,7 @@ type datasourceHandle struct {
 	encoder                 convert.Encoder
 	decoder                 convert.Decoder
 	schemaOnlyShim          shim.Resource
-	pulumiDataSourceInfo    *tfbridge.DataSourceInfo // optional
+	pulumiDataSourceInfo    *info.DataSource // optional
 }
 
 func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMember) (datasourceHandle, error) {

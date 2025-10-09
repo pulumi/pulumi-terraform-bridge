@@ -25,18 +25,19 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // A source of documentation bytes.
 type DocsSource interface {
 	// Get the bytes for a resource with TF token rawname.
-	getResource(rawname string, info *tfbridge.DocInfo) (*DocFile, error)
+	getResource(rawname string, info *info.Doc) (*DocFile, error)
 
 	// Get the bytes for a datasource with TF token rawname.
-	getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error)
+	getDatasource(rawname string, info *info.Doc) (*DocFile, error)
 
 	// Get the bytes for the provider installation doc.
-	getInstallation(info *tfbridge.DocInfo) (*DocFile, error)
+	getInstallation(info *info.Doc) (*DocFile, error)
 }
 
 type DocFile struct {
@@ -57,7 +58,7 @@ func NewGitRepoDocsSource(g *Generator) DocsSource {
 }
 
 type gitRepoSource struct {
-	docRules              *tfbridge.DocRuleInfo
+	docRules              *info.DocRule
 	upstreamRepoPath      string
 	org                   string
 	provider              string
@@ -66,22 +67,22 @@ type gitRepoSource struct {
 	githost               string
 }
 
-func (gh *gitRepoSource) getResource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
+func (gh *gitRepoSource) getResource(rawname string, info *info.Doc) (*DocFile, error) {
 	return gh.getFile(rawname, info, ResourceDocs)
 }
 
-func (gh *gitRepoSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
+func (gh *gitRepoSource) getDatasource(rawname string, info *info.Doc) (*DocFile, error) {
 	return gh.getFile(rawname, info, DataSourceDocs)
 }
 
-func (gh *gitRepoSource) getInstallation(info *tfbridge.DocInfo) (*DocFile, error) {
+func (gh *gitRepoSource) getInstallation(info *info.Doc) (*DocFile, error) {
 	// The installation docs do not have a rawname.
 	return gh.getFile("", info, InstallationDocs)
 }
 
 // getFile implements the private logic necessary to get a file from a TF Git repo's website section.
 func (gh *gitRepoSource) getFile(
-	rawname string, info *tfbridge.DocInfo, kind DocKind,
+	rawname string, info *info.Doc, kind DocKind,
 ) (*DocFile, error) {
 	if info != nil && len(info.Markdown) != 0 {
 		return &DocFile{Content: info.Markdown}, nil
@@ -182,7 +183,7 @@ func getRepoPath(gitHost string, org string, provider string, version string) (_
 	return target.Dir, nil
 }
 
-func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) []string {
+func getMarkdownNames(packagePrefix, rawName string, globalInfo *info.DocRule) []string {
 	// Handle resources/datasources renamed with the tfbridge.RenamedEntitySuffix, `_legacy_`
 	// We want to be finding docs for the rawName _without_ the suffix, so we trim it if present.
 	trimmedName := strings.TrimSuffix(rawName, tfbridge.RenamedEntitySuffix)
@@ -202,7 +203,7 @@ func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRul
 
 	if globalInfo != nil && globalInfo.AlternativeNames != nil {
 		// We look at user generated names before we look at default names
-		possibleMarkdownNames = append(globalInfo.AlternativeNames(tfbridge.DocsPathInfo{
+		possibleMarkdownNames = append(globalInfo.AlternativeNames(info.DocsPath{
 			TfToken: rawName,
 		}), possibleMarkdownNames...)
 	}

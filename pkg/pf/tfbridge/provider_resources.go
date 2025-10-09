@@ -24,7 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -32,7 +32,7 @@ type resourceHandle struct {
 	token                  tokens.Type
 	terraformResourceName  string
 	schema                 runtypes.Schema
-	pulumiResourceInfo     *tfbridge.ResourceInfo // optional
+	pulumiResourceInfo     *info.Resource // optional
 	encoder                convert.Encoder
 	decoder                convert.Decoder
 	schemaOnlyShimResource shim.Resource

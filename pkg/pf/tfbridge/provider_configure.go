@@ -24,13 +24,14 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // This function iterates over the diagnostics and replaces the names of tf config properties
 // with their corresponding Pulumi names.
 func replaceConfigInDiagnostics(
-	config map[string]*tfbridge.SchemaInfo,
+	config map[string]*info.Schema,
 	schema shim.SchemaMap,
 	diags []*tfprotov6.Diagnostic,
 ) []*tfprotov6.Diagnostic {

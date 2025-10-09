@@ -16,7 +16,6 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
@@ -448,9 +447,9 @@ func SkipSectionByHeaderContent(
 }
 
 // Edit Rule for skipping headers.
-func skipSectionHeadersEdit() tfbridge.DocsEdit {
+func skipSectionHeadersEdit() info.DocsEdit {
 	defaultHeaderSkipRegexps := getDefaultHeadersToSkip()
-	return tfbridge.DocsEdit{
+	return info.DocsEdit{
 		Path: "*",
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			return SkipSectionByHeaderContent(content, func(headerText string) bool {
@@ -491,9 +490,9 @@ func getTfVersionsToRemove() []*regexp.Regexp {
 	return tfVersionsToRemove
 }
 
-func removeTfVersionMentions() tfbridge.DocsEdit {
+func removeTfVersionMentions() info.DocsEdit {
 	tfVersionsToRemove := getTfVersionsToRemove()
-	return tfbridge.DocsEdit{
+	return info.DocsEdit{
 		Path: "*",
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			for _, tfVersion := range tfVersionsToRemove {

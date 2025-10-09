@@ -36,6 +36,7 @@ import (
 
 	pftfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // Regressing an issue with AWS provider not recognizing that assume_role config setting is singular via
@@ -61,7 +62,7 @@ func TestMaxItemsOne(t *testing.T) {
 		},
 	}
 	res, err := GenerateSchema(ctx, GenerateSchemaOptions{
-		ProviderInfo: tfbridge.ProviderInfo{
+		ProviderInfo: info.Provider{
 			Name: "testprovider",
 			P:    pftfbridge.ShimProvider(&schemaTestProvider{schema: s}),
 		},
@@ -153,7 +154,7 @@ func TestTypeOverride(t *testing.T) {
 	tests := []struct {
 		name          string
 		schema        rschema.Schema
-		info          *tfbridge.ResourceInfo
+		info          *info.Resource
 		expectedError autogold.Value
 	}{
 		{
@@ -183,9 +184,9 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{Fields: map[string]*tfbridge.SchemaInfo{
-				"a1": {Elem: &tfbridge.SchemaInfo{
-					Fields: map[string]*tfbridge.SchemaInfo{
+			info: &info.Resource{Fields: map[string]*info.Schema{
+				"a1": {Elem: &info.Schema{
+					Fields: map[string]*info.Schema{
 						"n1": {Type: "number"},
 					},
 				}},
@@ -204,8 +205,8 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{Fields: map[string]*tfbridge.SchemaInfo{
-				"a1": {Elem: &tfbridge.SchemaInfo{
+			info: &info.Resource{Fields: map[string]*info.Schema{
+				"a1": {Elem: &info.Schema{
 					Type: "testprovider:index:SomeOtherType",
 				}},
 			}},
@@ -223,12 +224,12 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{Fields: map[string]*tfbridge.SchemaInfo{
+			info: &info.Resource{Fields: map[string]*info.Schema{
 				"a1": {
 					MaxItemsOne: tfbridge.True(),
-					Elem: &tfbridge.SchemaInfo{
-						Elem: &tfbridge.SchemaInfo{
-							Fields: map[string]*tfbridge.SchemaInfo{
+					Elem: &info.Schema{
+						Elem: &info.Schema{
+							Fields: map[string]*info.Schema{
 								"n1": {Name: "foo"},
 							},
 						},
@@ -248,8 +249,8 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{Fields: map[string]*tfbridge.SchemaInfo{
-				"a1": {Fields: map[string]*tfbridge.SchemaInfo{
+			info: &info.Resource{Fields: map[string]*info.Schema{
+				"a1": {Fields: map[string]*info.Schema{
 					"invalid": {},
 				}},
 			}},
@@ -265,9 +266,9 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
-					"a1": {Elem: &tfbridge.SchemaInfo{
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
+					"a1": {Elem: &info.Schema{
 						Type: "number",
 					}},
 				},
@@ -287,11 +288,11 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
-					"a1": {Elem: &tfbridge.SchemaInfo{
-						Elem: &tfbridge.SchemaInfo{
-							Fields: map[string]*tfbridge.SchemaInfo{
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
+					"a1": {Elem: &info.Schema{
+						Elem: &info.Schema{
+							Fields: map[string]*info.Schema{
 								"n1": {Type: "number"},
 							},
 						},
@@ -309,9 +310,9 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
-					"a1": {Fields: map[string]*tfbridge.SchemaInfo{
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
+					"a1": {Fields: map[string]*info.Schema{
 						"invalid": {},
 					}},
 				},
@@ -328,8 +329,8 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
 					"a1": {MaxItemsOne: tfbridge.True()},
 				},
 			},
@@ -345,9 +346,9 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
-					"a1": {Elem: &tfbridge.SchemaInfo{
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
+					"a1": {Elem: &info.Schema{
 						Type: "number",
 					}},
 				},
@@ -363,9 +364,9 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
-					"a1": {Fields: map[string]*tfbridge.SchemaInfo{
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
+					"a1": {Fields: map[string]*info.Schema{
 						"invalid": {},
 					}},
 				},
@@ -382,9 +383,9 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
-					"a1": {Elem: &tfbridge.SchemaInfo{
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
+					"a1": {Elem: &info.Schema{
 						Type: "number",
 					}},
 				},
@@ -400,8 +401,8 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
 					"a1": {MaxItemsOne: tfbridge.True()},
 				},
 			},
@@ -416,9 +417,9 @@ func TestTypeOverride(t *testing.T) {
 					},
 				},
 			},
-			info: &tfbridge.ResourceInfo{
-				Fields: map[string]*tfbridge.SchemaInfo{
-					"a1": {Fields: map[string]*tfbridge.SchemaInfo{
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
+					"a1": {Fields: map[string]*info.Schema{
 						"invalid": {},
 					}},
 				},
@@ -433,15 +434,15 @@ func TestTypeOverride(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 			if tt.info == nil {
-				tt.info = &tfbridge.ResourceInfo{}
+				tt.info = &info.Resource{}
 			}
 			tt.info.Tok = "testprovider:index:Res"
-			tt.info.Docs = &tfbridge.DocInfo{Markdown: []byte{' '}}
+			tt.info.Docs = &info.Doc{Markdown: []byte{' '}}
 			if _, ok := tt.schema.Attributes["id"]; !ok {
 				tt.schema.Attributes["id"] = rschema.StringAttribute{Computed: true}
 			}
 			res, err := GenerateSchema(ctx, GenerateSchemaOptions{
-				ProviderInfo: tfbridge.ProviderInfo{
+				ProviderInfo: info.Provider{
 					Name:             "testprovider",
 					UpstreamRepoPath: ".", // no invalid mappings warnings
 					P: pftfbridge.ShimProvider(&schemaTestProvider{
@@ -449,7 +450,7 @@ func TestTypeOverride(t *testing.T) {
 							"res": tt.schema,
 						},
 					}),
-					Resources: map[string]*tfbridge.ResourceInfo{
+					Resources: map[string]*info.Resource{
 						"test_res": tt.info,
 					},
 					// Trim the schema for easier comparison
@@ -488,9 +489,9 @@ func TestWriteOnlyOmit(t *testing.T) {
 		},
 	}
 
-	info := &tfbridge.ResourceInfo{
+	resourceInfo := &info.Resource{
 		Tok:  "testprovider:index:Res",
-		Docs: &tfbridge.DocInfo{Markdown: []byte{' '}},
+		Docs: &info.Doc{Markdown: []byte{' '}},
 	}
 
 	if _, ok := schema.Attributes["id"]; !ok {
@@ -498,7 +499,7 @@ func TestWriteOnlyOmit(t *testing.T) {
 	}
 
 	res, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
-		ProviderInfo: tfbridge.ProviderInfo{
+		ProviderInfo: info.Provider{
 			Name:             "testprovider",
 			UpstreamRepoPath: ".", // no invalid mappings warnings
 			P: pftfbridge.ShimProvider(&schemaTestProvider{
@@ -506,8 +507,8 @@ func TestWriteOnlyOmit(t *testing.T) {
 					"res": schema,
 				},
 			}),
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_res": info,
+			Resources: map[string]*info.Resource{
+				"test_res": resourceInfo,
 			},
 			// Trim the schema for easier comparison
 			SchemaPostProcessor: func(p *puschema.PackageSpec) {
@@ -542,13 +543,13 @@ func TestPFRequiredInputWithDefault(t *testing.T) {
 		},
 	}
 
-	info := &tfbridge.ResourceInfo{
+	resourceInfo := &info.Resource{
 		Tok:  "testprovider:index:Res",
-		Docs: &tfbridge.DocInfo{Markdown: []byte{' '}},
+		Docs: &info.Doc{Markdown: []byte{' '}},
 	}
 
 	res, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
-		ProviderInfo: tfbridge.ProviderInfo{
+		ProviderInfo: info.Provider{
 			Name:             "testprovider",
 			UpstreamRepoPath: ".", // no invalid mappings warnings
 			P: pftfbridge.ShimProvider(&schemaTestProvider{
@@ -556,8 +557,8 @@ func TestPFRequiredInputWithDefault(t *testing.T) {
 					"res": schema,
 				},
 			}),
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_res": info,
+			Resources: map[string]*info.Resource{
+				"test_res": resourceInfo,
 			},
 		},
 	})

@@ -23,12 +23,13 @@ import (
 
 	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 // Minified variant of pulumi-aws provider extracted from
 // pulumi/pulumi-terraform-bridge#611 issue.
-func ProviderRegress611() tfbridge.ProviderInfo {
+func ProviderRegress611() info.Provider {
 	awsMod := "index"
 	awsPkg := "aws"
 	iamMod := "Iam"
@@ -84,7 +85,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 		return awsMember(mod, fn, res, true)
 	}
 
-	prov := tfbridge.ProviderInfo{
+	prov := info.Provider{
 		P:           p,
 		Name:        "aws",
 		Description: "A Pulumi package for creating and managing Amazon Web Services (AWS) cloud resources.",
@@ -94,25 +95,25 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 		Repository:  "https://github.com/phillipedwards/pulumi-aws",
 		Version:     "0.0.2",
 		GitHubOrg:   "hashicorp",
-		Config: map[string]*tfbridge.SchemaInfo{
+		Config: map[string]*info.Schema{
 			"region": {
 				Type: awsTypeDefaultFile(awsMod, "Region"),
-				Default: &tfbridge.DefaultInfo{
+				Default: &info.Default{
 					EnvVars: []string{"AWS_REGION", "AWS_DEFAULT_REGION"},
 				},
 			},
 			"skip_get_ec2_platforms": {
-				Default: &tfbridge.DefaultInfo{
+				Default: &info.Default{
 					Value: true,
 				},
 			},
 			"skip_region_validation": {
-				Default: &tfbridge.DefaultInfo{
+				Default: &info.Default{
 					Value: true,
 				},
 			},
 			"skip_credentials_validation": {
-				Default: &tfbridge.DefaultInfo{
+				Default: &info.Default{
 					// This is required to now be false! When this is true, we defer
 					// the AWS credentials validation check to happen at resource
 					// creation time. Although it may be a little slower validating
@@ -126,17 +127,17 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			},
 			"skip_metadata_api_check": {
 				Type: "boolean",
-				Default: &tfbridge.DefaultInfo{
+				Default: &info.Default{
 					Value: true,
 				},
 			},
 		},
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			// Identity and Access Management (IAM)
 			"aws_iam_access_key": {Tok: awsResource(iamMod, "AccessKey")},
 			"aws_iam_account_alias": {
 				Tok: awsResource(iamMod, "AccountAlias"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"account_alias": {
 						CSharpName: "Alias",
 					},
@@ -145,7 +146,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			"aws_iam_account_password_policy": {Tok: awsResource(iamMod, "AccountPasswordPolicy")},
 			"aws_iam_group_policy": {
 				Tok: awsResource(iamMod, "GroupPolicy"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"policy": {
 						Type:      "string",
 						AltTypes:  []tokens.Type{awsType(iamMod, "documents", "PolicyDocument")},
@@ -157,7 +158,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			"aws_iam_group_membership": {Tok: awsResource(iamMod, "GroupMembership")},
 			"aws_iam_group_policy_attachment": {
 				Tok: awsResource(iamMod, "GroupPolicyAttachment"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"group": {
 						Type:     "string",
 						AltTypes: []tokens.Type{awsTypeDefaultFile(iamMod, "Group")},
@@ -173,7 +174,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			},
 			"aws_iam_instance_profile": {
 				Tok: awsResource(iamMod, "InstanceProfile"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"role": {
 						Type:     "string",
 						AltTypes: []tokens.Type{awsTypeDefaultFile(iamMod, "Role")},
@@ -183,7 +184,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			"aws_iam_openid_connect_provider": {Tok: awsResource(iamMod, "OpenIdConnectProvider")},
 			"aws_iam_policy": {
 				Tok: awsResource(iamMod, "Policy"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"policy": {
 						Type:       "string",
 						AltTypes:   []tokens.Type{awsType(iamMod, "documents", "PolicyDocument")},
@@ -194,21 +195,21 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			},
 			"aws_iam_policy_attachment": {
 				Tok: awsResource(iamMod, "PolicyAttachment"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"users": {
-						Elem: &tfbridge.SchemaInfo{
+						Elem: &info.Schema{
 							Type:     "string",
 							AltTypes: []tokens.Type{awsTypeDefaultFile(iamMod, "User")},
 						},
 					},
 					"roles": {
-						Elem: &tfbridge.SchemaInfo{
+						Elem: &info.Schema{
 							Type:     "string",
 							AltTypes: []tokens.Type{awsTypeDefaultFile(iamMod, "Role")},
 						},
 					},
 					"groups": {
-						Elem: &tfbridge.SchemaInfo{
+						Elem: &info.Schema{
 							Type:     "string",
 							AltTypes: []tokens.Type{awsTypeDefaultFile(iamMod, "Group")},
 						},
@@ -224,7 +225,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			},
 			"aws_iam_role_policy_attachment": {
 				Tok: awsResource(iamMod, "RolePolicyAttachment"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"role": {
 						Type:     "string",
 						AltTypes: []tokens.Type{awsTypeDefaultFile(iamMod, "Role")},
@@ -240,7 +241,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			},
 			"aws_iam_role_policy": {
 				Tok: awsResource(iamMod, "RolePolicy"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"role": {
 						Type:     "string",
 						AltTypes: []tokens.Type{awsTypeDefaultFile(iamMod, "Role")},
@@ -254,7 +255,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			},
 			"aws_iam_role": {
 				Tok: awsResource(iamMod, "Role"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"name": tfbridge.AutoName("name", 64, "-"),
 					"assume_role_policy": {
 						Type:      "string",
@@ -269,7 +270,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			"aws_iam_user_group_membership": {Tok: awsResource(iamMod, "UserGroupMembership")},
 			"aws_iam_user_policy_attachment": {
 				Tok: awsResource(iamMod, "UserPolicyAttachment"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"user": {
 						Type:     "string",
 						AltTypes: []tokens.Type{awsTypeDefaultFile(iamMod, "User")},
@@ -285,7 +286,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			},
 			"aws_iam_user_policy": {
 				Tok: awsResource(iamMod, "UserPolicy"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"policy": {
 						Type:      "string",
 						AltTypes:  []tokens.Type{awsType(iamMod, "documents", "PolicyDocument")},
@@ -300,7 +301,7 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			"aws_iam_signing_certificate":         {Tok: awsResource(iamMod, "SigningCertificate")},
 			"aws_iam_virtual_mfa_device":          {Tok: awsResource(iamMod, "VirtualMfaDevice")},
 		},
-		DataSources: map[string]*tfbridge.DataSourceInfo{
+		DataSources: map[string]*info.DataSource{
 			// AWS
 			"aws_arn":                     {Tok: awsDataSource(awsMod, "getArn")},
 			"aws_availability_zone":       {Tok: awsDataSource(awsMod, "getAvailabilityZone")},

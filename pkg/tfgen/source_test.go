@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestGetDocsPath(t *testing.T) {
@@ -99,7 +99,7 @@ func TestGetNarkdownNames(t *testing.T) {
 		name          string
 		packagePrefix string
 		rawName       string
-		globalInfo    *tfbridge.DocRuleInfo
+		globalInfo    *info.DocRule
 		expectedNames []string
 	}{
 		{

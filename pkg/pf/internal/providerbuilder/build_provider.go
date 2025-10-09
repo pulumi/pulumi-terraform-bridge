@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
@@ -85,10 +86,10 @@ func (impl *Provider) GRPCProvider() tfprotov6.ProviderServer {
 	return providerserver.NewProtocol6(impl)()
 }
 
-func (impl *Provider) ToProviderInfo() tfbridge0.ProviderInfo {
+func (impl *Provider) ToProviderInfo() info.Provider {
 	shimProvider := tfbridge.ShimProvider(impl)
 
-	provider := tfbridge0.ProviderInfo{
+	provider := info.Provider{
 		P:            shimProvider,
 		Name:         impl.TypeName,
 		Version:      "0.0.1",

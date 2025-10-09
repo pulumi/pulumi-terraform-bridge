@@ -20,10 +20,10 @@ import (
 	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-func serve(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta ProviderMetadata) error {
+func serve(ctx context.Context, pkg string, prov info.Provider, meta ProviderMetadata) error {
 	return rprovider.Main(pkg, func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 		return NewProviderServer(ctx, host, prov, meta)
 	})

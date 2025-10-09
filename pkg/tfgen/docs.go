@@ -182,14 +182,14 @@ func formatEntityName(rawname string) string {
 // getDocsForResource extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo,
+	rawname string, resourceInfo info.ResourceOrDataSource,
 ) (entityDocs, error) {
 	if g.skipDocs {
 		return entityDocs{}, nil
 	}
-	var docInfo *tfbridge.DocInfo
-	if info != nil {
-		docInfo = info.GetDocs()
+	var docInfo *info.Doc
+	if resourceInfo != nil {
+		docInfo = resourceInfo.GetDocs()
 	}
 
 	var docFile *DocFile
@@ -217,7 +217,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	if docFile == nil {
 		entitiesMissingDocs++
 		msg := fmt.Sprintf("could not find docs for %v %v. Override the Docs property in the %v mapping. See "+
-			"type tfbridge.DocInfo for details.", kind, formatEntityName(rawname), kind)
+			"type info.Doc for details.", kind, formatEntityName(rawname), kind)
 
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_MISSING_DOCS_ERROR")) {
 			if docInfo == nil || !docInfo.AllowMissing {
@@ -236,7 +236,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 
 	markdownBytes, markdownFileName := docFile.Content, docFile.FileName
 
-	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, rawname)
+	doc, err := parseTFMarkdown(g, resourceInfo, kind, markdownBytes, markdownFileName, rawname)
 	if err != nil {
 		return entityDocs{}, err
 	}
@@ -458,12 +458,12 @@ func splitStringsAtIndexes(s string, splits []int) []string {
 
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
-func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
+func parseTFMarkdown(g *Generator, resourceInfo info.ResourceOrDataSource, kind DocKind,
 	markdown []byte, markdownFileName, rawname string,
 ) (entityDocs, error) {
 	p := &tfMarkdownParser{
 		sink:             g,
-		info:             info,
+		info:             resourceInfo,
 		kind:             kind,
 		markdownFileName: markdownFileName,
 		rawname:          rawname,
@@ -486,7 +486,7 @@ type diagsSink interface {
 
 type tfMarkdownParser struct {
 	sink             diagsSink
-	info             tfbridge.ResourceOrDataSourceInfo
+	info             info.ResourceOrDataSource
 	kind             DocKind
 	markdownFileName string
 	rawname          string
@@ -1774,7 +1774,7 @@ func (g *Generator) convert(
 		SkipResourceTypechecking: true,
 	})
 
-	return
+	return files, diags, err
 }
 
 func (g *Generator) legacyConvert(
@@ -2154,7 +2154,7 @@ const elidedDocComment = "<elided>"
 type infoContext struct {
 	language Language
 	pkg      tokens.Package
-	info     tfbridge.ProviderInfo
+	info     info.Provider
 }
 
 type spanValues struct {

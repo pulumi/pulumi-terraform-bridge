@@ -22,7 +22,6 @@ import (
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
-	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -47,7 +46,7 @@ func testSink(t T) diag.Sink {
 	return testSink
 }
 
-func genMetadata(t T, info tfbridge0.ProviderInfo) (tfbridge.ProviderMetadata, error) {
+func genMetadata(t T, info info.Provider) (tfbridge.ProviderMetadata, error) {
 	generated, err := tfgen.GenerateSchema(context.Background(), tfgen.GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: testSink(t),
@@ -59,7 +58,7 @@ func genMetadata(t T, info tfbridge0.ProviderInfo) (tfbridge.ProviderMetadata, e
 	return generated.ProviderMetadata, nil
 }
 
-func newProviderServer(t T, info tfbridge0.ProviderInfo) (pulumirpc.ResourceProviderServer, error) {
+func newProviderServer(t T, info info.Provider) (pulumirpc.ResourceProviderServer, error) {
 	ctx := context.Background()
 	meta, err := genMetadata(t, info)
 	if err != nil {

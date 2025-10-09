@@ -23,6 +23,7 @@ import (
 	testutils "github.com/pulumi/providertest/replay"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -57,21 +58,21 @@ func TestInvokeRawConfigDoesNotPanic(t *testing.T) {
 
 	p := shimv2.NewProvider(tfProvider)
 
-	info := tfbridge.ProviderInfo{
+	providerInfo := info.Provider{
 		P:    p,
 		Name: "aws",
-		DataSources: map[string]*tfbridge.DataSourceInfo{
+		DataSources: map[string]*info.DataSource{
 			"aws_rds_engine_version": {Tok: "aws:rds/getEngineVersion:getEngineVersion"},
 		},
 	}
 
 	server := tfbridge.NewProvider(ctx,
-		nil,      /* hostClient */
-		"aws",    /* module */
-		"",       /* version */
-		p,        /* tf */
-		info,     /* info */
-		[]byte{}, /* pulumiSchema */
+		nil,          /* hostClient */
+		"aws",        /* module */
+		"",           /* version */
+		p,            /* tf */
+		providerInfo, /* info */
+		[]byte{},     /* pulumiSchema */
 	)
 
 	testCase := `

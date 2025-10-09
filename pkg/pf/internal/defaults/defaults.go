@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
@@ -37,11 +38,11 @@ type ApplyDefaultInfoValuesArgs struct {
 	SchemaMap shim.SchemaMap
 
 	// Toplevel SchemaInfo configuration matching TopSchemaMap.
-	SchemaInfos map[string]*tfbridge.SchemaInfo
+	SchemaInfos map[string]*info.Schema
 
 	// Note that URN need not be specified for Invoke or Configure processing. Do not set PropertyPath as this
 	// module will set it based on recursive traversal.
-	ComputeDefaultOptions tfbridge.ComputeDefaultOptions
+	ComputeDefaultOptions info.ComputeDefaultOptions
 
 	// Optional. If known, these are the provider-level configuration values, to support DefaultInfo.Config.
 	ProviderConfig resource.PropertyMap
@@ -75,9 +76,9 @@ func ApplyDefaultInfoValues(ctx context.Context, args ApplyDefaultInfoValuesArgs
 func getDefaultValue(
 	ctx context.Context,
 	property resource.PropertyKey,
-	cdOptions tfbridge.ComputeDefaultOptions,
+	cdOptions info.ComputeDefaultOptions,
 	fieldSchema shim.Schema,
-	defaultInfo *tfbridge.DefaultInfo,
+	defaultInfo *info.Default,
 	providerConfig resource.PropertyMap,
 ) (resource.PropertyValue, bool) {
 	na := resource.NewNullProperty()
@@ -149,7 +150,7 @@ func getDefaultValue(
 			map[string]any{"property": string(property)})
 		return recoverDefaultValue(raw), true
 	} else if defaultInfo.From != nil {
-		raw, err := defaultInfo.From(&tfbridge.PulumiResource{
+		raw, err := defaultInfo.From(&info.PulumiResource{
 			URN:        cdOptions.URN,
 			Properties: cdOptions.Properties,
 			Seed:       cdOptions.Seed,
@@ -211,15 +212,15 @@ func recoverDefaultValue(defaultValue any) resource.PropertyValue {
 
 type defaultsTransform struct {
 	topSchemaMap          shim.SchemaMap
-	topFieldInfos         map[string]*tfbridge.SchemaInfo // optional
-	computeDefaultOptions tfbridge.ComputeDefaultOptions
+	topFieldInfos         map[string]*info.Schema // optional
+	computeDefaultOptions info.ComputeDefaultOptions
 	providerConfig        resource.PropertyMap // optional
 }
 
 // Returns matching object schema for a context determined by the PropertyPath, if any.
 func (du *defaultsTransform) lookupSchemaByContext(
 	path resource.PropertyPath,
-) (shim.SchemaMap, map[string]*tfbridge.SchemaInfo, bool) {
+) (shim.SchemaMap, map[string]*info.Schema, bool) {
 	if len(path) == 0 {
 		return du.topSchemaMap, du.topFieldInfos, true
 	}
@@ -229,7 +230,7 @@ func (du *defaultsTransform) lookupSchemaByContext(
 		return nil, nil, false
 	}
 
-	schema, info, err := tfbridge.LookupSchemas(schemaPath, du.topSchemaMap, du.topFieldInfos)
+	schema, schemaInfo, err := tfbridge.LookupSchemas(schemaPath, du.topSchemaMap, du.topFieldInfos)
 	if err != nil {
 		return nil, nil, false
 	}
@@ -241,11 +242,11 @@ func (du *defaultsTransform) lookupSchemaByContext(
 
 	objectSchema := encodedObjectSchema.Schema()
 
-	var fields map[string]*tfbridge.SchemaInfo
-	if info == nil || info.Fields == nil {
-		fields = map[string]*tfbridge.SchemaInfo{}
+	var fields map[string]*info.Schema
+	if schemaInfo == nil || schemaInfo.Fields == nil {
+		fields = map[string]*info.Schema{}
 	} else {
-		fields = info.Fields
+		fields = schemaInfo.Fields
 	}
 
 	return objectSchema, fields, true

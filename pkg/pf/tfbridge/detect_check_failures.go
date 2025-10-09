@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -35,7 +36,7 @@ func (p *provider) detectCheckFailure(
 	urn resource.URN,
 	isProvider bool,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
+	schemaInfos map[string]*info.Schema,
 	diag *tfprotov6.Diagnostic,
 ) *plugin.CheckFailure {
 	// For anything less critical than Error, refuse to treat it as a CheckFailure. Doing so
@@ -73,7 +74,7 @@ func (p *provider) detectCheckFailure(
 
 func formatAttributePathAsPropertyPath(
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
+	schemaInfos map[string]*info.Schema,
 	attrPath *tftypes.AttributePath,
 ) (ret tfbridge.CheckFailurePath, finalErr error) {
 	steps := attrPath.Steps()

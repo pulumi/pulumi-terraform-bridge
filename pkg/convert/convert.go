@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
@@ -54,9 +55,9 @@ type Encoder interface {
 
 // Schema information that is needed to construct Encoder or Decoder instances.
 type ObjectSchema struct {
-	SchemaMap   shim.SchemaMap                  // required
-	SchemaInfos map[string]*tfbridge.SchemaInfo // optional
-	Object      *tftypes.Object                 // optional, if not given will be inferred from SchemaMap
+	SchemaMap   shim.SchemaMap          // required
+	SchemaInfos map[string]*info.Schema // optional
+	Object      *tftypes.Object         // optional, if not given will be inferred from SchemaMap
 }
 
 func (os ObjectSchema) objectType() tftypes.Object {

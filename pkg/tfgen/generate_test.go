@@ -36,6 +36,7 @@ import (
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -67,7 +68,7 @@ func Test_DeprecationMessage(t *testing.T) {
 		{
 			name: "From Pulumi Resources File Overrides TF Schema",
 			variable: &variable{
-				info:   &tfbridge.SchemaInfo{DeprecationMessage: "Pulumi says this is deprecated"},
+				info:   &info.Schema{DeprecationMessage: "Pulumi says this is deprecated"},
 				schema: shimv1.NewSchema(&schema.Schema{Deprecated: "Terraform says this is deprecated"}),
 			},
 			expectedMessage: "Pulumi says this is deprecated",
@@ -96,7 +97,7 @@ func Test_ForceNew(t *testing.T) {
 				schema: shimv1.NewSchema(&schema.Schema{
 					Type: schema.TypeString,
 				}),
-				info: &tfbridge.SchemaInfo{
+				info: &info.Schema{
 					ForceNew: tfbridge.True(),
 				},
 			},
@@ -308,7 +309,7 @@ func Test_makePropertyType(t *testing.T) {
 func Test_ProviderWithOmittedTypes(t *testing.T) {
 	t.Parallel()
 
-	gen := func(t *testing.T, f func(*tfbridge.ResourceInfo)) pschema.PackageSpec {
+	gen := func(t *testing.T, f func(*info.Resource)) pschema.PackageSpec {
 		strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
 		nestedObj := (&shimschema.Schema{
 			Type:     shim.TypeMap,
@@ -344,7 +345,7 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 			Color: colors.Never,
 		})
 
-		res := &tfbridge.ResourceInfo{
+		res := &info.Resource{
 			Tok: "test:index:Bar",
 		}
 		if f != nil {
@@ -353,10 +354,10 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 
 		r, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
 			DiagnosticsSink: nilSink,
-			ProviderInfo: tfbridge.ProviderInfo{
+			ProviderInfo: info.Provider{
 				Name: "test",
 				P:    p,
-				Resources: map[string]*tfbridge.ResourceInfo{
+				Resources: map[string]*info.Resource{
 					"test_res": res,
 				},
 			},
@@ -373,8 +374,8 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 	})
 
 	t.Run("omit-top-level-prop", func(t *testing.T) {
-		spec := gen(t, func(info *tfbridge.ResourceInfo) {
-			info.Fields = map[string]*tfbridge.SchemaInfo{
+		spec := gen(t, func(res *info.Resource) {
+			res.Fields = map[string]*info.Schema{
 				"obj": {Omit: true},
 			}
 		})
@@ -384,11 +385,11 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 	})
 
 	t.Run("omit-nested-prop", func(t *testing.T) {
-		spec := gen(t, func(info *tfbridge.ResourceInfo) {
-			info.Fields = map[string]*tfbridge.SchemaInfo{
+		spec := gen(t, func(res *info.Resource) {
+			res.Fields = map[string]*info.Schema{
 				"obj": {
-					Elem: &tfbridge.SchemaInfo{
-						Fields: map[string]*tfbridge.SchemaInfo{
+					Elem: &info.Schema{
+						Fields: map[string]*info.Schema{
 							"nested": {Omit: true},
 						},
 					},
@@ -424,10 +425,10 @@ func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
 			}).Shim(),
 		},
 	}).Shim()
-	resWO := &tfbridge.ResourceInfo{
+	resWO := &info.Resource{
 		Tok: "test:index:WriteOnly",
 	}
-	resNoWO := &tfbridge.ResourceInfo{
+	resNoWO := &info.Resource{
 		Tok: "test:index:NoWriteOnly",
 	}
 	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -435,10 +436,10 @@ func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
 	})
 	schemaResult, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
 		DiagnosticsSink: nilSink,
-		ProviderInfo: tfbridge.ProviderInfo{
+		ProviderInfo: info.Provider{
 			Name: "test",
 			P:    p,
-			Resources: map[string]*tfbridge.ResourceInfo{
+			Resources: map[string]*info.Resource{
 				"test_res_with_wo": resWO,
 				"test_res_no_wo":   resNoWO,
 			},
@@ -467,7 +468,7 @@ func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
 			}).Shim(),
 		},
 	}).Shim()
-	resWO := &tfbridge.ResourceInfo{
+	resWO := &info.Resource{
 		Tok: "test:index:WriteOnly",
 	}
 	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -475,10 +476,10 @@ func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
 	})
 	_, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
 		DiagnosticsSink: nilSink,
-		ProviderInfo: tfbridge.ProviderInfo{
+		ProviderInfo: info.Provider{
 			Name: "test",
 			P:    p,
-			Resources: map[string]*tfbridge.ResourceInfo{
+			Resources: map[string]*info.Resource{
 				"test_res_wo": resWO,
 			},
 		},
@@ -771,10 +772,10 @@ func TestExtraMappingError(t *testing.T) {
 	})
 
 	// Create provider info with mappings for existing resources and extra mappings that don't exist
-	infoWithResources := tfbridge.ProviderInfo{
+	infoWithResources := info.Provider{
 		Name:    "test",
 		Version: "1.0.0",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"existing_resource": {
 				Tok: tokens.Type("test:index:ExistingResource"),
 			},
@@ -782,7 +783,7 @@ func TestExtraMappingError(t *testing.T) {
 				Tok: tokens.Type("test:index:UnmappedResource"),
 			},
 		},
-		DataSources: map[string]*tfbridge.DataSourceInfo{
+		DataSources: map[string]*info.DataSource{
 			"existing_datasource": {
 				Tok: tokens.ModuleMember("test:index:existingDatasource"),
 			},
@@ -792,15 +793,15 @@ func TestExtraMappingError(t *testing.T) {
 
 	// Create provider info with mappings for existing resources and extra data source mappings that don't exist
 	// this is necessary because Generate() exits early if Resources fail.
-	infoWithDataSources := tfbridge.ProviderInfo{
+	infoWithDataSources := info.Provider{
 		Name:    "test",
 		Version: "1.0.0",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"existing_resource": {
 				Tok: tokens.Type("test:index:ExistingResource"),
 			},
 		},
-		DataSources: map[string]*tfbridge.DataSourceInfo{
+		DataSources: map[string]*info.DataSource{
 			"existing_datasource": {
 				Tok: tokens.ModuleMember("test:index:existingDatasource"),
 			},
@@ -812,13 +813,13 @@ func TestExtraMappingError(t *testing.T) {
 	}
 
 	// Create provider info with extra field mappings that don't exist in the schema
-	infoWithExtraFields := tfbridge.ProviderInfo{
+	infoWithExtraFields := info.Provider{
 		Name:    "test",
 		Version: "1.0.0",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"existing_resource": {
 				Tok: tokens.Type("test:index:ExistingResource"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"unmapped_field": {
 						Name: "unmappedField",
 					},
@@ -833,7 +834,7 @@ func TestExtraMappingError(t *testing.T) {
 		envVars        map[string]string
 		expectError    bool
 		expectedErrors []string
-		info           tfbridge.ProviderInfo
+		info           info.Provider
 	}{
 		{
 			name:        "Providers should error on extra resource mapping",

@@ -20,6 +20,7 @@ import (
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestNestedCustomTypeEncoding(t *testing.T) {
@@ -51,26 +52,26 @@ func TestNestedCustomTypeEncoding(t *testing.T) {
 			}),
 		},
 	})
-	res := tfbridge0.ResourceInfo{
+	res := info.Resource{
 		Tok: "testprovider:index/bedrockagent:Bedrockagent",
-		Docs: &tfbridge0.DocInfo{
+		Docs: &info.Doc{
 			Markdown: []byte("OK"),
 		},
-		Fields: map[string]*tfbridge0.SchemaInfo{},
+		Fields: map[string]*info.Schema{},
 	}
 
-	info := tfbridge0.ProviderInfo{
+	providerInfo := info.Provider{
 		Name:         "testprovider",
 		P:            tfbridge.ShimProvider(testProvider),
 		Version:      "0.0.1",
 		MetadataInfo: &tfbridge0.MetadataInfo{},
-		Resources: map[string]*tfbridge0.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"testprovider_bedrockagent": &res,
 		},
 	}
 
-	encoding := convert.NewEncoding(info.P, &info)
-	objType := convert.InferObjectType(info.P.ResourcesMap().Get("testprovider_bedrockagent").Schema(), nil)
+	encoding := convert.NewEncoding(providerInfo.P, &providerInfo)
+	objType := convert.InferObjectType(providerInfo.P.ResourcesMap().Get("testprovider_bedrockagent").Schema(), nil)
 	_, err := encoding.NewResourceEncoder("testprovider_bedrockagent", objType)
 	assert.NoError(t, err)
 }

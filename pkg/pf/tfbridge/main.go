@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
@@ -38,9 +39,9 @@ import (
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 //
 // info.P must be constructed with ShimProvider or ShimProviderWithContext.
-func Main(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta ProviderMetadata) {
+func Main(ctx context.Context, pkg string, prov info.Provider, meta ProviderMetadata) {
 	handleFlags(ctx, prov.Version,
-		func() (*tfbridge.MarshallableProviderInfo, error) {
+		func() (*info.MarshallableProvider, error) {
 			pp, err := newProviderWithContext(ctx, prov, meta)
 			if err != nil {
 				return nil, err
@@ -57,7 +58,7 @@ func Main(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta Prov
 
 func handleFlags(
 	ctx context.Context, version string,
-	getProviderInfo func() (*tfbridge.MarshallableProviderInfo, error),
+	getProviderInfo func() (*info.MarshallableProvider, error),
 ) {
 	// Look for a request to dump the provider info to stdout.
 	flags := flag.NewFlagSet("tf-provider-flags", flag.ContinueOnError)
@@ -104,16 +105,16 @@ func handleFlags(
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 //
 // This is an experimental API.
-func MainWithMuxer(ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte) {
-	if len(info.MuxWith) > 0 {
-		panic("mixin providers via tfbridge.ProviderInfo.MuxWith is currently not supported")
+func MainWithMuxer(ctx context.Context, pkg string, providerInfo info.Provider, schema []byte) {
+	if len(providerInfo.MuxWith) > 0 {
+		panic("mixin providers via info.Provider.MuxWith is currently not supported")
 	}
-	handleFlags(ctx, info.Version, func() (*tfbridge.MarshallableProviderInfo, error) {
-		info := info
+	handleFlags(ctx, providerInfo.Version, func() (*info.MarshallableProvider, error) {
+		info := providerInfo
 		return tfbridge.MarshalProviderInfo(&info), nil
 	})
 
-	f := MakeMuxedServer(ctx, pkg, info, schema)
+	f := MakeMuxedServer(ctx, pkg, providerInfo, schema)
 
 	err := rprovider.Main(pkg, f)
 	if err != nil {
@@ -126,7 +127,7 @@ func MainWithMuxer(ctx context.Context, pkg string, info tfbridge.ProviderInfo, 
 // This function exposes implementation details for testing. It should not be used outside
 // of pulumi-terraform-bridge.  This is an experimental API.
 func MakeMuxedServer(
-	ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte,
+	ctx context.Context, pkg string, info info.Provider, schema []byte,
 ) func(*rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")

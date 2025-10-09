@@ -17,14 +17,14 @@ package tfbridge
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestSetAutoNamingDoesNotPanic(t *testing.T) {
 	t.Parallel()
-	prov := tfbridge.ProviderInfo{
+	prov := info.Provider{
 		P: nil,
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"x": {},
 		},
 	}

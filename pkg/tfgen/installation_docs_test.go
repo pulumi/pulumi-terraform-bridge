@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -28,7 +28,7 @@ func TestPlainDocsParser(t *testing.T) {
 		edits   editRules
 	}
 	// Mock provider for test conversion
-	p := tfbridge.ProviderInfo{
+	p := info.Provider{
 		Name: "simple",
 		P: sdkv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
@@ -68,7 +68,7 @@ func TestPlainDocsParser(t *testing.T) {
 			},
 			edits: append(
 				defaultEditRules(),
-				tfbridge.DocsEdit{
+				info.DocsEdit{
 					Edit: func(_ string, content []byte) ([]byte, error) {
 						return bytes.ReplaceAll(
 							content,
@@ -99,8 +99,8 @@ func TestPlainDocsParser(t *testing.T) {
 			}
 			g := &Generator{
 				sink: mockSink{t},
-				info: tfbridge.ProviderInfo{
-					Golang: &tfbridge.GolangInfo{
+				info: info.Provider{
+					Golang: &info.Golang{
 						ImportBasePath: "github.com/pulumi/pulumi-libvirt/sdk/go/libvirt",
 					},
 					Repository: "https://github.com/pulumi/pulumi-libvirt",
@@ -163,7 +163,7 @@ func TestDisplayNameFallback(t *testing.T) {
 				t.Skipf("Skipping on Windows due to a newline handling issue")
 			}
 			g := &Generator{
-				info: tfbridge.ProviderInfo{
+				info: info.Provider{
 					DisplayName: tt.displayName,
 				},
 				pkg: tokens.NewPackageToken(tokens.PackageName(tt.pkgName)),
@@ -424,7 +424,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		contentStr string
 		g          *Generator
 	}
-	providerInfo := tfbridge.ProviderInfo{
+	providerInfo := info.Provider{
 		Name: "simple",
 		P: sdkv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
@@ -447,17 +447,17 @@ func TestTranslateCodeBlocks(t *testing.T) {
 				},
 			},
 		}),
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"simple_resource": {
 				Tok: "simple:index:resource",
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"input_one": {
 						Name: "renamedInput1",
 					},
 				},
 			},
 		},
-		DataSources: map[string]*tfbridge.DataSourceInfo{
+		DataSources: map[string]*info.DataSource{
 			"simple_data_source": {
 				Tok: "simple:index:dataSource",
 			},

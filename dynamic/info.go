@@ -27,11 +27,12 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/version"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
+func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (info.Provider, error) {
 	provider := proto.New(ctx, p)
 
 	providerName := p.Name()
@@ -39,7 +40,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		providerName = value.ProviderName
 	}
 
-	prov := tfbridge.ProviderInfo{
+	prov := info.Provider{
 		P:              provider,
 		Name:           providerName,
 		Version:        p.Version(),
@@ -50,20 +51,20 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 			Path: "", Data: tfbridge.ProviderMetadata(nil),
 		},
 
-		Python: &tfbridge.PythonInfo{
+		Python: &info.Python{
 			PyProject:            struct{ Enabled bool }{true},
 			RespectSchemaVersion: true,
 		},
-		JavaScript: &tfbridge.JavaScriptInfo{
+		JavaScript: &info.JavaScript{
 			LiftSingleValueMethodReturns: true,
 			RespectSchemaVersion:         true,
 		},
-		CSharp: &tfbridge.CSharpInfo{
+		CSharp: &info.CSharp{
 			LiftSingleValueMethodReturns: true,
 			RespectSchemaVersion:         true,
 		},
-		Java: &tfbridge.JavaInfo{ /* Java does not have a RespectSchemaVersion flag */ },
-		Golang: &tfbridge.GolangInfo{
+		Java: &info.Java{ /* Java does not have a RespectSchemaVersion flag */ },
+		Golang: &info.Golang{
 			ImportBasePath: path.Join(
 				"github.com/pulumi/pulumi-terraform-provider/sdks/go",
 				providerName,

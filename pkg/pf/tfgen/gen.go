@@ -25,12 +25,12 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/check"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
-	sdkbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	realtfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 type GenerateSchemaOptions struct {
-	ProviderInfo    sdkbridge.ProviderInfo
+	ProviderInfo    info.Provider
 	DiagnosticsSink diag.Sink
 	XInMemoryDocs   bool
 }

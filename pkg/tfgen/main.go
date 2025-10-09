@@ -29,11 +29,11 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // Main executes the TFGen process for the given package pkg and provider prov.
-func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
+func Main(pkg string, version string, prov info.Provider) {
 	err := prov.P.InternalValidate()
 	if err != nil {
 		_, fmterr := fmt.Fprintf(os.Stderr, "Internal validation of the provider failed: %v\n", err)
@@ -55,7 +55,7 @@ func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
 }
 
 // Like Main but allows to customize the generation logic past the parsing of cmd-line arguments.
-func MainWithCustomGenerate(pkg string, version string, prov tfbridge.ProviderInfo,
+func MainWithCustomGenerate(pkg string, version string, prov info.Provider,
 	gen func(GeneratorOptions) error,
 ) {
 	if err := newTFGenCmd(pkg, version, prov, gen).Execute(); err != nil {
@@ -65,7 +65,7 @@ func MainWithCustomGenerate(pkg string, version string, prov tfbridge.ProviderIn
 	}
 }
 
-func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
+func newTFGenCmd(pkg string, version string, prov info.Provider,
 	gen func(GeneratorOptions) error,
 ) *cobra.Command {
 	var logToStderr bool

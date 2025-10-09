@@ -18,18 +18,18 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type encoding struct {
 	SchemaOnlyProvider shim.Provider
-	ProviderInfo       *tfbridge.ProviderInfo // only SchemaInfo for fields is required
+	ProviderInfo       *info.Provider // only SchemaInfo for fields is required
 }
 
 var _ Encoding = (*encoding)(nil)
 
-func NewEncoding(schemaOnlyProvider shim.Provider, providerInfo *tfbridge.ProviderInfo) Encoding {
+func NewEncoding(schemaOnlyProvider shim.Provider, providerInfo *info.Provider) Encoding {
 	return &encoding{
 		SchemaOnlyProvider: schemaOnlyProvider,
 		ProviderInfo:       providerInfo,
@@ -38,7 +38,7 @@ func NewEncoding(schemaOnlyProvider shim.Provider, providerInfo *tfbridge.Provid
 
 func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) {
 	schema := e.SchemaOnlyProvider.Schema()
-	var schemaInfos map[string]*tfbridge.SchemaInfo
+	var schemaInfos map[string]*info.Schema
 	if e.ProviderInfo != nil {
 		schemaInfos = e.ProviderInfo.Config
 	}

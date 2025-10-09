@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 const (
@@ -60,7 +61,7 @@ func (g *Generator) getOrCreateExamplesCache() *examplesCache {
 	return g.examplesCache
 }
 
-func newExamplesCache(info *tfbridge.ProviderInfo, cacheDir string) *examplesCache {
+func newExamplesCache(info *info.Provider, cacheDir string) *examplesCache {
 	providerName := info.Name
 	dir := cacheDir
 	enabled := true
@@ -218,7 +219,7 @@ func (ec *examplesCache) filehash(p string) string {
 	return ec.checksum(bytes)
 }
 
-func (ec *examplesCache) computeProviderInfoHash(info *tfbridge.ProviderInfo) {
+func (ec *examplesCache) computeProviderInfoHash(info *info.Provider) {
 	mpi := tfbridge.MarshalProviderInfo(info)
 	bytes, err := json.Marshal(mpi)
 	contract.AssertNoErrorf(err, "failed to marshal MarshallableProviderInfo to JSON")

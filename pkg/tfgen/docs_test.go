@@ -37,7 +37,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 )
 
@@ -82,9 +82,9 @@ func TestReformatText(t *testing.T) {
 	infoCtx := infoContext{
 		pkg:      "google",
 		language: "nodejs",
-		info: tfbridge.ProviderInfo{
+		info: info.Provider{
 			Name: "google",
-			Resources: map[string]*tfbridge.ResourceInfo{
+			Resources: map[string]*info.Resource{
 				"google_container_node_pool": {Tok: "google:container/nodePool:NodePool"},
 			},
 		},
@@ -1939,7 +1939,7 @@ func TestParseImports_WithOverride(t *testing.T) {
 	t.Parallel()
 	parser := tfMarkdownParser{
 		info: &mockResource{
-			docs: tfbridge.DocInfo{
+			docs: info.Doc{
 				ImportDetails: "overridden import details",
 			},
 		},
@@ -2030,16 +2030,16 @@ func TestConvertExamples(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			inmem := afero.NewMemMapFs()
-			info := testprovider.ProviderMiniRandom()
+			providerInfo := testprovider.ProviderMiniRandom()
 			language := Schema
 			if tc.language != nil {
 				language = *tc.language
 			}
 			g, err := NewGenerator(GeneratorOptions{
-				Package:      info.Name,
-				Version:      info.Version,
+				Package:      providerInfo.Name,
+				Version:      providerInfo.Version,
 				Language:     language,
-				ProviderInfo: info,
+				ProviderInfo: providerInfo,
 				Root:         inmem,
 				Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 					Color: colors.Never,
@@ -2072,12 +2072,12 @@ func TestConvertExamplesInner(t *testing.T) {
 	}
 
 	inmem := afero.NewMemMapFs()
-	info := testprovider.ProviderMiniRandom()
+	providerInfo := testprovider.ProviderMiniRandom()
 	g, err := NewGenerator(GeneratorOptions{
-		Package:      info.Name,
-		Version:      info.Version,
+		Package:      providerInfo.Name,
+		Version:      providerInfo.Version,
 		Language:     Schema,
-		ProviderInfo: info,
+		ProviderInfo: providerInfo,
 		Root:         inmem,
 		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 			Color: colors.Never,
@@ -2133,12 +2133,12 @@ func TestFalsePositiveCodeFences(t *testing.T) {
 	t.Parallel()
 
 	inmem := afero.NewMemMapFs()
-	info := testprovider.ProviderMiniRandom()
+	providerInfo := testprovider.ProviderMiniRandom()
 	g, err := NewGenerator(GeneratorOptions{
-		Package:      info.Name,
-		Version:      info.Version,
+		Package:      providerInfo.Name,
+		Version:      providerInfo.Version,
 		Language:     Schema,
-		ProviderInfo: info,
+		ProviderInfo: providerInfo,
 		Root:         inmem,
 		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 			Color: colors.Never,
@@ -2167,12 +2167,12 @@ func TestSkipLastCodeFenceAfterError(t *testing.T) {
 	t.Parallel()
 
 	inmem := afero.NewMemMapFs()
-	info := testprovider.ProviderMiniRandom()
+	providerInfo := testprovider.ProviderMiniRandom()
 	g, err := NewGenerator(GeneratorOptions{
-		Package:      info.Name,
-		Version:      info.Version,
+		Package:      providerInfo.Name,
+		Version:      providerInfo.Version,
 		Language:     Schema,
-		ProviderInfo: info,
+		ProviderInfo: providerInfo,
 		Root:         inmem,
 		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 			Color: colors.Never,
@@ -2294,7 +2294,7 @@ func TestFindFencesAndHeaders(t *testing.T) {
 
 func TestExampleGeneration(t *testing.T) {
 	t.Parallel()
-	info := testprovider.ProviderMiniRandom()
+	providerInfo := testprovider.ProviderMiniRandom()
 
 	markdown := []byte(`
 ## Examples
@@ -2308,17 +2308,17 @@ throw new Exception("!");
 
 	markdown = bytes.ReplaceAll(markdown, []byte("~~~"), []byte("```"))
 
-	info.Resources["random_integer"].Docs = &tfbridge.DocInfo{
+	providerInfo.Resources["random_integer"].Docs = &info.Doc{
 		Markdown: markdown,
 	}
 
 	inmem := afero.NewMemMapFs()
 
 	g, err := NewGenerator(GeneratorOptions{
-		Package:      info.Name,
-		Version:      info.Version,
+		Package:      providerInfo.Name,
+		Version:      providerInfo.Version,
 		Language:     Schema,
-		ProviderInfo: info,
+		ProviderInfo: providerInfo,
 		Root:         inmem,
 		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 			Color: colors.Never,
@@ -2348,8 +2348,8 @@ func TestParseTFMarkdown(t *testing.T) {
 		// `name`.
 		name string
 
-		info         tfbridge.ResourceOrDataSourceInfo
-		providerInfo tfbridge.ProviderInfo
+		info         info.ResourceOrDataSource
+		providerInfo info.Provider
 		kind         DocKind
 		rawName      string
 
@@ -2374,14 +2374,14 @@ func TestParseTFMarkdown(t *testing.T) {
 	}
 
 	editRule := func(edit func(string, []byte) ([]byte, error)) func(*testCase) {
-		rule := tfbridge.DocsEdit{
+		rule := info.DocsEdit{
 			Path: "*",
 			Edit: edit,
 		}
 		return func(tc *testCase) {
-			tc.providerInfo.DocRules = &tfbridge.DocRuleInfo{
-				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
-					return append([]tfbridge.DocsEdit{rule}, defaults...)
+			tc.providerInfo.DocRules = &info.DocRule{
+				EditRules: func(defaults []info.DocsEdit) []info.DocsEdit {
+					return append([]info.DocsEdit{rule}, defaults...)
 				},
 			}
 		}
@@ -2414,7 +2414,7 @@ This should be interpolated in.
 						return nil, fmt.Errorf("invalid path %q", name)
 					}
 				}
-				tc.info = &tfbridge.ResourceInfo{Docs: &tfbridge.DocInfo{
+				tc.info = &info.Resource{Docs: &info.Doc{
 					ReplaceExamplesSection: true,
 				}}
 			}),
@@ -2460,7 +2460,7 @@ This should be interpolated in.
 
 func TestErrorMissingDocs(t *testing.T) {
 	tests := []struct {
-		docs                 tfbridge.DocInfo
+		docs                 info.Doc
 		forbidMissingDocsEnv string
 		source               DocsSource
 		expectErr            bool
@@ -2486,7 +2486,7 @@ func TestErrorMissingDocs(t *testing.T) {
 		// override locally, so no error
 		{
 			source:               mockSource{},
-			docs:                 tfbridge.DocInfo{AllowMissing: true},
+			docs:                 info.Doc{AllowMissing: true},
 			forbidMissingDocsEnv: "true",
 		},
 		// DocInfo is nil so we error because docs are missing
@@ -2525,15 +2525,15 @@ func TestErrorNilDocs(t *testing.T) {
 		}
 		rawName := "nil_docs"
 		t.Setenv("PULUMI_MISSING_DOCS_ERROR", "true")
-		info := mockNilDocsResource{token: tokens.Token(rawName)}
-		_, err := getDocsForResource(g, mockSource{}, ResourceDocs, rawName, &info)
+		providerInfo := mockNilDocsResource{token: tokens.Token(rawName)}
+		_, err := getDocsForResource(g, mockSource{}, ResourceDocs, rawName, &providerInfo)
 		assert.NotNil(t, err)
 	})
 }
 
 type mockSource map[string]string
 
-func (m mockSource) getResource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
+func (m mockSource) getResource(rawname string, info *info.Doc) (*DocFile, error) {
 	f, ok := m[rawname]
 	if !ok {
 		return nil, nil
@@ -2544,11 +2544,11 @@ func (m mockSource) getResource(rawname string, info *tfbridge.DocInfo) (*DocFil
 	}, nil
 }
 
-func (m mockSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
+func (m mockSource) getDatasource(rawname string, info *info.Doc) (*DocFile, error) {
 	return nil, nil
 }
 
-func (m mockSource) getInstallation(info *tfbridge.DocInfo) (*DocFile, error) {
+func (m mockSource) getInstallation(info *info.Doc) (*DocFile, error) {
 	f, ok := m["index.md"]
 	if !ok {
 		return nil, nil
@@ -2576,19 +2576,19 @@ func (mockSink) Stringify(sev diag.Severity, diag *diag.Diag, args ...interface{
 }
 
 type mockResource struct {
-	docs  tfbridge.DocInfo
+	docs  info.Doc
 	token tokens.Token
 }
 
-func (r *mockResource) GetFields() map[string]*tfbridge.SchemaInfo {
-	return map[string]*tfbridge.SchemaInfo{}
+func (r *mockResource) GetFields() map[string]*info.Schema {
+	return map[string]*info.Schema{}
 }
 
 func (r *mockResource) ReplaceExamplesSection() bool {
 	return r.docs.ReplaceExamplesSection
 }
 
-func (r *mockResource) GetDocs() *tfbridge.DocInfo {
+func (r *mockResource) GetDocs() *info.Doc {
 	return &r.docs
 }
 
@@ -2601,7 +2601,7 @@ type mockNilDocsResource struct {
 	mockResource
 }
 
-func (nr *mockNilDocsResource) GetDocs() *tfbridge.DocInfo {
+func (nr *mockNilDocsResource) GetDocs() *info.Doc {
 	return nil
 }
 
@@ -2764,8 +2764,8 @@ func TestFixupPropertyReference(t *testing.T) {
 			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\">`random.RandomPet`</span> resource to generate pet names.",
 			ctx: infoContext{
 				pkg: "random",
-				info: tfbridge.ProviderInfo{
-					Resources: map[string]*tfbridge.ResourceInfo{
+				info: info.Provider{
+					Resources: map[string]*info.Resource{
 						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
 					},
 				},
@@ -2777,8 +2777,8 @@ func TestFixupPropertyReference(t *testing.T) {
 			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\">`random.RandomId`</span> data source to get random IDs.",
 			ctx: infoContext{
 				pkg: "random",
-				info: tfbridge.ProviderInfo{
-					DataSources: map[string]*tfbridge.DataSourceInfo{
+				info: info.Provider{
+					DataSources: map[string]*info.DataSource{
 						"random_id": {Tok: "random:index/randomId:RandomId"},
 					},
 				},
@@ -2790,7 +2790,7 @@ func TestFixupPropertyReference(t *testing.T) {
 			expected: "The <span pulumi-lang-nodejs=\"`length`\" pulumi-lang-dotnet=\"`Length`\" pulumi-lang-go=\"`length`\" pulumi-lang-python=\"`length`\" pulumi-lang-yaml=\"`length`\" pulumi-lang-java=\"`length`\">`length`</span> property controls the output length.",
 			ctx: infoContext{
 				pkg:  "random",
-				info: tfbridge.ProviderInfo{},
+				info: info.Provider{},
 			},
 		},
 		{
@@ -2799,7 +2799,7 @@ func TestFixupPropertyReference(t *testing.T) {
 			expected: "The length must also be greater than <span pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\">`min_upper`</span>.",
 			ctx: infoContext{
 				pkg:  "random",
-				info: tfbridge.ProviderInfo{},
+				info: info.Provider{},
 			},
 		},
 		{
@@ -2808,8 +2808,8 @@ func TestFixupPropertyReference(t *testing.T) {
 			expected: "Use<span pulumi-lang-nodejs=\" random.RandomPet \" pulumi-lang-dotnet=\" random.RandomPet \" pulumi-lang-go=\" RandomPet \" pulumi-lang-python=\" RandomPet \" pulumi-lang-yaml=\" random.RandomPet \" pulumi-lang-java=\" random.RandomPet \"> random.RandomPet </span>resource to generate pet names.",
 			ctx: infoContext{
 				pkg: "random",
-				info: tfbridge.ProviderInfo{
-					Resources: map[string]*tfbridge.ResourceInfo{
+				info: info.Provider{
+					Resources: map[string]*info.Resource{
 						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
 					},
 				},
@@ -2821,11 +2821,11 @@ func TestFixupPropertyReference(t *testing.T) {
 			expected: "Use <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\">`random.RandomPet`</span> and <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\">`random.RandomId`</span> together.",
 			ctx: infoContext{
 				pkg: "random",
-				info: tfbridge.ProviderInfo{
-					Resources: map[string]*tfbridge.ResourceInfo{
+				info: info.Provider{
+					Resources: map[string]*info.Resource{
 						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
 					},
-					DataSources: map[string]*tfbridge.DataSourceInfo{
+					DataSources: map[string]*info.DataSource{
 						"random_id": {Tok: "random:index/randomId:RandomId"},
 					},
 				},
@@ -2837,8 +2837,8 @@ func TestFixupPropertyReference(t *testing.T) {
 			expected: "Use random.RandomPet resource to generate pet names.",
 			ctx: infoContext{
 				pkg: "random",
-				info: tfbridge.ProviderInfo{
-					Resources: map[string]*tfbridge.ResourceInfo{
+				info: info.Provider{
+					Resources: map[string]*info.Resource{
 						"random_pet": {Tok: "random:index/randomPet:RandomPet"},
 					},
 				},

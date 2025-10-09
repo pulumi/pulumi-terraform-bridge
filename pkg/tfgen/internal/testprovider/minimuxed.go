@@ -9,14 +9,15 @@ import (
 
 	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func ProviderMiniMuxed() tfbridge.ProviderInfo {
+func ProviderMiniMuxed() info.Provider {
 	minimuxedPkg := "minimuxed"
 	minimuxedMod := "index"
 
-	return tfbridge.ProviderInfo{
+	return info.Provider{
 		P:           shimv2.NewProvider(testproviderdata.ProviderMiniMuxed()),
 		Name:        "minimuxed",
 		Description: "A Pulumi package to safely use minimuxed resources in Pulumi programs.",
@@ -24,7 +25,7 @@ func ProviderMiniMuxed() tfbridge.ProviderInfo {
 		License:     "Apache-2.0",
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-minimuxed",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"minimuxed_integer": {Tok: tfbridge.MakeResource(minimuxedPkg, minimuxedMod, "MinimuxedInteger")},
 		},
 		MuxWith: []tfbridge.MuxProvider{

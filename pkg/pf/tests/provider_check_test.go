@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestPFCheck(t *testing.T) {
@@ -42,9 +43,9 @@ func TestPFCheck(t *testing.T) {
 		replay      string
 		replayMulti string
 
-		callback tfbridge0.PreCheckCallback
+		callback info.PreCheckCallback
 
-		customizeResource func(*tfbridge0.ResourceInfo)
+		customizeResource func(*info.Resource)
 	}
 
 	testCases := []testCase{
@@ -276,12 +277,12 @@ func TestPFCheck(t *testing.T) {
 					"s":  schema.StringAttribute{Optional: true},
 				},
 			},
-			customizeResource: func(info *tfbridge0.ResourceInfo) {
-				info.Fields["s"] = &tfbridge0.SchemaInfo{
-					Default: &tfbridge0.DefaultInfo{
+			customizeResource: func(resourceInfo *info.Resource) {
+				resourceInfo.Fields["s"] = &info.Schema{
+					Default: &info.Default{
 						ComputeDefault: func(
 							_ context.Context,
-							opts tfbridge0.ComputeDefaultOptions,
+							opts info.ComputeDefaultOptions,
 						) (any, error) {
 							return opts.PriorState["s"].StringValue(), nil
 						},
@@ -309,8 +310,6 @@ func TestPFCheck(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			testProvider := pb.NewProvider(pb.NewProviderArgs{
 				ProviderSchema: prschema.Schema{
@@ -327,27 +326,27 @@ func TestPFCheck(t *testing.T) {
 					}),
 				},
 			})
-			res := tfbridge0.ResourceInfo{
+			res := info.Resource{
 				Tok: "testprovider:index/res:Res",
-				Docs: &tfbridge0.DocInfo{
+				Docs: &info.Doc{
 					Markdown: []byte("OK"),
 				},
 				PreCheckCallback: tc.callback,
-				Fields:           map[string]*tfbridge0.SchemaInfo{},
+				Fields:           map[string]*info.Schema{},
 			}
 			if tc.customizeResource != nil {
 				tc.customizeResource(&res)
 			}
-			info := tfbridge0.ProviderInfo{
+			providerInfo := info.Provider{
 				Name:         "testprovider",
 				P:            tfbridge.ShimProvider(testProvider),
 				Version:      "0.0.1",
 				MetadataInfo: &tfbridge0.MetadataInfo{},
-				Resources: map[string]*tfbridge0.ResourceInfo{
+				Resources: map[string]*info.Resource{
 					"testprovider_res": &res,
 				},
 			}
-			s, err := newProviderServer(t, info)
+			s, err := newProviderServer(t, providerInfo)
 			require.NoError(t, err)
 			if tc.replay != "" {
 				testutils.Replay(t, s, tc.replay)

@@ -589,7 +589,7 @@ func computeSetHashChanges(
 		return added[i] < added[j]
 	})
 
-	return
+	return removed, added
 }
 
 // matchPlanElementsToInputs is used to match the plan elements to the inputs.

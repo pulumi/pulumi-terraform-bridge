@@ -29,10 +29,11 @@ import (
 
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-func AssertProvider(f AssertFn) tfbridge.ProviderInfo {
-	info := tfbridge.ProviderInfo{
+func AssertProvider(f AssertFn) info.Provider {
+	providerInfo := info.Provider{
 		Name:             "assert",
 		P:                tfpf.ShimProvider(&assertProvider{f}),
 		Description:      "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
@@ -43,18 +44,18 @@ func AssertProvider(f AssertFn) tfbridge.ProviderInfo {
 		Version:          "0.0.1",
 		UpstreamRepoPath: ".",
 
-		Config: map[string]*tfbridge.SchemaInfo{},
+		Config: map[string]*info.Schema{},
 
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"assert_echo": {Tok: "assert:index/echo:Echo"},
 		},
 
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
 
-	info.SetAutonaming(255, "-")
+	providerInfo.SetAutonaming(255, "-")
 
-	return info
+	return providerInfo
 }
 
 type AssertFn = func(config tfsdk.Config, old *tfsdk.State, new *tfsdk.State)

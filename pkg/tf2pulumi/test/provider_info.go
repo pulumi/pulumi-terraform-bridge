@@ -22,17 +22,17 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 type ProviderInfoSource struct {
 	m sync.RWMutex
 
 	infoDirectoryPath string
-	entries           map[string]*tfbridge.ProviderInfo
+	entries           map[string]*info.Provider
 }
 
-func (s *ProviderInfoSource) getProviderInfo(tfProviderName string) (*tfbridge.ProviderInfo, bool) {
+func (s *ProviderInfoSource) getProviderInfo(tfProviderName string) (*info.Provider, bool) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
@@ -44,7 +44,7 @@ func (s *ProviderInfoSource) getProviderInfo(tfProviderName string) (*tfbridge.P
 // corresponding Pulumi resource provider.
 func (s *ProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string,
-) (*tfbridge.ProviderInfo, error) {
+) (*info.Provider, error) {
 	if info, ok := s.getProviderInfo(name); ok {
 		return info, nil
 	}
@@ -58,7 +58,7 @@ func (s *ProviderInfoSource) GetProviderInfo(
 	}
 	defer contract.IgnoreClose(f)
 
-	var m tfbridge.MarshallableProviderInfo
+	var m info.MarshallableProvider
 	if err = json.NewDecoder(f).Decode(&m); err != nil {
 		return nil, err
 	}
@@ -72,6 +72,6 @@ func (s *ProviderInfoSource) GetProviderInfo(
 func NewProviderInfoSource(path string) *ProviderInfoSource {
 	return &ProviderInfoSource{
 		infoDirectoryPath: path,
-		entries:           map[string]*tfbridge.ProviderInfo{},
+		entries:           map[string]*info.Provider{},
 	}
 }

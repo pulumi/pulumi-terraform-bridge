@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -82,7 +81,7 @@ func defaultEditRules() editRules {
 	}
 }
 
-type editRules []tfbridge.DocsEdit
+type editRules []info.DocsEdit
 
 func (rr editRules) apply(fileName string, contents []byte, phase info.EditPhase) ([]byte, error) {
 	for _, rule := range rr {
@@ -105,7 +104,7 @@ func (rr editRules) apply(fileName string, contents []byte, phase info.EditPhase
 //
 // getEditRules is only called once during `tfgen`, so we move the cost of compiling
 // regexes into getEditRules, avoiding a marginal startup time penalty.
-func getEditRules(info *tfbridge.DocRuleInfo) editRules {
+func getEditRules(info *info.DocRule) editRules {
 	defaults := defaultEditRules()
 	if info == nil || info.EditRules == nil {
 		return defaults
@@ -116,10 +115,10 @@ func getEditRules(info *tfbridge.DocRuleInfo) editRules {
 // Create a regexp based replace rule that is bounded by non-ascii letter text.
 //
 // This function is not appropriate to be called in hot loops.
-func boundedReplace(from, to string) tfbridge.DocsEdit {
+func boundedReplace(from, to string) info.DocsEdit {
 	r := regexp.MustCompile(fmt.Sprintf(`([^a-zA-Z]|^)%s([^a-zA-Z]|$)`, from))
 	bTo := []byte(fmt.Sprintf("${1}%s${%d}", to, r.NumSubexp()))
-	return tfbridge.DocsEdit{
+	return info.DocsEdit{
 		Path: "*",
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			return r.ReplaceAll(content, bTo), nil
@@ -128,10 +127,10 @@ func boundedReplace(from, to string) tfbridge.DocsEdit {
 }
 
 // reReplace creates a regex based replace.
-func reReplace(from, to string, phase info.EditPhase) tfbridge.DocsEdit {
+func reReplace(from, to string, phase info.EditPhase) info.DocsEdit {
 	r := regexp.MustCompile(from)
 	bTo := []byte(to)
-	return tfbridge.DocsEdit{
+	return info.DocsEdit{
 		Path: "*",
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			return r.ReplaceAll(content, bTo), nil
@@ -140,7 +139,7 @@ func reReplace(from, to string, phase info.EditPhase) tfbridge.DocsEdit {
 	}
 }
 
-func fixupImports() tfbridge.DocsEdit {
+func fixupImports() info.DocsEdit {
 	inlineImportRegexp := regexp.MustCompile("% [tT]erraform import.*")
 	quotedImportRegexp := regexp.MustCompile("`[tT]erraform import`")
 
@@ -148,7 +147,7 @@ func fixupImports() tfbridge.DocsEdit {
 	blockImportRegexp := regexp.MustCompile("(?s)In [tT]erraform v[0-9]+\\.[0-9]+\\.[0-9]+ and later," +
 		" use an `import` block.*?```.+?```\n")
 
-	return tfbridge.DocsEdit{
+	return info.DocsEdit{
 		Path: "*",
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			// Strip import blocks

@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/addrs"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/internal/configs"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -114,7 +115,7 @@ func convertTF12(files []*syntax.File, opts EjectOptions) ([]*syntax.File, *pcl.
 		pulumiOptions:       pulumiOptions,
 		filterResourceNames: opts.FilterResourceNames,
 		providerInfo:        opts.ProviderInfoSource,
-		providers:           map[string]*tfbridge.ProviderInfo{},
+		providers:           map[string]*info.Provider{},
 		binding:             codegen.Set{},
 		bound:               codegen.Set{},
 		conditionals:        newConditionalAnalyzer(),
@@ -189,7 +190,7 @@ type tf12binder struct {
 	filterResourceNames bool
 	providerInfo        il.ProviderInfoSource
 
-	providers map[string]*tfbridge.ProviderInfo
+	providers map[string]*info.Provider
 
 	binding codegen.Set
 	bound   codegen.Set
@@ -649,7 +650,7 @@ func (b *tf12binder) annotateExpressionsWithSchemas(item model.BodyItem) {
 								}
 
 								if s.Pulumi != nil {
-									schemas.Pulumi = &tfbridge.SchemaInfo{Elem: s.Pulumi}
+									schemas.Pulumi = &info.Schema{Elem: s.Pulumi}
 								}
 
 								b.exprToSchemas[x] = schemas
@@ -827,8 +828,8 @@ func (b *tf12binder) bindResource(r *resource) hcl.Diagnostics {
 		}
 		b.variableToSchemas[r.rangeVariable] = func() il.Schemas {
 			return il.Schemas{
-				Pulumi: &tfbridge.SchemaInfo{
-					Fields: map[string]*tfbridge.SchemaInfo{
+				Pulumi: &info.Schema{
+					Fields: map[string]*info.Schema{
 						"index": {Name: "value"},
 					},
 				},
@@ -1111,7 +1112,7 @@ func terraformToPulumiName(tfName string, schemas il.Schemas) string {
 	}
 	return tfbridge.TerraformToPulumiNameV2(
 		tfName, schema.SchemaMap{tfName: schemas.TF},
-		map[string]*tfbridge.SchemaInfo{tfName: schemas.Pulumi})
+		map[string]*info.Schema{tfName: schemas.Pulumi})
 }
 
 func (rr *resourceRewriter) terraformToPulumiName(tfName string) string {
@@ -1528,7 +1529,7 @@ func (b *tf12binder) rewriteScopeTraversal(n *model.ScopeTraversalExpression,
 			} else {
 				traverser.Name = tfbridge.TerraformToPulumiNameV2(
 					traverser.Name, schema.SchemaMap{traverser.Name: schemas.TF},
-					map[string]*tfbridge.SchemaInfo{traverser.Name: schemas.Pulumi})
+					map[string]*info.Schema{traverser.Name: schemas.Pulumi})
 			}
 			newTraversal = append(newTraversal, traverser)
 		case hcl.TraverseIndex:
@@ -1732,7 +1733,7 @@ func (b *tf12binder) resourceType(addr addrs.Resource,
 ) (string, il.Schemas, model.Type, hcl.Diagnostics) {
 	providerName := addr.ImpliedProvider()
 
-	info, ok := b.providers[providerName]
+	providerInfo, ok := b.providers[providerName]
 	if !ok {
 		i, err := b.providerInfo.GetProviderInfo("", "", providerName, "")
 		if err != nil {
@@ -1744,28 +1745,28 @@ func (b *tf12binder) resourceType(addr addrs.Resource,
 				Detail:  fmt.Sprintf("unknown provider '%s'", providerName),
 			}}
 		}
-		info, b.providers[providerName] = i, i
+		providerInfo, b.providers[providerName] = i, i
 	}
 
 	token := addr.Type
 	var schemas il.Schemas
 	if addr.Mode == addrs.ManagedResourceMode {
-		schemaInfo := &tfbridge.SchemaInfo{}
-		if resInfo, ok := info.Resources[addr.Type]; ok {
+		schemaInfo := &info.Schema{}
+		if resInfo, ok := providerInfo.Resources[addr.Type]; ok {
 			token = string(resInfo.Tok)
 			schemaInfo.Fields = resInfo.Fields
 		}
-		if r := info.P.ResourcesMap().Get(addr.Type); r != nil {
+		if r := providerInfo.P.ResourcesMap().Get(addr.Type); r != nil {
 			schemas.TFRes = r.Schema()
 		}
 		schemas.Pulumi = schemaInfo
 	} else {
-		schemaInfo := &tfbridge.SchemaInfo{}
-		if dsInfo, ok := info.DataSources[addr.Type]; ok {
+		schemaInfo := &info.Schema{}
+		if dsInfo, ok := providerInfo.DataSources[addr.Type]; ok {
 			token = string(dsInfo.Tok)
 			schemaInfo.Fields = dsInfo.Fields
 		}
-		if d := info.P.DataSourcesMap().Get(addr.Type); d != nil {
+		if d := providerInfo.P.DataSourcesMap().Get(addr.Type); d != nil {
 			schemas.TFRes = d.Schema()
 		}
 		schemas.Pulumi = schemaInfo
@@ -1783,7 +1784,7 @@ func (b *tf12binder) providerType(providerName string,
 ) (string, il.Schemas, model.Type, hcl.Diagnostics) {
 	tok := "pulumi:providers:" + providerName
 
-	info, ok := b.providers[providerName]
+	providerInfo, ok := b.providers[providerName]
 	if !ok {
 		i, err := b.providerInfo.GetProviderInfo("", "", providerName, "")
 		if err != nil {
@@ -1793,14 +1794,14 @@ func (b *tf12binder) providerType(providerName string,
 				Detail:  fmt.Sprintf("unknown provider '%s'", providerName),
 			}}
 		}
-		info, b.providers[providerName] = i, i
+		providerInfo, b.providers[providerName] = i, i
 	}
 
 	schemas := il.Schemas{
-		Pulumi: &tfbridge.SchemaInfo{
-			Fields: info.Config,
+		Pulumi: &info.Schema{
+			Fields: providerInfo.Config,
 		},
-		TFRes: info.P.Schema(),
+		TFRes: providerInfo.P.Schema(),
 	}
 	return tok, schemas, schemas.ModelType(), nil
 }

@@ -22,13 +22,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
-	tfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestPreStateUpgradeHook(t *testing.T) {
 	t.Parallel()
-	info := testprovider.RandomProvider()
-	info.Resources["random_string"].PreStateUpgradeHook = func(args tfbridge.PreStateUpgradeHookArgs) (int64, resource.PropertyMap, error) {
+	providerInfo := testprovider.RandomProvider()
+	providerInfo.Resources["random_string"].PreStateUpgradeHook = func(args info.PreStateUpgradeHookArgs) (int64, resource.PropertyMap, error) {
 		// Assume that if prior state is missing a schema version marker, it really is a corrupt state at version 2.
 		if args.PriorStateSchemaVersion == 0 {
 			return 2, args.PriorState, nil
@@ -37,7 +37,7 @@ func TestPreStateUpgradeHook(t *testing.T) {
 		return args.PriorStateSchemaVersion, args.PriorState, nil
 	}
 
-	server, err := newProviderServer(t, info)
+	server, err := newProviderServer(t, providerInfo)
 	require.NoError(t, err)
 	testutils.Replay(t, server, `
 	{

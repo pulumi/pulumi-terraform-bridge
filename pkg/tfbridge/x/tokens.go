@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
@@ -63,7 +64,7 @@ func TokensSingleModule(
 	return TokensKnownModules(tfPackagePrefix, moduleName, nil, finalize)
 }
 
-func tokensKnownModules[T b.ResourceInfo | b.DataSourceInfo](
+func tokensKnownModules[T info.Resource | info.DataSource](
 	prefix, defaultModule string, modules []string,
 	new func(string, string) (*T, error),
 	moduleTransform func(string) string,
@@ -103,20 +104,20 @@ func TokensKnownModules(
 
 	return DefaultStrategy{
 		Resource: tokensKnownModules(tfPackagePrefix, defaultModule, modules,
-			func(mod, tk string) (*b.ResourceInfo, error) {
+			func(mod, tk string) (*info.Resource, error) {
 				tk, err := finalize(mod, tk)
 				if err != nil {
 					return nil, err
 				}
-				return &b.ResourceInfo{Tok: tokens.Type(tk)}, nil
+				return &info.Resource{Tok: tokens.Type(tk)}, nil
 			}, camelCase),
 		DataSource: tokensKnownModules(tfPackagePrefix, defaultModule, modules,
-			func(mod, tk string) (*b.DataSourceInfo, error) {
+			func(mod, tk string) (*info.DataSource, error) {
 				tk, err := finalize(mod, "get"+tk)
 				if err != nil {
 					return nil, err
 				}
-				return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
+				return &info.DataSource{Tok: tokens.ModuleMember(tk)}, nil
 			}, camelCase),
 	}
 }
@@ -151,20 +152,20 @@ func TokensMappedModules(
 
 	return DefaultStrategy{
 		Resource: tokensKnownModules(tfPackagePrefix, defaultModule, mods,
-			func(mod, tk string) (*b.ResourceInfo, error) {
+			func(mod, tk string) (*info.Resource, error) {
 				tk, err := finalize(mod, tk)
 				if err != nil {
 					return nil, err
 				}
-				return &b.ResourceInfo{Tok: tokens.Type(tk)}, nil
+				return &info.Resource{Tok: tokens.Type(tk)}, nil
 			}, transform),
 		DataSource: tokensKnownModules(tfPackagePrefix, defaultModule, mods,
-			func(mod, tk string) (*b.DataSourceInfo, error) {
+			func(mod, tk string) (*info.DataSource, error) {
 				tk, err := finalize(mod, "get"+tk)
 				if err != nil {
 					return nil, err
 				}
-				return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}, nil
+				return &info.DataSource{Tok: tokens.ModuleMember(tk)}, nil
 			}, transform),
 	}
 }
@@ -227,12 +228,12 @@ type InferredModulesOpts struct {
 // Deprecated: This item has been moved to
 // [github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens.InferredModules]
 func TokensInferredModules(
-	info *b.ProviderInfo, finalize MakeToken, opts *InferredModulesOpts,
+	providerInfo *info.Provider, finalize MakeToken, opts *InferredModulesOpts,
 ) (DefaultStrategy, error) {
 	if opts == nil {
 		opts = &InferredModulesOpts{}
 	}
-	err := opts.ensurePrefix(info)
+	err := opts.ensurePrefix(providerInfo)
 	if err != nil {
 		return DefaultStrategy{}, fmt.Errorf("inferring pkg prefix: %w", err)
 	}
@@ -247,19 +248,19 @@ func TokensInferredModules(
 		opts.MainModule = "index"
 	}
 
-	tokenMap := opts.computeTokens(info)
+	tokenMap := opts.computeTokens(providerInfo)
 
 	return DefaultStrategy{
-		Resource: tokenFromMap(tokenMap, finalize, func(tk string) *b.ResourceInfo {
-			return &b.ResourceInfo{Tok: tokens.Type(tk)}
+		Resource: tokenFromMap(tokenMap, finalize, func(tk string) *info.Resource {
+			return &info.Resource{Tok: tokens.Type(tk)}
 		}),
-		DataSource: tokenFromMap(tokenMap, finalize, func(tk string) *b.DataSourceInfo {
-			return &b.DataSourceInfo{Tok: tokens.ModuleMember(tk)}
+		DataSource: tokenFromMap(tokenMap, finalize, func(tk string) *info.DataSource {
+			return &info.DataSource{Tok: tokens.ModuleMember(tk)}
 		}),
 	}, nil
 }
 
-func (opts *InferredModulesOpts) ensurePrefix(info *b.ProviderInfo) error {
+func (opts *InferredModulesOpts) ensurePrefix(providerInfo *info.Provider) error {
 	prefix := opts.TfPkgPrefix
 	var noCommonality bool
 	findPrefix := func(key string, _ shim.Resource) bool {
@@ -278,7 +279,7 @@ func (opts *InferredModulesOpts) ensurePrefix(info *b.ProviderInfo) error {
 
 		return true
 	}
-	mapProviderItems(info, findPrefix)
+	mapProviderItems(providerInfo, findPrefix)
 	if noCommonality {
 		return fmt.Errorf("no common prefix detected")
 	}
@@ -381,7 +382,7 @@ func (n *node) dfsInner(parentStack *[]*node, iter func(parent func(int) *node, 
 // Precompute the mapping from tf tokens to pulumi modules.
 //
 // The resulting map is complete for all TF resources and datasources in info.P.
-func (opts *InferredModulesOpts) computeTokens(info *b.ProviderInfo) map[string]tokenInfo {
+func (opts *InferredModulesOpts) computeTokens(info *info.Provider) map[string]tokenInfo {
 	contract.Assertf(opts.TfPkgPrefix != "", "TF package prefix not provided or computed")
 	tree := &node{segment: opts.TfPkgPrefix}
 
@@ -473,7 +474,7 @@ func (opts *InferredModulesOpts) computeTokens(info *b.ProviderInfo) map[string]
 	return output
 }
 
-func mapProviderItems(info *b.ProviderInfo, each func(string, shim.Resource) bool) {
+func mapProviderItems(info *info.Provider, each func(string, shim.Resource) bool) {
 	ignored := ignoredTokens(info)
 	info.P.ResourcesMap().Range(func(key string, value shim.Resource) bool {
 		if ignored[key] {
@@ -507,7 +508,7 @@ func sharedPrefix(s1, s2 string) string {
 
 type tokenInfo struct{ mod, name string }
 
-func tokenFromMap[T b.ResourceInfo | b.DataSourceInfo](
+func tokenFromMap[T info.Resource | info.DataSource](
 	tokenMap map[string]tokenInfo, finalize MakeToken, new func(tk string) *T,
 ) Strategy[T] {
 	return func(tfToken string) (*T, error) {
@@ -554,8 +555,8 @@ type fieldHistory struct {
 }
 
 // Deprecated: This item has been moved to
-// [github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge.ProviderInfo.ApplyAutoAliases]
-func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) error {
+// [github.com/pulumi/pulumi-terraform-bridge/v3/pkg/info.Provider.ApplyAutoAliases]
+func AutoAliasing(providerInfo *info.Provider, artifact info.ProviderMetadata) error {
 	hist, err := getHistory(artifact)
 	if err != nil {
 		return err
@@ -620,7 +621,7 @@ func AutoAliasing(providerInfo *b.ProviderInfo, artifact b.ProviderMetadata) err
 
 const aliasMetadataKey = "auto-aliasing"
 
-func getHistory(artifact b.ProviderMetadata) (aliasHistory, error) {
+func getHistory(artifact info.ProviderMetadata) (aliasHistory, error) {
 	hist, ok, err := md.Get[aliasHistory](artifact, aliasMetadataKey)
 	if err != nil {
 		return aliasHistory{}, err
@@ -635,9 +636,9 @@ func getHistory(artifact b.ProviderMetadata) (aliasHistory, error) {
 }
 
 func aliasResource(
-	p *b.ProviderInfo, res shim.Resource,
+	p *info.Provider, res shim.Resource,
 	applyResourceAliases *[]func(),
-	hist map[string]*tokenHistory[tokens.Type], computed *b.ResourceInfo,
+	hist map[string]*tokenHistory[tokens.Type], computed *info.Resource,
 	tfToken string, version int,
 ) {
 	prev, hasPrev := hist[tfToken]
@@ -678,7 +679,7 @@ func aliasResource(
 
 // applyResourceMaxItemsOneAliasing traverses a shim.Resource, applying walk to each field in the resource.
 func applyResourceMaxItemsOneAliasing(
-	r shim.Resource, hist *map[string]*fieldHistory, info *map[string]*b.SchemaInfo,
+	r shim.Resource, hist *map[string]*fieldHistory, info *map[string]*info.Schema,
 ) (bool, bool) {
 	if r == nil {
 		return hist != nil, info != nil
@@ -751,22 +752,22 @@ func applyResourceMaxItemsOneAliasing(
 // applyMaxItemsOneAliasing traverses a generic shim.Schema recursively, applying fieldHistory to
 // SchemaInfo and vise versa as necessary to avoid breaking changes in the
 // resulting sdk.
-func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *b.SchemaInfo) (hasH bool, hasI bool) {
+func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, schemaInfo *info.Schema) (hasH bool, hasI bool) {
 	//revive:disable-next-line:empty-block
 	if schema == nil || (schema.Type() != shim.TypeList && schema.Type() != shim.TypeSet) {
 		// MaxItemsOne does not apply, so do nothing
-	} else if info.MaxItemsOne != nil {
+	} else if schemaInfo.MaxItemsOne != nil {
 		// The user has overwritten the value, so we will just record that.
-		h.MaxItemsOne = info.MaxItemsOne
+		h.MaxItemsOne = schemaInfo.MaxItemsOne
 		hasH = true
 	} else if h.MaxItemsOne != nil {
 		// If we have a previous value in the history, we keep it as is.
-		info.MaxItemsOne = h.MaxItemsOne
+		schemaInfo.MaxItemsOne = h.MaxItemsOne
 		hasI = true
 	} else {
 		// There is no history for this value, so we bake it into the
 		// alias history.
-		h.MaxItemsOne = b.BoolRef(b.IsMaxItemsOne(schema, info))
+		h.MaxItemsOne = b.BoolRef(b.IsMaxItemsOne(schema, schemaInfo))
 		hasH = true
 	}
 
@@ -781,8 +782,8 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *b.Schem
 		} else {
 			hasElemH = true
 		}
-		if info.Elem == nil {
-			info.Elem = &b.SchemaInfo{}
+		if schemaInfo.Elem == nil {
+			schemaInfo.Elem = &info.Schema{}
 		} else {
 			hasElemI = true
 		}
@@ -798,7 +799,7 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *b.Schem
 			h.Elem = nil
 		}
 		if !hasElemI {
-			info.Elem = nil
+			schemaInfo.Elem = nil
 		}
 	}
 
@@ -806,11 +807,11 @@ func applyMaxItemsOneAliasing(schema shim.Schema, h *fieldHistory, info *b.Schem
 	switch e := e.(type) {
 	case shim.Resource:
 		populateElem()
-		eHasH, eHasI := applyResourceMaxItemsOneAliasing(e, &h.Elem.Fields, &info.Elem.Fields)
+		eHasH, eHasI := applyResourceMaxItemsOneAliasing(e, &h.Elem.Fields, &schemaInfo.Elem.Fields)
 		cleanupElem(eHasH, eHasI)
 	case shim.Schema:
 		populateElem()
-		eHasH, eHasI := applyMaxItemsOneAliasing(e, h.Elem, info.Elem)
+		eHasH, eHasI := applyMaxItemsOneAliasing(e, h.Elem, schemaInfo.Elem)
 		cleanupElem(eHasH, eHasI)
 	}
 
@@ -835,8 +836,8 @@ func getNonNil[K comparable, V any](m *map[K]*V, key K) (_ *V, alreadyThere bool
 }
 
 func aliasOrRenameResource(
-	p *b.ProviderInfo,
-	res *b.ResourceInfo, tfToken string,
+	p *info.Provider,
+	res *info.Resource, tfToken string,
 	hist *tokenHistory[tokens.Type], currentVersion int,
 ) {
 	var alreadyPresent bool
@@ -862,16 +863,16 @@ func aliasOrRenameResource(
 				res.Tok.Module().Name().String(), res)
 		} else {
 			res.Aliases = append(res.Aliases,
-				b.AliasInfo{Type: (*string)(&legacy)})
+				info.Alias{Type: (*string)(&legacy)})
 		}
 	}
 }
 
 func aliasDataSource(
-	p *b.ProviderInfo,
+	p *info.Provider,
 	ds shim.Resource,
 	hist map[string]*tokenHistory[tokens.ModuleMember],
-	computed *b.DataSourceInfo,
+	computed *info.DataSource,
 	tfToken string,
 	version int,
 ) {
@@ -901,7 +902,7 @@ func aliasDataSource(
 }
 
 func aliasOrRenameDataSource(
-	p *b.ProviderInfo, tfToken string,
+	p *info.Provider, tfToken string,
 	prev *tokenHistory[tokens.ModuleMember],
 	currentVersion int,
 ) {

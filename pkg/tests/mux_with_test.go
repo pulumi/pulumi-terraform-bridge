@@ -34,6 +34,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -47,10 +48,10 @@ func newTFProvider() *schema.Provider {
 			}
 			err = rd.Set("value", v.(int)*10)
 			if err != nil {
-				return
+				return err
 			}
 			rd.SetId("1")
-			return
+			return err
 		},
 		Schema: map[string]*schema.Schema{
 			"seed": {
@@ -69,10 +70,10 @@ func newTFProvider() *schema.Provider {
 		Read: func(rd *schema.ResourceData, i interface{}) (err error) {
 			err = rd.Set("number", 10)
 			if err != nil {
-				return
+				return err
 			}
 			rd.SetId("1")
-			return
+			return err
 		},
 		Schema: map[string]*schema.Schema{
 			"number": {
@@ -93,7 +94,7 @@ func newTFProvider() *schema.Provider {
 	}
 }
 
-func newProviderServer(info tfbridge.ProviderInfo) (server pulumirpc.ResourceProviderServer, err error) {
+func newProviderServer(info info.Provider) (server pulumirpc.ResourceProviderServer, err error) {
 	ctx := context.Background()
 	schema, err := tfgen.GenerateSchema(info, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
@@ -113,12 +114,12 @@ func newProviderServer(info tfbridge.ProviderInfo) (server pulumirpc.ResourcePro
 		info,         /* info */
 		data,         /* pulumiSchema */
 	)
-	return
+	return server, err
 }
 
 func TestMuxWithProvider(t *testing.T) {
 	t.Parallel()
-	info := tfbridge.ProviderInfo{
+	providerInfo := info.Provider{
 		P:          shimv2.NewProvider(newTFProvider()),
 		Name:       "random",
 		Keywords:   []string{"pulumi", "random"},
@@ -126,19 +127,19 @@ func TestMuxWithProvider(t *testing.T) {
 		Homepage:   "https://pulumi.io",
 		Repository: "https://github.com/pulumi/pulumi-random",
 		Version:    "0.0.3",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"random_number": {
 				Tok: "random:index/randomNumber:RandomNumber",
 			},
 		},
-		DataSources: map[string]*tfbridge.DataSourceInfo{
+		DataSources: map[string]*info.DataSource{
 			"random_number": {
 				Tok: "random:index/getRandomNumber:getRandomNumber",
 			},
 		},
 	}
 
-	server, err := newProviderServer(info)
+	server, err := newProviderServer(providerInfo)
 	assert.NoError(t, err)
 
 	grpcTestCases := []string{
@@ -182,12 +183,12 @@ func TestMuxWithProvider(t *testing.T) {
 		testutils.Replay(t, server, grpcTestCases[i])
 	}
 
-	info.MetadataInfo = tfbridge.NewProviderMetadata(nil)
-	info.MuxWith = []tfbridge.MuxProvider{
+	providerInfo.MetadataInfo = tfbridge.NewProviderMetadata(nil)
+	providerInfo.MuxWith = []tfbridge.MuxProvider{
 		newMuxProvider(),
 	}
 
-	server, err = newProviderServer(info)
+	server, err = newProviderServer(providerInfo)
 	assert.NoError(t, err)
 
 	grpcMuxTestCases := []string{
@@ -289,5 +290,5 @@ func (p *tfMuxProvider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest
 		return nil, fmt.Errorf("tfMuxProvider::Invoke: %q not supported", req.Tok)
 	}
 	res = &pulumirpc.InvokeResponse{Return: result}
-	return
+	return res, err
 }

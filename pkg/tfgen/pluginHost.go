@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 var _ = (plugin.Provider)((*inmemoryProvider)(nil))
@@ -37,10 +38,10 @@ type inmemoryProvider struct {
 
 	name   tokens.Package
 	schema []byte
-	info   tfbridge.ProviderInfo
+	info   info.Provider
 }
 
-func newInMemoryProvider(name tokens.Package, schema []byte, info tfbridge.ProviderInfo) *inmemoryProvider {
+func newInMemoryProvider(name tokens.Package, schema []byte, info info.Provider) *inmemoryProvider {
 	// Round-trip the info through a marshaler to normalize the types to the schema shim.
 	return &inmemoryProvider{
 		name:   name,
@@ -143,7 +144,7 @@ func (host *inmemoryProviderHost) ResolvePlugin(spec workspace.PluginSpec) (*wor
 
 func (host *inmemoryProviderHost) GetProviderInfo(
 	registryName, namespace, name, version string,
-) (*tfbridge.ProviderInfo, error) {
+) (*info.Provider, error) {
 	if name == il.GetTerraformProviderName(host.provider.info) {
 		return &host.provider.info, nil
 	}

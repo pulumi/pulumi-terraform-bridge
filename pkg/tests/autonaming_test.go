@@ -9,6 +9,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestSDKv2Autonaming(t *testing.T) {
@@ -25,9 +26,9 @@ func TestSDKv2Autonaming(t *testing.T) {
 	}
 	tfp := &schema.Provider{ResourcesMap: resMap}
 	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
-	bridgedProvider.Resources["prov_test"] = &tfbridge.ResourceInfo{
+	bridgedProvider.Resources["prov_test"] = &info.Resource{
 		Tok: "prov:index:Test",
-		Fields: map[string]*tfbridge.SchemaInfo{
+		Fields: map[string]*info.Schema{
 			"name": tfbridge.AutoName("name", 50, "-"),
 		},
 	}

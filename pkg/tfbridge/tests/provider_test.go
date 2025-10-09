@@ -37,7 +37,7 @@ import (
 func TestWithNewTestProvider(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+	p := newTestProvider(ctx, info.Provider{
 		P: shimv2.NewProvider(&schema.Provider{
 			Schema: map[string]*schema.Schema{},
 			ResourcesMap: map[string]*schema.Resource{
@@ -56,7 +56,7 @@ func TestWithNewTestProvider(t *testing.T) {
 		}),
 		Name:           "testprov",
 		ResourcePrefix: "example",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"example_resource": {Tok: "testprov:index:ExampleResource"},
 		},
 	}, newTestProviderOptions{})
@@ -88,7 +88,7 @@ func TestWithNewTestProvider(t *testing.T) {
 func TestRegress1932(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+	p := newTestProvider(ctx, info.Provider{
 		P: shimv2.NewProvider(&schema.Provider{
 			Schema: map[string]*schema.Schema{},
 			ResourcesMap: map[string]*schema.Resource{
@@ -113,7 +113,7 @@ func TestRegress1932(t *testing.T) {
 		}),
 		Name:           "aws",
 		ResourcePrefix: "example",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"aws_launch_template": {Tok: "aws:ec2/launchTemplate:LaunchTemplate"},
 		},
 	}, newTestProviderOptions{})
@@ -228,7 +228,7 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 		return actual
 	}
 	ctx := context.Background()
-	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+	p := newTestProvider(ctx, info.Provider{
 		P: shimv2.NewProvider(&schema.Provider{
 			Schema: map[string]*schema.Schema{},
 			ResourcesMap: map[string]*schema.Resource{
@@ -237,7 +237,7 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 		}),
 		Name:           "testprov",
 		ResourcePrefix: "example",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"example_resource": {Tok: "testprov:index:ExampleResource"},
 		},
 	}, newTestProviderOptions{})
@@ -298,7 +298,7 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 
 func TestValidateConfig(t *testing.T) {
 	ctx := context.Background()
-	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+	p := newTestProvider(ctx, info.Provider{
 		P: shimv2.NewProvider(&schema.Provider{
 			Schema: map[string]*schema.Schema{
 				"endpoints": {
@@ -387,7 +387,7 @@ func TestTypeCheckingMistypedBooleansWithUnknowns(t *testing.T) {
 
 	schemaProvider := &schema.Provider{ResourcesMap: resMap}
 
-	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+	p := newTestProvider(ctx, info.Provider{
 		P:              shimv2.NewProvider(schemaProvider),
 		Name:           "aws",
 		ResourcePrefix: "aws",
@@ -435,7 +435,7 @@ func nilSink() diag.Sink {
 // Variation of NewProvider to facilitate white-box testing.
 func newTestProvider(
 	ctx context.Context,
-	info tfbridge.ProviderInfo,
+	info info.Provider,
 	opts newTestProviderOptions,
 ) pulumirpc.ResourceProviderServer {
 	if opts.version == "" {

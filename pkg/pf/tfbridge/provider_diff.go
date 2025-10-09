@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
@@ -182,7 +183,7 @@ func calculateDetailedDiff(
 // For each path x.y.z extracts the next step x and converts it to a matching Pulumi key. Removes
 // duplicates and orders the result.
 func topLevelPropertyKeySet(
-	sch shim.SchemaMap, ps map[string]*tfbridge.SchemaInfo, paths []*tftypes.AttributePath,
+	sch shim.SchemaMap, ps map[string]*info.Schema, paths []*tftypes.AttributePath,
 ) []resource.PropertyKey {
 	found := map[resource.PropertyKey]struct{}{}
 	for _, path := range paths {
