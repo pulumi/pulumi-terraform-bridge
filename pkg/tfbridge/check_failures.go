@@ -403,5 +403,5 @@ func lookupDescription(pp CheckFailurePath, schemaMap shim.SchemaMap) (desc stri
 		// little better in our console output.
 		desc = strings.ReplaceAll(s.Description(), "\n", " ")
 	}
-	return
+	return desc
 }

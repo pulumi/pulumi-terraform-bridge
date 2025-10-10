@@ -1774,7 +1774,7 @@ func (g *Generator) convert(
 		SkipResourceTypechecking: true,
 	})
 
-	return
+	return files, diags, err
 }
 
 func (g *Generator) legacyConvert(

@@ -33,7 +33,7 @@ func AssertEqualsJSONFile[T any](
 
 	unmarshalT := func(r io.Reader) (s T, err error) {
 		err = json.NewDecoder(r).Decode(&s)
-		return
+		return s, err
 	}
 
 	readTFromFile := func(file string) (T, error) {
