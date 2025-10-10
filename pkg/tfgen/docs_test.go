@@ -2278,6 +2278,14 @@ func TestFindFencesAndHeaders(t *testing.T) {
 				{start: 1897, end: 2245, headerStart: 1624, language: "hcl"},
 			},
 		},
+		{
+			name: "handles empty code blocks without panic",
+			path: filepath.Join("test_data", "parse-inner-docs",
+				"empty-code-blocks.md"),
+			expected: []codeBlock{
+				{start: 0, end: 113, headerStart: -1, language: "terraform"},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

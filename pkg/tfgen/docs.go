@@ -1551,6 +1551,11 @@ func findCodeBlocks(docs []byte) []codeBlock {
 	parse.WalkNode(rootNode, func(cb *gmast.FencedCodeBlock) {
 		lines := cb.Lines()
 
+		// Skip empty code blocks to avoid panic
+		if lines.Len() == 0 {
+			return
+		}
+
 		headerStart := -1
 		for p := cb.Parent(); p != nil; p = p.Parent() {
 			if s, ok := p.(*section.Section); ok {
