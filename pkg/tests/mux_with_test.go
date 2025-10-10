@@ -47,10 +47,10 @@ func newTFProvider() *schema.Provider {
 			}
 			err = rd.Set("value", v.(int)*10)
 			if err != nil {
-				return
+				return err
 			}
 			rd.SetId("1")
-			return
+			return err
 		},
 		Schema: map[string]*schema.Schema{
 			"seed": {
@@ -69,10 +69,10 @@ func newTFProvider() *schema.Provider {
 		Read: func(rd *schema.ResourceData, i interface{}) (err error) {
 			err = rd.Set("number", 10)
 			if err != nil {
-				return
+				return err
 			}
 			rd.SetId("1")
-			return
+			return err
 		},
 		Schema: map[string]*schema.Schema{
 			"number": {
@@ -113,7 +113,7 @@ func newProviderServer(info tfbridge.ProviderInfo) (server pulumirpc.ResourcePro
 		info,         /* info */
 		data,         /* pulumiSchema */
 	)
-	return
+	return server, err
 }
 
 func TestMuxWithProvider(t *testing.T) {
@@ -289,5 +289,5 @@ func (p *tfMuxProvider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest
 		return nil, fmt.Errorf("tfMuxProvider::Invoke: %q not supported", req.Tok)
 	}
 	res = &pulumirpc.InvokeResponse{Return: result}
-	return
+	return res, err
 }

@@ -109,7 +109,7 @@ func TestSchemaGenInSync(t *testing.T) {
 		require.NoError(t, err)
 		err = json.Unmarshal(b, &out)
 		require.NoError(t, err)
-		return
+		return out
 	}
 
 	for _, tc := range testCases {
