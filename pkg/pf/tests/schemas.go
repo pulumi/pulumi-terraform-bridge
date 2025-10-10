@@ -27,11 +27,11 @@ import (
 
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
-	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	tfgen0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
-func genMetadata(t *testing.T, info tfbridge0.ProviderInfo) (tfpf.ProviderMetadata, error) {
+func genMetadata(t *testing.T, info info.Provider) (tfpf.ProviderMetadata, error) {
 	generated, err := tfgen.GenerateSchema(context.Background(), tfgen.GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: testSink(t),
@@ -62,7 +62,7 @@ func testSink(t *testing.T) diag.Sink {
 	return testSink
 }
 
-func genSDKSchema(t *testing.T, info tfbridge0.ProviderInfo) []byte {
+func genSDKSchema(t *testing.T, info info.Provider) []byte {
 	pkg, err := tfgen0.GenerateSchema(info, testSink(t))
 	require.NoError(t, err)
 	bytes, err := json.MarshalIndent(pkg, "", "  ")

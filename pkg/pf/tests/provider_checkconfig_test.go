@@ -481,7 +481,7 @@ func TestPFPreConfigureCallback(t *testing.T) {
 			},
 		}
 		callCounter := 0
-		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *info.Provider) {
 			info.PreConfigureCallback = func(vars resource.PropertyMap, config shim.ResourceConfig) error {
 				require.Equal(t, "bar", vars["configValue"].StringValue())
 				require.Truef(t, config.IsSet("configValue"), "configValue should be set")
@@ -520,7 +520,7 @@ func TestPFPreConfigureCallback(t *testing.T) {
 			},
 		}
 		callCounter := 0
-		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *info.Provider) {
 			info.PreConfigureCallbackWithLogger = func(
 				ctx context.Context,
 				host *hostclient.HostClient,
@@ -563,7 +563,7 @@ func TestPFPreConfigureCallback(t *testing.T) {
 				},
 			},
 		}
-		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *info.Provider) {
 			info.PreConfigureCallback = func(vars resource.PropertyMap, config shim.ResourceConfig) error {
 				vars["configValue"] = resource.NewStringProperty("updated")
 				return nil
@@ -605,7 +605,7 @@ func TestPFPreConfigureCallback(t *testing.T) {
 				},
 			},
 		}
-		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *info.Provider) {
 			info.PreConfigureCallbackWithLogger = m
 		})
 		testutils.Replay(t, s, `
@@ -649,7 +649,7 @@ func TestPFPreConfigureCallback(t *testing.T) {
 				},
 			},
 		}
-		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *info.Provider) {
 			info.PreConfigureCallbackWithLogger = m
 		})
 		testutils.Replay(t, s, `
@@ -682,7 +682,7 @@ func TestPFPreConfigureCallback(t *testing.T) {
 			return errors.New("Err")
 		}
 		schema := schema.Schema{}
-		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *info.Provider) {
 			info.PreConfigureCallbackWithLogger = m
 		})
 		testutils.Replay(t, s, `
@@ -715,7 +715,7 @@ func TestPFPreConfigureCallback(t *testing.T) {
 			}
 		}
 		schema := schema.Schema{}
-		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *info.Provider) {
 			info.PreConfigureCallbackWithLogger = m
 		})
 		testutils.Replay(t, s, `
@@ -756,7 +756,7 @@ func TestPFPreConfigureCallback(t *testing.T) {
 			}
 		}
 		schema := schema.Schema{}
-		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+		s := makeProviderServer(t, schema, func(info *info.Provider) {
 			info.PreConfigureCallbackWithLogger = m
 		})
 		testutils.Replay(t, s, `
@@ -787,22 +787,22 @@ func TestPFPreConfigureCallback(t *testing.T) {
 func makeProviderServer(
 	t *testing.T,
 	schema schema.Schema,
-	customize ...func(*tfbridge0.ProviderInfo),
+	customize ...func(*info.Provider),
 ) pulumirpc.ResourceProviderServer {
 	testProvider := pb.NewProvider(pb.NewProviderArgs{
 		ProviderSchema: schema,
 	})
-	info := tfbridge0.ProviderInfo{
+	providerInfo := info.Provider{
 		Name:         "testprovider",
 		Version:      "0.0.1",
 		MetadataInfo: &tfbridge0.MetadataInfo{},
 		P:            tfbridge.ShimProvider(testProvider),
 	}
 	for _, c := range customize {
-		c(&info)
+		c(&providerInfo)
 	}
 
-	server, err := newProviderServer(t, info)
+	server, err := newProviderServer(t, providerInfo)
 	require.NoError(t, err)
 	return server
 }

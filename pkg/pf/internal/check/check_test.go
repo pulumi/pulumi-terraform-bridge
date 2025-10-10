@@ -32,6 +32,7 @@ import (
 
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -97,7 +98,7 @@ func TestIsInputProperty(t *testing.T) {
 
 func TestMissingIDProperty(t *testing.T) {
 	t.Parallel()
-	stderr, err := test(t, tfbridge.ProviderInfo{
+	stderr, err := test(t, info.Provider{
 		P: pfbridge.ShimProvider(testProvider{missingID: true}),
 	})
 
@@ -107,9 +108,9 @@ func TestMissingIDProperty(t *testing.T) {
 
 func TestMissingIDWithOverride(t *testing.T) {
 	t.Parallel()
-	stderr, err := test(t, tfbridge.ProviderInfo{
+	stderr, err := test(t, info.Provider{
 		P: pfbridge.ShimProvider(testProvider{missingID: true}),
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"test_res": {ComputeID: func(context.Context, property.PropertyMap) (property.ID, error) {
 				panic("ComputeID")
 			}},
@@ -122,7 +123,7 @@ func TestMissingIDWithOverride(t *testing.T) {
 
 func TestMissingIDUnmapped(t *testing.T) {
 	t.Parallel()
-	stderr, err := test(t, tfbridge.ProviderInfo{
+	stderr, err := test(t, info.Provider{
 		P:              pfbridge.ShimProvider(testProvider{missingID: true}),
 		IgnoreMappings: []string{"test_res"},
 	})
@@ -133,7 +134,7 @@ func TestMissingIDUnmapped(t *testing.T) {
 
 func TestSensitiveID(t *testing.T) {
 	t.Parallel()
-	stderr, err := test(t, tfbridge.ProviderInfo{
+	stderr, err := test(t, info.Provider{
 		P: pfbridge.ShimProvider(testProvider{sensitiveID: true}),
 	})
 
@@ -145,10 +146,10 @@ func TestSensitiveID(t *testing.T) {
 func TestSensitiveIDWithOverride(t *testing.T) {
 	t.Parallel()
 	t.Run("false", func(t *testing.T) {
-		stderr, err := test(t, tfbridge.ProviderInfo{
+		stderr, err := test(t, info.Provider{
 			P: pfbridge.ShimProvider(testProvider{sensitiveID: true}),
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+			Resources: map[string]*info.Resource{
+				"test_res": {Fields: map[string]*info.Schema{
 					"id": {Secret: tfbridge.False()},
 				}},
 			},
@@ -157,10 +158,10 @@ func TestSensitiveIDWithOverride(t *testing.T) {
 		assert.NoError(t, err)
 	})
 	t.Run("true (no-op)", func(t *testing.T) {
-		stderr, err := test(t, tfbridge.ProviderInfo{
+		stderr, err := test(t, info.Provider{
 			P: pfbridge.ShimProvider(testProvider{sensitiveID: true}),
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+			Resources: map[string]*info.Resource{
+				"test_res": {Fields: map[string]*info.Schema{
 					"id": {Secret: tfbridge.True()},
 				}},
 			},
@@ -190,7 +191,7 @@ func TestInvalidInputID(t *testing.T) {
 		t.Run(tc.name+" no overrides", func(t *testing.T) {
 			provider := pfbridge.ShimProvider(testProvider{withID: &tc.idSchema})
 			idSchema := provider.ResourcesMap().Get("test_res").Schema().Get("id")
-			stderr, err := test(t, tfbridge.ProviderInfo{
+			stderr, err := test(t, info.Provider{
 				P: provider,
 			})
 			if isInputProperty(idSchema) {
@@ -207,10 +208,10 @@ func TestInvalidInputID(t *testing.T) {
 		// "id" is a required output property so if we remap "id" -> "otherId" now we
 		// don't have an "id" output. We must create one by using `ComputeID`
 		t.Run(tc.name+" overrides with Name and missing ComputeID", func(t *testing.T) {
-			stderr, err := test(t, tfbridge.ProviderInfo{
+			stderr, err := test(t, info.Provider{
 				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
-				Resources: map[string]*tfbridge.ResourceInfo{
-					"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+				Resources: map[string]*info.Resource{
+					"test_res": {Fields: map[string]*info.Schema{
 						"id": {Name: "otherId"},
 					}},
 				},
@@ -226,10 +227,10 @@ func TestInvalidInputID(t *testing.T) {
 		t.Run(tc.name+" overrides with ComputeID and missing Name", func(t *testing.T) {
 			provider := pfbridge.ShimProvider(testProvider{withID: &tc.idSchema})
 			idSchema := provider.ResourcesMap().Get("test_res").Schema().Get("id")
-			stderr, err := test(t, tfbridge.ProviderInfo{
+			stderr, err := test(t, info.Provider{
 				P: provider,
-				Resources: map[string]*tfbridge.ResourceInfo{
-					"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+				Resources: map[string]*info.Resource{
+					"test_res": {Fields: map[string]*info.Schema{
 						"id": {},
 					}, ComputeID: func(ctx context.Context, state property.PropertyMap) (property.ID, error) {
 						panic("ComputeID")
@@ -248,10 +249,10 @@ func TestInvalidInputID(t *testing.T) {
 		})
 		// While remapping "id" may not make sense for an output property, it is still valid
 		t.Run(tc.name+"no error (with override)", func(t *testing.T) {
-			stderr, err := test(t, tfbridge.ProviderInfo{
+			stderr, err := test(t, info.Provider{
 				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
-				Resources: map[string]*tfbridge.ResourceInfo{
-					"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+				Resources: map[string]*info.Resource{
+					"test_res": {Fields: map[string]*info.Schema{
 						"id": {Name: "otherId"},
 					}, ComputeID: func(ctx context.Context, state property.PropertyMap) (property.ID, error) {
 						panic("ComputeID")
@@ -266,11 +267,11 @@ func TestInvalidInputID(t *testing.T) {
 
 func TestMuxedProvider(t *testing.T) {
 	t.Parallel()
-	stderr, err := test(t, tfbridge.ProviderInfo{
+	stderr, err := test(t, info.Provider{
 		P: pfbridge.MuxShimWithPF(context.Background(),
 			sdkv2.NewProvider(testSDKv2Provider()),
 			testProvider{missingID: true}),
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"test_res": {ComputeID: func(context.Context, property.PropertyMap) (property.ID, error) {
 				panic("ComputeID")
 			}},
@@ -281,16 +282,16 @@ func TestMuxedProvider(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func test(t *testing.T, info tfbridge.ProviderInfo) (string, error) {
+func test(t *testing.T, providerInfo info.Provider) (string, error) {
 	var stdout, stderr bytes.Buffer
 	sink := diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{
 		Color: colors.Never,
 	})
 
-	info.MustComputeTokens(tokens.SingleModule(info.GetResourcePrefix(),
-		"index", tokens.MakeStandard(info.GetResourcePrefix())))
+	providerInfo.MustComputeTokens(tokens.SingleModule(providerInfo.GetResourcePrefix(),
+		"index", tokens.MakeStandard(providerInfo.GetResourcePrefix())))
 
-	err := Provider(sink, info)
+	err := Provider(sink, providerInfo)
 
 	// We should not write diags to stdout
 	assert.Empty(t, stdout.String())

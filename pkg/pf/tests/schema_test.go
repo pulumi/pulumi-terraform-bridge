@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
@@ -77,8 +77,8 @@ func TestSchemaGenInSync(t *testing.T) {
 	type testCase struct {
 		name     string
 		file     string
-		pf       tfbridge.ProviderInfo
-		provider tfbridge.ProviderInfo
+		pf       info.Provider
+		provider info.Provider
 	}
 
 	testCases := []testCase{
@@ -109,7 +109,7 @@ func TestSchemaGenInSync(t *testing.T) {
 		require.NoError(t, err)
 		err = json.Unmarshal(b, &out)
 		require.NoError(t, err)
-		return
+		return out
 	}
 
 	for _, tc := range testCases {

@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func (p *provider) GetMappingWithContext(ctx context.Context, key, provider string) ([]byte, string, error) {
@@ -50,7 +51,7 @@ func (p *provider) GetMappingWithContext(ctx context.Context, key, provider stri
 	return []byte{}, "", nil
 }
 
-func (p *provider) marshalProviderInfo(ctx context.Context) *tfbridge.MarshallableProviderInfo {
+func (p *provider) marshalProviderInfo(ctx context.Context) *info.MarshallableProvider {
 	providerInfoCopy := p.info
 	providerInfoCopy.P = p.info.P
 	return tfbridge.MarshalProviderInfo(&providerInfoCopy)

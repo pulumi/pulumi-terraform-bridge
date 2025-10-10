@@ -23,19 +23,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
 type schemaMapContext struct {
 	schemaPath  walk.SchemaPath
 	schemaMap   shim.SchemaMap
-	schemaInfos map[string]*tfbridge.SchemaInfo
+	schemaInfos map[string]*info.Schema
 }
 
 var _ localPropertyNames = &schemaMapContext{}
 
-func newSchemaMapContext(schemaMap shim.SchemaMap, schemaInfos map[string]*tfbridge.SchemaInfo) *schemaMapContext {
+func newSchemaMapContext(schemaMap shim.SchemaMap, schemaInfos map[string]*info.Schema) *schemaMapContext {
 	return &schemaMapContext{
 		schemaPath:  walk.NewSchemaPath(),
 		schemaMap:   schemaMap,
@@ -46,12 +47,12 @@ func newSchemaMapContext(schemaMap shim.SchemaMap, schemaInfos map[string]*tfbri
 func newResourceSchemaMapContext(
 	resource string,
 	schemaOnlyProvider shim.Provider,
-	providerInfo *tfbridge.ProviderInfo,
+	providerInfo *info.Provider,
 ) *schemaMapContext {
 	r := schemaOnlyProvider.ResourcesMap().Get(resource)
 	contract.Assertf(r != nil, "no resource %q found in ResourceMap", resource)
 	sm := r.Schema()
-	var fields map[string]*tfbridge.SchemaInfo
+	var fields map[string]*info.Schema
 	if providerInfo != nil {
 		fields = providerInfo.Resources[resource].GetFields()
 	}
@@ -61,12 +62,12 @@ func newResourceSchemaMapContext(
 func newDataSourceSchemaMapContext(
 	dataSource string,
 	schemaOnlyProvider shim.Provider,
-	providerInfo *tfbridge.ProviderInfo,
+	providerInfo *info.Provider,
 ) *schemaMapContext {
 	r := schemaOnlyProvider.DataSourcesMap().Get(dataSource)
 	contract.Assertf(r != nil, "no data source %q found in DataSourcesMap", dataSource)
 	sm := r.Schema()
-	var fields map[string]*tfbridge.SchemaInfo
+	var fields map[string]*info.Schema
 	if providerInfo != nil {
 		fields = providerInfo.DataSources[dataSource].GetFields()
 	}
@@ -99,7 +100,7 @@ func (sc *schemaMapContext) GetAttr(tfname terraformPropertyName) (*schemaPropCo
 type schemaPropContext struct {
 	schemaPath walk.SchemaPath
 	schema     shim.Schema
-	schemaInfo *tfbridge.SchemaInfo
+	schemaInfo *info.Schema
 }
 
 func (pc *schemaPropContext) Secret() bool {
@@ -149,7 +150,7 @@ func (pc *schemaPropContext) Object() (*schemaMapContext, error) {
 	if pc.schema != nil {
 		switch elem := pc.schema.Elem().(type) {
 		case shim.Resource:
-			var fields map[string]*tfbridge.SchemaInfo
+			var fields map[string]*info.Schema
 			if pc.schemaInfo != nil {
 				fields = pc.schemaInfo.Fields
 			}

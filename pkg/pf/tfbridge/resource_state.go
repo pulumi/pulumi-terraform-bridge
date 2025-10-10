@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
@@ -210,7 +211,7 @@ func (p *provider) parseAndUpgradeResourceState(
 		var err error
 
 		// Possibly modify stateVersion.
-		stateVersion, props, err = rh.pulumiResourceInfo.PreStateUpgradeHook(tfbridge.PreStateUpgradeHookArgs{
+		stateVersion, props, err = rh.pulumiResourceInfo.PreStateUpgradeHook(info.PreStateUpgradeHookArgs{
 			ResourceSchemaVersion:   rh.schema.ResourceSchemaVersion(),
 			PriorState:              props.Copy(),
 			PriorStateSchemaVersion: parsedMeta.SchemaVersion,

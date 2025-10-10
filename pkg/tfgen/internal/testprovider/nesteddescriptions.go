@@ -17,11 +17,12 @@ package testprovider
 import (
 	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func ProviderNestedDescriptions() tfbridge.ProviderInfo {
-	return tfbridge.ProviderInfo{
+func ProviderNestedDescriptions() info.Provider {
+	return info.Provider{
 		P:           shimv2.NewProvider(testproviderdata.ProviderNestedDescriptions()),
 		Name:        "cloudflare",
 		Description: "A Pulumi package to safely use cloudflare in Pulumi programs.",
@@ -29,13 +30,13 @@ func ProviderNestedDescriptions() tfbridge.ProviderInfo {
 		License:     "Apache-2.0",
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-cloudflare",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"cloudflare_ruleset": {
 				Tok: tfbridge.MakeResource("cloudflare", "index", "Ruleset"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"rules": {
-						Elem: &tfbridge.SchemaInfo{
-							Fields: map[string]*tfbridge.SchemaInfo{
+						Elem: &info.Schema{
+							Fields: map[string]*info.Schema{
 								"action_parameters": {
 									MaxItemsOne: tfbridge.True(),
 								},

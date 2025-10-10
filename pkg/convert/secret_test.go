@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -33,7 +34,7 @@ func TestSecretDecoderInjectsSchemaSecrets(t *testing.T) {
 	type testCase struct {
 		name        string
 		schemaMap   schema.SchemaMap
-		schemaInfos map[string]*tfbridge.SchemaInfo
+		schemaInfos map[string]*info.Schema
 		val         tftypes.Value
 		expect      autogold.Value
 	}
@@ -66,7 +67,7 @@ func TestSecretDecoderInjectsSchemaSecrets(t *testing.T) {
 					Type: shim.TypeString,
 				}).Shim(),
 			},
-			schemaInfos: map[string]*tfbridge.SchemaInfo{
+			schemaInfos: map[string]*info.Schema{
 				"secret_value": {
 					Type:   "string",
 					Secret: tfbridge.True(),
@@ -93,7 +94,7 @@ func TestSecretDecoderInjectsSchemaSecrets(t *testing.T) {
 					Sensitive: true,
 				}).Shim(),
 			},
-			schemaInfos: map[string]*tfbridge.SchemaInfo{
+			schemaInfos: map[string]*info.Schema{
 				"secret_value": {
 					Type:   "string",
 					Secret: tfbridge.False(),

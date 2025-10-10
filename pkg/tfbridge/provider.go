@@ -411,10 +411,10 @@ func (p *Provider) initResourceMaps() {
 		// then that overrides the ignore directive.
 		//
 		// This is because there have been providers in the wild that is
-		// [tfbridge.ProviderInfo.IgnoreMappings] to specify a Datasource to
+		// [info.Provider.IgnoreMappings] to specify a Datasource to
 		// ignore, then manually map the Resource (or vice versa). We don't want
 		// to break those providers when implementing support for
-		// [tfbridge.ProviderInfo.IgnoreMappings] in the resource map.
+		// [info.Provider.IgnoreMappings] in the resource map.
 		if ignoredTokens[name] && !ok {
 			return true // continue
 		}

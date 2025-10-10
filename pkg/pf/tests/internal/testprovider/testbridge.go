@@ -30,6 +30,7 @@ import (
 
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 //go:embed cmd/pulumi-resource-testbridge/bridge-metadata.json
@@ -37,8 +38,8 @@ var testBridgeMetadata []byte
 
 // Synthetic provider is specifically constructed to test various
 // features of tfbridge and is the core of pulumi-resource-testbridge.
-func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
-	info := tfbridge.ProviderInfo{
+func SyntheticTestBridgeProvider() info.Provider {
+	providerInfo := info.Provider{
 		Name:             "testbridge",
 		P:                tfpf.ShimProvider(&syntheticProvider{}),
 		Description:      "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
@@ -49,32 +50,32 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 		Version:          "0.0.1",
 		UpstreamRepoPath: ".", // Setting UpstreamRepoPath prevents the "could not find docs" warning.
 
-		Config: map[string]*tfbridge.SchemaInfo{
+		Config: map[string]*info.Schema{
 			"string_defaultinfo_config_prop": {
-				Default: &tfbridge.DefaultInfo{
+				Default: &info.Default{
 					Value: "DEFAULT",
 				},
 			},
 			"skip_metadata_api_check": {
 				Type: "boolean",
-				Default: &tfbridge.DefaultInfo{
+				Default: &info.Default{
 					Value: true,
 				},
 			},
 		},
 
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"testbridge_testres": {Tok: "testbridge:index/testres:Testres"},
 			"testbridge_testnest": {
 				Tok: "testbridge:index/testnest:Testnest",
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"rules": {
-						Elem: &tfbridge.SchemaInfo{
-							Fields: map[string]*tfbridge.SchemaInfo{
+						Elem: &info.Schema{
+							Fields: map[string]*info.Schema{
 								"action_parameters": {
 									MaxItemsOne: tfbridge.True(),
-									Elem: &tfbridge.SchemaInfo{
-										Fields: map[string]*tfbridge.SchemaInfo{
+									Elem: &info.Schema{
+										Fields: map[string]*info.Schema{
 											"phases": {MaxItemsOne: tfbridge.True()},
 										},
 									},
@@ -92,9 +93,9 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 
 			"testbridge_test_default_info_res": {
 				Tok: "testbridge:index/testres:TestDefaultInfoRes",
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"str": {
-						Default: &tfbridge.DefaultInfo{
+						Default: &info.Default{
 							Value: "DEFAULT",
 						},
 					},
@@ -105,21 +106,21 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 			"testbridge_autoname_res": {Tok: "testbridge:index/testres:AutoNameRes"},
 			"testbridge_int_id_res": {
 				Tok: "testbridge:index/intID:IntID",
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"id": {Type: "string"},
 				},
 			},
 			"testbridge_vlan_names_res": {Tok: "testbridge:index/testres:VlanNamesRes"},
 		},
 
-		DataSources: map[string]*tfbridge.DataSourceInfo{
+		DataSources: map[string]*info.DataSource{
 			"testbridge_echo": {Tok: "testbridge:index/echo:Echo"},
 
 			"testbridge_test_defaultinfo": {
 				Tok: "testbridge:index/testres:TestDefaultInfoDataSource",
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"input": {
-						Default: &tfbridge.DefaultInfo{
+						Default: &info.Default{
 							Value: "DEFAULT",
 						},
 					},
@@ -132,9 +133,9 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
 
-	info.SetAutonaming(255, "-")
+	providerInfo.SetAutonaming(255, "-")
 
-	return info
+	return providerInfo
 }
 
 type syntheticProvider struct{}

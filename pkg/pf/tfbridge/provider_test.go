@@ -20,15 +20,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestTerraformResourceName(t *testing.T) {
 	t.Parallel()
 	urn := resource.URN("urn:pulumi:dev::stack1::random:index/randomInteger:RandomInteger::priority")
 	p := &provider{
-		info: tfbridge.ProviderInfo{
-			Resources: map[string]*tfbridge.ResourceInfo{
+		info: info.Provider{
+			Resources: map[string]*info.Resource{
 				"random_integer": {Tok: "random:index/randomInteger:RandomInteger"},
 			},
 		},

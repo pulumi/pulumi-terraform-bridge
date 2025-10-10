@@ -30,7 +30,6 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -551,8 +550,8 @@ func TestPFConfigureErrorReplacement(t *testing.T) {
 
 		providerInfo := testprovider.SyntheticTestBridgeProvider()
 		providerInfo.P = tfpf.ShimProvider(prov)
-		providerInfo.Config["config_property"] = &tfbridge.SchemaInfo{Name: "configProperty"}
-		providerInfo.Config["config"] = &tfbridge.SchemaInfo{Name: "CONFIG!"}
+		providerInfo.Config["config_property"] = &info.Schema{Name: "configProperty"}
+		providerInfo.Config["config"] = &info.Schema{Name: "CONFIG!"}
 
 		server, err := newProviderServer(t, providerInfo)
 		require.NoError(t, err)
@@ -580,8 +579,8 @@ func TestPFConfigureErrorReplacement(t *testing.T) {
 
 		providerInfo := testprovider.SyntheticTestBridgeProvider()
 		providerInfo.P = tfpf.ShimProvider(prov)
-		providerInfo.Config["config_property"] = &tfbridge.SchemaInfo{Name: "configProperty"}
-		providerInfo.Config["config"] = &tfbridge.SchemaInfo{Name: "CONFIG!"}
+		providerInfo.Config["config_property"] = &info.Schema{Name: "configProperty"}
+		providerInfo.Config["config"] = &info.Schema{Name: "CONFIG!"}
 
 		server, err := newProviderServer(t, providerInfo)
 		require.NoError(t, err)

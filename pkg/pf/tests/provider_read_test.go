@@ -28,7 +28,6 @@ import (
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -373,7 +372,7 @@ func TestRefreshResourceNotFound(t *testing.T) {
 			r,
 		},
 	})
-	info := tfbridge.ProviderInfo{
+	providerInfo := info.Provider{
 		Name:         "my",
 		P:            tfpf.ShimProvider(p),
 		MetadataInfo: &info.Metadata{},
@@ -393,7 +392,7 @@ func TestRefreshResourceNotFound(t *testing.T) {
 			},
 		},
 	}
-	server, err := newProviderServer(t, info)
+	server, err := newProviderServer(t, providerInfo)
 	require.NoError(t, err)
 
 	testCase := `

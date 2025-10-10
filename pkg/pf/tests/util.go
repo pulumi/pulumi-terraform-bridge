@@ -23,10 +23,10 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
-	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) (pulumirpc.ResourceProviderServer, error) {
+func newProviderServer(t *testing.T, info info.Provider) (pulumirpc.ResourceProviderServer, error) {
 	ctx := context.Background()
 	meta, err := genMetadata(t, info)
 	if err != nil {
@@ -37,7 +37,7 @@ func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) (pulumirpc.Res
 	return srv, nil
 }
 
-func newMuxedProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
+func newMuxedProviderServer(t *testing.T, info info.Provider) pulumirpc.ResourceProviderServer {
 	ctx := context.Background()
 	meta := genSDKSchema(t, info)
 	p, err := tfbridge.MakeMuxedServer(ctx, info.Name, info, meta)(nil)

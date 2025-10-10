@@ -18,19 +18,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func ProviderInfo() tfbridge.ProviderInfo {
-	prov := tfbridge.ProviderInfo{
+func ProviderInfo() info.Provider {
+	prov := info.Provider{
 		P:    sdkv2.NewProvider(Provider()),
 		Name: "tpinvschema",
 
 		PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
 			return nil
 		},
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"invalid_res": {
 				Tok: tfbridge.MakeResource("tpinvschema", "index", "invalid_res"),
 			},

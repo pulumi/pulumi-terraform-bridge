@@ -17,13 +17,13 @@ package tpsdkv2
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func ProviderInfo() tfbridge.ProviderInfo {
-	return tfbridge.ProviderInfo{
+func ProviderInfo() info.Provider {
+	return info.Provider{
 		P:    sdkv2.NewProvider(Provider()),
 		Name: "tpsdkv2",
 

@@ -39,7 +39,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -63,7 +63,7 @@ output "some_output" {
     value = simple_resource.a_resource.result
 }`
 
-	p := tfbridge.ProviderInfo{
+	p := info.Provider{
 		Name: "simple",
 		P: shimv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
@@ -86,15 +86,15 @@ output "some_output" {
 				},
 			},
 		}),
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"simple_resource": {
 				Tok: "simple:index:resource",
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"input_one": {
 						Name: "renamedInput1",
 					},
 				},
-				Docs: &tfbridge.DocInfo{
+				Docs: &info.Doc{
 					Markdown: []byte(fmt.Sprintf(
 						"Sample resource.\n## Example Usage\n\n"+
 							"```hcl\n%s\n```\n\n##Extras\n\n",
@@ -103,7 +103,7 @@ output "some_output" {
 				},
 			},
 		},
-		DataSources: map[string]*tfbridge.DataSourceInfo{
+		DataSources: map[string]*info.DataSource{
 			"simple_data_source": {
 				Tok: "simple:index:dataSource",
 			},
@@ -146,7 +146,7 @@ output "someOutput" {
 		out, err := cc.convertViaPulumiCLI(map[string]string{
 			"example1": simpleResourceTF,
 			"example2": simpleDataSourceTF,
-		}, []tfbridge.ProviderInfo{p})
+		}, []info.Provider{p})
 
 		require.NoError(t, err)
 		assert.Equal(t, 2, len(out))
@@ -226,9 +226,9 @@ Converted 100.00% of yaml examples (1/1)
 
 	t.Run("mappingsFile", func(t *testing.T) {
 		c := &cliConverter{}
-		aws := tfbridge.ProviderInfo{Name: "aws"}
+		aws := info.Provider{Name: "aws"}
 		assert.Equal(t, filepath.Join(".", "aws.json"), c.mappingsFile(".", aws))
-		withPrefix := tfbridge.ProviderInfo{Name: "p", ResourcePrefix: "prov"}
+		withPrefix := info.Provider{Name: "p", ResourcePrefix: "prov"}
 		assert.Equal(t, filepath.Join(".", "prov.json"), c.mappingsFile(".", withPrefix))
 	})
 
@@ -267,14 +267,14 @@ resource "azurerm_web_pubsub_custom_certificate" "test" {
 				},
 			},
 		}
-		pi := tfbridge.ProviderInfo{
+		pi := info.Provider{
 			P:       shimv2.NewProvider(p),
 			Name:    "azurerm",
 			Version: "0.0.1",
-			Resources: map[string]*tfbridge.ResourceInfo{
+			Resources: map[string]*info.Resource{
 				"azurerm_web_pubsub_custom_certificate": {
 					Tok:  "azure:webpubsub/customCertificate:CustomCertificate",
-					Docs: &tfbridge.DocInfo{Markdown: md},
+					Docs: &info.Doc{Markdown: md},
 				},
 			},
 		}
@@ -317,14 +317,14 @@ This is some intentionally broken HCL that should not convert.
 				},
 			},
 		}
-		pi := tfbridge.ProviderInfo{
+		pi := info.Provider{
 			P:       shimv2.NewProvider(p),
 			Name:    "azurerm",
 			Version: "0.0.1",
-			Resources: map[string]*tfbridge.ResourceInfo{
+			Resources: map[string]*info.Resource{
 				"azurerm_web_pubsub_custom_certificate": {
 					Tok:  "azure:webpubsub/customCertificate:CustomCertificate",
-					Docs: &tfbridge.DocInfo{Markdown: md},
+					Docs: &info.Doc{Markdown: md},
 				},
 			},
 		}
@@ -391,14 +391,14 @@ This is some intentionally broken HCL that should not convert.
 				},
 			},
 		}
-		pi := tfbridge.ProviderInfo{
+		pi := info.Provider{
 			P:       shimv2.NewProvider(p),
 			Name:    "aws",
 			Version: "0.0.1",
-			Resources: map[string]*tfbridge.ResourceInfo{
+			Resources: map[string]*info.Resource{
 				"aws_launch_template": {
 					Tok:  "aws:index:LaunchTemplate",
-					Docs: &tfbridge.DocInfo{Markdown: md},
+					Docs: &info.Doc{Markdown: md},
 				},
 			},
 		}

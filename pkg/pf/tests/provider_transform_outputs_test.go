@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestPFTransformOutputs(t *testing.T) {
@@ -173,7 +173,7 @@ func TestPFTransformFromState(t *testing.T) {
 		var called bool
 		t.Cleanup(func() { assert.True(t, called, "Transform was not called") })
 
-		p.Resources["assert_echo"] = &tfbridge.ResourceInfo{
+		p.Resources["assert_echo"] = &info.Resource{
 			Tok: "assert:index/echo:Echo",
 			TransformFromState: func(
 				ctx context.Context,

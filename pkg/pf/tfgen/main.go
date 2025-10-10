@@ -22,7 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/check"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
-	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
@@ -37,7 +37,7 @@ import (
 // info.P must be constructed with ShimProvider or ShimProviderWithContext.
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
-func Main(provider string, info sdkBridge.ProviderInfo) {
+func Main(provider string, info info.Provider) {
 	version := info.Version
 
 	tfgen.MainWithCustomGenerate(provider, version, info, func(opts tfgen.GeneratorOptions) error {
@@ -69,9 +69,9 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 // This is an experimental API.
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
-func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
+func MainWithMuxer(provider string, info info.Provider) {
 	if len(info.MuxWith) > 0 {
-		panic("mixin providers via tfbridge.ProviderInfo.MuxWith is currently not supported")
+		panic("mixin providers via info.Provider.MuxWith is currently not supported")
 	}
 
 	shim, ok := info.P.(*pfmuxer.ProviderShim)

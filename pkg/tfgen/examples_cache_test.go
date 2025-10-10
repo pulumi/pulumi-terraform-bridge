@@ -19,13 +19,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestExamplesCache(t *testing.T) {
 	t.Parallel()
 
-	exInfo := &tfbridge.ProviderInfo{
+	exInfo := &info.Provider{
 		Name:    "ex",
 		Version: "0.0.1",
 	}

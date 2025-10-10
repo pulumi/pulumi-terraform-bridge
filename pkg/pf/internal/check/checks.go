@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -29,7 +30,7 @@ import (
 //
 // This function should be called in the generate step, but before schema generation (so
 // as to error as soon as possible).
-func Provider(sink diag.Sink, info tfbridge.ProviderInfo) error {
+func Provider(sink diag.Sink, info info.Provider) error {
 	// If info.P is not muxed, we assume that all resources are PF based resources and
 	// that all datasources are PF based datasources.
 	isPFResource := func(string) bool { return true }
@@ -45,12 +46,12 @@ func Provider(sink diag.Sink, info tfbridge.ProviderInfo) error {
 	)
 }
 
-func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource func(tfToken string) bool) error {
+func checkIDProperties(sink diag.Sink, providerInfo info.Provider, isPFResource func(tfToken string) bool) error {
 	numErrors := 0
 
-	info.P.ResourcesMap().Range(func(rname string, resource shim.Resource) bool {
+	providerInfo.P.ResourcesMap().Range(func(rname string, resource shim.Resource) bool {
 		// Unmapped resources are not available, so they don't need to be correct.
-		if v, ok := info.Resources[rname]; !ok || v.Tok == "" {
+		if v, ok := providerInfo.Resources[rname]; !ok || v.Tok == "" {
 			return true
 		}
 
@@ -59,10 +60,10 @@ func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource 
 		if !isPFResource(rname) {
 			return true
 		}
-		if resourceHasComputeID(info, rname) {
+		if resourceHasComputeID(providerInfo, rname) {
 			return true
 		}
-		err := resourceHasRegularID(rname, resource, info.Resources[rname])
+		err := resourceHasRegularID(rname, resource, providerInfo.Resources[rname])
 		if err == nil {
 			return true
 		}
@@ -71,13 +72,13 @@ func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource 
 		// added a ComputeID override, then fallback to using MissingID.
 		var missing errMissingIDAttribute
 		if errors.As(err, &missing) {
-			if info.Resources == nil {
-				info.Resources = map[string]*tfbridge.ResourceInfo{}
+			if providerInfo.Resources == nil {
+				providerInfo.Resources = map[string]*info.Resource{}
 			}
-			resInfo := info.Resources[rname]
+			resInfo := providerInfo.Resources[rname]
 			if resInfo == nil {
-				resInfo = &tfbridge.ResourceInfo{}
-				info.Resources[rname] = resInfo
+				resInfo = &info.Resource{}
+				providerInfo.Resources[rname] = resInfo
 			}
 			if resInfo.ComputeID == nil {
 				resInfo.ComputeID = tfbridge.MissingIDComputeID()
@@ -168,36 +169,36 @@ func isInputProperty(schema shim.Schema) bool {
 	return true
 }
 
-func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tfbridge.ResourceInfo) error {
+func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *info.Resource) error {
 	idSchema, gotID := resource.Schema().GetOk("id")
 	if !gotID {
 		return errMissingIDAttribute{}
 	}
-	var info tfbridge.SchemaInfo
+	var idSchemaInfo info.Schema
 	if resourceInfo != nil {
 		if id := resourceInfo.Fields["id"]; id != nil {
-			info = *id
+			idSchemaInfo = *id
 		}
 	}
 	isInput := isInputProperty(idSchema)
-	if info.Name != "" && resourceInfo.ComputeID == nil {
+	if idSchemaInfo.Name != "" && resourceInfo.ComputeID == nil {
 		// if Name is provided then ComputeID must be provided regardless of whether
 		// "id" is an input or a computed property
 		return errMissingComputeID{}
 	}
-	if isInput && (info.Name == "" || resourceInfo.ComputeID == nil) {
+	if isInput && (idSchemaInfo.Name == "" || resourceInfo.ComputeID == nil) {
 		return errInvalidRequiredID{}
 	}
 
 	// If the user over-rode the type to be a string, don't reject.
-	if idSchema.Type() != shim.TypeString && info.Type != "string" {
+	if idSchema.Type() != shim.TypeString && idSchemaInfo.Type != "string" {
 		actual := idSchema.Type().String()
-		if info.Type != "" {
-			actual = string(info.Type)
+		if idSchemaInfo.Type != "" {
+			actual = string(idSchemaInfo.Type)
 		}
 		return errWrongIDType{actualType: actual}
 	}
-	if idSchema.Sensitive() && (info.Secret == nil || *info.Secret) {
+	if idSchema.Sensitive() && (idSchemaInfo.Secret == nil || *idSchemaInfo.Secret) {
 		return errSensitiveID{rname}
 	}
 	return nil
@@ -205,13 +206,13 @@ func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tf
 
 // resourceHasComputeID returns true if the resource does not have an "id" field, but
 // does have a "ComputeID" func
-func resourceHasComputeID(info tfbridge.ProviderInfo, resname string) bool {
-	if info.Resources == nil {
+func resourceHasComputeID(providerInfo info.Provider, resname string) bool {
+	if providerInfo.Resources == nil {
 		return false
 	}
 
-	if info, ok := info.Resources[resname]; ok {
-		if _, ok := info.Fields["id"]; !ok && info.ComputeID != nil {
+	if resInfo, ok := providerInfo.Resources[resname]; ok {
+		if _, ok := resInfo.Fields["id"]; !ok && resInfo.ComputeID != nil {
 			return true
 		}
 	}

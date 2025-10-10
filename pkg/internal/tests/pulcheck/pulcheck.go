@@ -137,7 +137,7 @@ func WithValidProvider(t T, tfp *schema.Provider) *schema.Provider {
 }
 
 func ProviderServerFromInfo(
-	ctx context.Context, providerInfo tfbridge.ProviderInfo,
+	ctx context.Context, providerInfo info.Provider,
 ) (pulumirpc.ResourceProviderServer, error) {
 	sink := pulumidiag.DefaultSink(io.Discard, io.Discard, pulumidiag.FormatOptions{
 		Color: colors.Never,
@@ -158,7 +158,7 @@ func ProviderServerFromInfo(
 }
 
 // This is an experimental API.
-func StartPulumiProvider(ctx context.Context, providerInfo tfbridge.ProviderInfo) (*rpcutil.ServeHandle, error) {
+func StartPulumiProvider(ctx context.Context, providerInfo info.Provider) (*rpcutil.ServeHandle, error) {
 	prov, err := ProviderServerFromInfo(ctx, providerInfo)
 	if err != nil {
 		return nil, fmt.Errorf("ProviderServerFromInfo failed: %w", err)
@@ -231,7 +231,7 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 		shimv2.WithPlanStateEdit(options.StateEdit),
 	)
 
-	provider := tfbridge.ProviderInfo{
+	provider := info.Provider{
 		P:                              shimProvider,
 		Name:                           providerName,
 		Version:                        "0.0.1",

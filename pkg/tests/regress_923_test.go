@@ -24,6 +24,7 @@ import (
 	testutils "github.com/pulumi/providertest/replay"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -86,7 +87,7 @@ func TestRegress923(t *testing.T) {
 
 	p := shimv2.NewProvider(tfProvider)
 
-	info := tfbridge.ProviderInfo{
+	providerInfo := info.Provider{
 		P:          p,
 		Name:       "azure",
 		Keywords:   []string{"pulumi", "azure"},
@@ -94,18 +95,18 @@ func TestRegress923(t *testing.T) {
 		Homepage:   "https://pulumi.io",
 		Repository: "https://github.com/pulumi/pulumi-azure",
 		Version:    "0.0.2",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"az_webhook": {Tok: "azure:containerservice/registryWebhook:RegistryWebhook"},
 		},
 	}
 
 	server := tfbridge.NewProvider(ctx,
-		nil,      /* hostClient */
-		"azure",  /* module */
-		"",       /* version */
-		p,        /* tf */
-		info,     /* info */
-		[]byte{}, /* pulumiSchema */
+		nil,          /* hostClient */
+		"azure",      /* module */
+		"",           /* version */
+		p,            /* tf */
+		providerInfo, /* info */
+		[]byte{},     /* pulumiSchema */
 	)
 
 	testCase := `

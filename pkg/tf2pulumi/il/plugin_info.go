@@ -33,17 +33,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // ProviderInfoSource abstracts the ability to fetch tfbridge information for a Terraform provider. This is abstracted
 // primarily for testing purposes.
 type ProviderInfoSource interface {
 	// GetProviderInfo returns the tfbridge information for the indicated Terraform provider.
-	GetProviderInfo(registry, namespace, name, version string) (*tfbridge.ProviderInfo, error)
+	GetProviderInfo(registry, namespace, name, version string) (*info.Provider, error)
 }
 
-// mapperProviderInfoSource wraps a convert.Mapper to return tfbridge.ProviderInfo
+// mapperProviderInfoSource wraps a convert.Mapper to return info.Provider
 type mapperProviderInfoSource struct {
 	mapper convert.Mapper
 }
@@ -54,7 +54,7 @@ func NewMapperProviderInfoSource(mapper convert.Mapper) ProviderInfoSource {
 
 func (mapper *mapperProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string,
-) (*tfbridge.ProviderInfo, error) {
+) (*info.Provider, error) {
 	data, err := mapper.mapper.GetMapping(context.TODO(), name, &convert.MapperPackageHint{
 		PluginName: GetPulumiProviderName(name),
 	})
@@ -68,7 +68,7 @@ func (mapper *mapperProviderInfoSource) GetProviderInfo(
 		return nil, errors.New(message)
 	}
 
-	var info *tfbridge.MarshallableProviderInfo
+	var info *info.MarshallableProvider
 	err = json.Unmarshal(data, &info)
 	if err != nil {
 		return nil, fmt.Errorf("could not decode schema information for provider %s: %w", name, err)
@@ -81,7 +81,7 @@ type CachingProviderInfoSource struct {
 	m sync.RWMutex
 
 	source  ProviderInfoSource
-	entries map[string]*tfbridge.ProviderInfo
+	entries map[string]*info.Provider
 }
 
 func (cache *CachingProviderInfoSource) cacheKey(registry, namespace, name, version string) string {
@@ -89,7 +89,7 @@ func (cache *CachingProviderInfoSource) cacheKey(registry, namespace, name, vers
 		url.PathEscape(registry), url.PathEscape(namespace), url.PathEscape(name), url.PathEscape(version))
 }
 
-func (cache *CachingProviderInfoSource) getProviderInfo(key string) (*tfbridge.ProviderInfo, bool) {
+func (cache *CachingProviderInfoSource) getProviderInfo(key string) (*info.Provider, bool) {
 	cache.m.RLock()
 	defer cache.m.RUnlock()
 
@@ -101,7 +101,7 @@ func (cache *CachingProviderInfoSource) getProviderInfo(key string) (*tfbridge.P
 // corresponding Pulumi resource provider.
 func (cache *CachingProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string,
-) (*tfbridge.ProviderInfo, error) {
+) (*info.Provider, error) {
 	key := cache.cacheKey(registryName, namespace, name, version)
 
 	if info, ok := cache.getProviderInfo(key); ok {
@@ -123,7 +123,7 @@ func (cache *CachingProviderInfoSource) GetProviderInfo(
 func NewCachingProviderInfoSource(source ProviderInfoSource) *CachingProviderInfoSource {
 	return &CachingProviderInfoSource{
 		source:  source,
-		entries: map[string]*tfbridge.ProviderInfo{},
+		entries: map[string]*info.Provider{},
 	}
 }
 
@@ -135,7 +135,7 @@ func NewMultiProviderInfoSource(sources ...ProviderInfoSource) ProviderInfoSourc
 
 func (s multiProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string,
-) (*tfbridge.ProviderInfo, error) {
+) (*info.Provider, error) {
 	for _, s := range s {
 		if s != nil {
 			if info, err := s.GetProviderInfo(registryName, namespace, name, version); err == nil && info != nil {
@@ -176,7 +176,7 @@ func GetPulumiProviderName(terraformProviderName string) string {
 }
 
 // GetTerraformProviderName returns the canonical Terraform provider name for the given provider info.
-func GetTerraformProviderName(info tfbridge.ProviderInfo) string {
+func GetTerraformProviderName(info info.Provider) string {
 	if info.Name == "google-beta" {
 		return "google"
 	}
@@ -187,7 +187,7 @@ func GetTerraformProviderName(info tfbridge.ProviderInfo) string {
 // corresponding Pulumi resource provider.
 func (pluginProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string,
-) (*tfbridge.ProviderInfo, error) {
+) (*info.Provider, error) {
 	tfProviderName := name
 	pluginName := GetPulumiProviderName(tfProviderName)
 
@@ -216,7 +216,7 @@ func (pluginProviderInfoSource) GetProviderInfo(
 		return nil, errors.Wrapf(err, "failed to load plugin %s for provider %s", pluginName, tfProviderName)
 	}
 
-	var info *tfbridge.MarshallableProviderInfo
+	var info *info.MarshallableProvider
 	err = jsoniter.NewDecoder(out).Decode(&info)
 
 	if cErr := cmd.Wait(); cErr != nil {

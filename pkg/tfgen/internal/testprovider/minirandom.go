@@ -20,11 +20,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func ProviderMiniRandom() tfbridge.ProviderInfo {
+func ProviderMiniRandom() info.Provider {
 	randomPkg := "random"
 	randomMod := "index"
 
@@ -41,7 +41,7 @@ func ProviderMiniRandom() tfbridge.ProviderInfo {
 		return randomType(mod+"/"+fn, res)
 	}
 
-	return tfbridge.ProviderInfo{
+	return info.Provider{
 		P:           shimv2.NewProvider(testproviderdata.ProviderMiniRandom()),
 		Name:        "random",
 		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
@@ -49,13 +49,13 @@ func ProviderMiniRandom() tfbridge.ProviderInfo {
 		License:     "Apache-2.0",
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-random",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"random_integer": {Tok: randomResource(randomMod, "RandomInteger")},
 		},
 	}
 }
 
-func ProviderMiniRandomCSharp() tfbridge.ProviderInfo {
+func ProviderMiniRandomCSharp() info.Provider {
 	randomPkg := "random"
 	randomMod := "index"
 
@@ -72,7 +72,7 @@ func ProviderMiniRandomCSharp() tfbridge.ProviderInfo {
 		return randomType(mod+"/"+fn, res)
 	}
 
-	return tfbridge.ProviderInfo{
+	return info.Provider{
 		P:           shimv2.NewProvider(testproviderdata.ProviderMiniRandom()),
 		Name:        "random",
 		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
@@ -80,11 +80,11 @@ func ProviderMiniRandomCSharp() tfbridge.ProviderInfo {
 		License:     "Apache-2.0",
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-random",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"random_integer": {
 				Tok:        randomResource(randomMod, "RandomInteger"),
 				CSharpName: "CSharpRandomInteger",
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"seed": {
 						CSharpName: "CSharpSeed",
 					},

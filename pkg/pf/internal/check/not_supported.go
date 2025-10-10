@@ -23,12 +23,12 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // Check if the user has customiezed ProviderInfo asking for features that are not yet supported for Plugin Framework
 // based providers, emit warnings in this case.
-func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo, isPFResource, isPFDataSource func(string) bool) error {
+func notSupported(sink diag.Sink, prov info.Provider, isPFResource, isPFDataSource func(string) bool) error {
 	if sink == nil {
 		sink = diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 			Color: colors.Always,
@@ -97,23 +97,23 @@ func (u *notSupportedUtil) assertIsZero(path string, shouldBeZero interface{}) {
 		path, shouldBeZero)
 }
 
-func (u *notSupportedUtil) fields(path string, f map[string]*tfbridge.SchemaInfo) {
+func (u *notSupportedUtil) fields(path string, f map[string]*info.Schema) {
 	for k, v := range f {
 		u.schema(path+".Fields."+k, v)
 	}
 }
 
-func (u *notSupportedUtil) datasource(path string, ds *tfbridge.DataSourceInfo) {
+func (u *notSupportedUtil) datasource(path string, ds *info.DataSource) {
 	u.fields(path, ds.Fields)
 }
 
-func (u *notSupportedUtil) resource(path string, res *tfbridge.ResourceInfo) {
+func (u *notSupportedUtil) resource(path string, res *info.Resource) {
 	u.fields(path, res.Fields)
 	u.assertIsZero(path+".UniqueNameFields", res.UniqueNameFields)
 	u.assertIsZero(path+".Docs", res.Docs)
 }
 
-func (u *notSupportedUtil) schema(path string, schema *tfbridge.SchemaInfo) {
+func (u *notSupportedUtil) schema(path string, schema *info.Schema) {
 	if schema.Type != "string" {
 		u.assertIsZero(path+".Type", schema.Type)
 	}

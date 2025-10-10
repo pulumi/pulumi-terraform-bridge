@@ -14,15 +14,13 @@
 
 package x
 
-import (
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-)
+import "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 
 // A generic remapping strategy.
 //
 // Deprecated: This item has been moved to
 // [github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge.ElementStrategy]
-type Strategy[T tfbridge.ResourceInfo | tfbridge.DataSourceInfo] func(tfToken string) (*T, error)
+type Strategy[T info.Resource | info.DataSource] func(tfToken string) (*T, error)
 
 // Describe the mapping from resource and datasource tokens to Pulumi resources and
 // datasources.
@@ -38,10 +36,10 @@ type DefaultStrategy struct {
 //
 // Deprecated: This item has been moved to
 // [github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge.ResourceStrategy]
-type ResourceStrategy = Strategy[tfbridge.ResourceInfo]
+type ResourceStrategy = Strategy[info.Resource]
 
 // A strategy for generating missing datasources.
 //
 // Deprecated: This item has been moved to
 // [github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge.DataSourceStrategy]
-type DataSourceStrategy = Strategy[tfbridge.DataSourceInfo]
+type DataSourceStrategy = Strategy[info.DataSource]

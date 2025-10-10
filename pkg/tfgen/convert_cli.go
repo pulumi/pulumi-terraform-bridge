@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/autofill"
 )
 
@@ -62,9 +63,9 @@ func cliConverterEnabled() bool {
 // Note that once examples are converted to PCL, they continue to be processed with in-process
 // target language specific generators to produce TypeScript, YAML, Python etc target code.
 type cliConverter struct {
-	info         tfbridge.ProviderInfo // provider declaration
-	pluginHost   plugin.Host           // the plugin host for PCL conversion
-	packageCache *pcl.PackageCache     // the package cache for PCL conversion
+	info         info.Provider     // provider declaration
+	pluginHost   plugin.Host       // the plugin host for PCL conversion
+	packageCache *pcl.PackageCache // the package cache for PCL conversion
 
 	hcls map[string]struct{} // set of observed HCL snippets
 
@@ -215,7 +216,7 @@ func (cc *cliConverter) bulkConvert() error {
 		examples[fileName] = hcl
 		n++
 	}
-	result, err := cc.convertViaPulumiCLI(cc.autoFill(examples), []tfbridge.ProviderInfo{
+	result, err := cc.convertViaPulumiCLI(cc.autoFill(examples), []info.Provider{
 		cc.info,
 	})
 	if err != nil {
@@ -264,7 +265,7 @@ func (cc *cliConverter) autoFill(examples map[string]string) map[string]string {
 // include additional providers used in examples.
 func (cc *cliConverter) convertViaPulumiCLI(
 	examples map[string]string,
-	mappings []tfbridge.ProviderInfo,
+	mappings []info.Provider,
 ) (map[string]translatedExample, error) {
 	translated, err := cc.convertViaPulumiCLIStep(examples, mappings)
 	if err == nil {
@@ -310,7 +311,7 @@ func (*cliConverter) split2(xs map[string]string) (map[string]string, map[string
 // To help with debugging failures prepares a temp folder with a repro script and returns a path to it.
 func (cc *cliConverter) convertViaPulumiPrepareDebugFolder(
 	examples map[string]string,
-	mappings []tfbridge.ProviderInfo,
+	mappings []info.Provider,
 ) (string, error) {
 	d, err := os.MkdirTemp("", "convert-examples-repro")
 	if err != nil {
@@ -346,7 +347,7 @@ pulumi %s
 
 func (cc *cliConverter) convertViaPulumiCLICommandArgs(
 	examples map[string]string,
-	mappings []tfbridge.ProviderInfo,
+	mappings []info.Provider,
 	outDir string,
 	examplesJSONPath string,
 ) (string, []string, error) {
@@ -407,7 +408,7 @@ func (cc *cliConverter) convertViaPulumiCLICommandArgs(
 
 func (cc *cliConverter) convertViaPulumiCLIStep(
 	examples map[string]string,
-	mappings []tfbridge.ProviderInfo,
+	mappings []info.Provider,
 ) (
 	output map[string]translatedExample,
 	finalError error,
@@ -477,7 +478,7 @@ func (cc *cliConverter) convertViaPulumiCLIStep(
 	return result, nil
 }
 
-func (*cliConverter) mappingsFile(mappingsDir string, info tfbridge.ProviderInfo) string {
+func (*cliConverter) mappingsFile(mappingsDir string, info info.Provider) string {
 	// This seems to be what the converter expects the filename to be. For providers
 	// like "aws" this is simply the provider name, but there are exceptions such as
 	// "azure" where this has to be "azurerm.json" to match the prefix on the Terraform
@@ -637,7 +638,7 @@ func (*cliConverter) ensureNotSupportedLifecycleHooksIsError(d *hcl.Diagnostic) 
 // Function for one-off example converson HCL --> PCL using pulumi-converter-terraform
 func (cc *cliConverter) singleExampleFromHCLToPCL(path, hclCode string) (translatedExample, error) {
 	key := path
-	result, err := cc.convertViaPulumiCLI(map[string]string{key: hclCode}, []tfbridge.ProviderInfo{cc.info})
+	result, err := cc.convertViaPulumiCLI(map[string]string{key: hclCode}, []info.Provider{cc.info})
 	if err != nil {
 		return translatedExample{}, nil
 	}

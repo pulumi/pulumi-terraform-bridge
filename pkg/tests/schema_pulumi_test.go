@@ -101,9 +101,9 @@ func TestBigIntOverride(t *testing.T) {
 	tfp := &schema.Provider{ResourcesMap: resMap}
 	opts := []pulcheck.BridgedProviderOpt{}
 	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
-	bridgedProvider.Resources["prov_test"] = &tfbridge.ResourceInfo{
+	bridgedProvider.Resources["prov_test"] = &info.Resource{
 		Tok: "prov:index:Test",
-		Fields: map[string]*tfbridge.SchemaInfo{
+		Fields: map[string]*info.Schema{
 			"managed_zone_id": {
 				Type: "string",
 			},

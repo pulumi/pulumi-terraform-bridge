@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider/sdkv2randomprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -41,7 +42,7 @@ var muxedRandomProviderBridgeMetadata []byte
 
 // Adapts Random provider to tfbridge for testing tfbridge against a
 // realistic provider.
-func RandomProvider() tfbridge.ProviderInfo {
+func RandomProvider() info.Provider {
 	randomPkg := "random"
 	randomMod := "index"
 
@@ -80,7 +81,7 @@ func RandomProvider() tfbridge.ProviderInfo {
 		return resource.ID(b.StringValue()), nil
 	}
 
-	return tfbridge.ProviderInfo{
+	return info.Provider{
 		Name:        "random",
 		P:           tfpf.ShimProvider(randomshim.NewProvider()),
 		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
@@ -89,7 +90,7 @@ func RandomProvider() tfbridge.ProviderInfo {
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-random",
 		Version:     "4.8.2",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"random_id":       {Tok: randomResource(randomMod, "RandomId")},
 			"random_password": {Tok: randomResource(randomMod, "RandomPassword")},
 			"random_pet":      {Tok: randomResource(randomMod, "RandomPet")},
@@ -102,7 +103,7 @@ func RandomProvider() tfbridge.ProviderInfo {
 				ComputeID: computeRandomBytesID,
 			},
 		},
-		JavaScript: &tfbridge.JavaScriptInfo{
+		JavaScript: &info.JavaScript{
 			Dependencies: map[string]string{
 				"@pulumi/pulumi": "^3.0.0",
 			},
@@ -110,12 +111,12 @@ func RandomProvider() tfbridge.ProviderInfo {
 				"@types/node": "^10.0.0", // so we can access strongly typed node definitions.
 			},
 		},
-		Python: &tfbridge.PythonInfo{
+		Python: &info.Python{
 			Requires: map[string]string{
 				"pulumi": ">=3.0.0,<4.0.0",
 			},
 		},
-		Golang: &tfbridge.GolangInfo{
+		Golang: &info.Golang{
 			ImportBasePath: filepath.Join(
 				fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/", randomPkg),
 				tfbridge.GetModuleMajorVersion("0.0.1"),
@@ -124,7 +125,7 @@ func RandomProvider() tfbridge.ProviderInfo {
 			),
 			GenerateResourceContainerTypes: true,
 		},
-		CSharp: &tfbridge.CSharpInfo{
+		CSharp: &info.CSharp{
 			PackageReferences: map[string]string{
 				"Pulumi": "3.*",
 			},
@@ -137,11 +138,11 @@ func RandomProvider() tfbridge.ProviderInfo {
 	}
 }
 
-func MuxedRandomProvider() tfbridge.ProviderInfo {
+func MuxedRandomProvider() info.Provider {
 	return MuxedRandomProviderWithSdkProvider(sdkv2randomprovider.New())
 }
 
-func MuxedRandomProviderWithSdkProvider(sdk2provider *sdk2schema.Provider) tfbridge.ProviderInfo {
+func MuxedRandomProviderWithSdkProvider(sdk2provider *sdk2schema.Provider) info.Provider {
 	randomPkg := "muxedrandom"
 	randomMod := "index"
 
@@ -164,7 +165,7 @@ func MuxedRandomProviderWithSdkProvider(sdk2provider *sdk2schema.Provider) tfbri
 
 	pf := RandomProvider()
 
-	info := tfbridge.ProviderInfo{
+	providerInfo := info.Provider{
 		Name:        "muxedrandom",
 		Description: "A Pulumi package to safely use randomness in Pulumi programs.",
 		Keywords:    []string{"pulumi", "random"},
@@ -175,7 +176,7 @@ func MuxedRandomProviderWithSdkProvider(sdk2provider *sdk2schema.Provider) tfbri
 		P: tfpf.MuxShimWithPF(context.Background(),
 			sdkv2.NewProvider(sdk2provider),
 			randomshim.NewProvider()),
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			// "random_human_number": {Tok: randomResource("RandomHumanNumber")},
 		},
 		MetadataInfo: tfbridge.NewProviderMetadata(muxedRandomProviderBridgeMetadata),
@@ -183,12 +184,12 @@ func MuxedRandomProviderWithSdkProvider(sdk2provider *sdk2schema.Provider) tfbri
 
 	for tf, r := range pf.Resources {
 		r.Tok = tokens.Type("muxedrandom:" + strings.TrimPrefix(string(r.Tok), "random:"))
-		info.Resources[tf] = r
+		providerInfo.Resources[tf] = r
 	}
 
-	info.RenameResourceWithAlias("random_human_number",
+	providerInfo.RenameResourceWithAlias("random_human_number",
 		randomResource("MyNumber"), randomResource("RandomHumanNumber"),
 		"index", "index", nil)
 
-	return info
+	return providerInfo
 }

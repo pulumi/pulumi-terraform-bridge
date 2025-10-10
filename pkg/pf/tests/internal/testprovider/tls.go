@@ -25,13 +25,14 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/tlsshim"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 //go:embed cmd/pulumi-resource-tls/bridge-metadata.json
 var tlsProviderBridgeMetadata []byte
 
 // Adapts tls provider to tfbridge for testing tfbridge against another realistic provider.
-func TLSProvider() tfbridge.ProviderInfo {
+func TLSProvider() info.Provider {
 	tlsPkg := "tls"
 	tlsMod := "index"
 	tlsVersion := "4.0.4"
@@ -54,7 +55,7 @@ func TLSProvider() tfbridge.ProviderInfo {
 		return tlsType(mod+"/"+fn, res)
 	}
 
-	return tfbridge.ProviderInfo{
+	return info.Provider{
 		Name:        "tls",
 		P:           tfpf.ShimProvider(tlsshim.NewProvider()),
 		Description: "A Pulumi package to create TLS resources in Pulumi programs.",
@@ -62,17 +63,17 @@ func TLSProvider() tfbridge.ProviderInfo {
 		License:     "Apache-2.0",
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-tls",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"tls_cert_request":        {Tok: tlsResource(tlsMod, "CertRequest")},
 			"tls_locally_signed_cert": {Tok: tlsResource(tlsMod, "LocallySignedCert")},
 			"tls_private_key":         {Tok: tlsResource(tlsMod, "PrivateKey")},
 			"tls_self_signed_cert":    {Tok: tlsResource(tlsMod, "SelfSignedCert")},
 		},
-		DataSources: map[string]*tfbridge.DataSourceInfo{
+		DataSources: map[string]*info.DataSource{
 			"tls_public_key":  {Tok: tlsDataSource(tlsMod, "getPublicKey")},
 			"tls_certificate": {Tok: tlsDataSource(tlsMod, "getCertificate")},
 		},
-		JavaScript: &tfbridge.JavaScriptInfo{
+		JavaScript: &info.JavaScript{
 			Dependencies: map[string]string{
 				"@pulumi/pulumi": "^3.0.0",
 			},
@@ -80,12 +81,12 @@ func TLSProvider() tfbridge.ProviderInfo {
 				"@types/node": "^10.0.0", // so we can access strongly typed node definitions.
 			},
 		},
-		Python: &tfbridge.PythonInfo{
+		Python: &info.Python{
 			Requires: map[string]string{
 				"pulumi": ">=3.0.0,<4.0.0",
 			},
 		},
-		Golang: &tfbridge.GolangInfo{
+		Golang: &info.Golang{
 			ImportBasePath: filepath.Join(
 				fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/", tlsPkg),
 				tfbridge.GetModuleMajorVersion(tlsVersion),
@@ -94,7 +95,7 @@ func TLSProvider() tfbridge.ProviderInfo {
 			),
 			GenerateResourceContainerTypes: true,
 		},
-		CSharp: &tfbridge.CSharpInfo{
+		CSharp: &info.CSharp{
 			PackageReferences: map[string]string{
 				"Pulumi": "3.*",
 			},

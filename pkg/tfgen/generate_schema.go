@@ -43,6 +43,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -55,7 +56,7 @@ const (
 type schemaGenerator struct {
 	pkg      tokens.Package
 	version  string
-	info     tfbridge.ProviderInfo
+	info     info.Provider
 	language Language
 }
 
@@ -228,7 +229,7 @@ func rawMessage(v interface{}) pschema.RawMessage {
 }
 
 func genPulumiSchema(
-	pack *pkg, name tokens.Package, version string, info tfbridge.ProviderInfo,
+	pack *pkg, name tokens.Package, version string, info info.Provider,
 	logSink diag.Sink,
 ) (pschema.PackageSpec, error) {
 	g := &schemaGenerator{
@@ -526,7 +527,7 @@ func sinkHclDiagnostics(sink diag.Sink, diags hcl.Diagnostics) {
 	}
 }
 
-func javaLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
+func javaLanguageExtensions(providerInfo *info.Provider) pschema.RawMessage {
 	// The definition is copied here to avoid linking the dependency in directly, see:
 	// https://github.com/pulumi/pulumi-java/blob/main/pkg/codegen/java/package_info.go#L35C1-L108C1
 	type PackageInfo struct {
@@ -539,7 +540,7 @@ func javaLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMess
 	}
 	j := providerInfo.Java
 	if j == nil {
-		j = &tfbridge.JavaInfo{}
+		j = &info.Java{}
 	}
 	info := &PackageInfo{
 		Packages:                        j.Packages,
@@ -552,10 +553,10 @@ func javaLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMess
 	return rawMessage(info)
 }
 
-func csharpLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
+func csharpLanguageExtensions(providerInfo *info.Provider) pschema.RawMessage {
 	c := providerInfo.CSharp
 	if c == nil {
-		c = &tfbridge.CSharpInfo{}
+		c = &info.CSharp{}
 	}
 	info := &csgen.CSharpPackageInfo{
 		Compatibility:                tfbridge20,
@@ -570,10 +571,10 @@ func csharpLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMe
 	return rawMessage(info)
 }
 
-func goLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
+func goLanguageExtensions(providerInfo *info.Provider) pschema.RawMessage {
 	g := providerInfo.Golang
 	if g == nil {
-		g = &tfbridge.GolangInfo{}
+		g = &info.Golang{}
 	}
 	info := &gogen.GoPackageInfo{
 		ImportBasePath:                 g.ImportBasePath,
@@ -596,10 +597,10 @@ func goLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessag
 	return rawMessage(info)
 }
 
-func pythonLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string) pschema.RawMessage {
+func pythonLanguageExtensions(providerInfo *info.Provider, readme string) pschema.RawMessage {
 	p := providerInfo.Python
 	if p == nil {
-		p = &tfbridge.PythonInfo{}
+		p = &info.Python{}
 	}
 	info := &pygen.PackageInfo{
 		Compatibility:                tfbridge20,
@@ -616,10 +617,10 @@ func pythonLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string
 	return rawMessage(info)
 }
 
-func nodeLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string) pschema.RawMessage {
+func nodeLanguageExtensions(providerInfo *info.Provider, readme string) pschema.RawMessage {
 	j := providerInfo.JavaScript
 	if j == nil {
-		j = &tfbridge.JavaScriptInfo{}
+		j = &info.JavaScript{}
 	}
 	info := &tsgen.NodePackageInfo{
 		Compatibility:                tfbridge20,
@@ -644,7 +645,7 @@ func nodeLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string) 
 }
 
 func getDefaultReadme(pulumiPackageName tokens.Package, tfProviderShortName string, tfGitHubOrg string,
-	pulumiProvLicense tfbridge.TFProviderLicense, pulumiProvLicenseURI string, githubHost string,
+	pulumiProvLicense info.TFProviderLicense, pulumiProvLicenseURI string, githubHost string,
 	sourceRepo string,
 ) string {
 	//nolint:lll

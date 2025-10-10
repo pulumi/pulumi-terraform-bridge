@@ -19,7 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -32,7 +32,7 @@ import (
 type Schemas struct {
 	TF     shim.Schema
 	TFRes  shim.SchemaMap
-	Pulumi *tfbridge.SchemaInfo
+	Pulumi *info.Schema
 }
 
 // PropertySchemas returns the Schemas for the child property with the given name. If the name is an integer, this

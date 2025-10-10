@@ -1118,7 +1118,7 @@ func checkShim(t *testing.T, tc shimTestCase) {
 
 	rtok := "testprov:index:R1"
 
-	info := info.Provider{
+	providerInfo := info.Provider{
 		Name: "testprov",
 		P:    shimmedProvider,
 		Resources: map[string]*info.Resource{
@@ -1129,7 +1129,7 @@ func checkShim(t *testing.T, tc shimTestCase) {
 	}
 
 	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	pSpec, err := tfgen.GenerateSchema(info, nilSink)
+	pSpec, err := tfgen.GenerateSchema(providerInfo, nilSink)
 	require.NoError(t, err)
 
 	type miniSpec struct {

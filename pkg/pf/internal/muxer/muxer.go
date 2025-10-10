@@ -26,7 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/schemashim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 )
@@ -147,7 +147,7 @@ func newProviderShim(provider shim.Provider) ProviderShim {
 //
 // For alias based mappings to work correctly at runtime, it is necessary to call
 // `ResolveDispatch` before running the provider.
-func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) (muxer.DispatchTable, error) {
+func (m *ProviderShim) ResolveDispatch(info *info.Provider) (muxer.DispatchTable, error) {
 	var dispatch muxer.DispatchTable
 	dispatch.Resources = map[string]int{}
 	dispatch.Functions = map[string]int{}

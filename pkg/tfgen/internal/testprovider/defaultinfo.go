@@ -17,11 +17,12 @@ package testprovider
 import (
 	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func ProviderDefaultInfo() tfbridge.ProviderInfo {
-	return tfbridge.ProviderInfo{
+func ProviderDefaultInfo() info.Provider {
+	return info.Provider{
 		P:           shimv2.NewProvider(testproviderdata.ProviderDefaultInfo()),
 		Name:        "default-info",
 		Description: "",
@@ -29,22 +30,22 @@ func ProviderDefaultInfo() tfbridge.ProviderInfo {
 		License:     "Apache-2.0",
 		Homepage:    "https://pulumi.io",
 		Repository:  "",
-		Config: map[string]*tfbridge.SchemaInfo{
+		Config: map[string]*info.Schema{
 			"project": {
-				Default: &tfbridge.DefaultInfo{
+				Default: &info.Default{
 					Value: []string{"default_project"},
 				},
 			},
 		},
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"default_ruleset": {
 				Tok: tfbridge.MakeResource("cloudflare", "index", "Ruleset"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"rules": {
-						Elem: &tfbridge.SchemaInfo{
-							Fields: map[string]*tfbridge.SchemaInfo{
+						Elem: &info.Schema{
+							Fields: map[string]*info.Schema{
 								"id": {
-									Default: &tfbridge.DefaultInfo{
+									Default: &info.Default{
 										Value: []string{"default_id"},
 									},
 								},

@@ -20,7 +20,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
-	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -28,7 +28,7 @@ import (
 //
 // Deprecated: This item has been moved to
 // [github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge.ComputeTokens]
-func ComputeDefaults(info *b.ProviderInfo, opts DefaultStrategy) error {
+func ComputeDefaults(info *info.Provider, opts DefaultStrategy) error {
 	var errs multierror.Error
 
 	ignored := ignoredTokens(info)
@@ -44,7 +44,7 @@ func ComputeDefaults(info *b.ProviderInfo, opts DefaultStrategy) error {
 	return errs.ErrorOrNil()
 }
 
-func ignoredTokens(info *b.ProviderInfo) map[string]bool {
+func ignoredTokens(info *info.Provider) map[string]bool {
 	ignored := map[string]bool{}
 	if info == nil {
 		return ignored
@@ -55,29 +55,31 @@ func ignoredTokens(info *b.ProviderInfo) map[string]bool {
 	return ignored
 }
 
-func computeDefaultResources(info *b.ProviderInfo, strategy ResourceStrategy, ignored map[string]bool) error {
+func computeDefaultResources(providerInfo *info.Provider, strategy ResourceStrategy, ignored map[string]bool) error {
 	if strategy == nil {
 		return nil
 	}
-	if info.Resources == nil {
-		info.Resources = map[string]*b.ResourceInfo{}
+	if providerInfo.Resources == nil {
+		providerInfo.Resources = map[string]*info.Resource{}
 	}
-	return applyComputedTokens(info.P.ResourcesMap(), info.Resources, strategy, ignored)
+	return applyComputedTokens(providerInfo.P.ResourcesMap(), providerInfo.Resources, strategy, ignored)
 }
 
-func computeDefaultDataSources(info *b.ProviderInfo, strategy DataSourceStrategy, ignored map[string]bool) error {
+func computeDefaultDataSources(
+	providerInfo *info.Provider, strategy DataSourceStrategy, ignored map[string]bool,
+) error {
 	if strategy == nil {
 		return nil
 	}
-	if info.DataSources == nil {
-		info.DataSources = map[string]*b.DataSourceInfo{}
+	if providerInfo.DataSources == nil {
+		providerInfo.DataSources = map[string]*info.DataSource{}
 	}
-	return applyComputedTokens(info.P.DataSourcesMap(), info.DataSources, strategy, ignored)
+	return applyComputedTokens(providerInfo.P.DataSourcesMap(), providerInfo.DataSources, strategy, ignored)
 }
 
 // For each key in the info map not present in the result map, compute a result and store
 // it in the result map.
-func applyComputedTokens[T b.ResourceInfo | b.DataSourceInfo](
+func applyComputedTokens[T info.Resource | info.DataSource](
 	infoMap shim.ResourceMap, resultMap map[string]*T, tks Strategy[T],
 	ignoredMappings map[string]bool,
 ) error {

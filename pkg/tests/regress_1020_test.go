@@ -24,6 +24,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -142,7 +143,7 @@ func TestRegress1020(t *testing.T) {
 	}
 
 	server := func(p shim.Provider) pulumirpc.ResourceProviderServer {
-		info := tfbridge.ProviderInfo{
+		providerInfo := info.Provider{
 			P:           p,
 			Name:        "aws",
 			Description: "A Pulumi package for creating and managing Amazon Web Services (AWS) cloud resources.",
@@ -151,17 +152,17 @@ func TestRegress1020(t *testing.T) {
 			Homepage:    "https://pulumi.io",
 			Repository:  "https://github.com/pulumi/pulumi-aws",
 			Version:     "0.0.2",
-			Resources: map[string]*tfbridge.ResourceInfo{
+			Resources: map[string]*info.Resource{
 				"aws_wafv2_ip_set": {Tok: "aws:wafv2/ipSet:IpSet"},
 			},
 		}
 		return tfbridge.NewProvider(ctx,
-			nil,      /* hostClient */
-			"aws",    /* module */
-			"",       /* version */
-			p,        /* tf */
-			info,     /* info */
-			[]byte{}, /* pulumiSchema */
+			nil,          /* hostClient */
+			"aws",        /* module */
+			"",           /* version */
+			p,            /* tf */
+			providerInfo, /* info */
+			[]byte{},     /* pulumiSchema */
 		)
 	}
 

@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -37,7 +37,7 @@ func TestResourceDecoder(t *testing.T) {
 	type testCase struct {
 		testName  string
 		schema    *schema.SchemaMap
-		info      *tfbridge.ProviderInfo
+		info      *info.Provider
 		typ       tftypes.Object
 		val       tftypes.Value
 		expect    autogold.Value
@@ -188,7 +188,7 @@ func TestResourceEncoder(t *testing.T) {
 	type testCase struct {
 		testName string
 		schema   *schema.SchemaMap
-		info     *tfbridge.ProviderInfo
+		info     *info.Provider
 		typ      tftypes.Object
 		val      resource.PropertyMap
 		expect   autogold.Value
@@ -254,7 +254,7 @@ func TestDataSourceDecoder(t *testing.T) {
 	type testCase struct {
 		testName string
 		schema   *schema.SchemaMap
-		info     *tfbridge.ProviderInfo
+		info     *info.Provider
 		typ      tftypes.Object
 		val      tftypes.Value
 		expect   autogold.Value
@@ -306,10 +306,10 @@ func TestDataSourceDecoder(t *testing.T) {
 					Optional: true,
 				}).Shim(),
 			},
-			info: &tfbridge.ProviderInfo{
-				DataSources: map[string]*tfbridge.DataSourceInfo{
+			info: &info.Provider{
+				DataSources: map[string]*info.DataSource{
 					myDataSource: {
-						Fields: map[string]*tfbridge.SchemaInfo{
+						Fields: map[string]*info.Schema{
 							"foo": {
 								Name: "renamedFoo",
 							},
@@ -357,7 +357,7 @@ func TestDataSourceEncoder(t *testing.T) {
 	type testCase struct {
 		testName string
 		schema   *schema.SchemaMap
-		info     *tfbridge.ProviderInfo
+		info     *info.Provider
 		typ      tftypes.Object
 		val      resource.PropertyMap
 		expect   autogold.Value
@@ -415,7 +415,7 @@ func TestConfigEncoder(t *testing.T) {
 	type testCase struct {
 		testName string
 		schema   *schema.SchemaMap
-		info     *tfbridge.ProviderInfo
+		info     *info.Provider
 		typ      tftypes.Object
 		val      resource.PropertyMap
 		expect   autogold.Value

@@ -22,6 +22,7 @@ import (
 	testutils "github.com/pulumi/providertest/replay"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -77,25 +78,25 @@ func TestRegressHCloud175(t *testing.T) {
 
 	p := shimv2.NewProvider(tfProvider)
 
-	info := tfbridge.ProviderInfo{
+	providerInfo := info.Provider{
 		P:           p,
 		Name:        "hcloud",
 		Description: "etc",
 		Keywords:    []string{"pulumi", "hcloud"},
 		License:     "Apache-2.0",
 		Version:     "0.0.1",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"hcloud_subnet": {Tok: "hcloud:index/networkSubnet:NetworkSubnet"},
 		},
 	}
 
 	server := tfbridge.NewProvider(ctx,
-		nil,      /* hostClient */
-		"hcloud", /* module */
-		"",       /* version */
-		p,        /* tf */
-		info,     /* info */
-		[]byte{}, /* pulumiSchema */
+		nil,          /* hostClient */
+		"hcloud",     /* module */
+		"",           /* version */
+		p,            /* tf */
+		providerInfo, /* info */
+		[]byte{},     /* pulumiSchema */
 	)
 
 	testCase := `

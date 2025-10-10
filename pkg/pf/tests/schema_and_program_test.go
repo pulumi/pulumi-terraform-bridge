@@ -267,7 +267,7 @@ func TestIDAttribute(t *testing.T) {
 				},
 			}
 
-			var computeIDField tfbridge.ComputeID
+			var computeIDField info.ComputeID
 			var idSchema info.Schema
 			if tc.schemaName != "" {
 				idSchema = info.Schema{Name: tc.schemaName}

@@ -20,12 +20,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func ProviderMiniAws() tfbridge.ProviderInfo {
-	return tfbridge.ProviderInfo{
+func ProviderMiniAws() info.Provider {
+	return info.Provider{
 		P:           shimv2.NewProvider(testproviderdata.ProviderMiniAws()),
 		Name:        "aws",
 		Description: "A Pulumi package to safely use aws in Pulumi programs.",
@@ -33,8 +33,8 @@ func ProviderMiniAws() tfbridge.ProviderInfo {
 		License:     "Apache-2.0",
 		Homepage:    "https://pulumi.io",
 		Repository:  "https://github.com/pulumi/pulumi-aws",
-		DocRules: &tfbridge.DocRuleInfo{EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
-			return []tfbridge.DocsEdit{
+		DocRules: &info.DocRule{EditRules: func(defaults []info.DocsEdit) []info.DocsEdit {
+			return []info.DocsEdit{
 				{
 					Path: "*",
 					Edit: func(_ string, content []byte) ([]byte, error) {
@@ -55,13 +55,13 @@ func ProviderMiniAws() tfbridge.ProviderInfo {
 			}
 		}},
 		UpstreamRepoPath: "./test_data",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"aws_s3_bucket_acl": {
 				Tok: tokens.Type(tokens.ModuleMember("aws:s3/bucketAclV2:BucketAclV2")),
 			},
 			"aws_s3_bucket": {
 				Tok: tokens.Type(tokens.ModuleMember("aws:s3/bucketV2:BucketV2")),
-				Aliases: []tfbridge.AliasInfo{
+				Aliases: []info.Alias{
 					{
 						Type: ref("aws:s3/bucket:Bucket"),
 					},

@@ -367,7 +367,7 @@ func TestNestedMaxItemsOne(t *testing.T) {
 // TestNestedTypeSingularization shows that we singularize types associated with list
 // properties.
 //
-// The test also shows that we can override this behavior by setting [tfbridge.SchemaInfo.NestedType].
+// The test also shows that we can override this behavior by setting [info.Schema.NestedType].
 //
 //nolint:lll // Long type names make it arduous to stay under the 120 char limit.
 func TestNestedTypeSingularization(t *testing.T) {
@@ -400,7 +400,7 @@ func TestNestedTypeSingularization(t *testing.T) {
 			actionParameters := provider.Resources["cloudflare_ruleset"].Fields["rules"].Elem.Fields["action_parameters"]
 			actionParameters.MaxItemsOne = nil
 			actionParameters.Elem.Fields["phases"].MaxItemsOne = nil
-			actionParameters.Elem.Fields["phases"].Elem = &tfbridge.SchemaInfo{NestedType: "RulesetRuleActionParameterPhases"}
+			actionParameters.Elem.Fields["phases"].Elem = &info.Schema{NestedType: "RulesetRuleActionParameterPhases"}
 		}
 		actual, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 			Color: colors.Never,
@@ -621,31 +621,31 @@ func TestPropagateLanguageOptions(t *testing.T) {
 
 	require.Nil(t, provider.Golang)
 
-	provider.Golang = &tfbridge.GolangInfo{
+	provider.Golang = &info.Golang{
 		RespectSchemaVersion:          true,
 		DisableFunctionOutputVersions: true,
 	}
 
 	require.Nil(t, provider.Python)
 
-	provider.Python = &tfbridge.PythonInfo{
+	provider.Python = &info.Python{
 		RespectSchemaVersion: true,
 	}
 
 	require.Nil(t, provider.JavaScript)
 
-	provider.JavaScript = &tfbridge.JavaScriptInfo{
+	provider.JavaScript = &info.JavaScript{
 		RespectSchemaVersion: true,
 	}
 
 	require.Nil(t, provider.CSharp)
 
-	provider.CSharp = &tfbridge.CSharpInfo{
+	provider.CSharp = &info.CSharp{
 		RespectSchemaVersion: true,
 	}
 
 	require.Nil(t, provider.Java)
-	provider.Java = &tfbridge.JavaInfo{
+	provider.Java = &info.Java{
 		BuildFiles: "gradle",
 	}
 

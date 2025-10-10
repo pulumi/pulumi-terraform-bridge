@@ -47,6 +47,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -62,7 +63,7 @@ type Generator struct {
 	pkg             tokens.Package        // the Pulumi package name (e.g. `gcp`)
 	version         string                // the package version.
 	language        Language              // the language runtime to generate.
-	info            tfbridge.ProviderInfo // the provider info for customizing code generation
+	info            info.Provider         // the provider info for customizing code generation
 	root            afero.Fs              // the output virtual filesystem.
 	providerShim    *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
 	pluginHost      plugin.Host           // the plugin host for tf2pulumi.
@@ -214,7 +215,7 @@ func runPulumiPackageGenSDK(
 	return dirToBytesMap(fs, filepath.Join(outDir, string(l)))
 }
 
-func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root afero.Fs,
+func (l Language) emitSDK(pkg *pschema.Package, info info.Provider, root afero.Fs,
 ) (map[string][]byte, error) {
 	var extraFiles map[string][]byte
 	var err error
@@ -468,25 +469,25 @@ func (g *Generator) Sink() diag.Sink {
 }
 
 func (g *Generator) makePropertyType(typePath paths.TypePath,
-	objectName string, sch shim.Schema, info *tfbridge.SchemaInfo, out bool,
+	objectName string, sch shim.Schema, schemaInfo *info.Schema, out bool,
 	entityDocs entityDocs,
 ) (*propertyType, error) {
 	t := &propertyType{}
-	if info != nil {
-		t.typeName = info.TypeName
+	if schemaInfo != nil {
+		t.typeName = schemaInfo.TypeName
 	}
 
-	var elemInfo *tfbridge.SchemaInfo
-	if info != nil {
-		t.typ = info.Type
-		t.nestedType = info.NestedType
-		t.altTypes = info.AltTypes
-		t.asset = info.Asset
-		elemInfo = info.Elem
+	var elemInfo *info.Schema
+	if schemaInfo != nil {
+		t.typ = schemaInfo.Type
+		t.nestedType = schemaInfo.NestedType
+		t.altTypes = schemaInfo.AltTypes
+		t.asset = schemaInfo.Asset
+		elemInfo = schemaInfo.Elem
 	}
 
 	if sch == nil {
-		contract.Assertf(info != nil, "missing info when sch is nil on type: %s", typePath.String())
+		contract.Assertf(schemaInfo != nil, "missing info when sch is nil on type: %s", typePath.String())
 		return t, nil
 	}
 
@@ -517,7 +518,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	}
 
 	// IsMaxItemOne lists and sets are flattened, transforming List[T] or Set[T] to T. Detect if this is the case.
-	flatten := tfbridge.IsMaxItemsOne(sch, info)
+	flatten := tfbridge.IsMaxItemsOne(sch, schemaInfo)
 
 	// The remaining cases are collections, List[T], Set[T] or Map[T], and recursion needs NewElementPath except for
 	// flattening that stays at the current path.
@@ -576,35 +577,35 @@ func getDocsFromSchemaMap(key string, schemaMap shim.SchemaMap) string {
 }
 
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
-	res shim.Resource, info *tfbridge.SchemaInfo,
+	res shim.Resource, schemaInfo *info.Schema,
 	out bool, entityDocs entityDocs,
 ) (*propertyType, error) {
 	// If the user supplied an explicit Type token override, omit generating types and short-circuit.
-	if info != nil && info.OmitType {
-		if info.Type == "" {
+	if schemaInfo != nil && schemaInfo.OmitType {
+		if schemaInfo.Type == "" {
 			return nil, fmt.Errorf("Cannot set info.OmitType without also setting info.Type")
 		}
-		return &propertyType{typ: info.Type}, nil
+		return &propertyType{typ: schemaInfo.Type}, nil
 	}
 
 	t := &propertyType{
 		kind: kindObject,
 	}
 
-	if info != nil {
-		t.typeName = info.TypeName
+	if schemaInfo != nil {
+		t.typeName = schemaInfo.TypeName
 	}
 
-	if info != nil {
-		t.typ = info.Type
-		t.nestedType = info.NestedType
-		t.altTypes = info.AltTypes
-		t.asset = info.Asset
+	if schemaInfo != nil {
+		t.typ = schemaInfo.Type
+		t.nestedType = schemaInfo.NestedType
+		t.altTypes = schemaInfo.AltTypes
+		t.asset = schemaInfo.Asset
 	}
 
-	var propertyInfos map[string]*tfbridge.SchemaInfo
-	if info != nil {
-		propertyInfos = info.Fields
+	var propertyInfos map[string]*info.Schema
+	if schemaInfo != nil {
+		propertyInfos = schemaInfo.Fields
 	}
 
 	// Look up the parent path and prepend it to the docs path, to allow for precise lookup in the entityDocs.
@@ -739,7 +740,7 @@ type variable struct {
 	rawdoc string
 
 	schema shim.Schema
-	info   *tfbridge.SchemaInfo
+	info   *info.Schema
 
 	typ *propertyType
 
@@ -780,7 +781,7 @@ func (v *variable) forceNew() bool {
 // optional checks whether the given property is optional, either due to Terraform or an overlay.
 func (v *variable) optional() bool { return v.opt || isOptional(v.info, v.schema, v.out, v.config) }
 
-func isOptional(info *tfbridge.SchemaInfo, schema shim.Schema, out bool, config bool) bool {
+func isOptional(info *info.Schema, schema shim.Schema, out bool, config bool) bool {
 	// if we have an explicit marked as optional then let's return that
 	if info != nil && info.MarkAsOptional != nil {
 		return *info.MarkAsOptional
@@ -808,7 +809,7 @@ type resourceType struct {
 	argst      *propertyType // input properties.
 	statet     *propertyType // output properties (all optional).
 	schema     shim.Resource
-	info       *tfbridge.ResourceInfo
+	info       *info.Resource
 	entityDocs entityDocs // parsed docs.
 
 	resourcePath *paths.ResourcePath
@@ -826,7 +827,7 @@ func (rt *resourceType) TypeToken() tokens.Type {
 
 func newResourceType(resourcePath *paths.ResourcePath,
 	mod tokens.Module, name tokens.TypeName, entityDocs entityDocs,
-	schema shim.Resource, info *tfbridge.ResourceInfo,
+	schema shim.Resource, info *info.Resource,
 	isProvider bool,
 ) *resourceType {
 	// We want to add the import details to the description so we can display those for the user
@@ -859,7 +860,7 @@ type resourceFunc struct {
 	argst          *propertyType
 	retst          *propertyType
 	schema         shim.Resource
-	info           *tfbridge.DataSourceInfo
+	info           *info.DataSource
 	entityDocs     entityDocs
 	dataSourcePath *paths.DataSourcePath
 }
@@ -881,7 +882,7 @@ func (of *overlayFile) Name() string { return of.name }
 func (of *overlayFile) Doc() string  { return "" }
 func (of *overlayFile) Copy() bool   { return of.src != "" }
 
-func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.PackageSpec, error) {
+func GenerateSchema(info info.Provider, sink diag.Sink) (pschema.PackageSpec, error) {
 	res, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: sink,
@@ -893,7 +894,7 @@ func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.Package
 }
 
 type GenerateSchemaOptions struct {
-	ProviderInfo    tfbridge.ProviderInfo
+	ProviderInfo    info.Provider
 	DiagnosticsSink diag.Sink
 	XInMemoryDocs   bool
 }
@@ -926,7 +927,7 @@ type GeneratorOptions struct {
 	Package            string
 	Version            string
 	Language           Language
-	ProviderInfo       tfbridge.ProviderInfo
+	ProviderInfo       info.Provider
 	Root               afero.Fs
 	ProviderInfoSource il.ProviderInfoSource
 	PluginHost         plugin.Host
@@ -1392,7 +1393,7 @@ func (g *Generator) gatherConfig() (*module, error) {
 	}
 
 	// Now, if there are any extra config variables, that are Pulumi-only, add them.
-	extraConfigInfo := map[string]*tfbridge.SchemaInfo{}
+	extraConfigInfo := map[string]*info.Schema{}
 	extraConfigMap := schema.SchemaMap{}
 	for key, val := range g.info.ExtraConfig {
 		extraConfigInfo[key] = val.Info
@@ -1418,11 +1419,11 @@ func (g *Generator) gatherProvider() (*resourceType, error) {
 	if cfg == nil {
 		cfg = schema.SchemaMap{}
 	}
-	info := &tfbridge.ResourceInfo{
+	resourceInfo := &info.Resource{
 		Tok:    tokens.Type(g.pkg.String()),
 		Fields: g.info.Config,
 	}
-	res, err := g.gatherResource("", (&schema.Resource{Schema: cfg}).Shim(), info, true)
+	res, err := g.gatherResource("", (&schema.Resource{Schema: cfg}).Shim(), resourceInfo, true)
 	return res, err
 }
 
@@ -1506,7 +1507,7 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 
 // gatherResource returns the module name and one or more module members to represent the given resource.
 func (g *Generator) gatherResource(rawname string,
-	schema shim.Resource, info *tfbridge.ResourceInfo, isProvider bool,
+	schema shim.Resource, info *info.Resource, isProvider bool,
 ) (*resourceType, error) {
 	// Get the resource's module and name.
 	name, moduleName := resourceName(g.info.Name, rawname, info, isProvider)
@@ -1709,16 +1710,16 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 
 // gatherDataSource returns the module name and members for the given data source function.
 func (g *Generator) gatherDataSource(rawname string,
-	ds shim.Resource, info *tfbridge.DataSourceInfo,
+	ds shim.Resource, sourceInfo *info.DataSource,
 ) (*resourceFunc, error) {
 	// Generate the name and module for this data source.
-	name, moduleName := dataSourceName(g.info.Name, rawname, info)
+	name, moduleName := dataSourceName(g.info.Name, rawname, sourceInfo)
 	mod := tokens.NewModuleToken(g.pkg, moduleName)
 	dataSourcePath := paths.NewDataSourcePath(rawname, tokens.NewModuleMemberToken(mod, name))
 
 	// Collect documentation information for this data source.
 	source := NewGitRepoDocsSource(g)
-	entityDocs, err := getDocsForResource(g, source, DataSourceDocs, rawname, info)
+	entityDocs, err := getDocsForResource(g, source, DataSourceDocs, rawname, sourceInfo)
 	if err != nil && !g.checkNoDocsError(err) {
 		return nil, err
 	}
@@ -1730,7 +1731,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		doc:            entityDocs.Description,
 		reqargs:        make(map[string]bool),
 		schema:         ds,
-		info:           info,
+		info:           sourceInfo,
 		entityDocs:     entityDocs,
 		dataSourcePath: dataSourcePath,
 	}
@@ -1741,7 +1742,7 @@ func (g *Generator) gatherDataSource(rawname string,
 		if sch.Removed() != "" {
 			continue
 		}
-		cust := info.Fields[arg]
+		cust := sourceInfo.Fields[arg]
 
 		// Remember detailed information for every input arg (we will use it below).
 		if input(sch, cust) {
@@ -1754,7 +1755,7 @@ func (g *Generator) gatherDataSource(rawname string,
 			}
 
 			argvar, err := g.propertyVariable(dataSourcePath.Args(),
-				arg, ds.Schema(), info.Fields, doc, "", false /*out*/, entityDocs)
+				arg, ds.Schema(), sourceInfo.Fields, doc, "", false /*out*/, entityDocs)
 			if err != nil {
 				return nil, err
 			}
@@ -1768,7 +1769,7 @@ func (g *Generator) gatherDataSource(rawname string,
 
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
-		p, err := g.propertyVariable(dataSourcePath.Results(), arg, ds.Schema(), info.Fields,
+		p, err := g.propertyVariable(dataSourcePath.Results(), arg, ds.Schema(), sourceInfo.Fields,
 			entityDocs.Attributes[arg], "", true /*out*/, entityDocs)
 		if err != nil {
 			return nil, err
@@ -1781,7 +1782,7 @@ func (g *Generator) gatherDataSource(rawname string,
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
 	// sources.
 	if id, has := ds.Schema().GetOk("id"); !has || id.Removed() != "" {
-		cust := map[string]*tfbridge.SchemaInfo{"id": {}}
+		cust := map[string]*info.Schema{"id": {}}
 		rawdoc := "The provider-assigned unique ID for this managed resource."
 		idSchema := schema.SchemaMap(map[string]shim.Schema{
 			"id": (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
@@ -1822,7 +1823,7 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 	modules := make(moduleMap)
 
 	// Pluck out the overlay info from the right structure.  This is language dependent.
-	var overlay *tfbridge.OverlayInfo
+	var overlay *info.Overlay
 	switch g.language {
 	case NodeJS:
 		if jsinfo := g.info.JavaScript; jsinfo != nil {
@@ -1901,13 +1902,13 @@ The original error is: %s`
 		correction = fmt.Sprintf(`
 The upstream repository path has been overridden, but the specified path is invalid.
 You should check the value of:
-tfbridge.ProviderInfo{
+info.Provider{
 	UpstreamRepoPath: %q,
 }`, g.info.UpstreamRepoPath)
 	} else {
 		correction = fmt.Sprintf(`
 If the expected path is not correct, you should check the values of these fields (current values shown):
-tfbridge.ProviderInfo{
+info.Provider{
 	GitHubHost:              %q,
 	GitHubOrg:               %q,
 	Name:                    %q,
@@ -1932,7 +1933,7 @@ func (g *Generator) emitProjectMetadata(name tokens.Package, language Language) 
 }
 
 // input checks whether the given property is supplied by the user (versus being always computed).
-func input(sch shim.Schema, info *tfbridge.SchemaInfo) bool {
+func input(sch shim.Schema, info *info.Schema) bool {
 	return (sch.Optional() || sch.Required()) &&
 		(info == nil || info.MarkAsComputedOnly == nil || !*info.MarkAsComputedOnly)
 }
@@ -1942,7 +1943,7 @@ func input(sch shim.Schema, info *tfbridge.SchemaInfo) bool {
 //
 //	would need to understand how to unmarshal names in a language-idiomatic way (and specifically reverse the
 //	name transformation process).  This isn't impossible, but certainly complicates matters.
-func propertyName(key string, sch shim.SchemaMap, custom map[string]*tfbridge.SchemaInfo) string {
+func propertyName(key string, sch shim.SchemaMap, custom map[string]*info.Schema) string {
 	// BUGBUG: work around issue in the Elastic Transcoder where a field has a trailing ":".
 	key = strings.TrimSuffix(key, ":")
 	return tfbridge.TerraformToPulumiNameV2(key, sch, custom)
@@ -1954,10 +1955,10 @@ func propertyName(key string, sch shim.SchemaMap, custom map[string]*tfbridge.Sc
 //
 // parentPath together with key uniquely locates the property in the Terraform schema.
 func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
-	schemaMap shim.SchemaMap, info map[string]*tfbridge.SchemaInfo,
+	schemaMap shim.SchemaMap, schemaInfo map[string]*info.Schema,
 	doc string, rawdoc string, out bool, entityDocs entityDocs,
 ) (*variable, error) {
-	if name := propertyName(key, schemaMap, info); name != "" {
+	if name := propertyName(key, schemaMap, schemaInfo); name != "" {
 		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
 		typePath := paths.NewProperyPath(parentPath, propName)
 
@@ -1969,21 +1970,21 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 		// TODO[pulumi/pulumi-terraform-bridge#2938] remove when the bridge fully supports write-only fields.
 
 		if shimSchema.WriteOnly() {
-			if info == nil {
-				info = make(map[string]*tfbridge.SchemaInfo)
+			if schemaInfo == nil {
+				schemaInfo = make(map[string]*info.Schema)
 			}
-			if val, ok := info[key]; ok {
+			if val, ok := schemaInfo[key]; ok {
 				val.Omit = true
 			} else {
-				info[key] = &tfbridge.SchemaInfo{
+				schemaInfo[key] = &info.Schema{
 					Omit: true,
 				}
 			}
 		}
 
-		var varInfo *tfbridge.SchemaInfo
-		if info != nil {
-			varInfo = info[key]
+		var varInfo *info.Schema
+		if schemaInfo != nil {
+			varInfo = schemaInfo[key]
 		}
 
 		// If a variable is marked as omitted, omit it.
@@ -2021,7 +2022,7 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 
 // dataSourceName translates a Terraform name into its Pulumi name equivalent.
 func dataSourceName(provider string, rawname string,
-	info *tfbridge.DataSourceInfo,
+	info *info.DataSource,
 ) (tokens.ModuleMemberName, tokens.ModuleName) {
 	if info == nil || info.Tok == "" {
 		// default transformations.
@@ -2035,7 +2036,7 @@ func dataSourceName(provider string, rawname string,
 
 // resourceName translates a Terraform name into its Pulumi name equivalent, plus a module name.
 func resourceName(provider string, rawname string,
-	info *tfbridge.ResourceInfo, isProvider bool,
+	info *info.Resource, isProvider bool,
 ) (tokens.TypeName, tokens.ModuleName) {
 	if isProvider {
 		return "Provider", indexMod
@@ -2095,7 +2096,7 @@ func upperFirst(s string) string {
 	return string(unicode.ToUpper(c)) + s[rest:]
 }
 
-func generateManifestDescription(info tfbridge.ProviderInfo) string {
+func generateManifestDescription(info info.Provider) string {
 	if info.TFProviderVersion == "" {
 		return info.Description
 	}
@@ -2104,7 +2105,7 @@ func generateManifestDescription(info tfbridge.ProviderInfo) string {
 		info.TFProviderVersion)
 }
 
-func getLicenseTypeURL(license tfbridge.TFProviderLicense) string {
+func getLicenseTypeURL(license info.TFProviderLicense) string {
 	switch license {
 	case tfbridge.MITLicenseType:
 		return "https://mit-license.org/"
@@ -2120,7 +2121,7 @@ func getLicenseTypeURL(license tfbridge.TFProviderLicense) string {
 	}
 }
 
-func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension string,
+func getOverlayFilesImpl(overlay *info.Overlay, extension string,
 	fs afero.Fs, srcRoot, dir string, files map[string][]byte,
 ) error {
 	for _, f := range overlay.DestFiles {
@@ -2151,7 +2152,7 @@ func getOverlayFilesImpl(overlay *tfbridge.OverlayInfo, extension string,
 	return nil
 }
 
-func getOverlayFiles(overlay *tfbridge.OverlayInfo, extension string, root afero.Fs) (map[string][]byte, error) {
+func getOverlayFiles(overlay *info.Overlay, extension string, root afero.Fs) (map[string][]byte, error) {
 	files := map[string][]byte{}
 	if err := getOverlayFilesImpl(overlay, extension, root, "", "", files); err != nil {
 		return nil, err

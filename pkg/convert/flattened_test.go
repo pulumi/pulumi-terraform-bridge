@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
@@ -177,7 +177,7 @@ func maxItemsOneCollectionPropContext(propName string, collectionType shim.Value
 				Optional: true,
 			}).Shim(),
 		}).Shim(),
-		schemaInfo: &tfbridge.SchemaInfo{
+		schemaInfo: &info.Schema{
 			MaxItemsOne: &yes,
 		},
 	}

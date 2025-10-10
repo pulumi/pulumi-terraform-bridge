@@ -19,10 +19,11 @@ import (
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func ProviderMiniTalos() tfbridge.ProviderInfo {
+func ProviderMiniTalos() info.Provider {
 	const (
 		talosPkg   = "talos"
 		machineMod = "machine"
@@ -44,15 +45,15 @@ func ProviderMiniTalos() tfbridge.ProviderInfo {
 		},
 	}
 
-	info := tfbridge.ProviderInfo{
+	providerInfo := info.Provider{
 		P:    shimv2.NewProvider(schemaProvider),
 		Name: "talos",
-		Resources: map[string]*tfbridge.ResourceInfo{
+		Resources: map[string]*info.Resource{
 			"talos_machine_secrets": {
 				Tok: tfbridge.MakeResource(talosPkg, machineMod, "Secrets"),
-				Fields: map[string]*tfbridge.SchemaInfo{
+				Fields: map[string]*info.Schema{
 					"machine_secrets": {
-						Elem: &tfbridge.SchemaInfo{
+						Elem: &info.Schema{
 							Type: "talos:machine/generated:MachineSecrets",
 						},
 					},
@@ -68,5 +69,5 @@ func ProviderMiniTalos() tfbridge.ProviderInfo {
 		},
 	}
 
-	return info
+	return providerInfo
 }

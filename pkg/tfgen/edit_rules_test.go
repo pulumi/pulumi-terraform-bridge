@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -333,7 +332,7 @@ func TestApplyCustomEditRules(t *testing.T) {
 			expected: []byte("This provider has a horrific unreadable typo, which is now fixed"),
 			edits: append(
 				defaultEditRules(),
-				tfbridge.DocsEdit{
+				info.DocsEdit{
 					Path: "testfile.md",
 					Edit: func(_ string, content []byte) ([]byte, error) {
 						return bytes.ReplaceAll(
