@@ -25,6 +25,7 @@ import (
 	"crypto/md5" //nolint:gosec
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"maps"
 	"os"
 	"os/exec"
@@ -123,15 +124,21 @@ func (*examplesCache) checksum(bytes []byte) string {
 }
 
 // exampleKey determines the cache key to use for the given HCL. It's computed
-// from the HCL, target language, and our package versions.
+// from the HCL, target language, our Pulumi & Bridge versions, and the
+// provider's info.
 func (ec *examplesCache) exampleKey(originalHCL, language string) string {
 	var buf bytes.Buffer
-	_, _ = buf.WriteString(originalHCL)
-	_, _ = buf.WriteString(language)
+
+	fmt.Fprint(&buf, originalHCL)
+	fmt.Fprint(&buf, language)
+	fmt.Fprint(&buf, ec.ProviderInfoHash)
+
+	// Sorted for stable keys.
 	for _, key := range slices.Sorted(maps.Keys(ec.SoftwareVersions)) {
-		_, _ = buf.WriteString(key)
-		_, _ = buf.WriteString(ec.SoftwareVersions[key])
+		fmt.Fprint(&buf, key)
+		fmt.Fprint(&buf, ec.SoftwareVersions[key])
 	}
+
 	return ec.checksum(buf.Bytes())
 }
 
@@ -196,14 +203,6 @@ func (ec *examplesCache) inferSoftwareVersions() map[string]string {
 	}
 
 	return v
-}
-
-func (ec *examplesCache) filehash(p string) string {
-	bytes, err := os.ReadFile(p)
-	if err != nil {
-		return ""
-	}
-	return ec.checksum(bytes)
 }
 
 func (ec *examplesCache) computeProviderInfoHash(info *tfbridge.ProviderInfo) {
