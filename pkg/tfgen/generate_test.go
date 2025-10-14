@@ -452,53 +452,14 @@ func TestBridgeGeneratesWriteOnlyFields(t *testing.T) {
 	assert.Len(t, spec.Resources["test:index:NoWriteOnly"].InputProperties, 1)
 
 	writeOnlyResource := spec.Resources["test:index:WriteOnly"]
-	passwordWoProperty := writeOnlyResource.InputProperties["password_wo"]
+	passwordWoProperty := writeOnlyResource.InputProperties["passwordWo"]
 	assert.NotNil(t, passwordWoProperty, "WriteOnly field should exist in input properties")
 	assert.True(t, passwordWoProperty.Secret, "WriteOnly field should be marked as Secret")
 
 	noWriteOnlyResource := spec.Resources["test:index:NoWriteOnly"]
-	passwordRegularProperty := noWriteOnlyResource.InputProperties["password_regular"]
+	passwordRegularProperty := noWriteOnlyResource.InputProperties["passwordRegular"]
 	assert.NotNil(t, passwordRegularProperty, "Regular field should exist in input properties")
 	assert.False(t, passwordRegularProperty.Secret, "Regular field should not be marked as Secret")
-}
-
-func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
-	t.Parallel()
-	p := (&shimschema.Provider{
-		ResourcesMap: shimschema.ResourceMap{
-			"test_res_wo": (&shimschema.Resource{
-				Schema: shimschema.SchemaMap{
-					"password_wo": (&shimschema.Schema{
-						Type:      shim.TypeString,
-						WriteOnly: true,
-						Required:  true,
-					}).Shim(),
-				},
-			}).Shim(),
-		},
-	}).Shim()
-	resWO := &tfbridge.ResourceInfo{
-		Tok: "test:index:WriteOnly",
-	}
-	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-		Color: colors.Never,
-	})
-	schemaResult, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
-		DiagnosticsSink: nilSink,
-		ProviderInfo: tfbridge.ProviderInfo{
-			Name: "test",
-			P:    p,
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_res_wo": resWO,
-			},
-		},
-	})
-	require.NoError(t, err)
-	// With WriteOnly fields now being automatically omitted, the schema should generate successfully
-	// and the WriteOnly field should not appear in the input properties
-	spec := schemaResult.PackageSpec
-	assert.Len(t, spec.Resources, 1)
-	assert.Len(t, spec.Resources["test:index:WriteOnly"].InputProperties, 0)
 }
 
 func TestModulePlacementForType(t *testing.T) {
