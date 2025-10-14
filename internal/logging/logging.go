@@ -254,21 +254,21 @@ var _ io.Writer = &logSinkWriter{}
 func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 	n = len(p)
 	if w.sink == nil {
-		return
+		return n, err
 	}
 
 	raw := strings.TrimSuffix(string(p), "\n")
 	level, raw := parseLevelFromRawString(raw)
 
 	if level < w.desiredLevel {
-		return
+		return n, err
 	}
 
 	urn, raw := parseUrnFromRawString(raw)
 	severity := logLevelToSeverity(level)
 
 	err = w.sink.Log(w.ctx, severity, urn, raw)
-	return
+	return n, err
 }
 
 func parseTfLogEnvVar() hclog.Level {

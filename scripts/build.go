@@ -108,7 +108,7 @@ func (e *execError) Write(sink io.Writer) (err error) {
 	w("%s\n", e.err.Error())
 	w("\n")
 
-	return
+	return err
 }
 
 func (e *execError) MustWrite(sink io.Writer) {

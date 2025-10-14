@@ -188,9 +188,7 @@ func _type(i []byte) tftypes.Type {
 	if i == nil {
 		return nil
 	}
-	// This function isn't really deprecated, but it is supposed to be private.
-	//
-	//nolint:staticcheck
+	//nolint:staticcheck // This function isn't really deprecated, but it is supposed to be private.
 	t, err := tftypes.ParseJSONType(i)
 	if err != nil {
 		panic(err) // TODO: Handle invalid type

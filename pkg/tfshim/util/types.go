@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package util //nolint:revive // Keeping the bad package name for now.
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // IsOfTypeMap detects schemas indicating a map[string,X] type. Due to a quirky encoding of
