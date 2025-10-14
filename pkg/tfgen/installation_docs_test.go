@@ -508,7 +508,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 				// process cannot access the file because it is being used by another process.
 				t.Skipf("Skipping on Windows due to a test setup issue")
 			}
-			t.Setenv("PULUMI_CONVERT", "1")
 			actual, err := translateCodeBlocks(tt.contentStr, tt.g)
 			require.NoError(t, err)
 			autogold.ExpectFile(t, autogold.Raw(actual))

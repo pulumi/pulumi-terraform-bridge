@@ -81,7 +81,7 @@ tfgen, the command that generates Pulumi schema/code for a bridged provider supp
 * `PULUMI_SKIP_MISSING_MAPPING_ERROR`: If truthy, tfgen will not fail if a data source or resource in the TF provider is not mapped to the Pulumi provider. Instead, a warning is printed. Default is `false`.
 * `PULUMI_SKIP_EXTRA_MAPPING_ERROR`: If truthy, tfgen will not fail if a mapped data source or resource does not exist in the TF provider. Instead, warning is printed. Default is `false`.
 * `PULUMI_MISSING_DOCS_ERROR`: If truthy, tfgen will fail if docs cannot be found for a data source or resource. Default is `false`.
-* `PULUMI_CONVERT`: If truthy, tfgen will shell out to `pulumi convert` for converting example code from TF HCL to Pulumi PCL
+* `PULUMI_CONVERT`: By default tfgen shells out to `pulumi convert` for converting example code from TF HCL to Pulumi PCL. Set to `0` to disable and fall back to the legacy converter.
 * `PULUMI_CONVERT_ONLY`: If set to a resource or data source ID such as "aws_acm_certificate" will convert docs only for that single resource; useful to speed up debugging docs issues
 * `COVERAGE_OUTPUT_DIR`: If set to a folder path, will generate a report on TF to Pulumi example code translation, including detailed errors and overall coverage statistics
 * `PULUMI_CONVERT_AUTOFILL_DIR`: Configure [example auto-fill](https://github.com/pulumi/pulumi-terraform-bridge/blob/master/docs/auto-fill.md)
