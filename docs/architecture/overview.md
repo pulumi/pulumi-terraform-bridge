@@ -21,7 +21,7 @@ A change to either half can impact the other. Treat the bridge as one product wi
 | Runtime (SDKv2) | `pkg/tfbridge`, `pkg/tfshim/sdk-v{1,2}`, `pkg/providerserver` | Drive Terraform Plugin SDK providers via Pulumi RPC entry points. |
 | Runtime (PF) | `pkg/pf`, `pkg/tfshim/schema` | Bridge Terraform Plugin Framework providers. |
 | Hybrid / muxing | `pkg/x/muxer` | Compose multiple runtime pipelines (SDKv2, PF, dynamic) into a single provider surface. |
-| Dynamic bridge | `dynamic/*` | Parameterizable provider that downloads and hosts Terraform providers at runtime. |
+| Dynamic bridge | `dynamic/*` | See the [project's README.md](../../dynamic/README.md) for details. |
 | Testing | `pkg/tests`, `pkg/internal/tests/cross-tests`, `pkg/pf/tests` | Harnesses that keep behavior aligned with Terraform and Pulumi expectations. |
 | Ops & Tooling | `Makefile`, `scripts/` | Build, lint, test, release, and operational playbooks. |
 

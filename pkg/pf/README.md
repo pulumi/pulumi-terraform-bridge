@@ -2,7 +2,6 @@
 
 `pkg/pf` contains the bridge implementation for Terraform Plugin Framework (PF) providers.
 
-- `provider.go` exposes helpers to construct Pulumi providers backed by PF implementations.
 - `tfbridge/` mirrors the SDKv2 bridge logic for PF (diffing, CRUD, config, invoke).
 - `internal/` and `proto/` host shared PF-specific utilities and generated protocol definitions.
 - `tests/` contains PF-oriented schema+program and cross-tests.
