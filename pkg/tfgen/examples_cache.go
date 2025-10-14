@@ -25,11 +25,12 @@ import (
 	"crypto/md5" //nolint:gosec
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -47,7 +48,6 @@ type examplesCache struct {
 	ProviderName        string                       `json:"providerName"`
 	PulumiVersion       string                       `json:"pulumiVersion"`
 	SoftwareVersions    map[string]string            `json:"softwareVersions"`
-	BuildFileHashes     map[string]string            `json:"buildFileHashes"`
 	Plugins             map[string]map[string]string `json:"plugins"`
 	CliConverterEnabled bool                         `json:"cliConverterEnabled"`
 	ProviderInfoHash    string                       `json:"providerInfoHash"`
@@ -122,18 +122,22 @@ func (*examplesCache) checksum(bytes []byte) string {
 	return hex.EncodeToString(hash[:])
 }
 
+// exampleKey determines the cache key to use for the given HCL. It's computed
+// from the HCL, target language, and our package versions.
 func (ec *examplesCache) exampleKey(originalHCL, language string) string {
-	sep := "|"
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "originalHCL=%v%s", originalHCL, sep)
-	fmt.Fprintf(&buf, "language=%v%s", language, sep)
+	_, _ = buf.WriteString(originalHCL)
+	_, _ = buf.WriteString(language)
+	for _, key := range slices.Sorted(maps.Keys(ec.SoftwareVersions)) {
+		_, _ = buf.WriteString(key)
+		_, _ = buf.WriteString(ec.SoftwareVersions[key])
+	}
 	return ec.checksum(buf.Bytes())
 }
 
 func (ec *examplesCache) inferToolingVersions() {
 	ec.PulumiVersion = ec.inferPulumiVersion()
 	ec.Plugins = ec.inferPlugins()
-	ec.BuildFileHashes = ec.inferBuildFileHashes()
 	ec.CliConverterEnabled = cliConverterEnabled()
 	ec.SoftwareVersions = ec.inferSoftwareVersions()
 }
@@ -164,18 +168,6 @@ func (*examplesCache) inferPlugins() map[string]map[string]string {
 		}
 
 		rr[i.Kind][i.Name] = i.Version
-	}
-	return rr
-}
-
-func (ec *examplesCache) inferBuildFileHashes() map[string]string {
-	candidates := []string{
-		"go.work",
-		"go.work.sum",
-	}
-	rr := map[string]string{}
-	for _, c := range candidates {
-		rr[c] = ec.filehash(c)
 	}
 	return rr
 }
