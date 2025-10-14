@@ -15,7 +15,7 @@
 package util
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // IsOfTypeMap detects schemas indicating a map[string,X] type. Due to a quirky encoding of
