@@ -20,6 +20,13 @@ Some more advanced topics might be of interest to contributors:
 - {doc}`guides/metadata`
 
 
+Some architectural and operational references for maintainers:
+
+- {doc}`architecture/overview`
+- {doc}`guides/contributor-onboarding`
+- {doc}`guides/testing`
+
+
 Please refer to the main Pulumi {doc}`pulumi:docs/documentation` for information on how to work with the developer docs. The setup for the Pulumi Terraform Bridge developer docs is identical to the setup for the Pulumi developer docs.
 
 :::{toctree}
@@ -27,6 +34,7 @@ Please refer to the main Pulumi {doc}`pulumi:docs/documentation` for information
 :titlesonly:
 
 self
+architecture/README
 guides/README
 Pulumi Developer Documentation <https://pulumi-developer-docs.readthedocs.io/latest/docs/README.html>
 

@@ -6,6 +6,7 @@
 
 /docs/guides/auto-aliasing
 /docs/guides/autofill
+/docs/guides/contributor-onboarding
 /docs/guides/automatic-token-mapping
 /docs/guides/docs-edits
 /docs/guides/metadata

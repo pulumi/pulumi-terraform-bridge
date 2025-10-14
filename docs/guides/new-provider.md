@@ -4,7 +4,7 @@ It is relatively easy to adapt a Terraform Provider, X, for use with Pulumi.  Th
 [Cloudflare provider](https://github.com/pulumi/pulumi-cloudflare) offers a good starting
 point for creating a new bridged provider.
 
-You will create two Go binaries -- one purely for design-time usage to act as X's code-generator and the other for
+You will create two Go binaries -- one purely for build-time usage to act as X's code-generator and the other for
 runtime usage to serve as its dynamic resource plugin -- and link with the Terraform Provider repo and this one.
 There is then typically a `resources.go` file that maps all of the Terraform Provider metadata available at runtime
 to types and concepts that the bridge will use to generate well-typed programmatic abstractions.
