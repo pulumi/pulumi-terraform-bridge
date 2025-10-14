@@ -265,7 +265,7 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           skip-cache: true
-          version: v2.1
+          version: 2.5.0
       - name: Lint
         run: make lint
   sentinel:
