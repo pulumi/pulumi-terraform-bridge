@@ -69,6 +69,10 @@ linters:
         text: 'redefines-builtin-id:'
       - path: (.+)\.go$
         text: exhaustive
+      - linters:
+        - revive
+        path: pkg/tfshim/util/(.+)\.go$
+        text: 'var-naming: avoid meaningless package names'
     paths:
       - pkg/tf2pulumi/internal/addrs
       - pkg/tf2pulumi/internal/config

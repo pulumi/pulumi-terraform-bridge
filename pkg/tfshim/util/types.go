@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util //nolint:revive // Keeping the bad package name for now.
+package util
 
 import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
