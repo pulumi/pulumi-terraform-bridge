@@ -969,10 +969,10 @@
                 "description": "A collection of values returned by getCertificate.\n",
                 "properties": {
                     "certificates": {
-                        "type": "array",
                         "items": {
                             "$ref": "#/types/tls:index/getCertificateCertificate:getCertificateCertificate"
-                        }
+                        },
+                        "type": "array"
                     },
                     "content": {
                         "type": "string"
@@ -987,11 +987,11 @@
                         "type": "boolean"
                     }
                 },
-                "type": "object",
                 "required": [
                     "certificates",
                     "id"
-                ]
+                ],
+                "type": "object"
             }
         },
         "tls:index/getPublicKey:getPublicKey": {
@@ -1019,12 +1019,12 @@
                         "type": "string"
                     },
                     "privateKeyOpenssh": {
-                        "type": "string",
-                        "secret": true
+                        "secret": true,
+                        "type": "string"
                     },
                     "privateKeyPem": {
-                        "type": "string",
-                        "secret": true
+                        "secret": true,
+                        "type": "string"
                     },
                     "publicKeyFingerprintMd5": {
                         "type": "string"
@@ -1039,7 +1039,6 @@
                         "type": "string"
                     }
                 },
-                "type": "object",
                 "required": [
                     "algorithm",
                     "id",
@@ -1047,7 +1046,8 @@
                     "publicKeyFingerprintSha256",
                     "publicKeyOpenssh",
                     "publicKeyPem"
-                ]
+                ],
+                "type": "object"
             }
         }
     }
