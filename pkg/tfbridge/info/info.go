@@ -22,13 +22,11 @@ package info
 
 import (
 	"context"
-	"os"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -173,6 +171,7 @@ type Provider struct {
 	// to generate more accurate diffs and previews for resources
 	EnableAccuratePFBridgePreview bool
 
+	// Deprecated: This flag is enabled by default and will be removed in a future release.
 	// Newer versions of the bridge preserve Terraform raw state by saving the delta between Pulumi state and
 	// Terraform raw state into the state file. Setting this to true enables the feature.
 	EnableRawStateDelta bool
@@ -1365,13 +1364,4 @@ type PreStateUpgradeHookArgs struct {
 	PriorState              resource.PropertyMap
 	PriorStateSchemaVersion int64
 	ResourceSchemaVersion   int64
-}
-
-var rawStateDeltaEnabledEnvVarValue = os.Getenv("PULUMI_RAW_STATE_DELTA_ENABLED")
-
-func (info *Provider) RawStateDeltaEnabled() bool {
-	if rawStateDeltaEnabledEnvVarValue != "" {
-		return cmdutil.IsTruthy(rawStateDeltaEnabledEnvVarValue)
-	}
-	return info.EnableRawStateDelta
 }

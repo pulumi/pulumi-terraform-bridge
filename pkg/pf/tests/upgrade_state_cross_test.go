@@ -16,7 +16,6 @@ package tfbridgetests
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -27,7 +26,6 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/zclconf/go-cty/cty"
 
@@ -40,7 +38,6 @@ import (
 func TestPFUpgrade_StateUpgraders(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	resourceBefore := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: rschema.Schema{
@@ -215,7 +212,6 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	resourceBeforeAndAfter := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: rschema.Schema{
@@ -289,7 +285,6 @@ func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	resourceBeforeAndAfter := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: rschema.Schema{
@@ -363,7 +358,6 @@ func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) rschema.Schema {
 		return rschema.Schema{
@@ -441,7 +435,6 @@ func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) rschema.Schema {
 		return rschema.Schema{
@@ -662,7 +655,6 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) rschema.Schema {
 		return rschema.Schema{
@@ -886,7 +878,6 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) rschema.Schema {
 		return rschema.Schema{
@@ -961,7 +952,6 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) rschema.Schema {
 		return rschema.Schema{
@@ -1090,10 +1080,4 @@ func TestPFUpgrade_Downgrading(t *testing.T) {
 		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
 		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 	})
-}
-
-func skipUnlessDeltasEnabled(t *testing.T) {
-	if d, ok := os.LookupEnv("PULUMI_RAW_STATE_DELTA_ENABLED"); !ok || !cmdutil.IsTruthy(d) {
-		t.Skip("This test requires PULUMI_RAW_STATE_DELTA_ENABLED=true environment")
-	}
 }
