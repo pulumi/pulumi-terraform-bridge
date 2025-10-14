@@ -31,7 +31,6 @@ import (
 func TestUpgrade_StateUpgraders(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	resourceBefore := &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -166,7 +165,6 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"obj": {
@@ -243,7 +241,6 @@ func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 func TestUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"obj": {
@@ -320,7 +317,6 @@ func TestUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := func(maxItems int) map[string]*schema.Schema {
 		return map[string]*schema.Schema{
@@ -393,7 +389,6 @@ func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
 func TestUpgrade_Upstream_Removes_MaxItems1(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := func(maxItems int) map[string]*schema.Schema {
 		return map[string]*schema.Schema{
@@ -465,7 +460,6 @@ func TestUpgrade_Upstream_Removes_MaxItems1(t *testing.T) {
 func TestUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
@@ -521,7 +515,6 @@ func TestUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 func TestUpgrade_String_0to1_Version(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
@@ -694,7 +687,6 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 func TestUpgrade_Object_0to1_Version(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
@@ -877,7 +869,6 @@ func TestUpgrade_Object_0to1_Version(t *testing.T) {
 func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
@@ -943,7 +934,6 @@ func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 func TestUpgrade_PulumiChangesPropertyType(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
-	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {

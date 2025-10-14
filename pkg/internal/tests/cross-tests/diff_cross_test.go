@@ -2160,7 +2160,6 @@ func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
 	})
 
 	t.Run("max items one added", func(t *testing.T) {
-		skipUnlessDeltasEnabled(t)
 		t.Parallel()
 		res := Diff(t, resWithoutMaxItemsOne,
 			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
