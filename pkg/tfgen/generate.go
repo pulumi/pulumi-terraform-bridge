@@ -1965,21 +1965,21 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 		if schemaMap != nil {
 			shimSchema = schemaMap.Get(key)
 		}
-		// Suppress write-only attributes via SchemaInfo.Omit
-		// TODO[pulumi/pulumi-terraform-bridge#2938] remove when the bridge fully supports write-only fields.
-
-		//if shimSchema.WriteOnly() {
-		//	if info == nil {
-		//		info = make(map[string]*tfbridge.SchemaInfo)
-		//	}
-		//	if val, ok := info[key]; ok {
-		//		val.Omit = true
-		//	} else {
-		//		info[key] = &tfbridge.SchemaInfo{
-		//			Omit: true,
-		//		}
-		//	}
-		//}
+		// Ensure write-only schema fields are marked as Secret.
+		// This prevents plaintext secret values from being written to the state inputs.
+		// TODO[pulumi/pulumi-terraform-bridge#3201]: Do not write these values to state
+		if shimSchema.WriteOnly() {
+			if info == nil {
+				info = make(map[string]*tfbridge.SchemaInfo)
+			}
+			if val, ok := info[key]; ok {
+				val.Secret = tfbridge.True()
+			} else {
+				info[key] = &tfbridge.SchemaInfo{
+					Secret: tfbridge.True(),
+				}
+			}
+		}
 
 		var varInfo *tfbridge.SchemaInfo
 		if info != nil {
