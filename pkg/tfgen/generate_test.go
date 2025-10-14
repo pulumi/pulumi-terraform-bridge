@@ -401,7 +401,7 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 	})
 }
 
-func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
+func TestBridgeGeneratesWriteOnlyFields(t *testing.T) {
 	t.Parallel()
 	p := (&shimschema.Provider{
 		ResourcesMap: shimschema.ResourceMap{
@@ -448,8 +448,18 @@ func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
 
 	spec := schemaResult.PackageSpec
 	assert.Len(t, spec.Resources, 2)
-	assert.Len(t, spec.Resources["test:index:WriteOnly"].InputProperties, 0)
+	assert.Len(t, spec.Resources["test:index:WriteOnly"].InputProperties, 1)
 	assert.Len(t, spec.Resources["test:index:NoWriteOnly"].InputProperties, 1)
+
+	writeOnlyResource := spec.Resources["test:index:WriteOnly"]
+	passwordWoProperty := writeOnlyResource.InputProperties["password_wo"]
+	assert.NotNil(t, passwordWoProperty, "WriteOnly field should exist in input properties")
+	assert.True(t, passwordWoProperty.Secret, "WriteOnly field should be marked as Secret")
+
+	noWriteOnlyResource := spec.Resources["test:index:NoWriteOnly"]
+	passwordRegularProperty := noWriteOnlyResource.InputProperties["password_regular"]
+	assert.NotNil(t, passwordRegularProperty, "Regular field should exist in input properties")
+	assert.False(t, passwordRegularProperty.Secret, "Regular field should not be marked as Secret")
 }
 
 func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
