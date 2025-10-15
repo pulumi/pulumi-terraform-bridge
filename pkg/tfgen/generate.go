@@ -1979,16 +1979,18 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 					Secret: tfbridge.True(),
 				}
 			}
-			if len(doc) != 0 {
-				doc = "**NOTE:** This field is write-only and will not be read from the API.\n" + doc
+		}
 
-			}
-			if len(rawdoc) != 0 {
-				rawdoc = "**NOTE:** This field is write-only and will not be read from the API.\n" + rawdoc
-			}
-			// if both doc and rawdoc are empty, we want to append anyway. Default to doc.
-			if len(doc) == 0 && len(rawdoc) == 0 {
-				doc = "**NOTE:** This field is write-only and will not be read from the API.\n"
+		if shimSchema.WriteOnly() {
+			writeOnlyNote := "**NOTE:** This field is write-only and will not be read from the API.\n"
+			switch {
+			case doc != "":
+				doc = writeOnlyNote + doc
+			case rawdoc != "":
+				rawdoc = writeOnlyNote + rawdoc
+			default:
+				// If both doc and rawdoc are empty, append note anyway. Default to using doc.
+				doc = writeOnlyNote
 			}
 		}
 
