@@ -15,12 +15,14 @@
             "properties": {
                 "a1": {
                     "type": "string",
+                    "description": "**NOTE:** This field is write-only and will not be read from the API.\n",
                     "secret": true
                 }
             },
             "inputProperties": {
                 "a1": {
                     "type": "string",
+                    "description": "**NOTE:** This field is write-only and will not be read from the API.\n",
                     "secret": true
                 }
             },
@@ -29,6 +31,7 @@
                 "properties": {
                     "a1": {
                         "type": "string",
+                        "description": "**NOTE:** This field is write-only and will not be read from the API.\n",
                         "secret": true
                     }
                 },
