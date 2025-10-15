@@ -1329,13 +1329,9 @@ func parseMeta(m resource.PropertyMap, res Resource, opts makeTerraformStateOpti
 
 // Check if makeTerraformStateViaUpgrade is enabled and applicable. If so return a non-nil provider handle.
 func makeTerraformStateViaUpgradeEnabled(
-	providerInfo ProviderInfo,
 	p shim.Provider,
 	pm resource.PropertyMap,
 ) (shim.ProviderWithRawStateSupport, bool) {
-	if !providerInfo.RawStateDeltaEnabled() {
-		return nil, false
-	}
 	pp, ok := p.(shim.ProviderWithRawStateSupport)
 	if !ok {
 		return nil, false

@@ -1126,7 +1126,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	var state shim.InstanceState
 	var oldAssets AssetTable
-	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.info, p.tf, olds); enabled {
+	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.tf, olds); enabled {
 		state, err = makeTerraformStateViaUpgrade(ctx, pNew, res, olds)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unmarshaling %s's instance state via upgrade", urn)
@@ -1370,11 +1370,9 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		}
 	}
 
-	if p.info.RawStateDeltaEnabled() {
-		s := res.TF.SchemaType()
-		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, s, newstate); err != nil {
-			return nil, err
-		}
+	s := res.TF.SchemaType()
+	if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, s, newstate); err != nil {
+		return nil, err
 	}
 
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
@@ -1441,7 +1439,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	}
 
 	var state shim.InstanceState
-	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.info, p.tf, props); enabled {
+	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.tf, props); enabled {
 		state, err = makeTerraformStateViaUpgrade(ctx, pNew, res, props)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unmarshaling %s's instance state via upgrade", urn)
@@ -1521,12 +1519,10 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
-		if p.info.RawStateDeltaEnabled() {
-			s := res.TF.SchemaType()
-			err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, s, newstate)
-			if err != nil {
-				return nil, err
-			}
+		s := res.TF.SchemaType()
+		err = RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, s, newstate)
+		if err != nil {
+			return nil, err
 		}
 
 		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
@@ -1652,7 +1648,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 
 	var state shim.InstanceState
-	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.info, p.tf, olds); enabled {
+	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.tf, olds); enabled {
 		state, err = makeTerraformStateViaUpgrade(ctx, pNew, res, olds)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unmarshaling %s's instance state via upgrade", urn)
@@ -1751,11 +1747,9 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		}
 	}
 
-	if p.info.RawStateDeltaEnabled() {
-		s := res.TF.SchemaType()
-		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, s, newstate); err != nil {
-			return nil, err
-		}
+	s := res.TF.SchemaType()
+	if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, s, newstate); err != nil {
+		return nil, err
 	}
 
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
@@ -1813,7 +1807,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	}
 
 	var state shim.InstanceState
-	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.info, p.tf, props); enabled {
+	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.tf, props); enabled {
 		state, err = makeTerraformStateViaUpgrade(ctx, pNew, res, props)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unmarshaling %s's instance state via upgrade", urn)

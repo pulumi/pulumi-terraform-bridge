@@ -234,7 +234,7 @@ func (p *provider) parseAndUpgradeResourceState(
 	}
 
 	// States written by newer version of the bridge should be able to recover the raw state.
-	if delta, hasDelta := props[reservedkeys.RawStateDelta]; hasDelta && p.info.RawStateDeltaEnabled() {
+	if delta, hasDelta := props[reservedkeys.RawStateDelta]; hasDelta {
 		rawState, err := recoverRawState(props, delta)
 		if err != nil {
 			// Log details at Debug level since they may contain secrets.
@@ -254,17 +254,6 @@ func (p *provider) parseAndUpgradeResourceState(
 	value, err := convert.EncodePropertyMap(rh.encoder, props)
 	if err != nil {
 		return nil, fmt.Errorf("[pf/tfbridge] Error calling EncodePropertyMap: %w", err)
-	}
-
-	// Before EnableRawStateDelta rollout, the behavior used to be to skip the upgrade method in case of an exact
-	// version match. This seems incorrect, but to derisk fixing this problem it is flagged together with
-	// EnableRawStateDelta so it participates in the phased rollout. Remove once rollout completes.
-	if stateVersion == rh.schema.ResourceSchemaVersion() && !p.info.RawStateDeltaEnabled() {
-		return &upgradedResourceState{
-			TFSchemaVersion: stateVersion,
-			Private:         parsedMeta.PrivateState,
-			Value:           value,
-		}, nil
 	}
 
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
@@ -304,24 +293,22 @@ func (p *provider) upgradeResourceState(
 		return nil, fmt.Errorf("error unmarshalling the response from UpgradeResourceState: %w", err)
 	}
 
-	if p.info.RawStateDeltaEnabled() {
-		// Downgrade float precision to 53. This is important because pulumi.PropertyValue stores float64, and
-		// tftypes.Value originating from Pulumi would have this precision, but the native precision coming
-		// from UpgradeResourceState is 512. Mismatches in precision may lead to spurious diffs.
-		v, err = tftypes.Transform(v, func(ap *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
-			if v.IsKnown() && !v.IsNull() && v.Type().Is(tftypes.Number) {
-				var n big.Float
-				err := v.As(&n)
-				contract.AssertNoErrorf(err, "Values of tftypes.Number type should unpack to big.Float")
-				if n.Prec() != 53 {
-					v2 := tftypes.NewValue(tftypes.Number, new(big.Float).Copy(&n).SetPrec(53))
-					return v2, nil
-				}
+	// Downgrade float precision to 53. This is important because pulumi.PropertyValue stores float64, and
+	// tftypes.Value originating from Pulumi would have this precision, but the native precision coming
+	// from UpgradeResourceState is 512. Mismatches in precision may lead to spurious diffs.
+	v, err = tftypes.Transform(v, func(ap *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
+		if v.IsKnown() && !v.IsNull() && v.Type().Is(tftypes.Number) {
+			var n big.Float
+			err := v.As(&n)
+			contract.AssertNoErrorf(err, "Values of tftypes.Number type should unpack to big.Float")
+			if n.Prec() != 53 {
+				v2 := tftypes.NewValue(tftypes.Number, new(big.Float).Copy(&n).SetPrec(53))
+				return v2, nil
 			}
-			return v, nil
-		})
-		contract.AssertNoErrorf(err, "float precision downgrade transform should not fail")
-	}
+		}
+		return v, nil
+	})
+	contract.AssertNoErrorf(err, "float precision downgrade transform should not fail")
 
 	return &upgradedResourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
