@@ -401,7 +401,7 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 	})
 }
 
-func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
+func TestBridgeGeneratesWriteOnlyFields(t *testing.T) {
 	t.Parallel()
 	p := (&shimschema.Provider{
 		ResourcesMap: shimschema.ResourceMap{
@@ -448,44 +448,18 @@ func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
 
 	spec := schemaResult.PackageSpec
 	assert.Len(t, spec.Resources, 2)
-	assert.Len(t, spec.Resources["test:index:WriteOnly"].InputProperties, 0)
+	assert.Len(t, spec.Resources["test:index:WriteOnly"].InputProperties, 1)
 	assert.Len(t, spec.Resources["test:index:NoWriteOnly"].InputProperties, 1)
-}
 
-func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
-	t.Parallel()
-	p := (&shimschema.Provider{
-		ResourcesMap: shimschema.ResourceMap{
-			"test_res_wo": (&shimschema.Resource{
-				Schema: shimschema.SchemaMap{
-					"password_wo": (&shimschema.Schema{
-						Type:      shim.TypeString,
-						WriteOnly: true,
-						Required:  true,
-					}).Shim(),
-				},
-			}).Shim(),
-		},
-	}).Shim()
-	resWO := &tfbridge.ResourceInfo{
-		Tok: "test:index:WriteOnly",
-	}
-	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-		Color: colors.Never,
-	})
-	_, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
-		DiagnosticsSink: nilSink,
-		ProviderInfo: tfbridge.ProviderInfo{
-			Name: "test",
-			P:    p,
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_res_wo": resWO,
-			},
-		},
-	})
-	require.Error(t, err)
-	//nolint:lll
-	require.ErrorContains(t, err, "required property \"password_wo[pulumi:\\\"passwordWo\\\"]\" (@ resource[key=\"test_res_wo\",token=\"test:index:WriteOnly\"].outputs.password_wo[pulumi:\"passwordWo\"]) may not be omitted from binding generation\n\n")
+	writeOnlyResource := spec.Resources["test:index:WriteOnly"]
+	passwordWoProperty := writeOnlyResource.InputProperties["passwordWo"]
+	assert.NotNil(t, passwordWoProperty, "WriteOnly field should exist in input properties")
+	assert.True(t, passwordWoProperty.Secret, "WriteOnly field should be marked as Secret")
+
+	noWriteOnlyResource := spec.Resources["test:index:NoWriteOnly"]
+	passwordRegularProperty := noWriteOnlyResource.InputProperties["passwordRegular"]
+	assert.NotNil(t, passwordRegularProperty, "Regular field should exist in input properties")
+	assert.False(t, passwordRegularProperty.Secret, "Regular field should not be marked as Secret")
 }
 
 func TestModulePlacementForType(t *testing.T) {

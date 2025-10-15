@@ -472,7 +472,7 @@ func TestTypeOverride(t *testing.T) {
 	}
 }
 
-func TestWriteOnlyOmit(t *testing.T) {
+func TestWriteOnlyAttributesGenerateToSchema(t *testing.T) {
 	t.Parallel()
 
 	if runtime.GOOS == "windows" {

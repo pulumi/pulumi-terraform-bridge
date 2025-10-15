@@ -12,8 +12,26 @@
     },
     "resources": {
         "testprovider:index:Res": {
+            "properties": {
+                "a1": {
+                    "type": "string",
+                    "secret": true
+                }
+            },
+            "inputProperties": {
+                "a1": {
+                    "type": "string",
+                    "secret": true
+                }
+            },
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering Res resources.\n",
+                "properties": {
+                    "a1": {
+                        "type": "string",
+                        "secret": true
+                    }
+                },
                 "type": "object"
             }
         }
