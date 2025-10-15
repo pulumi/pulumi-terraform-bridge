@@ -1953,7 +1953,7 @@ func TestParseImports_WithOverride(t *testing.T) {
 func ref[T any](t T) *T { return &t }
 
 func TestConvertExamples(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_CONVERT", "0")
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
 	}

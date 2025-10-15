@@ -49,7 +49,10 @@ const (
 )
 
 func cliConverterEnabled() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_CONVERT"))
+	if v, ok := os.LookupEnv("PULUMI_CONVERT"); ok {
+		return cmdutil.IsTruthy(v)
+	}
+	return true
 }
 
 // Integrates with `pulumi convert` command for converting TF examples.

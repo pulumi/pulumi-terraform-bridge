@@ -1077,8 +1077,8 @@
                 "description": "A collection of values returned by Echo.\n",
                 "properties": {
                     "id": {
-                        "type": "string",
-                        "description": "The provider-assigned unique ID for this managed resource."
+                        "description": "The provider-assigned unique ID for this managed resource.",
+                        "type": "string"
                     },
                     "input": {
                         "type": "string"
@@ -1087,17 +1087,17 @@
                         "type": "string"
                     },
                     "sensitive": {
-                        "type": "string",
-                        "secret": true
+                        "secret": true,
+                        "type": "string"
                     }
                 },
-                "type": "object",
                 "required": [
                     "input",
                     "output",
                     "sensitive",
                     "id"
-                ]
+                ],
+                "type": "object"
             }
         },
         "testbridge:index/smac:SMAC": {
@@ -1105,18 +1105,18 @@
                 "description": "A collection of values returned by SMAC.\n",
                 "properties": {
                     "id": {
-                        "type": "string",
-                        "description": "The provider-assigned unique ID for this managed resource."
+                        "description": "The provider-assigned unique ID for this managed resource.",
+                        "type": "string"
                     },
                     "skipMetadataApiCheck": {
                         "type": "string"
                     }
                 },
-                "type": "object",
                 "required": [
                     "skipMetadataApiCheck",
                     "id"
-                ]
+                ],
+                "type": "object"
             }
         },
         "testbridge:index/testres:TestDefaultInfoDataSource": {
@@ -1134,23 +1134,23 @@
                 "description": "A collection of values returned by TestDefaultInfoDataSource.\n",
                 "properties": {
                     "id": {
-                        "type": "string",
-                        "description": "The provider-assigned unique ID for this managed resource."
+                        "description": "The provider-assigned unique ID for this managed resource.",
+                        "type": "string"
                     },
                     "input": {
-                        "type": "string",
-                        "default": "DEFAULT"
+                        "default": "DEFAULT",
+                        "type": "string"
                     },
                     "output": {
                         "type": "string"
                     }
                 },
-                "type": "object",
                 "required": [
                     "input",
                     "output",
                     "id"
-                ]
+                ],
+                "type": "object"
             }
         }
     }

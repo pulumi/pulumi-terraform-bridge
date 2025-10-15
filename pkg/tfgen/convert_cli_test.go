@@ -44,6 +44,7 @@ import (
 )
 
 func TestConvertViaPulumiCLI(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		// Currently there is a test issue in CI/test setup:
 		//
@@ -51,7 +52,6 @@ func TestConvertViaPulumiCLI(t *testing.T) {
 		// process cannot access the file because it is being used by another process..
 		t.Skipf("Skipping on Windows due to a test setup issue")
 	}
-	t.Setenv("PULUMI_CONVERT", "1")
 
 	simpleResourceTF := `
 resource "simple_resource" "a_resource" {
