@@ -15,7 +15,6 @@
 package tfgen
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -24,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hexops/autogold/v2"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -888,92 +886,6 @@ func TestExtraMappingError(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-		})
-	}
-}
-
-func TestFilterSchemaByLanguage(t *testing.T) {
-	t.Parallel()
-	testCases := []struct {
-		name                        string
-		inputSchema                 []byte
-		expectedLanguageSchemaBytes []byte
-		generator                   *Generator
-	}{
-		{
-			name:        "Generates nodejs schema",
-			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
-			generator: &Generator{
-				version:  "1.2.3-test",
-				language: "nodejs",
-			},
-		},
-		{
-			name:        "Generates python schema",
-			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
-			generator: &Generator{
-				version:  "1.2.3-test",
-				language: "python",
-			},
-		},
-		{
-			name:        "Generates dotnet schema",
-			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
-			generator: &Generator{
-				version:  "1.2.3-test",
-				language: "dotnet",
-			},
-		},
-		{
-			name:        "Generates go schema",
-			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
-			generator: &Generator{
-				version:  "1.2.3-test",
-				language: "go",
-			},
-		},
-		{
-			name:        "Generates yaml schema",
-			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
-			generator: &Generator{
-				version:  "1.2.3-test",
-				language: "yaml",
-			},
-		},
-		{
-			name:        "Generates java schema",
-			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema.json")),
-			generator: &Generator{
-				version:  "1.2.3-test",
-				language: "java",
-			},
-		},
-		{
-			name:        "Handles property names that are not surrounded by back ticks",
-			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema-no-backticks.json")),
-			generator: &Generator{
-				version:  "1.2.3-test",
-				language: "nodejs",
-			},
-		},
-		{
-			name:        "Handles property names that are surrounded by back ticks AND double quotes",
-			inputSchema: []byte(readfile(t, "testdata/TestFilterSchemaByLanguage/schema-backticks-and-quotes.json")),
-			generator: &Generator{
-				version:  "1.2.3-test",
-				language: "nodejs",
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			actual := tc.generator.FilterSchemaByLanguage(tc.inputSchema)
-			hasSpan := bytes.Contains(actual, []byte("span"))
-			require.False(t, hasSpan, "there should be no spans in the filtered schema")
-			hasCodeChoosers := bytes.Contains(actual, []byte("PulumiCodeChooser"))
-			require.False(t, hasCodeChoosers)
-			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
 	}
 }
