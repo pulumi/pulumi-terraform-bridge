@@ -27,7 +27,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"unicode"

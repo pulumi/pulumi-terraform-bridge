@@ -14,6 +14,10 @@ Because the schema contains translations for _all_ Pulumi-supported languages, w
 This library is meant for that purpose.
 The filter expects a certain schema format, which is consistent for all bridged providers, detailed below.
 
+## Use
+
+`import "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/schemafilter"`
+
 ## Schema markups
 
 The Pulumi schema may contain the following markups:
@@ -31,6 +35,3 @@ The documentation contains property or resource names that should be inflected b
 The precise inflection format depends on whether we are inflecting a resource, a function, or a property name, but the basic format loks like this:
 `<span pulumi-lang-nodejs="exampleProperty" pulumi-lang-dotnet="ExampleProperty" pulumi-lang-go="exampleProperty" pulumi-lang-python="example_property" pulumi-lang-yaml="exampleProperty" pulumi-lang-java="exampleProperty">%s</span>`
 
-## Native providers
-
-Native providers do not use the outlined markups and so this filter would return the schema as-is. 
