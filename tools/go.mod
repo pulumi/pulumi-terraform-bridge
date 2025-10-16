@@ -66,7 +66,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/nightlyone/lockfile v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/pulumi/pulumi/sdk/v3 v3.190.0
+	github.com/pulumi/pulumi/sdk/v3 v3.203.0
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/zclconf/go-cty v1.16.2 // indirect
 	github.com/zclconf/go-cty-yaml v1.0.3 // indirect
