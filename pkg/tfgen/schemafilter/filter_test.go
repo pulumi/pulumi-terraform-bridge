@@ -16,7 +16,7 @@ func TestFilterSchemaByLanguage(t *testing.T) {
 		inputSchema                 []byte
 		expectedLanguageSchemaBytes []byte
 		language                    string
-		//generator                   *Generator
+		// generator                   *Generator
 	}{
 		{
 			name:        "Generates nodejs schema",
