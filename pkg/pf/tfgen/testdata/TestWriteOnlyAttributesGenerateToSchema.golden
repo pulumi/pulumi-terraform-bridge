@@ -15,12 +15,14 @@
             "properties": {
                 "a1": {
                     "type": "string",
+                    "description": "**NOTE:** This field is write-only and its value will not be updated in state as part of read operations.\n",
                     "secret": true
                 }
             },
             "inputProperties": {
                 "a1": {
                     "type": "string",
+                    "description": "**NOTE:** This field is write-only and its value will not be updated in state as part of read operations.\n",
                     "secret": true
                 }
             },
@@ -29,6 +31,7 @@
                 "properties": {
                     "a1": {
                         "type": "string",
+                        "description": "**NOTE:** This field is write-only and its value will not be updated in state as part of read operations.\n",
                         "secret": true
                     }
                 },

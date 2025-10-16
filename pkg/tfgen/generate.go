@@ -1979,6 +1979,18 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 					Secret: tfbridge.True(),
 				}
 			}
+
+			writeOnlyNote := "**NOTE:** This field is write-only " +
+				"and its value will not be updated in state as part of read operations.\n"
+			switch {
+			case doc != "":
+				doc = writeOnlyNote + doc
+			case rawdoc != "":
+				rawdoc = writeOnlyNote + rawdoc
+			default:
+				// If both doc and rawdoc are empty, append note anyway. Default to using doc.
+				doc = writeOnlyNote
+			}
 		}
 
 		var varInfo *tfbridge.SchemaInfo
