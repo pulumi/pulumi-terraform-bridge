@@ -1979,10 +1979,9 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 					Secret: tfbridge.True(),
 				}
 			}
-		}
 
-		if shimSchema.WriteOnly() {
-			writeOnlyNote := "**NOTE:** This field is write-only and will not be read from the API.\n"
+			writeOnlyNote := "**NOTE:** This field is write-only " +
+				"and its value will not be updated in state as part of read operations.\n"
 			switch {
 			case doc != "":
 				doc = writeOnlyNote + doc
