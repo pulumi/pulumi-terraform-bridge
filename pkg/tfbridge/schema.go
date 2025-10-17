@@ -342,6 +342,19 @@ func MakeTerraformInputs(
 	return makeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps, makeTerraformInputsOptions{})
 }
 
+// MakeTerraformInputsWithoutDefaults creates Terraform inputs from Pulumi property maps without default values.
+//
+// WARNING: This function is exported only to satisfy an internal dependency and external
+// users should NOT rely on it. The API may change or be removed in future versions
+// without notice.
+func MakeTerraformInputsWithoutDefaults(
+	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
+	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
+) (map[string]interface{}, AssetTable, error) {
+	return makeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps,
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+}
+
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
 // to prepare it for use by Terraform. Note that this function may have side effects, for instance
 // if it is necessary to spill an asset to disk in order to create a name out of it. Please take
