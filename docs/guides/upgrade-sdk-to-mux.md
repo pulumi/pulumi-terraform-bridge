@@ -14,7 +14,7 @@ Framework](https://github.com/hashicorp/terraform-plugin-framework?tab=readme).
 
 1. Find the tfgen binary `main` that calls `tfgen.Main` from
    `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen` and update it to call
-   `tfgen.MainWithMuxer` from `github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen`.
+   `tfgen.MainWithMuxer` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen`.
 
    Note that the extra version parameter is removed from `tfgen.Main`, so this code:
 
@@ -29,7 +29,7 @@ Framework](https://github.com/hashicorp/terraform-plugin-framework?tab=readme).
    Becomes:
 
    ``` go
-   import "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen"
+   import "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
 
    ...
 
