@@ -46,7 +46,7 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
     package main
 
     import (
-        "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen"
+        "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
         // import myprovider
     )
 
