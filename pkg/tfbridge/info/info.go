@@ -73,6 +73,7 @@ type Provider struct {
 	ExtraConfig    map[string]*Config                 // a list of Pulumi-only configuration variables.
 	Resources      map[string]*Resource               // a map of TF type or renamed entity name to Pulumi resource info.
 	DataSources    map[string]*DataSource             // a map of TF type or renamed entity name to Pulumi resource info.
+	Actions        map[string]*Action                 // a map of TF type or renamed entity name to Pulumi action info.
 	ExtraTypes     map[string]pschema.ComplexTypeSpec // a map of Pulumi token to schema type for extra types.
 	ExtraResources map[string]pschema.ResourceSpec    // a map of Pulumi token to schema type for extra resources.
 	ExtraFunctions map[string]pschema.FunctionSpec    // a map of Pulumi token to schema type for extra functions.
@@ -445,6 +446,33 @@ func (info *Resource) GetDocs() *Doc { return info.Docs }
 
 // ReplaceExamplesSection returns whether to replace the upstream examples with our own source
 func (info *Resource) ReplaceExamplesSection() bool {
+	return info.Docs != nil && info.Docs.ReplaceExamplesSection
+}
+
+// Action can be used to override an action's standard name mangling and argument information.
+type Action struct {
+	Tok                tokens.ModuleMember
+	Fields             map[string]*Schema
+	Docs               *Doc   // overrides for finding and mapping TF docs.
+	DeprecationMessage string // message to use in deprecation warning
+}
+
+// GetTok returns a action type token
+func (info *Action) GetTok() tokens.Token { return tokens.Token(info.Tok) }
+
+// GetFields returns information about the action's custom fields
+func (info *Action) GetFields() map[string]*Schema {
+	if info == nil {
+		return nil
+	}
+	return info.Fields
+}
+
+// GetDocs returns a action docs override from the Pulumi provider
+func (info *Action) GetDocs() *Doc { return info.Docs }
+
+// ReplaceExamplesSection returns whether to replace the upstream examples with our own source
+func (info *Action) ReplaceExamplesSection() bool {
 	return info.Docs != nil && info.Docs.ReplaceExamplesSection
 }
 

@@ -66,3 +66,9 @@ type DataSources interface {
 	collection
 	IsDataSources()
 }
+
+// Represents all provider's actions pre-indexed by TypeOrRenamedEntityName.
+type Actions interface {
+	collection
+	IsActions()
+}

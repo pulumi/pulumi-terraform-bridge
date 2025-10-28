@@ -89,6 +89,17 @@ func (e *encoding) NewDataSourceDecoder(
 	return dec, nil
 }
 
+func (e *encoding) NewActionEncoder(
+	dataSource string, objectType tftypes.Object,
+) (Encoder, error) {
+	mctx := newActionSchemaMapContext(dataSource, e.SchemaOnlyProvider, e.ProviderInfo)
+	enc, err := NewObjectEncoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive an encoder for action %q: %w", dataSource, err)
+	}
+	return enc, nil
+}
+
 func buildPropertyEncoders(
 	mctx *schemaMapContext, objectType tftypes.Object,
 ) (map[terraformPropertyName]Encoder, error) {

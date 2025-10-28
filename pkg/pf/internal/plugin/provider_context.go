@@ -21,8 +21,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
@@ -32,6 +30,9 @@ type ProviderWithContext interface {
 	io.Closer
 
 	Pkg() tokens.Package
+
+	HandshakeWithContext(ctx context.Context, req plugin.ProviderHandshakeRequest,
+	) (*plugin.ProviderHandshakeResponse, error)
 
 	GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error)
 
@@ -68,7 +69,7 @@ type ProviderWithContext interface {
 		options plugin.ConstructOptions) (plugin.ConstructResult, error)
 
 	InvokeWithContext(ctx context.Context, tok tokens.ModuleMember,
-		args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+		args resource.PropertyMap, preview bool) (resource.PropertyMap, []plugin.CheckFailure, error)
 
 	CallWithContext(ctx context.Context, tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 		options plugin.CallOptions) (plugin.CallResult, error)
@@ -100,7 +101,7 @@ func (prov *provider) Pkg() tokens.Package { return prov.ProviderWithContext.Pkg
 func (prov *provider) Handshake(ctx context.Context,
 	req plugin.ProviderHandshakeRequest,
 ) (*plugin.ProviderHandshakeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+	return prov.HandshakeWithContext(ctx, req)
 }
 
 func (prov *provider) Parameterize(
@@ -203,7 +204,7 @@ func (prov *provider) Construct(
 func (prov *provider) Invoke(
 	ctx context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
-	p, f, err := prov.InvokeWithContext(ctx, req.Tok, req.Args)
+	p, f, err := prov.InvokeWithContext(ctx, req.Tok, req.Args, req.Preview)
 	return plugin.InvokeResponse{Properties: p, Failures: f}, err
 }
 
