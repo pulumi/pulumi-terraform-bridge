@@ -17,6 +17,7 @@ package pfutils
 import (
 	"context"
 
+	aschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -64,6 +65,12 @@ func FromResourceSchema(x rschema.Schema) Schema {
 	attrs := convertMap(FromResourceAttribute, x.Attributes)
 	blocks := convertMap(FromResourceBlock, x.Blocks)
 	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, &x)
+}
+
+func FromActionSchema(x aschema.Schema) Schema {
+	attrs := convertMap(FromActionAttribute, x.Attributes)
+	blocks := convertMap(FromActionBlock, x.Blocks)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, nil)
 }
 
 type schemaAdapter struct {

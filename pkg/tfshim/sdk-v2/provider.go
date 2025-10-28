@@ -77,6 +77,10 @@ func (p v2Provider) Schema() shim.SchemaMap {
 	return v2SchemaMap(p.tf.Schema)
 }
 
+func (p v2Provider) ActionsMap() shim.ActionMap {
+	return v2ActionMap{}
+}
+
 func (p v2Provider) DataSourcesMap() shim.ResourceMap {
 	return v2ResourceMap(p.tf.DataSourcesMap)
 }

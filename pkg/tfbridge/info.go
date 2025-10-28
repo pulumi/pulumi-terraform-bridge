@@ -135,6 +135,8 @@ type PreCheckCallback = info.PreCheckCallback
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
 type DataSourceInfo = info.DataSource
 
+type ActionInfo = info.Action
+
 // SchemaInfo contains optional name transformations to apply.
 type SchemaInfo = info.Schema
 

@@ -153,6 +153,8 @@ const (
 	ResourceDocs DocKind = "resources"
 	// DataSourceDocs indicates documentation pertaining to data source entities.
 	DataSourceDocs DocKind = "data-sources"
+	// ActionDocs indicates documentation pertaining to action entities.
+	ActionDocs DocKind = "actions"
 	// InstallationDocs indicates documentation pertaining to provider configuration and installation.
 	InstallationDocs DocKind = "installation"
 )
@@ -161,6 +163,8 @@ func (k DocKind) String() string {
 	switch k {
 	case DataSourceDocs:
 		return "data source"
+	case ActionDocs:
+		return "action"
 	case ResourceDocs:
 		return "resource"
 	default:
@@ -199,6 +203,8 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		docFile, err = source.getResource(rawname, docInfo)
 	case DataSourceDocs:
 		docFile, err = source.getDatasource(rawname, docInfo)
+	case ActionDocs:
+		docFile, err = source.getAction(rawname, docInfo)
 	default:
 		panic("unknown docs kind")
 	}

@@ -44,6 +44,7 @@ type FilteringProvider struct {
 	Provider         shim.Provider
 	ResourceFilter   func(token string) bool
 	DataSourceFilter func(token string) bool
+	ActionFilter     func(token string) bool
 	internalinter.Internal
 }
 
@@ -59,6 +60,10 @@ func (p *FilteringProvider) ResourcesMap() shim.ResourceMap {
 
 func (p *FilteringProvider) DataSourcesMap() shim.ResourceMap {
 	return &filteringMap{p.Provider.DataSourcesMap(), p.DataSourceFilter}
+}
+
+func (p *FilteringProvider) ActionsMap() shim.ActionMap {
+	return &filteringActionMap{p.Provider.ActionsMap(), p.ActionFilter}
 }
 
 func (p *FilteringProvider) InternalValidate() error {
@@ -189,3 +194,40 @@ func (f *filteringMap) Set(key string, value shim.Resource) {
 }
 
 var _ shim.ResourceMap = (*filteringMap)(nil)
+
+type filteringActionMap struct {
+	inner       shim.ActionMap
+	tokenFilter func(string) bool
+}
+
+func (f *filteringActionMap) Range(each func(key string, value shim.Action) bool) {
+	f.inner.Range(func(key string, value shim.Action) bool {
+		if f.tokenFilter != nil && !f.tokenFilter(key) {
+			return true
+		}
+		return each(key, value)
+	})
+}
+
+func (f *filteringActionMap) Len() int {
+	n := 0
+	f.Range(func(key string, value shim.Action) bool {
+		n = n + 1
+		return true
+	})
+	return n
+}
+
+func (f *filteringActionMap) Get(key string) shim.Action {
+	return f.inner.Get(key)
+}
+
+func (f *filteringActionMap) GetOk(key string) (shim.Action, bool) {
+	return f.inner.GetOk(key)
+}
+
+func (f *filteringActionMap) Set(key string, value shim.Action) {
+	f.inner.Set(key, value)
+}
+
+var _ shim.ActionMap = (*filteringActionMap)(nil)

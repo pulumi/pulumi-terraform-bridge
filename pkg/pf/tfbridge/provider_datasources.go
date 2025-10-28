@@ -36,10 +36,10 @@ type datasourceHandle struct {
 	pulumiDataSourceInfo    *tfbridge.DataSourceInfo // optional
 }
 
-func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMember) (datasourceHandle, error) {
-	dsName, err := p.terraformDatasourceNameOrRenamedEntity(token)
-	if err != nil {
-		return datasourceHandle{}, err
+func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMember) (datasourceHandle, bool, error) {
+	dsName, has := p.terraformDatasourceNameOrRenamedEntity(token)
+	if !has {
+		return datasourceHandle{}, false, nil
 	}
 
 	schema := p.datasources.Schema(runtypes.TypeOrRenamedEntityName(dsName))
@@ -48,12 +48,12 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 
 	encoder, err := p.encoding.NewDataSourceEncoder(dsName, typ)
 	if err != nil {
-		return datasourceHandle{}, err
+		return datasourceHandle{}, true, err
 	}
 
 	decoder, err := p.encoding.NewDataSourceDecoder(dsName, typ)
 	if err != nil {
-		return datasourceHandle{}, err
+		return datasourceHandle{}, true, err
 	}
 
 	shim, _ := p.schemaOnlyProvider.DataSourcesMap().GetOk(dsName)
@@ -71,5 +71,5 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 		result.pulumiDataSourceInfo = info
 	}
 
-	return result, nil
+	return result, true, nil
 }

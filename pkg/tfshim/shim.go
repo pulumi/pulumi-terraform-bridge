@@ -296,10 +296,29 @@ func CloneResource(rm ResourceMap, oldKey string, newKey string) error {
 	}
 }
 
+type Action interface {
+	Schema() SchemaMap
+	Metadata() (typeName string)
+	Invoke(
+		ctx context.Context,
+		inputs resource.PropertyMap,
+	) (resource.PropertyMap, error)
+}
+
+type ActionMap interface {
+	Len() int
+	Get(key string) Action
+	GetOk(key string) (Action, bool)
+	Range(each func(key string, value Action) bool)
+
+	Set(key string, value Action)
+}
+
 type Provider interface {
 	Schema() SchemaMap
 	ResourcesMap() ResourceMap
 	DataSourcesMap() ResourceMap
+	ActionsMap() ActionMap
 
 	InternalValidate() error
 	Validate(ctx context.Context, c ResourceConfig) ([]string, []error)

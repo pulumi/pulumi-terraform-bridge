@@ -37,3 +37,20 @@ func functionPropertyKey(ds datasourceHandle, path *tftypes.AttributePath) (reso
 		return "", false
 	}
 }
+
+func actionPropertyKey(action actionHandle, path *tftypes.AttributePath) (resource.PropertyKey, bool) {
+	if path == nil {
+		return "", false
+	}
+	if len(path.Steps()) != 1 {
+		return "", false
+	}
+	switch attrName := path.LastStep().(type) {
+	case tftypes.AttributeName:
+		pulumiName := tfbridge.TerraformToPulumiNameV2(string(attrName),
+			action.schemaOnlyShim.Schema(), action.pulumiActionInfo.GetFields())
+		return resource.PropertyKey(pulumiName), true
+	default:
+		return "", false
+	}
+}
