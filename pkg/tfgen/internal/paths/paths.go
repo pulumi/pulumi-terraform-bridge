@@ -226,6 +226,87 @@ func (p *DataSourceMemberPath) UniqueKey() string {
 	return p.String()
 }
 
+// Identifies a list resource uniquely.
+type ListResourcePath struct {
+	key   string
+	token tokens.ModuleMember
+}
+
+func NewListResourcePath(key string, token tokens.ModuleMember) *ListResourcePath {
+	return &ListResourcePath{
+		key:   key,
+		token: token,
+	}
+}
+
+// Pulumi token uniquely identifying the ListResource.
+func (p *ListResourcePath) Token() tokens.ModuleMember {
+	return p.token
+}
+
+// Unique identifier for the ListResource preserved from the shim layer, typically the Terraform name.
+func (p *ListResourcePath) Key() string {
+	return p.key
+}
+
+func (p *ListResourcePath) Args() *ListResourceMemberPath {
+	return &ListResourceMemberPath{
+		ListResourcePath:       p,
+		ListResourceMemberKind: ListResourceArgs,
+	}
+}
+
+func (p *ListResourcePath) Results() *ListResourceMemberPath {
+	return &ListResourceMemberPath{
+		ListResourcePath:       p,
+		ListResourceMemberKind: ListResourceResults,
+	}
+}
+
+func (p *ListResourcePath) String() string {
+	return fmt.Sprintf("listresource[key=%q,token=%q]",
+		p.key,
+		p.token.String())
+}
+
+type ListResourceMemberKind int
+
+const (
+	ListResourceArgs ListResourceMemberKind = iota
+	ListResourceResults
+)
+
+func (s ListResourceMemberKind) String() string {
+	switch s {
+	case ListResourceArgs:
+		return "args"
+	case ListResourceResults:
+		return "results"
+	}
+	return "unknown"
+}
+
+type ListResourceMemberPath struct {
+	ListResourcePath       *ListResourcePath
+	ListResourceMemberKind ListResourceMemberKind
+}
+
+var _ TypePath = (*ListResourceMemberPath)(nil)
+
+func (p *ListResourceMemberPath) Parent() TypePath {
+	return nil
+}
+
+func (p *ListResourceMemberPath) String() string {
+	return fmt.Sprintf("%s.%s",
+		p.ListResourcePath.String(),
+		p.ListResourceMemberKind.String())
+}
+
+func (p *ListResourceMemberPath) UniqueKey() string {
+	return p.String()
+}
+
 type ConfigPath struct{}
 
 var _ TypePath = (*ConfigPath)(nil)

@@ -84,10 +84,13 @@ func (p *provider) handleListResourceInvoke(
 			return nil, nil, fmt.Errorf("cannot decode resource from ListResource response for %q: %w",
 				handle.terraformListResourceName, err)
 		}
-		results = append(results, resource.NewObjectProperty(resource.PropertyMap{
+
+		result := resource.PropertyMap{
 			"resource":    resource.NewObjectProperty(decodedResource),
 			"displayName": resource.NewStringProperty(item.DisplayName),
-		}))
+		}
+
+		results = append(results, resource.NewObjectProperty(result))
 	}
 
 	decoded := resource.PropertyMap{"results": resource.NewArrayProperty(results)}
