@@ -121,6 +121,8 @@ type AliasInfo = info.Alias
 // ResourceOrDataSourceInfo is a shared interface to ResourceInfo and DataSourceInfo mappings
 type ResourceOrDataSourceInfo = info.ResourceOrDataSource
 
+type EphemeralResourceInfo = info.EphemeralResource
+
 // ResourceInfo is a top-level type exported by a provider.  This structure can override the type to generate.  It can
 // also give custom metadata for fields, using the SchemaInfo structure below.  Finally, a set of composite keys can be
 // given; this is used when Terraform needs more than just the ID to uniquely identify and query for a resource.

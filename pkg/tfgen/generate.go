@@ -871,6 +871,29 @@ func (rf *resourceFunc) ModuleMemberToken() tokens.ModuleMember {
 	return tokens.NewModuleMemberToken(rf.mod, tokens.ModuleMemberName(rf.name))
 }
 
+// resourceEphemeral is a generated resource function that is exposed to interact with Pulumi objects.
+type resourceEphemeral struct {
+	mod            tokens.Module
+	name           string
+	doc            string
+	args           []*variable
+	rets           []*variable
+	reqargs        map[string]bool
+	argst          *propertyType
+	retst          *propertyType
+	schema         shim.Resource
+	info           *tfbridge.EphemeralResourceInfo
+	entityDocs     entityDocs
+	dataSourcePath *paths.DataSourcePath
+}
+
+func (rf *resourceEphemeral) Name() string { return rf.name }
+func (rf *resourceEphemeral) Doc() string  { return rf.doc }
+
+func (rf *resourceEphemeral) ModuleMemberToken() tokens.ModuleMember {
+	return tokens.NewModuleMemberToken(rf.mod, tokens.ModuleMemberName(rf.name))
+}
+
 // overlayFile is a file that should be added to a module "as-is" and then exported from its index.
 type overlayFile struct {
 	name string
@@ -1269,6 +1292,14 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 		return nil, pkgerrors.Wrapf(err, "problem gathering data sources")
 	} else if dsmods != nil {
 		pack.addModuleMap(dsmods)
+	}
+
+	// Gather up all ephemeral resources into their respective modules and merge them in.
+	ephemeralMods, err := g.gatherEphemeralResources()
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "problem gathering ephemeral resources")
+	} else if ephemeralMods != nil {
+		pack.addModuleMap(ephemeralMods)
 	}
 
 	// Now go ahead and merge in any overlays into the modules if there are any.
@@ -1759,6 +1790,194 @@ func (g *Generator) gatherDataSource(rawname string,
 	return fun, nil
 }
 
+func (g *Generator) gatherEphemeralResources() (moduleMap, error) {
+	// If there aren't any data sources, skip this altogether.
+	sources := g.provider().EphemeralResourcesMap()
+	if sources.Len() == 0 {
+		return nil, nil
+	}
+	modules := make(moduleMap)
+
+	skipFailBuildOnMissingMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
+		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
+	skipFailBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
+
+	// let's keep a list of TF mapping errors that we can present to the user
+	var ephemeralResourceMappingErrors error
+
+	// For each data source, create its own dedicated function and module export.
+	var epherr error
+	seen := make(map[string]bool)
+	for _, eph := range stableResources(sources) {
+		ephinfo := g.info.EphemeralResources[eph]
+		if ephinfo == nil {
+			if sliceContains(g.info.IgnoreMappings, eph) {
+				g.debug("TF ephemeral resource %q not found in provider map but ignored", eph)
+				continue
+			}
+
+			if !skipFailBuildOnMissingMapError {
+				ephemeralResourceMappingErrors = multierror.Append(ephemeralResourceMappingErrors,
+					fmt.Errorf("TF ephemeral resource %q not mapped to the Pulumi provider", eph))
+			} else {
+				g.warn("TF ephemeral resource %q not found in provider map", eph)
+			}
+			continue
+		}
+		seen[eph] = true
+
+		fun, err := g.gatherEphemeralResource(eph, sources.Get(eph), ephinfo)
+		if err != nil {
+			// Keep track of the error, but keep going, so we can expose more at once.
+			epherr = multierror.Append(epherr, err)
+		} else {
+			// Add any members returned to the specified module.
+			modules.ensureModule(fun.mod).addMember(fun)
+		}
+	}
+	if epherr != nil {
+		return nil, epherr
+	}
+
+	// Emit a warning if there is a map but some names didn't match.
+	var names []string
+	for name := range g.info.EphemeralResources {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if !seen[name] {
+			if !skipFailBuildOnExtraMapError {
+				ephemeralResourceMappingErrors = multierror.Append(ephemeralResourceMappingErrors,
+					fmt.Errorf("Pulumi token %q is mapped to TF provider ephemeral resource %q, but no such "+
+						"ephemeral resource found. Remove the mapping and try again",
+						g.info.EphemeralResources[name].Tok, name))
+			} else {
+				g.warn("Pulumi token %q is mapped to TF provider ephemeral resource %q, but no such "+
+					"ephemeral resource found. The mapping will be ignored in the generated provider",
+					g.info.EphemeralResources[name].Tok, name)
+			}
+		}
+	}
+
+	// let's check the unmapped DataSource Errors
+	if ephemeralResourceMappingErrors != nil {
+		return nil, ephemeralResourceMappingErrors
+	}
+
+	return modules, nil
+}
+
+// gatherEphemeralResource returns the module name and members for the given ephemeral resource function.
+func (g *Generator) gatherEphemeralResource(rawname string,
+	ds shim.Resource, info *tfbridge.EphemeralResourceInfo,
+) (*resourceEphemeral, error) {
+	// Generate the name and module for this data source.
+	name, moduleName := ephemeralResourceName(g.info.Name, rawname, info)
+	mod := tokens.NewModuleToken(g.pkg, moduleName)
+	dataSourcePath := paths.NewDataSourcePath(rawname, tokens.NewModuleMemberToken(mod, name))
+
+	// Collect documentation information for this data source.
+	source := NewGitRepoDocsSource(g)
+	entityDocs, err := getDocsForResource(g, source, DataSourceDocs, rawname, info)
+	if err != nil && !g.checkNoDocsError(err) {
+		return nil, err
+	}
+
+	// Build up the function information.
+	fun := &resourceEphemeral{
+		mod:            mod,
+		name:           name.String(),
+		doc:            entityDocs.Description,
+		reqargs:        make(map[string]bool),
+		schema:         ds,
+		info:           info,
+		entityDocs:     entityDocs,
+		dataSourcePath: dataSourcePath,
+	}
+
+	// See if arguments for this function are optional, and generate detailed metadata.
+	for _, arg := range stableSchemas(ds.Schema()) {
+		sch := ds.Schema().Get(arg)
+		if sch.Removed() != "" {
+			continue
+		}
+		cust := info.Fields[arg]
+
+		// Remember detailed information for every input arg (we will use it below).
+		if input(sch, cust) {
+			doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, arg)
+			if foundInAttributes {
+				argumentDescriptionsFromAttributes++
+				msg := fmt.Sprintf("Argument desc taken from attributes: data source, rawname = '%s', property = '%s'",
+					rawname, arg)
+				g.debug(msg)
+			}
+
+			argvar, err := g.propertyVariable(dataSourcePath.Args(),
+				arg, ds.Schema(), info.Fields, doc, "", false /*out*/, entityDocs)
+			if err != nil {
+				return nil, err
+			}
+			if argvar != nil {
+				fun.args = append(fun.args, argvar)
+				if !argvar.optional() {
+					fun.reqargs[argvar.name] = true
+				}
+			}
+		}
+
+		// Also remember properties for the resulting return data structure.
+		// Emit documentation for the property if available
+		p, err := g.propertyVariable(dataSourcePath.Results(), arg, ds.Schema(), info.Fields,
+			entityDocs.Attributes[arg], "", true /*out*/, entityDocs)
+		if err != nil {
+			return nil, err
+		}
+		if p != nil {
+			fun.rets = append(fun.rets, p)
+		}
+	}
+
+	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
+	// sources.
+	if id, has := ds.Schema().GetOk("id"); !has || id.Removed() != "" {
+		cust := map[string]*tfbridge.SchemaInfo{"id": {}}
+		rawdoc := "The provider-assigned unique ID for this managed resource."
+		idSchema := schema.SchemaMap(map[string]shim.Schema{
+			"id": (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
+		})
+		p, err := g.propertyVariable(dataSourcePath.Results(), "id", idSchema, cust, "",
+			rawdoc, true /*out*/, entityDocs)
+		if err != nil {
+			return nil, err
+		}
+		if p != nil {
+			fun.rets = append(fun.rets, p)
+		}
+	}
+
+	// Produce the args/return types, if needed.
+	if len(fun.args) > 0 {
+		fun.argst = &propertyType{
+			kind:       kindObject,
+			name:       fmt.Sprintf("%sArgs", upperFirst(name.String())),
+			doc:        fmt.Sprintf("A collection of arguments for invoking %s.", name),
+			properties: fun.args,
+		}
+	}
+	if len(fun.rets) > 0 {
+		fun.retst = &propertyType{
+			kind:       kindObject,
+			name:       fmt.Sprintf("%sResult", upperFirst(name.String())),
+			doc:        fmt.Sprintf("A collection of values returned by %s.", name),
+			properties: fun.rets,
+		}
+	}
+
+	return fun, nil
+}
+
 // gatherOverlays returns any overlay modules and their contents.
 func (g *Generator) gatherOverlays() (moduleMap, error) {
 	modules := make(moduleMap)
@@ -1971,6 +2190,20 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 		}, nil
 	}
 	return nil, nil
+}
+
+// ephemeralResourceName translates a Terraform name into its Pulumi name equivalent.
+func ephemeralResourceName(provider string, rawname string,
+	info *tfbridge.EphemeralResourceInfo,
+) (tokens.ModuleMemberName, tokens.ModuleName) {
+	if info == nil || info.Tok == "" {
+		// default transformations.
+		name := withoutPackageName(provider, rawname) // strip off the pkg prefix.
+		name = tfbridge.TerraformToPulumiNameV2(name, nil, nil)
+		return tokens.ModuleMemberName(name), tokens.ModuleName(name)
+	}
+	// otherwise, a custom transformation exists; use it.
+	return info.Tok.Name(), info.Tok.Module().Name()
 }
 
 // dataSourceName translates a Terraform name into its Pulumi name equivalent.

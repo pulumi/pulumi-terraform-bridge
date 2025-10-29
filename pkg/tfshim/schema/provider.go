@@ -49,6 +49,10 @@ func (s ProviderShim) DataSourcesMap() shim.ResourceMap {
 	return s.V.DataSourcesMap
 }
 
+func (s ProviderShim) EphemeralResourcesMap() shim.ResourceMap {
+	return ResourceMap{}
+}
+
 func (s ProviderShim) InternalValidate() error {
 	return nil
 }

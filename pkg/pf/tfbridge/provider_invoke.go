@@ -39,6 +39,69 @@ func (p *provider) InvokeWithContext(
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, "")
 
+	eh, has, err := p.ephemeralResourceHandle(ctx, tok)
+	if err != nil {
+		return nil, nil, err
+	}
+	if has {
+		typ := eh.schema.Type(ctx).(tftypes.Object)
+
+		// Transform checkedInputs to apply Pulumi-level defaults.
+		news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
+			SchemaMap:      eh.schemaOnlyShim.Schema(),
+			SchemaInfos:    eh.pulumiEphemeralResourceInfo.Fields,
+			PropertyMap:    args,
+			ProviderConfig: p.lastKnownProviderConfig,
+		})
+
+		config, err := convert.EncodePropertyMapToDynamic(eh.encoder, typ, news)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot encode config to call OpenEphemeralResource for %q: %w",
+				eh.terraformEphemeralResourceName, err)
+		}
+
+		if failures, err := p.validateEphemeralResourceConfig(ctx, eh, config); err != nil || len(failures) > 0 {
+			return nil, failures, err
+		}
+
+		req := &tfprotov6.OpenEphemeralResourceRequest{
+			Config:   config,
+			TypeName: eh.terraformEphemeralResourceName,
+		}
+
+		resp, err := p.tfServer.OpenEphemeralResource(ctx, req)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error calling OpenEphemeralResource: %w", err)
+		}
+
+		failures, err := p.processEphemeralInvokeDiagnostics(eh, resp.Diagnostics)
+		if err != nil || len(failures) > 0 {
+			return nil, failures, err
+		}
+
+		propertyMap, err := convert.DecodePropertyMapFromDynamic(ctx, eh.decoder, typ, resp.Result)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot decode state from a call to OpenEphemeralResource for %q: %w",
+				eh.terraformEphemeralResourceName, err)
+		}
+
+		// All ephemeral resource properties are treated as secrets by pulumi.
+		for k, v := range propertyMap {
+			propertyMap[k] = resource.MakeSecret(v)
+		}
+
+		// Keep track of this ephemeral resource so that it can be closed later.
+		p.ephemeralStateLock.Lock()
+		p.ephemeralState = append(p.ephemeralState, ephemeral{
+			typeName: eh.terraformEphemeralResourceName,
+			renewAt:  resp.RenewAt,
+			private:  resp.Private,
+		})
+		p.ephemeralStateLock.Unlock()
+
+		return propertyMap, nil, nil
+	}
+
 	handle, err := p.datasourceHandle(ctx, tok)
 	if err != nil {
 		return nil, nil, err
@@ -67,18 +130,51 @@ func (p *provider) InvokeWithContext(
 	return p.readDataSource(ctx, handle, config)
 }
 
-func (p *provider) validateDataResourceConfig(ctx context.Context, handle datasourceHandle,
+func (p *provider) validateEphemeralResourceConfig(ctx context.Context, handle ephemeralResourceHandle,
 	config *tfprotov6.DynamicValue,
 ) ([]plugin.CheckFailure, error) {
-	req := &tfprotov6.ValidateDataResourceConfigRequest{
-		TypeName: handle.terraformDataSourceName,
+	req := &tfprotov6.ValidateEphemeralResourceConfigRequest{
+		TypeName: handle.terraformEphemeralResourceName,
 		Config:   config,
 	}
-	resp, err := p.tfServer.ValidateDataResourceConfig(ctx, req)
+	resp, err := p.tfServer.ValidateEphemeralResourceConfig(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("error calling ValidateDataResourceConfig: %w", err)
+		return nil, fmt.Errorf("error calling ValidateEphemeralResourceConfig: %w", err)
 	}
-	return p.processInvokeDiagnostics(handle, resp.Diagnostics)
+	return p.processEphemeralInvokeDiagnostics(handle, resp.Diagnostics)
+}
+
+func (p *provider) processEphemeralInvokeDiagnostics(eh ephemeralResourceHandle,
+	diags []*tfprotov6.Diagnostic,
+) ([]plugin.CheckFailure, error) {
+	failures, rest := p.parseEphemeralInvokePropertyCheckFailures(eh, diags)
+	return failures, p.processDiagnostics(rest)
+}
+
+// Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an
+// optimal rendering by Pulumi CLI.
+func (p *provider) parseEphemeralInvokePropertyCheckFailures(
+	eh ephemeralResourceHandle, diags []*tfprotov6.Diagnostic,
+) (
+	[]plugin.CheckFailure, []*tfprotov6.Diagnostic,
+) {
+	rest := []*tfprotov6.Diagnostic{}
+	failures := []plugin.CheckFailure{}
+
+	for _, d := range diags {
+		if pk, ok := ephemeralFunctionPropertyKey(eh, d.Attribute); ok {
+			reason := strings.Join([]string{d.Summary, d.Detail}, ": ")
+			failure := plugin.CheckFailure{
+				Property: pk,
+				Reason:   reason,
+			}
+			failures = append(failures, failure)
+			continue
+		}
+		rest = append(rest, d)
+	}
+
+	return failures, rest
 }
 
 func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
@@ -124,6 +220,20 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 	}
 
 	return propertyMap, nil, nil
+}
+
+func (p *provider) validateDataResourceConfig(ctx context.Context, handle datasourceHandle,
+	config *tfprotov6.DynamicValue,
+) ([]plugin.CheckFailure, error) {
+	req := &tfprotov6.ValidateDataResourceConfigRequest{
+		TypeName: handle.terraformDataSourceName,
+		Config:   config,
+	}
+	resp, err := p.tfServer.ValidateDataResourceConfig(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("error calling ValidateDataResourceConfig: %w", err)
+	}
+	return p.processInvokeDiagnostics(handle, resp.Diagnostics)
 }
 
 func (p *provider) processInvokeDiagnostics(ds datasourceHandle,

@@ -34,5 +34,6 @@ type ShimProvider interface {
 	Server(context.Context) (tfprotov6.ProviderServer, error)
 	Resources(context.Context) (runtypes.Resources, error)
 	DataSources(context.Context) (runtypes.DataSources, error)
+	EphemeralResources(context.Context) (runtypes.EphemeralResources, error)
 	Config(context.Context) (tftypes.Object, error)
 }

@@ -1100,6 +1100,36 @@
                 "type": "object"
             }
         },
+        "testbridge:index/ephemeral:Testeph": {
+            "inputs": {
+                "description": "A collection of arguments for invoking Testeph.\n",
+                "properties": {
+                    "statedir": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "statedir"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by Testeph.\n",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "statedir": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "statedir"
+                ],
+                "type": "object"
+            }
+        },
         "testbridge:index/smac:SMAC": {
             "outputs": {
                 "description": "A collection of values returned by SMAC.\n",

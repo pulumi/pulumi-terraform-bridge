@@ -41,6 +41,14 @@ func (p Provider) DataSources(context.Context) (runtypes.DataSources, error) {
 	return datasources{collection(v.DataSourceSchemas)}, nil
 }
 
+func (p Provider) EphemeralResources(context.Context) (runtypes.EphemeralResources, error) {
+	v, err := p.getSchema()
+	if err != nil {
+		return nil, err
+	}
+	return ephemeralResources{collection(v.EphemeralResourceSchemas)}, nil
+}
+
 type schema struct {
 	s      *tfprotov6.Schema
 	tfName runtypes.TypeName
@@ -84,6 +92,12 @@ type datasources struct{ collection }
 var _ runtypes.DataSources = datasources{}
 
 func (datasources) IsDataSources() {}
+
+var _ runtypes.EphemeralResources = ephemeralResources{}
+
+type ephemeralResources struct{ collection }
+
+func (ephemeralResources) IsEphemeralResources() {}
 
 type collection map[string]*tfprotov6.Schema
 

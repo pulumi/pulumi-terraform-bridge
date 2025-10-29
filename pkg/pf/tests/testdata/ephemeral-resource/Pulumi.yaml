@@ -1,0 +1,15 @@
+name: ephemeralprogram
+runtime: yaml
+outputs:
+  testEph:
+    fn::invoke:
+      function: testbridge:index/echo:Echo
+      arguments:
+        input: "Hello"
+  testEcho__expect:
+    input:
+      "Hello"
+    output:
+      "Hello"
+    sensitive:
+      "Hello"

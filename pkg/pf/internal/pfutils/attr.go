@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	eschema "github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -62,6 +63,10 @@ func FromDataSourceAttribute(x dschema.Attribute) Attr {
 }
 
 func FromResourceAttribute(x rschema.Attribute) Attr {
+	return FromAttrLike(x)
+}
+
+func FromEphemeralResourceAttribute(x eschema.Attribute) Attr {
 	return FromAttrLike(x)
 }
 

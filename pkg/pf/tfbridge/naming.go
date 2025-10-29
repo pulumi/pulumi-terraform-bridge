@@ -37,3 +37,22 @@ func functionPropertyKey(ds datasourceHandle, path *tftypes.AttributePath) (reso
 		return "", false
 	}
 }
+
+func ephemeralFunctionPropertyKey(
+	eh ephemeralResourceHandle, path *tftypes.AttributePath,
+) (resource.PropertyKey, bool) {
+	if path == nil {
+		return "", false
+	}
+	if len(path.Steps()) != 1 {
+		return "", false
+	}
+	switch attrName := path.LastStep().(type) {
+	case tftypes.AttributeName:
+		pulumiName := tfbridge.TerraformToPulumiNameV2(string(attrName),
+			eh.schemaOnlyShim.Schema(), eh.pulumiEphemeralResourceInfo.GetFields())
+		return resource.PropertyKey(pulumiName), true
+	default:
+		return "", false
+	}
+}
