@@ -89,6 +89,24 @@ func (e *encoding) NewDataSourceDecoder(
 	return dec, nil
 }
 
+func (e *encoding) NewEphemeralResourceEncoder(resource string, objectType tftypes.Object) (Encoder, error) {
+	mctx := newEphemeralResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
+	enc, err := NewObjectEncoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive an encoder for ephemeral resource %q: %w", resource, err)
+	}
+	return enc, nil
+}
+
+func (e *encoding) NewEphemeralResourceDecoder(resource string, objectType tftypes.Object) (Decoder, error) {
+	mctx := newEphemeralResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
+	dec, err := NewObjectDecoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive a decoder for ephemeral resource %q: %w", resource, err)
+	}
+	return dec, nil
+}
+
 func buildPropertyEncoders(
 	mctx *schemaMapContext, objectType tftypes.Object,
 ) (map[terraformPropertyName]Encoder, error) {
