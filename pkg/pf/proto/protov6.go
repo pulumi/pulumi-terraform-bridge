@@ -125,3 +125,12 @@ func (p Provider) DataSourcesMap() shim.ResourceMap {
 	}
 	return resourceMap(v.DataSourceSchemas)
 }
+
+func (p Provider) ListResourcesMap() shim.ResourceMap {
+	v, err := p.getSchema()
+	if err != nil {
+		tfbridge.GetLogger(p.ctx).Error(err.Error())
+		return nil
+	}
+	return resourceMap(v.ListResourceSchemas)
+}

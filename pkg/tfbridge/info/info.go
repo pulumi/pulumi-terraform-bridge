@@ -72,6 +72,7 @@ type Provider struct {
 	Config         map[string]*Schema                 // a map of TF name to config schema overrides.
 	ExtraConfig    map[string]*Config                 // a list of Pulumi-only configuration variables.
 	Resources      map[string]*Resource               // a map of TF type or renamed entity name to Pulumi resource info.
+	ListResources  map[string]*ListResource           // a map of TF type or renamed entity name to Pulumi list resource info.
 	DataSources    map[string]*DataSource             // a map of TF type or renamed entity name to Pulumi resource info.
 	ExtraTypes     map[string]pschema.ComplexTypeSpec // a map of Pulumi token to schema type for extra types.
 	ExtraResources map[string]pschema.ResourceSpec    // a map of Pulumi token to schema type for extra resources.
@@ -473,6 +474,21 @@ func (info *DataSource) GetDocs() *Doc { return info.Docs }
 // ReplaceExamplesSection returns whether to replace the upstream examples with our own source
 func (info *DataSource) ReplaceExamplesSection() bool {
 	return info.Docs != nil && info.Docs.ReplaceExamplesSection
+}
+
+// ListResource can be used override the name mangling of a list resource.
+type ListResource struct {
+	Tok    tokens.Type
+	Fields map[string]*Schema
+}
+
+func (info *ListResource) GetTok() tokens.Token { return tokens.Token(info.Tok) }
+
+func (info *ListResource) GetFields() map[string]*Schema {
+	if info == nil {
+		return nil
+	}
+	return info.Fields
 }
 
 // Schema contains optional name transformations to apply.

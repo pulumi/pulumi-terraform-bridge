@@ -31,6 +31,69 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
+func (p *provider) handleListResourceInvoke(
+	ctx context.Context,
+	tok tokens.ModuleMember,
+	args resource.PropertyMap,
+	terraformListResourceType string,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	server, ok := p.tfServer.(tfprotov6.ProviderServerWithListResource)
+	if !ok {
+		return nil, nil, fmt.Errorf("provider does not support ListResources")
+	}
+
+	handle, err := p.listResourceHandle(ctx, tok)
+	typ := handle.schema.Type(ctx).(tftypes.Object)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	request := &tfprotov6.ListResourceRequest{
+		TypeName: terraformListResourceType,
+	}
+
+	if limit, ok := args["limit"]; ok && limit.IsNumber() {
+		request.Limit = int64(limit.NumberValue())
+	}
+
+	if includeResource, ok := args["includeResource"]; ok && includeResource.IsBool() {
+		request.IncludeResource = includeResource.BoolValue()
+	}
+
+	if config, ok := args["config"]; ok && config.IsObject() {
+		configObject := config.ObjectValue()
+		config, err := convert.EncodePropertyMapToDynamic(handle.encoder, typ, configObject)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot encode config to call ListResource for %q: %w",
+				handle.terraformListResourceName, err)
+		}
+		request.Config = config
+	}
+
+	response, err := server.ListResource(ctx, request)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("error calling ListResource for %q: %w",
+			handle.terraformListResourceName, err)
+	}
+
+	results := []resource.PropertyValue{}
+	for item := range response.Results {
+		decodedResource, err := convert.DecodePropertyMapFromDynamic(ctx, handle.decoder, typ, item.Resource)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot decode resource from ListResource response for %q: %w",
+				handle.terraformListResourceName, err)
+		}
+		results = append(results, resource.NewObjectProperty(resource.PropertyMap{
+			"resource":    resource.NewObjectProperty(decodedResource),
+			"displayName": resource.NewStringProperty(item.DisplayName),
+		}))
+	}
+
+	decoded := resource.PropertyMap{"results": resource.NewArrayProperty(results)}
+	return decoded, nil, nil
+}
+
 // Invoke dynamically executes a built-in function in the provider.
 func (p *provider) InvokeWithContext(
 	ctx context.Context,
@@ -38,6 +101,10 @@ func (p *provider) InvokeWithContext(
 	args resource.PropertyMap,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, "")
+
+	if tfResourceType, _, ok := p.isListResource(tok); ok {
+		return p.handleListResourceInvoke(ctx, tok, args, tfResourceType)
+	}
 
 	handle, err := p.datasourceHandle(ctx, tok)
 	if err != nil {

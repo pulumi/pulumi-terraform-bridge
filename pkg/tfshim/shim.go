@@ -300,6 +300,7 @@ type Provider interface {
 	Schema() SchemaMap
 	ResourcesMap() ResourceMap
 	DataSourcesMap() ResourceMap
+	ListResourcesMap() ResourceMap
 
 	InternalValidate() error
 	Validate(ctx context.Context, c ResourceConfig) ([]string, []error)

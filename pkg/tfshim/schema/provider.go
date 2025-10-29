@@ -8,9 +8,10 @@ import (
 )
 
 type Provider struct {
-	Schema         shim.SchemaMap
-	ResourcesMap   shim.ResourceMap
-	DataSourcesMap shim.ResourceMap
+	Schema           shim.SchemaMap
+	ResourcesMap     shim.ResourceMap
+	DataSourcesMap   shim.ResourceMap
+	ListResourcesMap shim.ResourceMap
 	internalinter.Internal
 }
 
@@ -24,6 +25,9 @@ func (p *Provider) Shim() shim.Provider {
 	}
 	if c.DataSourcesMap == nil {
 		c.DataSourcesMap = ResourceMap{}
+	}
+	if c.ListResourcesMap == nil {
+		c.ListResourcesMap = ResourceMap{}
 	}
 	return newProviderShim(c)
 }
@@ -47,6 +51,10 @@ func (s ProviderShim) ResourcesMap() shim.ResourceMap {
 
 func (s ProviderShim) DataSourcesMap() shim.ResourceMap {
 	return s.V.DataSourcesMap
+}
+
+func (s ProviderShim) ListResourcesMap() shim.ResourceMap {
+	return s.V.ListResourcesMap
 }
 
 func (s ProviderShim) InternalValidate() error {

@@ -41,9 +41,10 @@ import (
 //      PULUMI_SKIP_EXTRA_MAPPING_ERROR=1 make provider
 
 type FilteringProvider struct {
-	Provider         shim.Provider
-	ResourceFilter   func(token string) bool
-	DataSourceFilter func(token string) bool
+	Provider            shim.Provider
+	ResourceFilter      func(token string) bool
+	DataSourceFilter    func(token string) bool
+	ListResourcesFilter func(token string) bool
 	internalinter.Internal
 }
 
@@ -59,6 +60,10 @@ func (p *FilteringProvider) ResourcesMap() shim.ResourceMap {
 
 func (p *FilteringProvider) DataSourcesMap() shim.ResourceMap {
 	return &filteringMap{p.Provider.DataSourcesMap(), p.DataSourceFilter}
+}
+
+func (p *FilteringProvider) ListResourcesMap() shim.ResourceMap {
+	return &filteringMap{p.Provider.ListResourcesMap(), p.ListResourcesFilter}
 }
 
 func (p *FilteringProvider) InternalValidate() error {
