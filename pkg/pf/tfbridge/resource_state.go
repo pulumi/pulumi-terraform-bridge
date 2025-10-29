@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
@@ -45,8 +46,10 @@ func (u *upgradedResourceState) PrivateState() []byte {
 	return u.Private
 }
 
-func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceHandle) (resource.PropertyMap, error) {
-	propMap, err := convert.DecodePropertyMap(ctx, rh.decoder, u.Value)
+func (u *upgradedResourceState) ToPropertyMap(
+	ctx context.Context, decoder convert.Decoder,
+) (resource.PropertyMap, error) {
+	propMap, err := convert.DecodePropertyMap(ctx, decoder, u.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +59,10 @@ func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceH
 	})
 }
 
-func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *upgradedResourceState {
-	tfType := rh.schema.Type(ctx)
+func newResourceState(ctx context.Context, schema runtypes.Schema, private []byte) *upgradedResourceState {
+	tfType := schema.Type(ctx)
 	value := tftypes.NewValue(tfType, nil)
-	schemaVersion := rh.schema.ResourceSchemaVersion()
+	schemaVersion := schema.ResourceSchemaVersion()
 	return &upgradedResourceState{
 		Value:           value,
 		TFSchemaVersion: schemaVersion,
@@ -69,12 +72,12 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 
 func parseResourceStateFromTF(
 	ctx context.Context,
-	rh *resourceHandle,
+	schema runtypes.Schema,
 	state *tfprotov6.DynamicValue,
 	private []byte,
 ) (*upgradedResourceState, error) {
-	tfType := rh.schema.Type(ctx)
-	return parseResourceStateFromTFInner(ctx, tfType, rh.schema.ResourceSchemaVersion(), state, private)
+	tfType := schema.Type(ctx)
+	return parseResourceStateFromTFInner(ctx, tfType, schema.ResourceSchemaVersion(), state, private)
 }
 
 func parseResourceStateFromTFInner(

@@ -28,7 +28,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-type resourceHandle struct {
+type ephemeralResourceHandle struct {
 	token                  tokens.Type
 	terraformResourceName  string
 	schema                 runtypes.Schema
@@ -38,61 +38,46 @@ type resourceHandle struct {
 	schemaOnlyShimResource shim.Resource
 }
 
-func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, bool, error) {
-	typeOrRenamedEntityName, has := p.terraformResourceNameOrRenamedEntity(urn.Type())
+func (p *provider) ephemeralResourceHandle(
+	ctx context.Context, urn pulumiresource.URN,
+) (ephemeralResourceHandle, bool, error) {
+	typeOrRenamedEntityName, has := p.terraformEphemeralResourceNameOrRenamedEntity(urn.Type())
 	if !has {
-		return resourceHandle{}, false, nil
+		return ephemeralResourceHandle{}, false, nil
 	}
 
-	schema := p.resources.Schema(runtypes.TypeOrRenamedEntityName(typeOrRenamedEntityName))
+	schema := p.ephemeralResources.Schema(runtypes.TypeOrRenamedEntityName(typeOrRenamedEntityName))
 
-	result := resourceHandle{
+	result := ephemeralResourceHandle{
 		terraformResourceName: string(schema.TFName()),
 		schema:                schema,
 	}
 
-	if info, ok := p.info.Resources[typeOrRenamedEntityName]; ok {
+	if info, ok := p.info.EphemeralResources[typeOrRenamedEntityName]; ok {
 		result.pulumiResourceInfo = info
 	}
 
 	token := result.pulumiResourceInfo.Tok
 	if token == "" {
-		return resourceHandle{}, true, fmt.Errorf("Tok cannot be empty: %s", token)
+		return ephemeralResourceHandle{}, true, fmt.Errorf("Tok cannot be empty: %s", token)
 	}
 
 	objectType := result.schema.Type(ctx).(tftypes.Object)
 
-	encoder, err := p.encoding.NewResourceEncoder(typeOrRenamedEntityName, objectType)
+	encoder, err := p.encoding.NewEphemeralResourceEncoder(typeOrRenamedEntityName, objectType)
 	if err != nil {
-		return resourceHandle{}, true, fmt.Errorf("Failed to prepare a resource encoder: %s", err)
+		return ephemeralResourceHandle{}, true, fmt.Errorf("Failed to prepare an ephemeral resource encoder: %s", err)
 	}
 
-	outputsDecoder, err := p.encoding.NewResourceDecoder(typeOrRenamedEntityName, objectType)
+	outputsDecoder, err := p.encoding.NewEphemeralResourceDecoder(typeOrRenamedEntityName, objectType)
 	if err != nil {
-		return resourceHandle{}, true, fmt.Errorf("Failed to prepare an resoure decoder: %s", err)
+		return ephemeralResourceHandle{}, true, fmt.Errorf("Failed to prepare an ephemeral resource decoder: %s", err)
 	}
 
 	result.encoder = encoder
 	result.decoder = outputsDecoder
 	result.token = token
 
-	result.schemaOnlyShimResource, _ = p.schemaOnlyProvider.ResourcesMap().GetOk(typeOrRenamedEntityName)
+	result.schemaOnlyShimResource, _ = p.schemaOnlyProvider.EphemeralResourcesMap().GetOk(typeOrRenamedEntityName)
 	return result, true, nil
-}
-
-func transformFromState(
-	ctx context.Context, rh resourceHandle, state pulumiresource.PropertyMap,
-) (pulumiresource.PropertyMap, error) {
-	if rh.pulumiResourceInfo == nil {
-		return state, nil
-	}
-	f := rh.pulumiResourceInfo.TransformFromState
-	if f == nil {
-		return state, nil
-	}
-	o, err := f(ctx, state)
-	if err != nil {
-		return nil, fmt.Errorf("transforming from state: %w", err)
-	}
-	return o, err
 }

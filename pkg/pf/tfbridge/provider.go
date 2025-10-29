@@ -79,17 +79,18 @@ func getProviderOptions(opts []providerOption) (providerOptions, error) {
 //
 // https://www.terraform.io/plugin/framework
 type provider struct {
-	tfServer      tfprotov6.ProviderServer
-	info          tfbridge.ProviderInfo
-	resources     runtypes.Resources
-	datasources   runtypes.DataSources
-	pulumiSchema  func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
-	encoding      convert.Encoding
-	diagSink      diag.Sink
-	configEncoder convert.Encoder
-	configType    tftypes.Object
-	version       semver.Version
-	logSink       logging.Sink
+	tfServer           tfprotov6.ProviderServer
+	info               tfbridge.ProviderInfo
+	resources          runtypes.Resources
+	datasources        runtypes.DataSources
+	ephemeralResources runtypes.EphemeralResources
+	pulumiSchema       func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
+	encoding           convert.Encoding
+	diagSink           diag.Sink
+	configEncoder      convert.Encoder
+	configType         tftypes.Object
+	version            semver.Version
+	logSink            logging.Sink
 
 	parameterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
 
@@ -99,6 +100,9 @@ type provider struct {
 
 	schemaOnlyProvider shim.Provider
 	providerOpts       []providerOption
+
+	// privateState holds any provider-specific state that needs propogating across operations. This is key'd by URN.
+	privateState map[string][]byte
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -150,6 +154,10 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	if err != nil {
 		return nil, err
 	}
+	ephemeralResources, err := pfServer.EphemeralResources(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	if info.MetadataInfo == nil {
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
@@ -191,6 +199,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		info:               info,
 		resources:          resources,
 		datasources:        datasources,
+		ephemeralResources: ephemeralResources,
 		pulumiSchema:       schema,
 		encoding:           enc,
 		configEncoder:      configEncoder,
@@ -199,6 +208,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		schemaOnlyProvider: info.P,
 		parameterize:       meta.XParamaterize,
 		providerOpts:       opts,
+		privateState:       map[string][]byte{},
 	}
 
 	return configencoding.New(p), nil
@@ -302,13 +312,22 @@ func (p *provider) SignalCancellationWithContext(_ context.Context) error {
 	return nil
 }
 
-func (p *provider) terraformResourceNameOrRenamedEntity(resourceToken tokens.Type) (string, error) {
-	for tfname, v := range p.info.Resources {
+func (p *provider) terraformEphemeralResourceNameOrRenamedEntity(resourceToken tokens.Type) (string, bool) {
+	for tfname, v := range p.info.EphemeralResources {
 		if v.Tok == resourceToken {
-			return tfname, nil
+			return tfname, true
 		}
 	}
-	return "", fmt.Errorf("[pf/tfbridge] unknown resource token: %v", resourceToken)
+	return "", false
+}
+
+func (p *provider) terraformResourceNameOrRenamedEntity(resourceToken tokens.Type) (string, bool) {
+	for tfname, v := range p.info.Resources {
+		if v.Tok == resourceToken {
+			return tfname, true
+		}
+	}
+	return "", false
 }
 
 func (p *provider) terraformDatasourceNameOrRenamedEntity(functionToken tokens.ModuleMember) (string, error) {

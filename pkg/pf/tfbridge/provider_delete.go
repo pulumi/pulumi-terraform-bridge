@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -35,51 +36,73 @@ func (p *provider) DeleteWithContext(
 ) (resource.Status, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
-	rh, err := p.resourceHandle(ctx, urn)
+	rh, has, err := p.resourceHandle(ctx, urn)
 	if err != nil {
 		return resource.StatusOK, err
 	}
 
-	props, err := transformFromState(ctx, rh, outputs)
+	if has {
+		props, err := transformFromState(ctx, rh, outputs)
+		if err != nil {
+			return resource.StatusOK, err
+		}
+
+		tfType := rh.schema.Type(ctx).(tftypes.Object)
+
+		priorState, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, props)
+		if err != nil {
+			return resource.StatusOK, err
+		}
+
+		nilState, err := tfprotov6.NewDynamicValue(tfType, tftypes.NewValue(tfType, nil))
+		contract.AssertNoErrorf(err, "nil is always a valid value to marshal to a dynamic state")
+
+		// terraform-plugin-framework recognizes PlannedState=nil ApplyResourceChangeRequest request as DELETE.
+		//
+		//nolint:lll // See
+		// https://github.com/hashicorp/terraform-plugin-framework/blob/ce2519cf40d45d28eebd81776019e68d1bddca6f/internal/fwserver/server_applyresourcechange.go#L63
+		req := tfprotov6.ApplyResourceChangeRequest{
+			TypeName:     rh.terraformResourceName,
+			PriorState:   priorState,
+			PlannedState: &nilState,
+			Config:       &nilState,
+		}
+
+		resp, err := p.tfServer.ApplyResourceChange(ctx, &req)
+		if err != nil {
+			return resource.StatusOK, err
+		}
+
+		// NOTE: no need to handle resp.Private in Delete.
+
+		if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+			return resource.StatusPartialFailure, err
+		}
+
+		// In one example that was tested, resp.NewState after a
+		// successful delete seem to have a record with all null
+		// values. Seems safe to simply ignore it.
+
+		return resource.StatusOK, nil
+	}
+
+	eh, has, err := p.ephemeralResourceHandle(ctx, urn)
 	if err != nil {
-		return resource.StatusOK, err
+		return resource.StatusUnknown, err
 	}
-
-	tfType := rh.schema.Type(ctx).(tftypes.Object)
-
-	priorState, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, props)
-	if err != nil {
-		return resource.StatusOK, err
+	if has {
+		req := tfprotov6.CloseEphemeralResourceRequest{
+			TypeName: eh.terraformResourceName,
+			Private:  p.privateState[string(urn)],
+		}
+		resp, err := p.tfServer.CloseEphemeralResource(ctx, &req)
+		if err != nil {
+			return resource.StatusUnknown, err
+		}
+		if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+			return resource.StatusPartialFailure, err
+		}
+		return resource.StatusOK, nil
 	}
-
-	nilState, err := tfprotov6.NewDynamicValue(tfType, tftypes.NewValue(tfType, nil))
-	contract.AssertNoErrorf(err, "nil is always a valid value to marshal to a dynamic state")
-
-	// terraform-plugin-framework recognizes PlannedState=nil ApplyResourceChangeRequest request as DELETE.
-	//
-	//nolint:lll // See
-	// https://github.com/hashicorp/terraform-plugin-framework/blob/ce2519cf40d45d28eebd81776019e68d1bddca6f/internal/fwserver/server_applyresourcechange.go#L63
-	req := tfprotov6.ApplyResourceChangeRequest{
-		TypeName:     rh.terraformResourceName,
-		PriorState:   priorState,
-		PlannedState: &nilState,
-		Config:       &nilState,
-	}
-
-	resp, err := p.tfServer.ApplyResourceChange(ctx, &req)
-	if err != nil {
-		return resource.StatusOK, err
-	}
-
-	// NOTE: no need to handle resp.Private in Delete.
-
-	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return resource.StatusPartialFailure, err
-	}
-
-	// In one example that was tested, resp.NewState after a
-	// successful delete seem to have a record with all null
-	// values. Seems safe to simply ignore it.
-
-	return resource.StatusOK, nil
+	return resource.StatusUnknown, fmt.Errorf("[pf/tfbridge] unknown resource token: %v", urn.Type())
 }

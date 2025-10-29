@@ -44,52 +44,55 @@ func (p *provider) CheckWithContext(
 
 	checkedInputs := inputs.Copy()
 
-	rh, err := p.resourceHandle(ctx, urn)
+	rh, has, err := p.resourceHandle(ctx, urn)
 	if err != nil {
 		return checkedInputs, []plugin.CheckFailure{}, err
 	}
+	if has {
+		priorState, err = transformFromState(ctx, rh, priorState)
+		if err != nil {
+			return checkedInputs, []plugin.CheckFailure{}, err
+		}
 
-	priorState, err = transformFromState(ctx, rh, priorState)
-	if err != nil {
-		return checkedInputs, []plugin.CheckFailure{}, err
-	}
-
-	if info := rh.pulumiResourceInfo; info != nil {
-		if check := info.PreCheckCallback; check != nil {
-			var err error
-			checkedInputs, err = check(ctx, checkedInputs, p.lastKnownProviderConfig.Copy())
-			if err != nil {
-				return checkedInputs, []plugin.CheckFailure{}, err
+		if info := rh.pulumiResourceInfo; info != nil {
+			if check := info.PreCheckCallback; check != nil {
+				var err error
+				checkedInputs, err = check(ctx, checkedInputs, p.lastKnownProviderConfig.Copy())
+				if err != nil {
+					return checkedInputs, []plugin.CheckFailure{}, err
+				}
 			}
 		}
+
+		// Transform checkedInputs to apply Pulumi-level defaults.
+		news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
+			SchemaMap:   rh.schemaOnlyShimResource.Schema(),
+			SchemaInfos: rh.pulumiResourceInfo.Fields,
+			ComputeDefaultOptions: tfbridge.ComputeDefaultOptions{
+				URN:        urn,
+				Properties: checkedInputs,
+				Seed:       randomSeed,
+				PriorState: priorState,
+				Autonaming: autonaming,
+			},
+			PropertyMap:    checkedInputs,
+			ProviderConfig: p.lastKnownProviderConfig,
+		})
+
+		checkFailures, err := p.validateResourceConfig(ctx, urn, rh, news)
+
+		schemaMap := rh.schemaOnlyShimResource.Schema()
+		schemaInfos := rh.pulumiResourceInfo.GetFields()
+		news = tfbridge.MarkSchemaSecrets(ctx, schemaMap, schemaInfos, resource.NewObjectProperty(news)).ObjectValue()
+
+		if err != nil {
+			return news, checkFailures, err
+		}
+
+		return news, checkFailures, nil
 	}
 
-	// Transform checkedInputs to apply Pulumi-level defaults.
-	news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
-		SchemaMap:   rh.schemaOnlyShimResource.Schema(),
-		SchemaInfos: rh.pulumiResourceInfo.Fields,
-		ComputeDefaultOptions: tfbridge.ComputeDefaultOptions{
-			URN:        urn,
-			Properties: checkedInputs,
-			Seed:       randomSeed,
-			PriorState: priorState,
-			Autonaming: autonaming,
-		},
-		PropertyMap:    checkedInputs,
-		ProviderConfig: p.lastKnownProviderConfig,
-	})
-
-	checkFailures, err := p.validateResourceConfig(ctx, urn, rh, news)
-
-	schemaMap := rh.schemaOnlyShimResource.Schema()
-	schemaInfos := rh.pulumiResourceInfo.GetFields()
-	news = tfbridge.MarkSchemaSecrets(ctx, schemaMap, schemaInfos, resource.NewObjectProperty(news)).ObjectValue()
-
-	if err != nil {
-		return news, checkFailures, err
-	}
-
-	return news, checkFailures, nil
+	return nil, nil, fmt.Errorf("[pf/tfbridge] unknown resource token: %v", urn.Type())
 }
 
 func (p *provider) validateResourceConfig(

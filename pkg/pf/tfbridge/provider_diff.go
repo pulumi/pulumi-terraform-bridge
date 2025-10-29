@@ -46,9 +46,12 @@ func (p *provider) DiffWithContext(
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
-	rh, err := p.resourceHandle(ctx, urn)
+	rh, has, err := p.resourceHandle(ctx, urn)
 	if err != nil {
 		return plugin.DiffResult{}, err
+	}
+	if !has {
+		return plugin.DiffResult{}, fmt.Errorf("[pf/tfbridge] unknown resource token: %v", urn.Type())
 	}
 
 	priorStateMap, err = transformFromState(ctx, rh, priorStateMap)

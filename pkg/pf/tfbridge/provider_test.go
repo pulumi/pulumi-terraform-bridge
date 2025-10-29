@@ -33,7 +33,7 @@ func TestTerraformResourceName(t *testing.T) {
 			},
 		},
 	}
-	name, err := p.terraformResourceNameOrRenamedEntity(urn.Type())
-	assert.NoError(t, err)
+	name, has := p.terraformResourceNameOrRenamedEntity(urn.Type())
+	assert.True(t, has)
 	assert.Equal(t, name, "random_integer")
 }

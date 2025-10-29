@@ -32,12 +32,18 @@ func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) s
 	if err != nil {
 		panic(err)
 	}
+	ephemeralResources, err := pfutils.GatherEphemeralResources(ctx, provider, NewSchemaMap)
+	if err != nil {
+		panic(err)
+	}
 	resourceMap := newSchemaOnlyResourceMap(resources)
 	dataSourceMap := newSchemaOnlyDataSourceMap(dataSources)
+	ephemeralResourceMap := newSchemaOnlyEphemeralResourceMap(ephemeralResources)
 	return &SchemaOnlyProvider{
-		ctx:           ctx,
-		tf:            provider,
-		resourceMap:   resourceMap,
-		dataSourceMap: dataSourceMap,
+		ctx:                  ctx,
+		tf:                   provider,
+		resourceMap:          resourceMap,
+		dataSourceMap:        dataSourceMap,
+		ephemeralResourceMap: ephemeralResourceMap,
 	}
 }

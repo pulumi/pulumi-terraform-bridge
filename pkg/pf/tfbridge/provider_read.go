@@ -47,9 +47,12 @@ func (p *provider) ReadWithContext(
 
 	// TODO[pulumi/pulumi-terraform-bridge#793] Add a test for Read handling a not-found resource
 
-	rh, err := p.resourceHandle(ctx, urn)
+	rh, has, err := p.resourceHandle(ctx, urn)
 	if err != nil {
 		return plugin.ReadResult{}, 0, err
+	}
+	if !has {
+		return plugin.ReadResult{}, 0, fmt.Errorf("[pf/tfbridge] unknown resource token: %v", urn.Type())
 	}
 
 	// Both "get" and "refresh" scenarios call Read. Detect and dispatch.
@@ -174,7 +177,7 @@ func (p *provider) readResource(
 		return plugin.ReadResult{}, nil, nil
 	}
 
-	readState, err := parseResourceStateFromTF(ctx, rh, resp.NewState, resp.Private)
+	readState, err := parseResourceStateFromTF(ctx, rh.schema, resp.NewState, resp.Private)
 	if err != nil {
 		return plugin.ReadResult{}, nil, fmt.Errorf("parsing resource state: %w", err)
 	}
@@ -184,7 +187,7 @@ func (p *provider) readResource(
 		return plugin.ReadResult{}, nil, nil
 	}
 
-	readStateMap, err := readState.ToPropertyMap(ctx, rh)
+	readStateMap, err := readState.ToPropertyMap(ctx, rh.decoder)
 	if err != nil {
 		return plugin.ReadResult{}, nil, fmt.Errorf("converting to property map: %w", err)
 	}
@@ -253,7 +256,7 @@ func (p *provider) importResource(
 
 	r := resp.ImportedResources[0]
 
-	readState, err := parseResourceStateFromTF(ctx, rh, r.State, r.Private)
+	readState, err := parseResourceStateFromTF(ctx, rh.schema, r.State, r.Private)
 	if err != nil {
 		return plugin.ReadResult{}, nil, err
 	}

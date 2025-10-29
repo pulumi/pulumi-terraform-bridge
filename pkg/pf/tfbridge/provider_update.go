@@ -39,9 +39,12 @@ func (p *provider) UpdateWithContext(
 ) (resource.PropertyMap, resource.Status, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
-	rh, err := p.resourceHandle(ctx, urn)
+	rh, has, err := p.resourceHandle(ctx, urn)
 	if err != nil {
 		return nil, 0, err
+	}
+	if !has {
+		return nil, resource.StatusUnknown, fmt.Errorf("[pf/tfbridge] unknown resource token: %v", urn.Type())
 	}
 
 	priorStateMap, err = transformFromState(ctx, rh, priorStateMap)
@@ -112,12 +115,12 @@ func (p *provider) UpdateWithContext(
 		return nil, 0, err
 	}
 
-	updatedState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState, resp.Private)
+	updatedState, err := parseResourceStateFromTF(ctx, rh.schema, resp.NewState, resp.Private)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	updatedStateMap, err := updatedState.ToPropertyMap(ctx, &rh)
+	updatedStateMap, err := updatedState.ToPropertyMap(ctx, rh.decoder)
 	if err != nil {
 		return nil, 0, err
 	}
