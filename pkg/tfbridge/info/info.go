@@ -1301,15 +1301,46 @@ func (m *MarshallableDataSource) Unmarshal() *DataSource {
 	}
 }
 
+// MarshallableListResource is the JSON-marshallable form of a Pulumi ListResource value.
+type MarshallableListResource struct {
+	Tok    tokens.Type                    `json:"tok"`
+	Fields map[string]*MarshallableSchema `json:"fields"`
+}
+
+// MarshalListResource converts a Pulumi ListResource value into a MarshallableListResource value.
+func MarshalListResource(l *ListResource) *MarshallableListResource {
+	fields := make(map[string]*MarshallableSchema)
+	for k, v := range l.Fields {
+		fields[k] = MarshalSchema(v)
+	}
+	return &MarshallableListResource{
+		Tok:    l.Tok,
+		Fields: fields,
+	}
+}
+
+// Unmarshal creates a mostly-initialized Pulumi ListResource value from the given MarshallableListResource.
+func (m *MarshallableListResource) Unmarshal() *ListResource {
+	fields := make(map[string]*Schema)
+	for k, v := range m.Fields {
+		fields[k] = v.Unmarshal()
+	}
+	return &ListResource{
+		Tok:    m.Tok,
+		Fields: fields,
+	}
+}
+
 // MarshallableProvider is the JSON-marshallable form of a Pulumi ProviderInfo value.
 type MarshallableProvider struct {
-	Provider          *MarshallableProviderShim          `json:"provider"`
-	Name              string                             `json:"name"`
-	Version           string                             `json:"version"`
-	Config            map[string]*MarshallableSchema     `json:"config,omitempty"`
-	Resources         map[string]*MarshallableResource   `json:"resources,omitempty"`
-	DataSources       map[string]*MarshallableDataSource `json:"dataSources,omitempty"`
-	TFProviderVersion string                             `json:"tfProviderVersion,omitempty"`
+	Provider          *MarshallableProviderShim            `json:"provider"`
+	Name              string                               `json:"name"`
+	Version           string                               `json:"version"`
+	Config            map[string]*MarshallableSchema       `json:"config,omitempty"`
+	Resources         map[string]*MarshallableResource     `json:"resources,omitempty"`
+	DataSources       map[string]*MarshallableDataSource   `json:"dataSources,omitempty"`
+	ListResources     map[string]*MarshallableListResource `json:"listResources,omitempty"`
+	TFProviderVersion string                               `json:"tfProviderVersion,omitempty"`
 }
 
 // MarshalProvider converts a Pulumi ProviderInfo value into a MarshallableProviderInfo value.
@@ -1326,6 +1357,10 @@ func MarshalProvider(p *Provider) *MarshallableProvider {
 	for k, v := range p.DataSources {
 		dataSources[k] = MarshalDataSource(v)
 	}
+	listResources := make(map[string]*MarshallableListResource)
+	for k, v := range p.ListResources {
+		listResources[k] = MarshalListResource(v)
+	}
 
 	info := MarshallableProvider{
 		Provider:          MarshalProviderShim(p.P),
@@ -1334,6 +1369,7 @@ func MarshalProvider(p *Provider) *MarshallableProvider {
 		Config:            config,
 		Resources:         resources,
 		DataSources:       dataSources,
+		ListResources:     listResources,
 		TFProviderVersion: p.TFProviderVersion,
 	}
 
@@ -1354,6 +1390,10 @@ func (m *MarshallableProvider) Unmarshal() *Provider {
 	for k, v := range m.DataSources {
 		dataSources[k] = v.Unmarshal()
 	}
+	listResources := make(map[string]*ListResource)
+	for k, v := range m.ListResources {
+		listResources[k] = v.Unmarshal()
+	}
 
 	info := Provider{
 		P:                 m.Provider.Unmarshal(),
@@ -1362,6 +1402,7 @@ func (m *MarshallableProvider) Unmarshal() *Provider {
 		Config:            config,
 		Resources:         resources,
 		DataSources:       dataSources,
+		ListResources:     listResources,
 		TFProviderVersion: m.TFProviderVersion,
 	}
 
