@@ -313,6 +313,11 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 				spec.Resources[string(t.info.Tok)] = g.genResourceType(mod.name, t)
 			case *resourceFunc:
 				spec.Functions[string(t.info.Tok)] = g.genDatasourceFunc(mod.name, t)
+			case *listResourceFunc:
+				// TODO:wip
+				spec.Functions[string(t.info.Tok)] = pschema.FunctionSpec{
+					Description: "example",
+				}
 			case *variable:
 				contract.Assertf(mod.config(), `mod.config()`)
 				config = append(config, t)

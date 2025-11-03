@@ -23,19 +23,19 @@ import (
 )
 
 // Resource map needs to support Set (mutability) for RenameResourceWithAlias.
-func newSchemaOnlyListResourceMap(resources runtypes.Resources) schemaOnlyListResourceMap {
-	m := schemaOnlyListResourceMap{Map: make(map[string]*schemaOnlyResource)}
+func newSchemaOnlyListResourceMap(resources runtypes.ListResources) schemaOnlyListResourceMap {
+	m := schemaOnlyListResourceMap{Map: make(map[string]*schemaOnlyListResource)}
 	for _, name := range resources.All() {
 		key := string(name)
 		v := resources.Schema(name)
-		m.Map[key] = newSchemaOnlyResource(v)
+		m.Map[key] = &schemaOnlyListResource{v, internalinter.Internal{}}
 	}
 	return m
 }
 
 type schemaOnlyListResourceMap struct {
 	internalinter.Internal
-	Map map[string]*schemaOnlyResource
+	Map map[string]*schemaOnlyListResource
 }
 
 var (
@@ -65,7 +65,7 @@ func (m schemaOnlyListResourceMap) Range(each func(key string, value shim.Resour
 }
 
 func (m schemaOnlyListResourceMap) Set(key string, value shim.Resource) {
-	v, ok := value.(*schemaOnlyResource)
+	v, ok := value.(*schemaOnlyListResource)
 	contract.Assertf(ok, "Set must be a %T, found a %T", v, value)
 	m.Map[key] = v
 }

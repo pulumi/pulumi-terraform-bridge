@@ -33,11 +33,11 @@ import (
 var _ = pf.ShimProvider(&SchemaOnlyProvider{})
 
 type SchemaOnlyProvider struct {
-	ctx              context.Context
-	tf               pfprovider.Provider
-	resourceMap      schemaOnlyResourceMap
-	dataSourceMap    schemaOnlyDataSourceMap
-	listResourcesMap schemaOnlyListResourceMap
+	ctx             context.Context
+	tf              pfprovider.Provider
+	resourceMap     schemaOnlyResourceMap
+	dataSourceMap   schemaOnlyDataSourceMap
+	listResourceMap schemaOnlyListResourceMap
 	internalinter.Internal
 }
 
@@ -60,7 +60,7 @@ func (p *SchemaOnlyProvider) Resources(ctx context.Context) (runtypes.Resources,
 }
 
 func (p *SchemaOnlyProvider) ListResources(ctx context.Context) (runtypes.ListResources, error) {
-	return p.listResourcesMap, nil
+	return p.listResourceMap, nil
 }
 
 func (p *SchemaOnlyProvider) DataSources(ctx context.Context) (runtypes.DataSources, error) {
@@ -95,7 +95,7 @@ func (p *SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
 }
 
 func (p *SchemaOnlyProvider) ListResourcesMap() shim.ResourceMap {
-	return p.listResourcesMap
+	return p.listResourceMap
 }
 
 func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
