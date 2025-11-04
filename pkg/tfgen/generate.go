@@ -873,18 +873,18 @@ func (rf *resourceFunc) ModuleMemberToken() tokens.ModuleMember {
 
 // listResourceFunc is a generated list resource which is exposed as a function/invoke
 type listResourceFunc struct {
-	mod             tokens.Module
-	name            string
-	doc             string
-	args            []*variable
-	rets            []*variable
-	reqargs         map[string]bool
-	argst           *propertyType
-	retst           *propertyType
-	schema          shim.Resource
-	info            *tfbridge.ListResourceInfo
-	entityDocs      entityDocs
-	listResourePath *paths.ListResourcePath
+	mod              tokens.Module
+	name             string
+	doc              string
+	args             []*variable
+	rets             []*variable
+	reqargs          map[string]bool
+	argst            *propertyType
+	retst            *propertyType
+	schema           shim.Resource
+	info             *tfbridge.ListResourceInfo
+	entityDocs       entityDocs
+	listResourcePath *paths.ListResourcePath
 }
 
 func (rf *listResourceFunc) Name() string { return rf.name }
@@ -1775,14 +1775,14 @@ func (g *Generator) gatherListResource(
 
 	entityDocs := entityDocs{Description: ""}
 	fun := &listResourceFunc{
-		mod:             mod,
-		name:            name.String(),
-		doc:             "",
-		reqargs:         make(map[string]bool),
-		schema:          resource,
-		info:            info,
-		entityDocs:      entityDocs,
-		listResourePath: path,
+		mod:              mod,
+		name:             name.String(),
+		doc:              "",
+		reqargs:          make(map[string]bool),
+		schema:           resource,
+		info:             info,
+		entityDocs:       entityDocs,
+		listResourcePath: path,
 	}
 
 	// See if arguments for this function are optional, and generate detailed metadata.

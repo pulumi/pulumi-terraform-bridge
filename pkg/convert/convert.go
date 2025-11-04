@@ -41,6 +41,8 @@ type Encoding interface {
 	NewResourceEncoder(resource string, resourceType tftypes.Object) (Encoder, error)
 	NewDataSourceDecoder(dataSource string, dataSourceType tftypes.Object) (Decoder, error)
 	NewDataSourceEncoder(dataSource string, dataSourceType tftypes.Object) (Encoder, error)
+	NewListResourceEncoder(listResource string, listResourceType tftypes.Object) (Encoder, error)
+	NewListResourceDecoder(listResource string, listResourceType tftypes.Object) (Decoder, error)
 }
 
 // Like PropertyNames but specialized to either a type by token or config property.
