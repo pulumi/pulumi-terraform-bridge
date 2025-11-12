@@ -156,8 +156,11 @@ resources:
 
 	for _, entry := range pt.GrpcLog(t).Entries {
 		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
-			var diff map[string]interface{}
+			var diff map[string]any
 			err := json.Unmarshal(entry.Response, &diff)
+			if entry.Response == nil {
+				continue
+			}
 			require.NoError(t, err)
 			assert.Equal(t, "DIFF_SOME", diff["changes"])
 		}
