@@ -1,0 +1,107 @@
+{
+  "obj": {
+    "ps": {
+      "adaptiveProtectionConfig": {
+        "plu": {
+          "i": {}
+        }
+      },
+      "advancedOptionsConfig": {
+        "plu": {
+          "i": {
+            "obj": {
+              "ps": {
+                "jsonCustomConfig": {
+                  "plu": {
+                    "i": {
+                      "obj": {
+                        "ps": {
+                          "contentTypes": {
+                            "arr": {}
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "recaptchaOptionsConfig": {
+        "plu": {
+          "i": {}
+        }
+      },
+      "rules": {
+        "arr": {
+          "el": {
+            "0": {
+              "obj": {
+                "ps": {
+                  "headerAction": {
+                    "plu": {
+                      "i": {}
+                    }
+                  },
+                  "match": {
+                    "plu": {
+                      "i": {
+                        "obj": {
+                          "ps": {
+                            "config": {
+                              "plu": {
+                                "i": {
+                                  "obj": {
+                                    "ps": {
+                                      "srcIpRanges": {
+                                        "arr": {}
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "expr": {
+                              "plu": {
+                                "i": {}
+                              }
+                            },
+                            "exprOptions": {
+                              "plu": {
+                                "i": {}
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "preconfiguredWafConfig": {
+                    "plu": {
+                      "i": {}
+                    }
+                  },
+                  "rateLimitOptions": {
+                    "plu": {
+                      "i": {}
+                    }
+                  },
+                  "redirectOptions": {
+                    "plu": {
+                      "i": {}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "renamed": {
+    "rules": "rule"
+  }
+}

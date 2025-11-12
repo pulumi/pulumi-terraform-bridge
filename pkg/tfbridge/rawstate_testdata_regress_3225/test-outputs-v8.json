@@ -1,0 +1,151 @@
+{
+    "outputs": {
+        "__pulumi_raw_state_delta": {
+            "obj": {
+                "ps": {
+                    "adaptiveProtectionConfig": {
+                        "plu": {
+                            "i": {}
+                        }
+                    },
+                    "advancedOptionsConfig": {
+                        "plu": {
+                            "i": {
+                                "obj": {
+                                    "ps": {
+                                        "jsonCustomConfig": {
+                                            "plu": {
+                                                "i": {
+                                                    "obj": {
+                                                        "ps": {
+                                                            "contentTypes": {
+                                                                "arr": {}
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "recaptchaOptionsConfig": {
+                        "plu": {
+                            "i": {}
+                        }
+                    },
+                    "rules": {
+                        "arr": {
+                            "el": {
+                                "0": {
+                                    "obj": {
+                                        "ps": {
+                                            "headerAction": {
+                                                "plu": {
+                                                    "i": {}
+                                                }
+                                            },
+                                            "match": {
+                                                "plu": {
+                                                    "i": {
+                                                        "obj": {
+                                                            "ps": {
+                                                                "config": {
+                                                                    "plu": {
+                                                                        "i": {
+                                                                            "obj": {
+                                                                                "ps": {
+                                                                                    "srcIpRanges": {
+                                                                                        "arr": {}
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "expr": {
+                                                                    "plu": {
+                                                                        "i": {}
+                                                                    }
+                                                                },
+                                                                "exprOptions": {
+                                                                    "plu": {
+                                                                        "i": {}
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "preconfiguredWafConfig": {
+                                                "plu": {
+                                                    "i": {}
+                                                }
+                                            },
+                                            "rateLimitOptions": {
+                                                "plu": {
+                                                    "i": {}
+                                                }
+                                            },
+                                            "redirectOptions": {
+                                                "plu": {
+                                                    "i": {}
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "renamed": {
+                    "rules": "rule"
+                }
+            }
+        },
+        "adaptiveProtectionConfig": null,
+        "advancedOptionsConfig": {
+            "jsonCustomConfig": {
+                "contentTypes": []
+            },
+            "jsonParsing": "STANDARD",
+            "logLevel": "",
+            "requestBodyInspectionSize": "",
+            "userIpRequestHeaders": null
+        },
+        "description": "Cloud Armor security policy with advanced JSON parsing",
+        "fingerprint": "irrelevant-fingerprint",
+        "id": "projects/PROJECT-NAME/global/securityPolicies/cloud-armor",
+        "name": "cloud-armor",
+        "project": "PROJECT-NAME",
+        "recaptchaOptionsConfig": null,
+        "rules": [
+            {
+                "action": "allow",
+                "description": "Default rule, higher priority overrides it",
+                "headerAction": null,
+                "match": {
+                    "config": {
+                        "srcIpRanges": [
+                            "*"
+                        ]
+                    },
+                    "expr": null,
+                    "exprOptions": null,
+                    "versionedExpr": "SRC_IPS_V1"
+                },
+                "preconfiguredWafConfig": null,
+                "preview": false,
+                "priority": 2147483647,
+                "rateLimitOptions": null,
+                "redirectOptions": null
+            }
+        ],
+        "selfLink": "https://www.googleapis.com/compute/v1/projects/PROJECT_NAME/global/securityPolicies/cloud-armor",
+        "type": "CLOUD_ARMOR"
+    }
+}

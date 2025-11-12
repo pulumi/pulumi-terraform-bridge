@@ -37,6 +37,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -542,6 +543,39 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 			require.NoError(t, err)
 			tc.expect.Equal(t, string(encodedJSON))
 		})
+	}
+}
+
+func Test_raw_state_recovery_from_outputs_regress_3225(t *testing.T) {
+	t.Parallel()
+	files := []string{"test-outputs-v8.json", "test-outputs-v9.json"}
+	for _, f := range files {
+		p := filepath.Join("rawstate_testdata_regress_3225", f)
+		testOutputs, err := os.ReadFile(p)
+		require.NoError(t, err)
+		var outputsJSON map[string]any
+		err = json.Unmarshal(testOutputs, &outputsJSON)
+		require.NoError(t, err)
+		data := resource.NewPropertyValue(outputsJSON).ObjectValue()
+		outputs := data["outputs"].ObjectValue()
+		require.NotEmpty(t, outputs)
+		content, ok := outputs[reservedkeys.RawStateDelta]
+		require.True(t, ok, "expected raw state delta in test data")
+		delta, err := UnmarshalRawStateDelta(content)
+		require.NoError(t, err, "expected to unmarshal raw state delta")
+		_, err = delta.Recover(resource.NewObjectProperty(outputs))
+		require.NoError(t, err)
+
+		deltaFile := filepath.Join("rawstate_testdata_regress_3225", "delta-v8.json")
+		deltaV8Content, err := os.ReadFile(deltaFile)
+		require.NoError(t, err)
+		var deltaJSON map[string]any
+		err = json.Unmarshal(deltaV8Content, &deltaJSON)
+		require.NoError(t, err)
+		deltaV8, err := UnmarshalRawStateDelta(resource.NewPropertyValue(deltaJSON))
+		require.NoError(t, err)
+		_, err = deltaV8.Recover(resource.NewObjectProperty(outputs))
+		require.NoError(t, err)
 	}
 }
 
