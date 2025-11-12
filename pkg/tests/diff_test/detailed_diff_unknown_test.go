@@ -1079,7 +1079,7 @@ func runDetailedDiffTest(
 	}{}
 
 	for _, entry := range pt.GrpcLog(t).Entries {
-		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
+		if entry.Method == "/pulumirpc.ResourceProvider/Diff" && entry.Response != nil {
 			err := json.Unmarshal(entry.Response, &diffResponse)
 			require.NoError(t, err)
 		}

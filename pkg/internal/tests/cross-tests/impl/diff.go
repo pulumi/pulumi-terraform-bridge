@@ -89,6 +89,9 @@ func GetPulumiDiffResponse(t T, entries []grpclog.GrpcLogEntry) PulumiDiffResp {
 	found := false
 	for _, entry := range entries {
 		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
+			if entry.Response == nil {
+				continue
+			}
 			require.False(t, found, "expected to find only one Diff entry in the gRPC log")
 			err := json.Unmarshal(entry.Response, &diffResponse)
 			require.NoError(t, err)
