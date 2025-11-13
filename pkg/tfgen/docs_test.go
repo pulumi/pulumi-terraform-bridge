@@ -2556,6 +2556,10 @@ func (m mockSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocF
 	return nil, nil
 }
 
+func (m mockSource) getAction(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
+	return nil, nil
+}
+
 func (m mockSource) getInstallation(info *tfbridge.DocInfo) (*DocFile, error) {
 	f, ok := m["index.md"]
 	if !ok {
