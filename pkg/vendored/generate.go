@@ -113,6 +113,11 @@ func vendorOpenTOFU(version string) {
 		oldPkg, newPkg,
 	))
 
+	replaceMarksRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/lang/marks" -> "%s/lang/marks"`,
+		oldPkg, newPkg,
+	))
+
 	replacePluginConvertRef := gofmtReplace(fmt.Sprintf(
 		`"%s/internal/plugin/convert" -> "%s/plugin/convert"`,
 		oldPkg, newPkg,
@@ -157,6 +162,7 @@ func vendorOpenTOFU(version string) {
 		replaceProvidersRef,
 		replaceStatesRef,
 		replaceConfigsHcl2ShimRef,
+		replaceMarksRef,
 		replacePlugin6Ref,
 		removeOpentofuVersion,
 	}
@@ -208,6 +214,16 @@ func vendorOpenTOFU(version string) {
 		{
 			src:        "internal/plans/objchange/plan_valid.go",
 			dest:       "plans/objchange/plan_valid.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plans/objchange/compatible.go",
+			dest:       "plans/objchange/compatible.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/lang/marks/marks.go",
+			dest:       "lang/marks/marks.go",
 			transforms: transforms,
 		},
 		{

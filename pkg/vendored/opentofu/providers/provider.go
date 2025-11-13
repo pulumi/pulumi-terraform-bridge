@@ -10,7 +10,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/configs/configschema"
-	
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/tfdiags"
 )
 
@@ -446,7 +446,6 @@ type ImportedResource struct {
 // The returned object also has no dependency addresses, but the caller may
 // freely modify the direct fields of the returned object without affecting
 // the receiver.
-
 
 type ReadDataSourceRequest struct {
 	// TypeName is the name of the data source type to Read.

@@ -31,7 +31,7 @@ import (
 )
 
 func TestInterpolateFuncZipMap(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -141,7 +141,7 @@ func TestInterpolateFuncZipMap(t *testing.T) {
 }
 
 func TestInterpolateFuncList(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// empty input returns empty list
@@ -244,7 +244,7 @@ func TestInterpolateFuncList(t *testing.T) {
 }
 
 func TestInterpolateFuncMax(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -287,7 +287,7 @@ func TestInterpolateFuncMax(t *testing.T) {
 }
 
 func TestInterpolateFuncMin(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -330,7 +330,7 @@ func TestInterpolateFuncMin(t *testing.T) {
 }
 
 func TestInterpolateFuncPow(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -394,7 +394,7 @@ func TestInterpolateFuncPow(t *testing.T) {
 }
 
 func TestInterpolateFuncFloor(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -425,7 +425,7 @@ func TestInterpolateFuncFloor(t *testing.T) {
 }
 
 func TestInterpolateFuncCeil(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -456,7 +456,7 @@ func TestInterpolateFuncCeil(t *testing.T) {
 }
 
 func TestInterpolateFuncLog(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -485,7 +485,7 @@ func TestInterpolateFuncLog(t *testing.T) {
 }
 
 func TestInterpolateFuncChomp(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -540,7 +540,7 @@ func TestInterpolateFuncChomp(t *testing.T) {
 }
 
 func TestInterpolateFuncMap(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// empty input returns empty map
@@ -616,7 +616,7 @@ func TestInterpolateFuncMap(t *testing.T) {
 }
 
 func TestInterpolateFuncCompact(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// empty string within array
@@ -651,7 +651,7 @@ func TestInterpolateFuncCompact(t *testing.T) {
 }
 
 func TestInterpolateFuncCidrHost(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -694,7 +694,7 @@ func TestInterpolateFuncCidrHost(t *testing.T) {
 }
 
 func TestInterpolateFuncCidrNetmask(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -734,7 +734,7 @@ func TestInterpolateFuncCidrNetmask(t *testing.T) {
 }
 
 func TestInterpolateFuncCidrSubnet(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -778,7 +778,7 @@ func TestInterpolateFuncCidrSubnet(t *testing.T) {
 }
 
 func TestInterpolateFuncCoalesce(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -806,7 +806,7 @@ func TestInterpolateFuncCoalesce(t *testing.T) {
 }
 
 func TestInterpolateFuncCoalesceList(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -834,7 +834,7 @@ func TestInterpolateFuncCoalesceList(t *testing.T) {
 }
 
 func TestInterpolateFuncConcat(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// String + list
@@ -975,7 +975,7 @@ func TestInterpolateFuncConcat(t *testing.T) {
 }
 
 func TestInterpolateFuncContains(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.listOfStrings": interfaceToVariableSwallowError([]string{"notfoo", "stillnotfoo", "bar"}),
@@ -1013,7 +1013,7 @@ func TestInterpolateFuncContains(t *testing.T) {
 }
 
 func TestInterpolateFuncMerge(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// basic merge
@@ -1111,7 +1111,7 @@ func TestInterpolateFuncMerge(t *testing.T) {
 }
 
 func TestInterpolateFuncDirname(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -1124,7 +1124,7 @@ func TestInterpolateFuncDirname(t *testing.T) {
 }
 
 func TestInterpolateFuncDistinct(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// 3 duplicates
@@ -1156,7 +1156,7 @@ func TestInterpolateFuncDistinct(t *testing.T) {
 }
 
 func TestInterpolateFuncMatchKeys(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// normal usage
@@ -1225,7 +1225,7 @@ func TestInterpolateFuncMatchKeys(t *testing.T) {
 }
 
 func TestInterpolateFuncFile(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tf, err := os.CreateTemp("", "tf")
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -1261,7 +1261,7 @@ func TestInterpolateFuncFile(t *testing.T) {
 }
 
 func TestInterpolateFuncFormat(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -1298,7 +1298,7 @@ func TestInterpolateFuncFormat(t *testing.T) {
 }
 
 func TestInterpolateFuncFormatList(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// formatlist requires at least one list
@@ -1359,7 +1359,7 @@ func TestInterpolateFuncFormatList(t *testing.T) {
 }
 
 func TestInterpolateFuncIndex(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.list1": interfaceToVariableSwallowError([]string{"notfoo", "stillnotfoo", "bar"}),
@@ -1395,7 +1395,7 @@ func TestInterpolateFuncIndex(t *testing.T) {
 }
 
 func TestInterpolateFuncIndent(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -1424,7 +1424,7 @@ pwd")}`,
 }
 
 func TestInterpolateFuncJoin(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.a_list":        interfaceToVariableSwallowError([]string{"foo"}),
@@ -1465,7 +1465,7 @@ func TestInterpolateFuncJoin(t *testing.T) {
 }
 
 func TestInterpolateFuncJSONEncode(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"easy": {
@@ -1550,7 +1550,7 @@ func TestInterpolateFuncJSONEncode(t *testing.T) {
 }
 
 func TestInterpolateFuncReplace(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// Regular search and replace
@@ -1591,7 +1591,7 @@ func TestInterpolateFuncReplace(t *testing.T) {
 }
 
 func TestInterpolateFuncReverse(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.inputlist": {
@@ -1625,7 +1625,7 @@ func TestInterpolateFuncReverse(t *testing.T) {
 }
 
 func TestInterpolateFuncLength(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// Raw strings
@@ -1703,7 +1703,7 @@ func TestInterpolateFuncLength(t *testing.T) {
 }
 
 func TestInterpolateFuncSignum(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -1740,7 +1740,7 @@ func TestInterpolateFuncSignum(t *testing.T) {
 }
 
 func TestInterpolateFuncSlice(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// Negative from index
@@ -1801,7 +1801,7 @@ func TestInterpolateFuncSlice(t *testing.T) {
 }
 
 func TestInterpolateFuncSort(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.strings": {
@@ -1836,7 +1836,7 @@ func TestInterpolateFuncSort(t *testing.T) {
 }
 
 func TestInterpolateFuncSplit(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -1885,7 +1885,7 @@ func TestInterpolateFuncSplit(t *testing.T) {
 }
 
 func TestInterpolateFuncLookup(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.foo": {
@@ -1965,7 +1965,7 @@ func TestInterpolateFuncLookup(t *testing.T) {
 }
 
 func TestInterpolateFuncKeys(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.foo": {
@@ -2020,7 +2020,7 @@ func TestInterpolateFuncKeys(t *testing.T) {
 // Confirm that keys return in sorted order, and values return in the order of
 // their sorted keys.
 func TestInterpolateFuncKeyValOrder(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.foo": {
@@ -2070,7 +2070,7 @@ func TestInterpolateFuncKeyValOrder(t *testing.T) {
 }
 
 func TestInterpolateFuncValues(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.foo": {
@@ -2135,7 +2135,7 @@ func interfaceToVariableSwallowError(input interface{}) ast.Variable {
 }
 
 func TestInterpolateFuncElement(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.a_list":        interfaceToVariableSwallowError([]string{"foo", "baz"}),
@@ -2195,7 +2195,7 @@ func TestInterpolateFuncElement(t *testing.T) {
 }
 
 func TestInterpolateFuncChunklist(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// normal usage
@@ -2234,7 +2234,7 @@ func TestInterpolateFuncChunklist(t *testing.T) {
 }
 
 func TestInterpolateFuncBasename(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2247,7 +2247,7 @@ func TestInterpolateFuncBasename(t *testing.T) {
 }
 
 func TestInterpolateFuncBase64Encode(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// Regular base64 encoding
@@ -2261,7 +2261,7 @@ func TestInterpolateFuncBase64Encode(t *testing.T) {
 }
 
 func TestInterpolateFuncBase64Decode(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// Regular base64 decoding
@@ -2282,7 +2282,7 @@ func TestInterpolateFuncBase64Decode(t *testing.T) {
 }
 
 func TestInterpolateFuncLower(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2307,7 +2307,7 @@ func TestInterpolateFuncLower(t *testing.T) {
 }
 
 func TestInterpolateFuncUpper(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2332,7 +2332,7 @@ func TestInterpolateFuncUpper(t *testing.T) {
 }
 
 func TestInterpolateFuncSha1(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2345,7 +2345,7 @@ func TestInterpolateFuncSha1(t *testing.T) {
 }
 
 func TestInterpolateFuncSha256(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{ // hexadecimal representation of sha256 sum
@@ -2358,7 +2358,7 @@ func TestInterpolateFuncSha256(t *testing.T) {
 }
 
 func TestInterpolateFuncSha512(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2371,7 +2371,7 @@ func TestInterpolateFuncSha512(t *testing.T) {
 }
 
 func TestInterpolateFuncTitle(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2402,7 +2402,7 @@ func TestInterpolateFuncTitle(t *testing.T) {
 }
 
 func TestInterpolateFuncTrimSpace(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2415,7 +2415,7 @@ func TestInterpolateFuncTrimSpace(t *testing.T) {
 }
 
 func TestInterpolateFuncBase64Gzip(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2428,7 +2428,7 @@ func TestInterpolateFuncBase64Gzip(t *testing.T) {
 }
 
 func TestInterpolateFuncBase64Sha256(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2446,7 +2446,7 @@ func TestInterpolateFuncBase64Sha256(t *testing.T) {
 }
 
 func TestInterpolateFuncBase64Sha512(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2464,7 +2464,7 @@ func TestInterpolateFuncBase64Sha512(t *testing.T) {
 }
 
 func TestInterpolateFuncMd5(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2487,7 +2487,7 @@ func TestInterpolateFuncMd5(t *testing.T) {
 }
 
 func TestInterpolateFuncUUID(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	results := make(map[string]bool)
 
 	for i := 0; i < 100; i++ {
@@ -2510,7 +2510,7 @@ func TestInterpolateFuncUUID(t *testing.T) {
 }
 
 func TestInterpolateFuncTimestamp(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	currentTime := time.Now().UTC()
 	ast, err := hil.Parse("${timestamp()}")
 	if err != nil {
@@ -2532,7 +2532,7 @@ func TestInterpolateFuncTimestamp(t *testing.T) {
 }
 
 func TestInterpolateFuncTimeAdd(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2597,7 +2597,7 @@ func testFunction(t *testing.T, config testFunctionConfig) {
 }
 
 func TestInterpolateFuncPathExpand(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	homePath, err := homedir.Dir()
 	if err != nil {
 		t.Fatalf("Error getting home directory: %v", err)
@@ -2634,7 +2634,7 @@ func TestInterpolateFuncPathExpand(t *testing.T) {
 }
 
 func TestInterpolateFuncSubstr(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2698,7 +2698,7 @@ func TestInterpolateFuncSubstr(t *testing.T) {
 }
 
 func TestInterpolateFuncBcrypt(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	node, err := hil.Parse(`${bcrypt("test")}`)
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -2727,7 +2727,7 @@ func TestInterpolateFuncBcrypt(t *testing.T) {
 }
 
 func TestInterpolateFuncFlatten(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			// empty string within array
@@ -2774,7 +2774,7 @@ func TestInterpolateFuncFlatten(t *testing.T) {
 }
 
 func TestInterpolateFuncURLEncode(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2802,7 +2802,7 @@ func TestInterpolateFuncURLEncode(t *testing.T) {
 }
 
 func TestInterpolateFuncTranspose(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.map": {
@@ -2879,7 +2879,7 @@ func TestInterpolateFuncTranspose(t *testing.T) {
 }
 
 func TestInterpolateFuncAbs(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
 			{
@@ -2932,7 +2932,7 @@ func TestInterpolateFuncAbs(t *testing.T) {
 }
 
 func TestInterpolateFuncRsaDecrypt(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Vars: map[string]ast.Variable{
 			"var.cipher_base64": {
