@@ -66,3 +66,9 @@ type DataSources interface {
 	collection
 	IsDataSources()
 }
+
+// Represents all provider's ephemeral resources pre-indexed by TypeOrRenamedEntityName.
+type EphemeralResources interface {
+	collection
+	IsEphemeralResources()
+}

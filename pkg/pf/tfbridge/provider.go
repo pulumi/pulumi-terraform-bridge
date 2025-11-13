@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -74,22 +76,29 @@ func getProviderOptions(opts []providerOption) (providerOptions, error) {
 	return res, nil
 }
 
+type ephemeral struct {
+	typeName string
+	renewAt  time.Time
+	private  []byte
+}
+
 // Provider implements the Pulumi resource provider operations for any
 // Terraform plugin built with Terraform Plugin Framework.
 //
 // https://www.terraform.io/plugin/framework
 type provider struct {
-	tfServer      tfprotov6.ProviderServer
-	info          tfbridge.ProviderInfo
-	resources     runtypes.Resources
-	datasources   runtypes.DataSources
-	pulumiSchema  func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
-	encoding      convert.Encoding
-	diagSink      diag.Sink
-	configEncoder convert.Encoder
-	configType    tftypes.Object
-	version       semver.Version
-	logSink       logging.Sink
+	tfServer           tfprotov6.ProviderServer
+	info               tfbridge.ProviderInfo
+	resources          runtypes.Resources
+	datasources        runtypes.DataSources
+	ephemeralResources runtypes.EphemeralResources
+	pulumiSchema       func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
+	encoding           convert.Encoding
+	diagSink           diag.Sink
+	configEncoder      convert.Encoder
+	configType         tftypes.Object
+	version            semver.Version
+	logSink            logging.Sink
 
 	parameterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
 
@@ -99,6 +108,10 @@ type provider struct {
 
 	schemaOnlyProvider shim.Provider
 	providerOpts       []providerOption
+
+	// ephemeralState holds any provider-specific state that needs propagating across operations.
+	ephemeralState     []ephemeral
+	ephemeralStateLock sync.Mutex
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -150,6 +163,10 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	if err != nil {
 		return nil, err
 	}
+	ephemeralResources, err := pfServer.EphemeralResources(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	if info.MetadataInfo == nil {
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
@@ -191,6 +208,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		info:               info,
 		resources:          resources,
 		datasources:        datasources,
+		ephemeralResources: ephemeralResources,
 		pulumiSchema:       schema,
 		encoding:           enc,
 		configEncoder:      configEncoder,
@@ -298,6 +316,21 @@ func (p *provider) GetPluginInfoWithContext(_ context.Context) (workspace.Plugin
 // initialization error. SignalCancellation is advisory and non-blocking; it is up to the host to decide how long to
 // wait after SignalCancellation is called before (e.g.) hard-closing any gRPC connection.
 func (p *provider) SignalCancellationWithContext(_ context.Context) error {
+	// Close any ephemeral resources.
+	p.ephemeralStateLock.Lock()
+	defer p.ephemeralStateLock.Unlock()
+
+	for _, e := range p.ephemeralState {
+		req := &tfprotov6.CloseEphemeralResourceRequest{
+			TypeName: e.typeName,
+			Private:  e.private,
+		}
+		_, err := p.tfServer.CloseEphemeralResource(context.Background(), req)
+		if err != nil {
+			p.diagSink.Warningf(diag.Message("", fmt.Sprintf("error closing ephemeral resource: %v", err)))
+		}
+	}
+
 	// Some improvements are possible here to gracefully shut down.
 	return nil
 }
@@ -318,6 +351,15 @@ func (p *provider) terraformDatasourceNameOrRenamedEntity(functionToken tokens.M
 		}
 	}
 	return "", fmt.Errorf("[pf/tfbridge] unknown datasource token: %v", functionToken)
+}
+
+func (p *provider) terraformEphemeralResourceNameOrRenamedEntity(resourceToken tokens.ModuleMember) (string, bool) {
+	for tfname, v := range p.info.EphemeralResources {
+		if v.Tok == resourceToken {
+			return tfname, true
+		}
+	}
+	return "", false
 }
 
 func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {
