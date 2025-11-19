@@ -1854,6 +1854,16 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			expected: "## Import\n\n```sh\n$ pulumi import snowflake:index/apiIntegration:ApiIntegration example name\n```\n\n",
 		},
 		{
+			// The following test case contains a `console` codeblock that should be gone
+			input: strings.Join([]string{
+				"```console",
+				"terraform import snowflake_api_integration.example name",
+				"```",
+			}, "\n"),
+			token:    "snowflake:index/apiIntegration:ApiIntegration",
+			expected: "## Import\n\n```sh\n$ pulumi import snowflake:index/apiIntegration:ApiIntegration example name\n```\n\n",
+		},
+		{
 			input: strings.Join([]string{
 				"",
 				"This is a first line in a multi-line import section",
