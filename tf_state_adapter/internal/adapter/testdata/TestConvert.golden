@@ -1,0 +1,52 @@
+`{
+  "example": {
+    "accelerationStatus": "",
+    "acl": null,
+    "arn": "arn:aws:s3:::my-example-bucket-20251119163156",
+    "bucket": "my-example-bucket-20251119163156",
+    "bucketDomainName": "my-example-bucket-20251119163156.s3.amazonaws.com",
+    "bucketPrefix": "",
+    "bucketRegion": "us-east-1",
+    "bucketRegionalDomainName": "my-example-bucket-20251119163156.s3.us-east-1.amazonaws.com",
+    "corsRules": [],
+    "forceDestroy": false,
+    "grants": [
+      {
+        "id": "69c80caa37c265d93308334e41ddd9ee253ab9f1460124a3c64fa7e21f3ef5b3",
+        "permissions": [
+          "FULL_CONTROL"
+        ],
+        "type": "CanonicalUser",
+        "uri": ""
+      }
+    ],
+    "hostedZoneId": "Z3AQBSTGFYJSTF",
+    "id": "my-example-bucket-20251119163156",
+    "lifecycleRules": [],
+    "logging": null,
+    "objectLockConfiguration": null,
+    "objectLockEnabled": false,
+    "policy": "",
+    "region": "us-east-1",
+    "replicationConfiguration": null,
+    "requestPayer": "BucketOwner",
+    "serverSideEncryptionConfiguration": {
+      "rule": {
+        "applyServerSideEncryptionByDefault": {
+          "kmsMasterKeyId": "",
+          "sseAlgorithm": "AES256"
+        },
+        "bucketKeyEnabled": false
+      }
+    },
+    "tags": null,
+    "tagsAll": {},
+    "versioning": {
+      "enabled": false,
+      "mfaDelete": false
+    },
+    "website": null,
+    "websiteDomain": null,
+    "websiteEndpoint": null
+  }
+}`

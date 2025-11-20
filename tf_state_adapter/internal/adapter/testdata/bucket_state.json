@@ -1,0 +1,107 @@
+{
+    "format_version": "1.0",
+    "terraform_version": "1.9.1",
+    "values": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": "aws_s3_bucket.example",
+                    "mode": "managed",
+                    "type": "aws_s3_bucket",
+                    "name": "example",
+                    "provider_name": "registry.opentofu.org/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "acceleration_status": "",
+                        "acl": null,
+                        "arn": "arn:aws:s3:::my-example-bucket-20251119163156",
+                        "bucket": "my-example-bucket-20251119163156",
+                        "bucket_domain_name": "my-example-bucket-20251119163156.s3.amazonaws.com",
+                        "bucket_prefix": "",
+                        "bucket_region": "us-east-1",
+                        "bucket_regional_domain_name": "my-example-bucket-20251119163156.s3.us-east-1.amazonaws.com",
+                        "cors_rule": [],
+                        "force_destroy": false,
+                        "grant": [
+                            {
+                                "id": "69c80caa37c265d93308334e41ddd9ee253ab9f1460124a3c64fa7e21f3ef5b3",
+                                "permissions": [
+                                    "FULL_CONTROL"
+                                ],
+                                "type": "CanonicalUser",
+                                "uri": ""
+                            }
+                        ],
+                        "hosted_zone_id": "Z3AQBSTGFYJSTF",
+                        "id": "my-example-bucket-20251119163156",
+                        "lifecycle_rule": [],
+                        "logging": [],
+                        "object_lock_configuration": [],
+                        "object_lock_enabled": false,
+                        "policy": "",
+                        "region": "us-east-1",
+                        "replication_configuration": [],
+                        "request_payer": "BucketOwner",
+                        "server_side_encryption_configuration": [
+                            {
+                                "rule": [
+                                    {
+                                        "apply_server_side_encryption_by_default": [
+                                            {
+                                                "kms_master_key_id": "",
+                                                "sse_algorithm": "AES256"
+                                            }
+                                        ],
+                                        "bucket_key_enabled": false
+                                    }
+                                ]
+                            }
+                        ],
+                        "tags": null,
+                        "tags_all": {},
+                        "timeouts": null,
+                        "versioning": [
+                            {
+                                "enabled": false,
+                                "mfa_delete": false
+                            }
+                        ],
+                        "website": [],
+                        "website_domain": null,
+                        "website_endpoint": null
+                    },
+                    "sensitive_values": {
+                        "cors_rule": [],
+                        "grant": [
+                            {
+                                "permissions": [
+                                    false
+                                ]
+                            }
+                        ],
+                        "lifecycle_rule": [],
+                        "logging": [],
+                        "object_lock_configuration": [],
+                        "replication_configuration": [],
+                        "server_side_encryption_configuration": [
+                            {
+                                "rule": [
+                                    {
+                                        "apply_server_side_encryption_by_default": [
+                                            {}
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        "tags_all": {},
+                        "versioning": [
+                            {}
+                        ],
+                        "website": []
+                    }
+                }
+            ]
+        }
+    }
+}
