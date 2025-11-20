@@ -73,6 +73,10 @@ func (p v1Provider) DataSourcesMap() shim.ResourceMap {
 	return v1ResourceMap(p.tf.DataSourcesMap)
 }
 
+func (p v1Provider) ActionsMap() shim.ActionMap {
+	return v1ActionMap{}
+}
+
 func (p v1Provider) InternalValidate() error {
 	return p.tf.InternalValidate()
 }
