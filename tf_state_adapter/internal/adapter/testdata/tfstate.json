@@ -1,0 +1,931 @@
+{
+    "format_version": "1.0",
+    "terraform_version": "1.12.1",
+    "values": {
+        "outputs": {
+            "arn": {
+                "sensitive": false,
+                "value": "arn:aws:lambda:us-east-1:894850187425:function:HelloWorld-r9ra4vmc",
+                "type": "string"
+            },
+            "url": {
+                "sensitive": false,
+                "value": "https://lpthp592a2.execute-api.us-east-1.amazonaws.com/serverless_lambda_stage",
+                "type": "string"
+            }
+        },
+        "root_module": {
+            "resources": [
+                {
+                    "address": "data.archive_file.lambda_hello_world",
+                    "mode": "data",
+                    "type": "archive_file",
+                    "name": "lambda_hello_world",
+                    "provider_name": "registry.terraform.io/hashicorp/archive",
+                    "schema_version": 0,
+                    "values": {
+                        "exclude_symlink_directories": null,
+                        "excludes": null,
+                        "id": "95078c4aece306bb6c2f1009a6613ce5eccd6e1f",
+                        "output_base64sha256": "ZUIYYT7wdTPWE84nEwpmJn+AYW881aVlfev5cttqJAg=",
+                        "output_base64sha512": "JbagAQB27nhZaV4mTHosMPWq3fyfZhktWgDTakW8GAbm2GOj1HKcl3Mv6hka8Tr2Sa4dFowK6nv960lptr/BtA==",
+                        "output_file_mode": null,
+                        "output_md5": "092c56a3d3176742a436b9d226cae0f4",
+                        "output_path": "./hello-world.zip",
+                        "output_sha": "95078c4aece306bb6c2f1009a6613ce5eccd6e1f",
+                        "output_sha256": "654218613ef07533d613ce27130a66267f80616f3cd5a5657debf972db6a2408",
+                        "output_sha512": "25b6a0010076ee7859695e264c7a2c30f5aaddfc9f66192d5a00d36a45bc1806e6d863a3d4729c97732fea191af13af649ae1d168c0aea7bfdeb4969b6bfc1b4",
+                        "output_size": 389,
+                        "source": [],
+                        "source_content": null,
+                        "source_content_filename": null,
+                        "source_dir": "./hello-world",
+                        "source_file": null,
+                        "type": "zip"
+                    },
+                    "sensitive_values": {
+                        "source": []
+                    }
+                },
+                {
+                    "address": "aws_apigatewayv2_api.lambda",
+                    "mode": "managed",
+                    "type": "aws_apigatewayv2_api",
+                    "name": "lambda",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "api_endpoint": "https://lpthp592a2.execute-api.us-east-1.amazonaws.com",
+                        "api_key_selection_expression": "$request.header.x-api-key",
+                        "arn": "arn:aws:apigateway:us-east-1::/apis/lpthp592a2",
+                        "body": null,
+                        "cors_configuration": [],
+                        "credentials_arn": null,
+                        "description": "",
+                        "disable_execute_api_endpoint": false,
+                        "execution_arn": "arn:aws:execute-api:us-east-1:894850187425:lpthp592a2",
+                        "fail_on_warnings": null,
+                        "id": "lpthp592a2",
+                        "ip_address_type": "ipv4",
+                        "name": "serverless_lambda_gw-2syvikbb",
+                        "protocol_type": "HTTP",
+                        "region": "us-east-1",
+                        "route_key": null,
+                        "route_selection_expression": "$request.method $request.path",
+                        "tags": {},
+                        "tags_all": {
+                            "environment": "test",
+                            "project": "aws_lambda_api"
+                        },
+                        "target": null,
+                        "version": ""
+                    },
+                    "sensitive_values": {
+                        "cors_configuration": [],
+                        "tags": {},
+                        "tags_all": {}
+                    },
+                    "depends_on": [
+                        "random_string.api_gw_name"
+                    ]
+                },
+                {
+                    "address": "aws_apigatewayv2_integration.hello_world",
+                    "mode": "managed",
+                    "type": "aws_apigatewayv2_integration",
+                    "name": "hello_world",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "api_id": "lpthp592a2",
+                        "connection_id": "",
+                        "connection_type": "INTERNET",
+                        "content_handling_strategy": "",
+                        "credentials_arn": "",
+                        "description": "",
+                        "id": "z0b9yn9",
+                        "integration_method": "POST",
+                        "integration_response_selection_expression": "",
+                        "integration_subtype": "",
+                        "integration_type": "AWS_PROXY",
+                        "integration_uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:894850187425:function:HelloWorld-r9ra4vmc/invocations",
+                        "passthrough_behavior": "",
+                        "payload_format_version": "1.0",
+                        "region": "us-east-1",
+                        "request_parameters": {},
+                        "request_templates": {},
+                        "response_parameters": [],
+                        "template_selection_expression": "",
+                        "timeout_milliseconds": 30000,
+                        "tls_config": []
+                    },
+                    "sensitive_values": {
+                        "request_parameters": {},
+                        "request_templates": {},
+                        "response_parameters": [],
+                        "tls_config": []
+                    },
+                    "depends_on": [
+                        "aws_apigatewayv2_api.lambda",
+                        "aws_iam_role.lambda_exec",
+                        "aws_lambda_function.hello_world",
+                        "aws_s3_bucket.lambda_bucket",
+                        "aws_s3_object.lambda_hello_world",
+                        "data.archive_file.lambda_hello_world",
+                        "random_pet.lambda_bucket_name",
+                        "random_string.api_gw_name",
+                        "random_string.lambda_name",
+                        "random_string.lambda_role_name"
+                    ]
+                },
+                {
+                    "address": "aws_apigatewayv2_route.hello_world",
+                    "mode": "managed",
+                    "type": "aws_apigatewayv2_route",
+                    "name": "hello_world",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "api_id": "lpthp592a2",
+                        "api_key_required": false,
+                        "authorization_scopes": [],
+                        "authorization_type": "NONE",
+                        "authorizer_id": "",
+                        "id": "fwy5rg8",
+                        "model_selection_expression": "",
+                        "operation_name": "",
+                        "region": "us-east-1",
+                        "request_models": {},
+                        "request_parameter": [],
+                        "route_key": "GET /hello",
+                        "route_response_selection_expression": "",
+                        "target": "integrations/z0b9yn9"
+                    },
+                    "sensitive_values": {
+                        "authorization_scopes": [],
+                        "request_models": {},
+                        "request_parameter": []
+                    },
+                    "depends_on": [
+                        "aws_apigatewayv2_api.lambda",
+                        "aws_apigatewayv2_integration.hello_world",
+                        "aws_iam_role.lambda_exec",
+                        "aws_lambda_function.hello_world",
+                        "aws_s3_bucket.lambda_bucket",
+                        "aws_s3_object.lambda_hello_world",
+                        "data.archive_file.lambda_hello_world",
+                        "random_pet.lambda_bucket_name",
+                        "random_string.api_gw_name",
+                        "random_string.lambda_name",
+                        "random_string.lambda_role_name"
+                    ]
+                },
+                {
+                    "address": "aws_apigatewayv2_stage.lambda",
+                    "mode": "managed",
+                    "type": "aws_apigatewayv2_stage",
+                    "name": "lambda",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "access_log_settings": [
+                            {
+                                "destination_arn": "arn:aws:logs:us-east-1:894850187425:log-group:/aws/api_gw/serverless_lambda_gw-2syvikbb",
+                                "format": "{\"httpMethod\":\"$context.httpMethod\",\"integrationErrorMessage\":\"$context.integrationErrorMessage\",\"protocol\":\"$context.protocol\",\"requestId\":\"$context.requestId\",\"requestTime\":\"$context.requestTime\",\"resourcePath\":\"$context.resourcePath\",\"responseLength\":\"$context.responseLength\",\"routeKey\":\"$context.routeKey\",\"sourceIp\":\"$context.identity.sourceIp\",\"status\":\"$context.status\"}"
+                            }
+                        ],
+                        "api_id": "lpthp592a2",
+                        "arn": "arn:aws:apigateway:us-east-1::/apis/lpthp592a2/stages/serverless_lambda_stage",
+                        "auto_deploy": true,
+                        "client_certificate_id": "",
+                        "default_route_settings": [
+                            {
+                                "data_trace_enabled": false,
+                                "detailed_metrics_enabled": false,
+                                "logging_level": "",
+                                "throttling_burst_limit": 0,
+                                "throttling_rate_limit": 0
+                            }
+                        ],
+                        "deployment_id": "ci5ihs",
+                        "description": "",
+                        "execution_arn": "arn:aws:execute-api:us-east-1:894850187425:lpthp592a2/serverless_lambda_stage",
+                        "id": "serverless_lambda_stage",
+                        "invoke_url": "https://lpthp592a2.execute-api.us-east-1.amazonaws.com/serverless_lambda_stage",
+                        "name": "serverless_lambda_stage",
+                        "region": "us-east-1",
+                        "route_settings": [],
+                        "stage_variables": {},
+                        "tags": {},
+                        "tags_all": {
+                            "environment": "test",
+                            "project": "aws_lambda_api"
+                        }
+                    },
+                    "sensitive_values": {
+                        "access_log_settings": [
+                            {}
+                        ],
+                        "default_route_settings": [
+                            {}
+                        ],
+                        "route_settings": [],
+                        "stage_variables": {},
+                        "tags": {},
+                        "tags_all": {}
+                    },
+                    "depends_on": [
+                        "aws_apigatewayv2_api.lambda",
+                        "aws_cloudwatch_log_group.api_gw",
+                        "random_string.api_gw_name"
+                    ]
+                },
+                {
+                    "address": "aws_cloudwatch_log_group.api_gw",
+                    "mode": "managed",
+                    "type": "aws_cloudwatch_log_group",
+                    "name": "api_gw",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "arn": "arn:aws:logs:us-east-1:894850187425:log-group:/aws/api_gw/serverless_lambda_gw-2syvikbb",
+                        "id": "/aws/api_gw/serverless_lambda_gw-2syvikbb",
+                        "kms_key_id": "",
+                        "log_group_class": "STANDARD",
+                        "name": "/aws/api_gw/serverless_lambda_gw-2syvikbb",
+                        "name_prefix": "",
+                        "region": "us-east-1",
+                        "retention_in_days": 30,
+                        "skip_destroy": false,
+                        "tags": {},
+                        "tags_all": {
+                            "environment": "test",
+                            "project": "aws_lambda_api"
+                        }
+                    },
+                    "sensitive_values": {
+                        "tags": {},
+                        "tags_all": {}
+                    },
+                    "depends_on": [
+                        "aws_apigatewayv2_api.lambda",
+                        "random_string.api_gw_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "name": "/aws/api_gw/serverless_lambda_gw-2syvikbb",
+                        "region": "us-east-1"
+                    }
+                },
+                {
+                    "address": "aws_cloudwatch_log_group.hello_world",
+                    "mode": "managed",
+                    "type": "aws_cloudwatch_log_group",
+                    "name": "hello_world",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "arn": "arn:aws:logs:us-east-1:894850187425:log-group:/aws/lambda/HelloWorld-r9ra4vmc",
+                        "id": "/aws/lambda/HelloWorld-r9ra4vmc",
+                        "kms_key_id": "",
+                        "log_group_class": "STANDARD",
+                        "name": "/aws/lambda/HelloWorld-r9ra4vmc",
+                        "name_prefix": "",
+                        "region": "us-east-1",
+                        "retention_in_days": 3,
+                        "skip_destroy": false,
+                        "tags": {},
+                        "tags_all": {
+                            "environment": "test",
+                            "project": "aws_lambda_api"
+                        }
+                    },
+                    "sensitive_values": {
+                        "tags": {},
+                        "tags_all": {}
+                    },
+                    "depends_on": [
+                        "aws_iam_role.lambda_exec",
+                        "aws_lambda_function.hello_world",
+                        "aws_s3_bucket.lambda_bucket",
+                        "aws_s3_object.lambda_hello_world",
+                        "data.archive_file.lambda_hello_world",
+                        "random_pet.lambda_bucket_name",
+                        "random_string.lambda_name",
+                        "random_string.lambda_role_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "name": "/aws/lambda/HelloWorld-r9ra4vmc",
+                        "region": "us-east-1"
+                    }
+                },
+                {
+                    "address": "aws_iam_role.lambda_exec",
+                    "mode": "managed",
+                    "type": "aws_iam_role",
+                    "name": "lambda_exec",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "arn": "arn:aws:iam::894850187425:role/serverless_lambda_xpdr24t0",
+                        "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Sid\":\"\"}],\"Version\":\"2012-10-17\"}",
+                        "create_date": "2025-11-17T17:01:44Z",
+                        "description": "",
+                        "force_detach_policies": false,
+                        "id": "serverless_lambda_xpdr24t0",
+                        "inline_policy": [],
+                        "managed_policy_arns": [
+                            "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                        ],
+                        "max_session_duration": 3600,
+                        "name": "serverless_lambda_xpdr24t0",
+                        "name_prefix": "",
+                        "path": "/",
+                        "permissions_boundary": "",
+                        "tags": {},
+                        "tags_all": {
+                            "environment": "test",
+                            "project": "aws_lambda_api"
+                        },
+                        "unique_id": "AROA5AWJ2ICQSTD5WFP3T"
+                    },
+                    "sensitive_values": {
+                        "inline_policy": [],
+                        "managed_policy_arns": [
+                            false
+                        ],
+                        "tags": {},
+                        "tags_all": {}
+                    },
+                    "depends_on": [
+                        "random_string.lambda_role_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "name": "serverless_lambda_xpdr24t0"
+                    }
+                },
+                {
+                    "address": "aws_iam_role_policy_attachment.lambda_policy",
+                    "mode": "managed",
+                    "type": "aws_iam_role_policy_attachment",
+                    "name": "lambda_policy",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "id": "serverless_lambda_xpdr24t0/arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                        "policy_arn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                        "role": "serverless_lambda_xpdr24t0"
+                    },
+                    "sensitive_values": {},
+                    "depends_on": [
+                        "aws_iam_role.lambda_exec",
+                        "random_string.lambda_role_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "policy_arn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                        "role": "serverless_lambda_xpdr24t0"
+                    }
+                },
+                {
+                    "address": "aws_lambda_function.hello_world",
+                    "mode": "managed",
+                    "type": "aws_lambda_function",
+                    "name": "hello_world",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "architectures": [
+                            "x86_64"
+                        ],
+                        "arn": "arn:aws:lambda:us-east-1:894850187425:function:HelloWorld-r9ra4vmc",
+                        "code_sha256": "ZUIYYT7wdTPWE84nEwpmJn+AYW881aVlfev5cttqJAg=",
+                        "code_signing_config_arn": "",
+                        "dead_letter_config": [],
+                        "description": "",
+                        "environment": [],
+                        "ephemeral_storage": [
+                            {
+                                "size": 512
+                            }
+                        ],
+                        "file_system_config": [],
+                        "filename": null,
+                        "function_name": "HelloWorld-r9ra4vmc",
+                        "handler": "hello.handler",
+                        "id": "HelloWorld-r9ra4vmc",
+                        "image_config": [],
+                        "image_uri": "",
+                        "invoke_arn": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:894850187425:function:HelloWorld-r9ra4vmc/invocations",
+                        "kms_key_arn": "",
+                        "last_modified": "2025-11-17T17:01:57.611+0000",
+                        "layers": [],
+                        "logging_config": [
+                            {
+                                "application_log_level": "",
+                                "log_format": "Text",
+                                "log_group": "/aws/lambda/HelloWorld-r9ra4vmc",
+                                "system_log_level": ""
+                            }
+                        ],
+                        "memory_size": 128,
+                        "package_type": "Zip",
+                        "publish": false,
+                        "qualified_arn": "arn:aws:lambda:us-east-1:894850187425:function:HelloWorld-r9ra4vmc:$LATEST",
+                        "qualified_invoke_arn": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:894850187425:function:HelloWorld-r9ra4vmc:$LATEST/invocations",
+                        "region": "us-east-1",
+                        "replace_security_groups_on_destroy": null,
+                        "replacement_security_group_ids": null,
+                        "reserved_concurrent_executions": -1,
+                        "role": "arn:aws:iam::894850187425:role/serverless_lambda_xpdr24t0",
+                        "runtime": "nodejs20.x",
+                        "s3_bucket": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "s3_key": "hello-world.zip",
+                        "s3_object_version": null,
+                        "signing_job_arn": "",
+                        "signing_profile_version_arn": "",
+                        "skip_destroy": false,
+                        "snap_start": [],
+                        "source_code_hash": "ZUIYYT7wdTPWE84nEwpmJn+AYW881aVlfev5cttqJAg=",
+                        "source_code_size": 389,
+                        "source_kms_key_arn": "",
+                        "tags": {
+                            "my_tag": "my_value"
+                        },
+                        "tags_all": {
+                            "environment": "test",
+                            "my_tag": "my_value",
+                            "project": "aws_lambda_api"
+                        },
+                        "timeout": 3,
+                        "timeouts": null,
+                        "tracing_config": [
+                            {
+                                "mode": "PassThrough"
+                            }
+                        ],
+                        "version": "$LATEST",
+                        "vpc_config": []
+                    },
+                    "sensitive_values": {
+                        "architectures": [
+                            false
+                        ],
+                        "dead_letter_config": [],
+                        "environment": [],
+                        "ephemeral_storage": [
+                            {}
+                        ],
+                        "file_system_config": [],
+                        "image_config": [],
+                        "layers": [],
+                        "logging_config": [
+                            {}
+                        ],
+                        "snap_start": [],
+                        "tags": {},
+                        "tags_all": {},
+                        "tracing_config": [
+                            {}
+                        ],
+                        "vpc_config": []
+                    },
+                    "depends_on": [
+                        "aws_iam_role.lambda_exec",
+                        "aws_s3_bucket.lambda_bucket",
+                        "aws_s3_object.lambda_hello_world",
+                        "data.archive_file.lambda_hello_world",
+                        "random_pet.lambda_bucket_name",
+                        "random_string.lambda_name",
+                        "random_string.lambda_role_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "function_name": "HelloWorld-r9ra4vmc",
+                        "region": "us-east-1"
+                    }
+                },
+                {
+                    "address": "aws_lambda_permission.api_gw",
+                    "mode": "managed",
+                    "type": "aws_lambda_permission",
+                    "name": "api_gw",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "action": "lambda:InvokeFunction",
+                        "event_source_token": null,
+                        "function_name": "HelloWorld-r9ra4vmc",
+                        "function_url_auth_type": null,
+                        "id": "AllowExecutionFromAPIGateway",
+                        "principal": "apigateway.amazonaws.com",
+                        "principal_org_id": null,
+                        "qualifier": "",
+                        "region": "us-east-1",
+                        "source_account": null,
+                        "source_arn": "arn:aws:execute-api:us-east-1:894850187425:lpthp592a2/*/*",
+                        "statement_id": "AllowExecutionFromAPIGateway",
+                        "statement_id_prefix": ""
+                    },
+                    "sensitive_values": {},
+                    "depends_on": [
+                        "aws_apigatewayv2_api.lambda",
+                        "aws_iam_role.lambda_exec",
+                        "aws_lambda_function.hello_world",
+                        "aws_s3_bucket.lambda_bucket",
+                        "aws_s3_object.lambda_hello_world",
+                        "data.archive_file.lambda_hello_world",
+                        "random_pet.lambda_bucket_name",
+                        "random_string.api_gw_name",
+                        "random_string.lambda_name",
+                        "random_string.lambda_role_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "function_name": "HelloWorld-r9ra4vmc",
+                        "qualifier": null,
+                        "region": "us-east-1",
+                        "statement_id": "AllowExecutionFromAPIGateway"
+                    }
+                },
+                {
+                    "address": "aws_s3_bucket.lambda_bucket",
+                    "mode": "managed",
+                    "type": "aws_s3_bucket",
+                    "name": "lambda_bucket",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "acceleration_status": "",
+                        "acl": null,
+                        "arn": "arn:aws:s3:::learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "bucket": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "bucket_domain_name": "learn-terraform-functions-seriously-seemingly-massive-giraffe.s3.amazonaws.com",
+                        "bucket_prefix": "",
+                        "bucket_region": "us-east-1",
+                        "bucket_regional_domain_name": "learn-terraform-functions-seriously-seemingly-massive-giraffe.s3.us-east-1.amazonaws.com",
+                        "cors_rule": [],
+                        "force_destroy": false,
+                        "grant": [
+                            {
+                                "id": "69c80caa37c265d93308334e41ddd9ee253ab9f1460124a3c64fa7e21f3ef5b3",
+                                "permissions": [
+                                    "FULL_CONTROL"
+                                ],
+                                "type": "CanonicalUser",
+                                "uri": ""
+                            }
+                        ],
+                        "hosted_zone_id": "Z3AQBSTGFYJSTF",
+                        "id": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "lifecycle_rule": [],
+                        "logging": [],
+                        "object_lock_configuration": [],
+                        "object_lock_enabled": false,
+                        "policy": "",
+                        "region": "us-east-1",
+                        "replication_configuration": [],
+                        "request_payer": "BucketOwner",
+                        "server_side_encryption_configuration": [
+                            {
+                                "rule": [
+                                    {
+                                        "apply_server_side_encryption_by_default": [
+                                            {
+                                                "kms_master_key_id": "",
+                                                "sse_algorithm": "AES256"
+                                            }
+                                        ],
+                                        "bucket_key_enabled": false
+                                    }
+                                ]
+                            }
+                        ],
+                        "tags": {},
+                        "tags_all": {
+                            "environment": "test",
+                            "project": "aws_lambda_api"
+                        },
+                        "timeouts": null,
+                        "versioning": [
+                            {
+                                "enabled": false,
+                                "mfa_delete": false
+                            }
+                        ],
+                        "website": [],
+                        "website_domain": null,
+                        "website_endpoint": null
+                    },
+                    "sensitive_values": {
+                        "cors_rule": [],
+                        "grant": [
+                            {
+                                "permissions": [
+                                    false
+                                ]
+                            }
+                        ],
+                        "lifecycle_rule": [],
+                        "logging": [],
+                        "object_lock_configuration": [],
+                        "replication_configuration": [],
+                        "server_side_encryption_configuration": [
+                            {
+                                "rule": [
+                                    {
+                                        "apply_server_side_encryption_by_default": [
+                                            {}
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        "tags": {},
+                        "tags_all": {},
+                        "versioning": [
+                            {}
+                        ],
+                        "website": []
+                    },
+                    "depends_on": [
+                        "random_pet.lambda_bucket_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "bucket": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "region": "us-east-1"
+                    }
+                },
+                {
+                    "address": "aws_s3_bucket_acl.lambda_bucket",
+                    "mode": "managed",
+                    "type": "aws_s3_bucket_acl",
+                    "name": "lambda_bucket",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "access_control_policy": [
+                            {
+                                "grant": [
+                                    {
+                                        "grantee": [
+                                            {
+                                                "display_name": "",
+                                                "email_address": "",
+                                                "id": "69c80caa37c265d93308334e41ddd9ee253ab9f1460124a3c64fa7e21f3ef5b3",
+                                                "type": "CanonicalUser",
+                                                "uri": ""
+                                            }
+                                        ],
+                                        "permission": "FULL_CONTROL"
+                                    }
+                                ],
+                                "owner": [
+                                    {
+                                        "display_name": "",
+                                        "id": "69c80caa37c265d93308334e41ddd9ee253ab9f1460124a3c64fa7e21f3ef5b3"
+                                    }
+                                ]
+                            }
+                        ],
+                        "acl": "private",
+                        "bucket": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "expected_bucket_owner": "",
+                        "id": "learn-terraform-functions-seriously-seemingly-massive-giraffe,private",
+                        "region": "us-east-1"
+                    },
+                    "sensitive_values": {
+                        "access_control_policy": [
+                            {
+                                "grant": [
+                                    {
+                                        "grantee": [
+                                            {}
+                                        ]
+                                    }
+                                ],
+                                "owner": [
+                                    {}
+                                ]
+                            }
+                        ]
+                    },
+                    "depends_on": [
+                        "aws_s3_bucket.lambda_bucket",
+                        "aws_s3_bucket_ownership_controls.lambda_bucket",
+                        "random_pet.lambda_bucket_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "acl": "private",
+                        "bucket": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "expected_bucket_owner": null,
+                        "region": "us-east-1"
+                    }
+                },
+                {
+                    "address": "aws_s3_bucket_ownership_controls.lambda_bucket",
+                    "mode": "managed",
+                    "type": "aws_s3_bucket_ownership_controls",
+                    "name": "lambda_bucket",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "bucket": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "id": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "region": "us-east-1",
+                        "rule": [
+                            {
+                                "object_ownership": "BucketOwnerPreferred"
+                            }
+                        ]
+                    },
+                    "sensitive_values": {
+                        "rule": [
+                            {}
+                        ]
+                    },
+                    "depends_on": [
+                        "aws_s3_bucket.lambda_bucket",
+                        "random_pet.lambda_bucket_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "bucket": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "region": "us-east-1"
+                    }
+                },
+                {
+                    "address": "aws_s3_object.lambda_hello_world",
+                    "mode": "managed",
+                    "type": "aws_s3_object",
+                    "name": "lambda_hello_world",
+                    "provider_name": "registry.terraform.io/hashicorp/aws",
+                    "schema_version": 0,
+                    "values": {
+                        "acl": null,
+                        "arn": "arn:aws:s3:::learn-terraform-functions-seriously-seemingly-massive-giraffe/hello-world.zip",
+                        "bucket": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "bucket_key_enabled": false,
+                        "cache_control": "",
+                        "checksum_algorithm": null,
+                        "checksum_crc32": "",
+                        "checksum_crc32c": "",
+                        "checksum_crc64nvme": "",
+                        "checksum_sha1": "",
+                        "checksum_sha256": "",
+                        "content": null,
+                        "content_base64": null,
+                        "content_disposition": "",
+                        "content_encoding": "",
+                        "content_language": "",
+                        "content_type": "application/octet-stream",
+                        "etag": "092c56a3d3176742a436b9d226cae0f4",
+                        "force_destroy": false,
+                        "id": "learn-terraform-functions-seriously-seemingly-massive-giraffe/hello-world.zip",
+                        "key": "hello-world.zip",
+                        "kms_key_id": null,
+                        "metadata": {},
+                        "object_lock_legal_hold_status": "",
+                        "object_lock_mode": "",
+                        "object_lock_retain_until_date": "",
+                        "override_provider": [],
+                        "region": "us-east-1",
+                        "server_side_encryption": "AES256",
+                        "source": "./hello-world.zip",
+                        "source_hash": null,
+                        "storage_class": "STANDARD",
+                        "tags": {},
+                        "tags_all": {
+                            "environment": "test",
+                            "project": "aws_lambda_api"
+                        },
+                        "version_id": "",
+                        "website_redirect": ""
+                    },
+                    "sensitive_values": {
+                        "metadata": {},
+                        "override_provider": [],
+                        "tags": {},
+                        "tags_all": {}
+                    },
+                    "depends_on": [
+                        "aws_s3_bucket.lambda_bucket",
+                        "data.archive_file.lambda_hello_world",
+                        "random_pet.lambda_bucket_name"
+                    ],
+                    "identity_schema_version": 0,
+                    "identity": {
+                        "account_id": "894850187425",
+                        "bucket": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "key": "hello-world.zip",
+                        "region": "us-east-1"
+                    }
+                },
+                {
+                    "address": "random_pet.lambda_bucket_name",
+                    "mode": "managed",
+                    "type": "random_pet",
+                    "name": "lambda_bucket_name",
+                    "provider_name": "registry.terraform.io/hashicorp/random",
+                    "schema_version": 0,
+                    "values": {
+                        "id": "learn-terraform-functions-seriously-seemingly-massive-giraffe",
+                        "keepers": null,
+                        "length": 4,
+                        "prefix": "learn-terraform-functions",
+                        "separator": "-"
+                    },
+                    "sensitive_values": {}
+                },
+                {
+                    "address": "random_string.api_gw_name",
+                    "mode": "managed",
+                    "type": "random_string",
+                    "name": "api_gw_name",
+                    "provider_name": "registry.terraform.io/hashicorp/random",
+                    "schema_version": 2,
+                    "values": {
+                        "id": "2syvikbb",
+                        "keepers": null,
+                        "length": 8,
+                        "lower": true,
+                        "min_lower": 0,
+                        "min_numeric": 0,
+                        "min_special": 0,
+                        "min_upper": 0,
+                        "number": true,
+                        "numeric": true,
+                        "override_special": null,
+                        "result": "2syvikbb",
+                        "special": false,
+                        "upper": false
+                    },
+                    "sensitive_values": {}
+                },
+                {
+                    "address": "random_string.lambda_name",
+                    "mode": "managed",
+                    "type": "random_string",
+                    "name": "lambda_name",
+                    "provider_name": "registry.terraform.io/hashicorp/random",
+                    "schema_version": 2,
+                    "values": {
+                        "id": "r9ra4vmc",
+                        "keepers": null,
+                        "length": 8,
+                        "lower": true,
+                        "min_lower": 0,
+                        "min_numeric": 0,
+                        "min_special": 0,
+                        "min_upper": 0,
+                        "number": true,
+                        "numeric": true,
+                        "override_special": null,
+                        "result": "r9ra4vmc",
+                        "special": false,
+                        "upper": false
+                    },
+                    "sensitive_values": {}
+                },
+                {
+                    "address": "random_string.lambda_role_name",
+                    "mode": "managed",
+                    "type": "random_string",
+                    "name": "lambda_role_name",
+                    "provider_name": "registry.terraform.io/hashicorp/random",
+                    "schema_version": 2,
+                    "values": {
+                        "id": "xpdr24t0",
+                        "keepers": null,
+                        "length": 8,
+                        "lower": true,
+                        "min_lower": 0,
+                        "min_numeric": 0,
+                        "min_special": 0,
+                        "min_upper": 0,
+                        "number": true,
+                        "numeric": true,
+                        "override_special": null,
+                        "result": "xpdr24t0",
+                        "special": false,
+                        "upper": false
+                    },
+                    "sensitive_values": {}
+                }
+            ]
+        }
+    }
+}

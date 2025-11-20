@@ -1,0 +1,83 @@
+package adapter
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"q"
+	"sort"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
+	"github.com/zclconf/go-cty/cty"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
+)
+
+// TODO: Dependencies
+// TODO: Sensitive values
+type TerraformResource struct {
+	ProviderName  string                 `json:"provider_name"`
+	SchemaVersion int                    `json:"schema_version"`
+	TypeName      string                 `json:"type"`
+	Name          string                 `json:"name"`
+	Mode          string                 `json:"mode"`
+	Values        map[string]interface{} `json:"values"`
+}
+
+// TODO: datasources
+
+type TerraformState struct {
+	Resources []TerraformResource
+	// TODO: explicit provider handling
+	// TODO: provider versions
+	Providers []string
+	// TODO: stack outputs?
+}
+
+func readTerraformState(filename string) (*TerraformState, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	var state struct {
+		Values struct {
+			RootModule struct {
+				Resources []TerraformResource `json:"resources,omitempty"`
+			} `json:"root_module"`
+		} `json:"values"`
+	}
+	if err := json.Unmarshal(data, &state); err != nil {
+		return nil, err
+	}
+	providerMap := make(map[string]struct{})
+	for _, resource := range state.Values.RootModule.Resources {
+		providerMap[resource.ProviderName] = struct{}{}
+	}
+	providerList := make([]string, 0, len(providerMap))
+	for provider := range providerMap {
+		providerList = append(providerList, provider)
+	}
+	sort.Strings(providerList)
+	return &TerraformState{
+		Resources: state.Values.RootModule.Resources,
+		Providers: providerList,
+	}, nil
+}
+
+type CtyResource struct {
+	Type  string
+	Value cty.Value
+}
+
+func resourceToCtyValue(resource *TerraformResource, resourceType valueshim.Type) (cty.Value, error) {
+	data, err := json.Marshal(resource.Values)
+	if err != nil {
+		return cty.Value{}, err
+	}
+	q.Q(resourceType)
+	ty, ok := valueshim.ToCtyType(resourceType)
+	if !ok {
+		return cty.Value{}, fmt.Errorf("expected cty-based Type implementation")
+	}
+	return ctyjson.Unmarshal(data, ty)
+}
