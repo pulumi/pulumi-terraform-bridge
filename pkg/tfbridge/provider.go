@@ -1356,6 +1356,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		}
 	}
 
+	// TODO: Get this stuff
 	// Create the ID and property maps and return them.
 	props, err = MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
 	if err != nil {

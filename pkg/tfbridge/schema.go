@@ -1024,13 +1024,17 @@ func makeTerraformUnknown(tfs shim.Schema) interface{} {
 	}
 }
 
+type SetChecker interface {
+	IsSet(ctx context.Context, v interface{}) ([]interface{}, bool)
+}
+
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 //
 // May be called with unknowns during preview.
 func MakeTerraformResult(
 	ctx context.Context,
-	p shim.Provider,
+	p SetChecker,
 	state shim.InstanceState,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
@@ -1066,7 +1070,7 @@ func MakeTerraformResult(
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 func MakeTerraformOutputs(
 	ctx context.Context,
-	p shim.Provider,
+	p SetChecker,
 	outs map[string]interface{},
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
@@ -1097,14 +1101,14 @@ func MakeTerraformOutputs(
 // MakeTerraformOutput takes a single Terraform property and returns the Pulumi equivalent.
 func MakeTerraformOutput(
 	ctx context.Context,
-	p shim.Provider,
+	p SetChecker,
 	v interface{},
 	tfs shim.Schema,
 	ps *SchemaInfo,
 	assets AssetTable,
 	supportsSecrets bool,
 ) resource.PropertyValue {
-	buildOutput := func(p shim.Provider, v interface{},
+	buildOutput := func(p SetChecker, v interface{},
 		tfs shim.Schema, ps *SchemaInfo, assets AssetTable, supportsSecrets bool,
 	) resource.PropertyValue {
 		if assets != nil && ps != nil && ps.Asset != nil {

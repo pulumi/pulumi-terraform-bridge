@@ -34,7 +34,7 @@ type InstanceState interface {
 	Meta() map[string]interface{}
 
 	// This is a no-op internal interface to prevent external users from implementing the interface.
-	internalinter.InternalInterface
+	// internalinter.InternalInterface
 }
 
 // Newer versions of the bridge want to interact with a typed representation of the state.
@@ -42,7 +42,7 @@ type InstanceStateWithTypedValue interface {
 	Value() valueshim.Value
 
 	// This is a no-op internal interface to prevent external users from implementing the interface.
-	internalinter.InternalInterface
+	// internalinter.InternalInterface
 }
 
 type DiffAttrType byte
@@ -224,6 +224,11 @@ type SchemaWithUnknownCollectionSupported interface {
 	SupportsUnknownCollections()
 }
 
+type SchemaWithHasDynamicTypes interface {
+	Schema
+	HasDynamicTypes() bool
+}
+
 type SchemaMap interface {
 	Len() int
 	Get(key string) Schema
@@ -266,6 +271,11 @@ type Resource interface {
 	SchemaType() valueshim.Type
 	// This is a no-op internal interface to prevent external users from implementing the interface.
 	internalinter.InternalInterface
+}
+
+type ResourceWithHasDynamicTypes interface {
+	Resource
+	HasDynamicTypes() bool
 }
 
 type ResourceMap interface {
