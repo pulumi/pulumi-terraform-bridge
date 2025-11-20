@@ -1230,6 +1230,7 @@ func (p *tfMarkdownParser) parseImports(body string) {
 		// There are multiple variations of codeblocks for import syntax
 		line = strings.ReplaceAll(line, "```shell", "")
 		line = strings.ReplaceAll(line, "```sh", "")
+		line = strings.ReplaceAll(line, "```console", "")
 		line = strings.ReplaceAll(line, "```", "")
 
 		// We have find a line that we assume looks like this:
