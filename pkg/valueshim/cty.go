@@ -33,6 +33,16 @@ func FromCtyType(v cty.Type) Type {
 	return ctyTypeShim(v)
 }
 
+// ToCtyType extracts the underlying cty.Type from a Type, if possible.
+// Returns the cty.Type and true if successful, or an invalid cty.Type and false otherwise.
+func ToCtyType(t Type) (cty.Type, bool) {
+	if ct, ok := t.(ctyTypeShim); ok {
+		return ct.ty(), true
+	}
+	
+	return cty.Type{}, false
+}
+
 type ctyValueShim cty.Value
 
 var _ Value = (*ctyValueShim)(nil)

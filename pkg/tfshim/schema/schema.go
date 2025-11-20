@@ -152,6 +152,31 @@ func (s SchemaShim) SetElementHash(v interface{}) (int, error) {
 	return s.SetHash(v), nil
 }
 
+func (s SchemaShim) HasDynamicTypes() bool {
+	if s.Type() == shim.TypeDynamic {
+		return true
+	}
+
+	if s.Type() == shim.TypeList || s.Type() == shim.TypeSet || s.Type() == shim.TypeMap {
+		_, isSchemaElem := s.Elem().(shim.Schema)
+		if isSchemaElem {
+			schemaElem := s.Elem().(shim.SchemaWithHasDynamicTypes)
+			return schemaElem.HasDynamicTypes()
+		}
+
+		_, isResElem := s.Elem().(shim.Resource)
+		if isResElem {
+			resElem := s.Elem().(shim.ResourceWithHasDynamicTypes)
+			return resElem.HasDynamicTypes()
+		}
+
+		// unknown collection element type - best we can do is dynamic
+		return true
+	}
+
+	return false
+}
+
 //nolint:revive
 type SchemaMap map[string]shim.Schema
 
