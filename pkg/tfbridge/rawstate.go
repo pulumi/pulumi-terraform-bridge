@@ -493,8 +493,20 @@ func RawStateComputeDelta(
 	pv := resource.NewObjectProperty(outMap)
 
 	delta := ih.delta(pv, v)
-	vWithoutTimeouts := v.Remove("timeouts")
-	err := delta.turnaroundCheck(ctx, newRawStateFromValue(schemaType, vWithoutTimeouts), pv)
+	var rawState rawstate.RawState
+	if _, hasTimeouts := outMap["timeouts"]; hasTimeouts {
+		// if the outputs include timeouts, then they are part of the data model,
+		// and we should not remove them so that raw state matches the outputs.
+		rawState = newRawStateFromValue(schemaType, v)
+	} else {
+		// otherwise, timeouts gets injected by terraform which we then remove from the raw state
+		rawState = newRawStateFromValue(schemaType, v.Remove("timeouts"))
+		if delta.Obj != nil {
+			delete(delta.Obj.PropertyDeltas, "timeouts")
+		}
+	}
+
+	err := delta.turnaroundCheck(ctx, rawState, pv)
 	if err != nil {
 		return RawStateDelta{}, err
 	}
@@ -509,7 +521,8 @@ func (d RawStateDelta) turnaroundCheck(
 	// Double-check that recovering works as expected, before it is written to the state.
 	rawStateRecovered, err := d.Recover(pv)
 	if err != nil {
-		return fmt.Errorf("failed recovering value for turnaround check: %w", err)
+		return fmt.Errorf("failed recovering value for turnaround check: %w\ndelta=%v\npv=%s",
+			err, d.Marshal().String(), pv.String())
 	}
 
 	rawStateWithoutTimeoutsBytes, err := json.Marshal(rawState)
@@ -638,7 +651,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	if len(path) == 1 {
 		if step, ok := path[0].(walk.GetAttrStep); ok {
 			if step.Name == "timeouts" {
-				return RawStateDelta{}, nil
+				return RawStateDelta{Obj: &objDelta{PropertyDeltas: map[resource.PropertyKey]RawStateDelta{}}}, nil
 			}
 		}
 	}
@@ -831,7 +844,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 				if len(path) == 0 && key == "timeouts" {
 					// Timeouts are a special property that accidentally gets pushed here for historical reasons; it is not
 					// relevant for the permanent RawState storage. Ignore it for now.
-					delta = RawStateDelta{}
+					delta = RawStateDelta{Obj: &objDelta{PropertyDeltas: map[resource.PropertyKey]RawStateDelta{}}}
 				} else {
 					// Missing matching PropertyValue for key, generate a replace delta.
 					n := resource.NewNullProperty()
