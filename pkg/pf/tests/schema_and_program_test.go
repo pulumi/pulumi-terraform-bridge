@@ -74,8 +74,8 @@ resources:
 	pt.Up(t)
 }
 
-// TestTimeoutsHandling that shows using timeouts as part of the outputs works as indented
-func TestTimeoutsHandling(t *testing.T) {
+// TestTimeoutsHandlingInResourceAttributes that shows using timeouts as part of the outputs works as indented
+func TestTimeoutsHandlingInResourceAttributes(t *testing.T) {
 	t.Parallel()
 	provBuilder := pb.NewProvider(
 		pb.NewProviderArgs{
@@ -90,7 +90,7 @@ func TestTimeoutsHandling(t *testing.T) {
 					ResourceSchema: rschema.Schema{
 						Attributes: map[string]rschema.Attribute{
 							"timeouts": rschema.MapAttribute{
-								Computed:    true,
+								Optional:    true,
 								ElementType: types.StringType,
 							},
 						},
@@ -106,7 +106,11 @@ name: test
 runtime: yaml
 resources:
     mainRes:
-        type: testprovider:index:Test`
+        type: testprovider:index:Test
+        properties:
+            timeouts:
+                create: "30m"
+`
 
 	pt, err := pulcheck.PulCheck(t, prov, program)
 	require.NoError(t, err)
