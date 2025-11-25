@@ -74,6 +74,50 @@ resources:
 	pt.Up(t)
 }
 
+// TestTimeoutsHandlingInResourceAttributes that shows using timeouts as part of the outputs works as indented
+func TestTimeoutsHandlingInResourceAttributes(t *testing.T) {
+	t.Parallel()
+	provBuilder := pb.NewProvider(
+		pb.NewProviderArgs{
+			AllResources: []pb.Resource{
+				pb.NewResource(pb.NewResourceArgs{
+					CreateFunc: func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+						timeoutsPath := path.Root("timeouts")
+						resp.State.SetAttribute(ctx, timeoutsPath, map[string]any{
+							"create": "30m",
+						})
+					},
+					ResourceSchema: rschema.Schema{
+						Attributes: map[string]rschema.Attribute{
+							"timeouts": rschema.MapAttribute{
+								Optional:    true,
+								ElementType: types.StringType,
+							},
+						},
+					},
+				}),
+			},
+		})
+
+	prov := provBuilder.ToProviderInfo()
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index:Test
+        properties:
+            timeouts:
+                create: "30m"
+`
+
+	pt, err := pulcheck.PulCheck(t, prov, program)
+	require.NoError(t, err)
+
+	pt.Up(t)
+}
+
 func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 	t.Parallel()
 	// Regression test for [pulumi/pulumi-terraform-bridge#2192]
