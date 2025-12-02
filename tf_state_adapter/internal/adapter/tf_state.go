@@ -39,6 +39,8 @@ func readTerraformState(filename string) (*TerraformState, error) {
 		return nil, err
 	}
 
+	// TODO: look into tf library to do this tfjson?
+
 	var state struct {
 		Values struct {
 			RootModule struct {
