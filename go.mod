@@ -55,7 +55,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/teekennedy/goldmark-markdown v0.3.0
 	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
-	github.com/yuin/goldmark v1.7.4
+	github.com/yuin/goldmark v1.7.13
 	github.com/zclconf/go-cty v1.17.0
 	golang.org/x/crypto v0.45.0
 	golang.org/x/mod v0.29.0
@@ -222,8 +222,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.207.0
-	github.com/pulumi/pulumi/sdk/v3 v3.207.0
+	github.com/pulumi/pulumi/pkg/v3 v3.209.0
+	github.com/pulumi/pulumi/sdk/v3 v3.209.0
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
