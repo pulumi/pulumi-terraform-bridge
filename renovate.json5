@@ -3,9 +3,12 @@
   extends: ["github>pulumi/renovate-config//default.json5"],
   packageRules: [
     {
-      description: "Don't bump plugin-sdk",
+      description: "Don't bump plugin-sdk or random provider",
       matchDatasources: ["go"],
-      matchPackageNames: ["github.com/pulumi/terraform-plugin-sdk/v2"],
+      matchPackageNames: [
+        "github.com/pulumi/terraform-plugin-sdk/v2", // pinned
+        "github.com/terraform-providers/terraform-provider-random", // vendored
+      ],
       enabled: false,
     },
   ],
