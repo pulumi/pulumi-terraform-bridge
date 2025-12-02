@@ -67,7 +67,7 @@ content (again)
 				if !ok || !entering {
 					return ast.WalkContinue, nil
 				}
-				if string(s.FirstChild().(*ast.Heading).Text(src)) == "1" {
+				if string(s.Heading().Lines().Value(src)) == "1" {
 					s.Parent().RemoveChild(s.Parent(), s)
 				}
 				return ast.WalkContinue, nil
@@ -96,7 +96,7 @@ nested content
 				if !ok || !entering {
 					return ast.WalkContinue, nil
 				}
-				if string(s.FirstChild().(*ast.Heading).Text(src)) == "1" {
+				if string(s.Heading().Lines().Value(src)) == "1" {
 					s.Parent().RemoveChild(s.Parent(), s)
 				}
 				return ast.WalkContinue, nil
@@ -119,7 +119,7 @@ foo
 					return ast.WalkContinue, nil
 				}
 
-				if string(s.FirstChild().(*ast.Heading).Text(src)) == "Additional Logging" {
+				if string(s.Heading().Lines().Value(src)) == "Additional Logging" {
 					s.Parent().RemoveChild(s.Parent(), s)
 				}
 				return ast.WalkContinue, nil

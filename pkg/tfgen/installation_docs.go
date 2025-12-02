@@ -373,7 +373,7 @@ func (t sectionSkipper) Transform(node *ast.Document, reader text.Reader, pc par
 	// Walk() loses information on subsequent nodes when nodes are removed during the walk, so we only gather them here.
 	err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if section, ok := n.(*section.Section); ok && entering {
-			headerText := section.FirstChild().(*ast.Heading).Text(source)
+			headerText := section.Heading().Lines().Value(source)
 			if t.shouldSkipHeader(string(headerText)) {
 				parent := section.Parent()
 				if parent == nil {
@@ -539,7 +539,7 @@ func isMarkdownSectionEmpty(title string, contentBytes []byte) bool {
 			if section.HasChildren() {
 				// A titled section is empty if it has only one child - the title.
 				// If the child's text matches the title, the section is empty.
-				sectionText := string(section.FirstChild().Text(contentBytes))
+				sectionText := string(section.Lines().Value(contentBytes))
 				if section.FirstChild() == section.LastChild() && sectionText == title {
 					isEmpty = true
 					return ast.WalkStop, nil
