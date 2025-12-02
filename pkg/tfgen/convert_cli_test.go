@@ -515,7 +515,7 @@ func (*testPluginHost) StartDebugging(plugin.DebuggingInfo) error {
 
 func (*testPluginHost) CloseProvider(plugin.Provider) error { panic("Unexpected call") }
 
-func (*testPluginHost) LanguageRuntime(string, plugin.ProgramInfo) (plugin.LanguageRuntime, error) {
+func (*testPluginHost) LanguageRuntime(string) (plugin.LanguageRuntime, error) {
 	panic("Unexpected call")
 }
 
