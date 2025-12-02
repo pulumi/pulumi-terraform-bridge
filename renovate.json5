@@ -5,7 +5,7 @@
     {
       description: "Don't bump plugin-sdk",
       matchDatasources: ["go"],
-      matchPackageNames: ["github.com/hashicorp/terraform-plugin-sdk/v2"],
+      matchPackageNames: ["github.com/pulumi/terraform-plugin-sdk/v2"],
       enabled: false,
     },
   ],
