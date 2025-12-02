@@ -68,6 +68,7 @@ const serverInstance = new aws.ec2.Instance("server", {
     ami: server.keepers.apply(keepers => keepers?.amiId),
 });
 ```
+
 {{% /choosable %}}
 {{% choosable language python %}}
 ```python
@@ -86,6 +87,7 @@ server_instance = aws.ec2.Instance("server",
     },
     ami=server.keepers["amiId"])
 ```
+
 {{% /choosable %}}
 {{% choosable language csharp %}}
 ```csharp
@@ -118,6 +120,7 @@ return await Deployment.RunAsync(() =>
 });
 
 ```
+
 {{% /choosable %}}
 {{% choosable language go %}}
 ```go
@@ -126,7 +129,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
 	"github.com/pulumi/pulumi-pulumi-provider/sdks/go/random/v3/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -159,6 +162,7 @@ func main() {
 	})
 }
 ```
+
 {{% /choosable %}}
 {{% choosable language yaml %}}
 ```yaml
@@ -177,6 +181,7 @@ resources:
         Name: web-server ${server.hex}
       ami: ${server.keepers.amiId}
 ```
+
 {{% /choosable %}}
 {{% choosable language java %}}
 ```java
@@ -215,6 +220,7 @@ public class App {
     }
 }
 ```
+
 {{% /choosable %}}
 {{< /chooser >}}
 
