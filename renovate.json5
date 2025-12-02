@@ -1,0 +1,12 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["github>pulumi/renovate-config//default.json5"],
+  packageRules: [
+    {
+      description: "Don't bump plugin-sdk",
+      matchDatasources: ["go"],
+      matchPackageNames: ["github.com/hashicorp/terraform-plugin-sdk/v2"],
+      enabled: false,
+    },
+  ],
+}
