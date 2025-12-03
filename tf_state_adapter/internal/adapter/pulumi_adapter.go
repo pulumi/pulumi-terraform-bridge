@@ -14,6 +14,7 @@ import (
 )
 
 // From the bridge
+// TODO: add a new interface for InstanceState for MakeTerraformResult
 type adapterInstanceState struct {
 	resourceType string
 	stateValue   cty.Value

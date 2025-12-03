@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	inputFile   string
-	outputFile  string
-	stackFolder string
+	inputFile       string
+	outputFile      string
+	stackFolder     string
+	resourceAddress string
 )
 
 var convertCmd = &cobra.Command{
@@ -27,7 +28,7 @@ Example:
 		fmt.Printf("Converting Terraform state from: %s\n", inputFile)
 		fmt.Printf("Output will be written to: %s\n", outputFile)
 
-		data, err := adapter.Convert(inputFile, stackFolder)
+		data, err := adapter.ConvertState(inputFile, stackFolder)
 		if err != nil {
 			return fmt.Errorf("failed to convert Terraform state: %w", err)
 		}
@@ -47,6 +48,35 @@ Example:
 	},
 }
 
+var resourceCmd = &cobra.Command{
+	Use:   "resource",
+	Short: "Convert a Terraform resource to Pulumi state",
+	Long: `Convert a Terraform resource to Pulumi state.
+
+Example:
+  pulumi-terraform-state-conversion resource --input terraform.tfstate --resource-address aws_s3_bucket.example --output pulumi.json`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Printf("Converting Terraform resource %s from: %s\n", resourceAddress, inputFile)
+		fmt.Printf("Output will be written to: %s\n", outputFile)
+
+		data, err := adapter.ConvertResourceState(inputFile, resourceAddress, outputFile)
+		if err != nil {
+			return fmt.Errorf("failed to convert Terraform resource: %w", err)
+		}
+
+		bytes, err := json.Marshal(data)
+		if err != nil {
+			return fmt.Errorf("failed to marshal Pulumi state: %w", err)
+		}
+		err = os.WriteFile(outputFile, bytes, 0o600)
+		if err != nil {
+			return fmt.Errorf("failed to write Pulumi state: %w", err)
+		}
+
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(convertCmd)
 
@@ -57,4 +87,14 @@ func init() {
 	convertCmd.MarkFlagRequired("input")
 	convertCmd.MarkFlagRequired("stack-folder")
 	convertCmd.MarkFlagRequired("output-file")
+
+	rootCmd.AddCommand(resourceCmd)
+
+	resourceCmd.Flags().StringVarP(&inputFile, "input", "i", "", "Input Terraform state file (required)")
+	resourceCmd.Flags().StringVarP(&resourceAddress, "resource-address", "r", "", "Resource address (required)")
+	resourceCmd.Flags().StringVarP(&outputFile, "output-file", "f", "", "Output Pulumi state file")
+
+	resourceCmd.MarkFlagRequired("input")
+	resourceCmd.MarkFlagRequired("resource-address")
+	resourceCmd.MarkFlagRequired("output-file")
 }

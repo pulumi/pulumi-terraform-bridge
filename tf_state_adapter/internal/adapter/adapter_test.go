@@ -7,9 +7,18 @@ import (
 )
 
 func TestConvert(t *testing.T) {
-	data, err := Convert("testdata/bucket_state.json", "")
+	data, err := ConvertState("testdata/bucket_state.json", "")
 	if err != nil {
 		t.Fatalf("failed to convert Terraform state: %v", err)
+	}
+
+	autogold.ExpectFile(t, data)
+}
+
+func TestConvertResourceState(t *testing.T) {
+	data, err := ConvertResourceState("testdata/bucket_state.json", "aws_s3_bucket.example", "")
+	if err != nil {
+		t.Fatalf("failed to convert Terraform resource state: %v", err)
 	}
 
 	autogold.ExpectFile(t, data)
