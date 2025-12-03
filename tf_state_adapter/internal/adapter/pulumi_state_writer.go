@@ -94,7 +94,7 @@ func MakeDeployment(state *PulumiState, outputFolder string) (apitype.Deployment
 	providerState := state.Providers[0]
 	provider := apitype.ResourceV3{
 		URN:      makeUrn(stackName, projectName, providerState.Type, providerState.Name),
-		Custom:   providerState.Custom,
+		Custom:   true,
 		ID:       resource.ID(providerState.ID),
 		Type:     tokens.Type(providerState.Type),
 		Inputs:   providerState.Inputs.Mappable(),
@@ -107,7 +107,7 @@ func MakeDeployment(state *PulumiState, outputFolder string) (apitype.Deployment
 	for _, res := range state.Resources {
 		deployment.Resources = append(deployment.Resources, apitype.ResourceV3{
 			URN:      makeUrn(stackName, projectName, res.Type, res.Name),
-			Custom:   res.Custom,
+			Custom:   true,
 			ID:       resource.ID(res.ID),
 			Type:     tokens.Type(res.Type),
 			Inputs:   res.Inputs.Mappable(),

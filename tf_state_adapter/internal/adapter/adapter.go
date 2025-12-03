@@ -14,7 +14,6 @@ import (
 )
 
 type PulumiResource struct {
-	Custom  bool
 	ID      string
 	Name    string
 	Type    string
@@ -34,7 +33,15 @@ type StackExport struct {
 	Version    int                  `json:"version"`
 }
 
-func Convert(inputFile string, outputDir string) (StackExport, error) {
+type ResourceExport struct {
+	ID      string         `json:"id"`
+	Name    string         `json:"name"`
+	Type    string         `json:"type"`
+	Inputs  map[string]any `json:"inputs"`
+	Outputs map[string]any `json:"outputs"`
+}
+
+func ConvertState(inputFile string, outputDir string) (StackExport, error) {
 	tfState, err := readTerraformState(inputFile)
 	if err != nil {
 		return StackExport{}, fmt.Errorf("failed to read Terraform state: %w", err)
@@ -58,6 +65,45 @@ func Convert(inputFile string, outputDir string) (StackExport, error) {
 	return StackExport{
 		Deployment: data,
 		Version:    3,
+	}, nil
+}
+
+func findResource(tfState *TerraformState, resourceAddress string) (TerraformResource, error) {
+	for _, resource := range tfState.Resources {
+		if resource.Address == resourceAddress {
+			return resource, nil
+		}
+	}
+	return TerraformResource{}, fmt.Errorf("resource not found: %s", resourceAddress)
+}
+
+func ConvertResourceState(inputFile string, resourceAddress string, outputFile string) (ResourceExport, error) {
+	tfState, err := readTerraformState(inputFile)
+	if err != nil {
+		return ResourceExport{}, fmt.Errorf("failed to read Terraform state: %w", err)
+	}
+
+	pulumiProviders, err := getProviders(tfState)
+	if err != nil {
+		return ResourceExport{}, fmt.Errorf("failed to get resource types: %w", err)
+	}
+
+	res, err := findResource(tfState, resourceAddress)
+	if err != nil {
+		return ResourceExport{}, fmt.Errorf("failed to find resource: %w", err)
+	}
+
+	resourceState, err := convertResourceState(res, pulumiProviders)
+	if err != nil {
+		return ResourceExport{}, fmt.Errorf("failed to convert resource state: %w", err)
+	}
+
+	return ResourceExport{
+		ID:      resourceState.ID,
+		Name:    resourceState.Name,
+		Type:    resourceState.Type,
+		Inputs:  resourceState.Inputs.Mappable(),
+		Outputs: resourceState.Outputs.Mappable(),
 	}, nil
 }
 
@@ -122,7 +168,6 @@ func convertState(tfState *TerraformState, pulumiProviders map[string]*info.Prov
 	}
 	// add a provider resources
 	prov := PulumiResource{
-		Custom:  true,
 		ID:      "a339fe8e-e15d-4203-8719-c0ca5d3f414e", // TODO: This is wrong, how is it generated?
 		Type:    "pulumi:providers:aws",
 		Name:    "default_7_11_1",
@@ -131,46 +176,59 @@ func convertState(tfState *TerraformState, pulumiProviders map[string]*info.Prov
 	}
 	pulumiState.Providers = append(pulumiState.Providers, prov)
 	for _, resource := range tfState.Resources {
-		// TODO: match the provider URN to the resource
-		prov, ok := pulumiProviders[resource.ProviderName]
-		if !ok {
-			return nil, fmt.Errorf("no Pulumi provider found for Terraform provider: %s", resource.ProviderName)
-		}
-		shimResource := prov.P.ResourcesMap().Get(resource.TypeName)
-		if shimResource == nil {
-			return nil, fmt.Errorf("no resource type found for Terraform resource: %s", resource.TypeName)
-		}
-
-		valueshimResourceType := shimResource.SchemaType()
-
-		ctyValue, err := resourceToCtyValue(&resource, valueshimResourceType)
+		pulumiResource, err := convertResourceState(resource, pulumiProviders)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert resource to CTY value: %w", err)
+			return nil, fmt.Errorf("failed to convert resource state: %w", err)
 		}
-
-		resourceInfo := prov.Resources[resource.TypeName]
-		pulumiTypeToken := resourceInfo.Tok
-		if pulumiTypeToken == "" {
-			camelName, pascalName := camelPascalPulumiName(resource.TypeName, prov)
-			pkgName := tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(prov.Name)))
-			modTok := tokens.NewModuleToken(pkgName, tokens.ModuleName(camelName))
-			pulumiTypeToken = tokens.NewTypeToken(modTok, tokens.TypeName(pascalName))
-		}
-		props, err := convertTFValueToPulumiValue(ctyValue, resource.TypeName, shimResource.Schema(), resourceInfo)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert value to Pulumi value: %w", err)
-		}
-		pulumiState.Resources = append(pulumiState.Resources, PulumiResource{
-			Custom:  true,
-			ID:      props["id"].StringValue(),
-			Type:    string(pulumiTypeToken),
-			Inputs:  props,
-			Outputs: props,
-			Name:    resource.Name,
-			// Parent:   stackUrn,
-			// Provider: providerUrn,
-		})
+		pulumiState.Resources = append(pulumiState.Resources, pulumiResource)
 	}
 
 	return pulumiState, nil
+}
+
+func convertResourceState(res TerraformResource, pulumiProviders map[string]*info.Provider) (PulumiResource, error) {
+	// TODO: match the provider URN to the resource
+	prov, ok := pulumiProviders[res.ProviderName]
+	if !ok {
+		return PulumiResource{}, fmt.Errorf("no Pulumi provider found for Terraform provider: %s", res.ProviderName)
+	}
+	shimResource := prov.P.ResourcesMap().Get(res.TypeName)
+	if shimResource == nil {
+		return PulumiResource{}, fmt.Errorf("no resource type found for Terraform resource: %s", res.TypeName)
+	}
+
+	valueshimResourceType := shimResource.SchemaType()
+
+	ctyValue, err := resourceToCtyValue(&res, valueshimResourceType)
+	if err != nil {
+		return PulumiResource{}, fmt.Errorf("failed to convert resource to CTY value: %w", err)
+	}
+
+	resourceInfo := prov.Resources[res.TypeName]
+	pulumiTypeToken := resourceInfo.Tok
+	if pulumiTypeToken == "" {
+		camelName, pascalName := camelPascalPulumiName(res.TypeName, prov)
+		pkgName := tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(prov.Name)))
+		modTok := tokens.NewModuleToken(pkgName, tokens.ModuleName(camelName))
+		pulumiTypeToken = tokens.NewTypeToken(modTok, tokens.TypeName(pascalName))
+	}
+	props, err := convertTFValueToPulumiValue(ctyValue, res.TypeName, shimResource.Schema(), resourceInfo)
+	if err != nil {
+		return PulumiResource{}, fmt.Errorf("failed to convert value to Pulumi value: %w", err)
+	}
+
+	inputs, err := tfbridge.ExtractInputsFromOutputs(resource.PropertyMap{}, props, shimResource.Schema(), resourceInfo.Fields, false)
+	if err != nil {
+		return PulumiResource{}, fmt.Errorf("failed to extract inputs from outputs: %w", err)
+	}
+
+	return PulumiResource{
+		ID:      props["id"].StringValue(),
+		Type:    string(pulumiTypeToken),
+		Inputs:  inputs,
+		Outputs: props,
+		Name:    res.Name,
+		// Parent:   stackUrn,
+		// Provider: providerUrn,
+	}, nil
 }

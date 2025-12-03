@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"q"
 	"sort"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
@@ -19,6 +18,7 @@ type TerraformResource struct {
 	SchemaVersion int                    `json:"schema_version"`
 	TypeName      string                 `json:"type"`
 	Name          string                 `json:"name"`
+	Address       string                 `json:"address"`
 	Mode          string                 `json:"mode"`
 	Values        map[string]interface{} `json:"values"`
 }
@@ -76,7 +76,6 @@ func resourceToCtyValue(resource *TerraformResource, resourceType valueshim.Type
 	if err != nil {
 		return cty.Value{}, err
 	}
-	q.Q(resourceType)
 	ty, ok := valueshim.ToCtyType(resourceType)
 	if !ok {
 		return cty.Value{}, fmt.Errorf("expected cty-based Type implementation")
