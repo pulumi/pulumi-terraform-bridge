@@ -539,7 +539,7 @@ func isMarkdownSectionEmpty(title string, contentBytes []byte) bool {
 			if section.HasChildren() {
 				// A titled section is empty if it has only one child - the title.
 				// If the child's text matches the title, the section is empty.
-				sectionText := string(section.Lines().Value(contentBytes))
+				sectionText := string(section.FirstChild().Lines().Value(contentBytes))
 				if section.FirstChild() == section.LastChild() && sectionText == title {
 					isEmpty = true
 					return ast.WalkStop, nil

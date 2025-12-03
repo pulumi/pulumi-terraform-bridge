@@ -65,6 +65,7 @@ config:
         value: admin
 
 ```
+
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as simple from "@pulumi/simple";
@@ -75,6 +76,7 @@ const aResource = new simple.index.Resource("a_resource", {
     inputTwo: true,
 });
 ```
+
 {{% /choosable %}}
 {{% choosable language python %}}
 ```yaml
@@ -94,6 +96,7 @@ config:
         value: admin
 
 ```
+
 ```python
 import pulumi
 import pulumi_simple as simple
@@ -103,6 +106,7 @@ a_resource = simple.index.Resource("a_resource",
     input_one=hello,
     input_two=True)
 ```
+
 {{% /choosable %}}
 {{% choosable language csharp %}}
 ```yaml
@@ -122,6 +126,7 @@ config:
         value: admin
 
 ```
+
 ```csharp
 using System.Collections.Generic;
 using System.Linq;
@@ -140,6 +145,7 @@ return await Deployment.RunAsync(() =>
 });
 
 ```
+
 {{% /choosable %}}
 {{% choosable language go %}}
 ```yaml
@@ -159,6 +165,7 @@ config:
         value: admin
 
 ```
+
 ```go
 package main
 
@@ -181,6 +188,7 @@ func main() {
 	})
 }
 ```
+
 {{% /choosable %}}
 {{% choosable language yaml %}}
 ```yaml
@@ -200,6 +208,7 @@ config:
         value: admin
 
 ```
+
 ```yaml
 resources:
   ## Define a resource
@@ -210,6 +219,7 @@ resources:
       inputOne: hello
       inputTwo: true
 ```
+
 {{% /choosable %}}
 {{% choosable language java %}}
 ```yaml
@@ -229,6 +239,7 @@ config:
         value: admin
 
 ```
+
 ```java
 package generated_program;
 
@@ -259,6 +270,7 @@ public class App {
     }
 }
 ```
+
 {{% /choosable %}}
 {{< /chooser >}}
 ## Configuration Reference
