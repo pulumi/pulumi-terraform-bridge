@@ -6,8 +6,17 @@ import (
 	"github.com/hexops/autogold/v2"
 )
 
-func TestConvert(t *testing.T) {
+func TestConvertSimple(t *testing.T) {
 	data, err := ConvertState("testdata/bucket_state.json", "")
+	if err != nil {
+		t.Fatalf("failed to convert Terraform state: %v", err)
+	}
+
+	autogold.ExpectFile(t, data)
+}
+
+func TestConvertInvolved(t *testing.T) {
+	data, err := ConvertState("testdata/tofu_state.json", "")
 	if err != nil {
 		t.Fatalf("failed to convert Terraform state: %v", err)
 	}

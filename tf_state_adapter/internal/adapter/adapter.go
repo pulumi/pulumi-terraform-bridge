@@ -113,9 +113,11 @@ func getProviders(tfState *TerraformState) (map[string]*info.Provider, error) {
 	// TODO: mapping from Terraform provider names to Pulumi provider names
 	mapping := map[string]string{
 		"registry.terraform.io/hashicorp/archive": "archive",
+		"registry.opentofu.org/hashicorp/archive": "archive",
 		"registry.terraform.io/hashicorp/aws":     "aws",
 		"registry.opentofu.org/hashicorp/aws":     "aws",
 		"registry.terraform.io/hashicorp/random":  "random",
+		"registry.opentofu.org/hashicorp/random":  "random",
 	}
 	for _, provider := range tfProviders {
 		pulumiName := mapping[provider]
@@ -133,15 +135,20 @@ func getProviders(tfState *TerraformState) (map[string]*info.Provider, error) {
 
 func getProviderInputs(providerName string) (resource.PropertyMap, error) {
 	// TODO: call the CheckConfig GRPC method
-	if providerName != "aws" {
-		return nil, fmt.Errorf("unsupported provider: %s", providerName)
+	switch providerName {
+	case "aws":
+		return resource.PropertyMap{
+			"region":                    resource.NewProperty("us-east-1"),
+			"skipCredentialsValidation": resource.NewProperty(false),
+			"skipRegionValidation":      resource.NewProperty(true),
+			"version":                   resource.NewProperty("7.11.1"),
+		}, nil
+	case "archive":
+		return resource.PropertyMap{
+			"version": resource.NewProperty("0.3.5"),
+		}, nil
 	}
-	return resource.PropertyMap{
-		"region":                    resource.NewProperty("us-east-1"),
-		"skipCredentialsValidation": resource.NewProperty(false),
-		"skipRegionValidation":      resource.NewProperty(true),
-		"version":                   resource.NewProperty("7.11.1"),
-	}, nil
+	return nil, fmt.Errorf("unsupported provider: %s", providerName)
 }
 
 // copied from pkg/tfbridge/provider.go
@@ -162,20 +169,23 @@ func camelPascalPulumiName(name string, prov *info.Provider) (string, string) {
 func convertState(tfState *TerraformState, pulumiProviders map[string]*info.Provider) (*PulumiState, error) {
 	pulumiState := &PulumiState{}
 
-	inputs, err := getProviderInputs("aws")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get provider inputs: %w", err)
+	for _, provider := range pulumiProviders {
+		inputs, err := getProviderInputs(provider.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get provider inputs: %w", err)
+		}
+		pulumiState.Providers = append(pulumiState.Providers, PulumiResource{
+			ID:      "a339fe8e-e15d-4203-8719-c0ca5d3f414e", // TODO: This is wrong, how is it generated?
+			Type:    "pulumi:providers:" + provider.Name,
+			Name:    "default_" + strings.ReplaceAll(provider.Version, ".", "_"),
+			Inputs:  inputs,
+			Outputs: inputs,
+		})
 	}
-	// add a provider resources
-	prov := PulumiResource{
-		ID:      "a339fe8e-e15d-4203-8719-c0ca5d3f414e", // TODO: This is wrong, how is it generated?
-		Type:    "pulumi:providers:aws",
-		Name:    "default_7_11_1",
-		Inputs:  inputs,
-		Outputs: inputs,
-	}
-	pulumiState.Providers = append(pulumiState.Providers, prov)
 	for _, resource := range tfState.Resources {
+		if resource.Mode == "data" {
+			continue
+		}
 		pulumiResource, err := convertResourceState(resource, pulumiProviders)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert resource state: %w", err)
