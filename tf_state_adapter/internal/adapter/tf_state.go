@@ -44,15 +44,23 @@ func readTerraformState(filename string) (*TerraformState, error) {
 	var state struct {
 		Values struct {
 			RootModule struct {
-				Resources []TerraformResource `json:"resources,omitempty"`
+				Resources    []TerraformResource `json:"resources,omitempty"`
+				ChildModules []struct {
+					Resources []TerraformResource `json:"resources,omitempty"`
+				} `json:"child_modules,omitempty"`
 			} `json:"root_module"`
 		} `json:"values"`
 	}
 	if err := json.Unmarshal(data, &state); err != nil {
 		return nil, err
 	}
+	resources := make([]TerraformResource, 0)
+	resources = append(resources, state.Values.RootModule.Resources...)
+	for _, childModule := range state.Values.RootModule.ChildModules {
+		resources = append(resources, childModule.Resources...)
+	}
 	providerMap := make(map[string]struct{})
-	for _, resource := range state.Values.RootModule.Resources {
+	for _, resource := range resources {
 		providerMap[resource.ProviderName] = struct{}{}
 	}
 	providerList := make([]string, 0, len(providerMap))
@@ -61,7 +69,7 @@ func readTerraformState(filename string) (*TerraformState, error) {
 	}
 	sort.Strings(providerList)
 	return &TerraformState{
-		Resources: state.Values.RootModule.Resources,
+		Resources: resources,
 		Providers: providerList,
 	}, nil
 }

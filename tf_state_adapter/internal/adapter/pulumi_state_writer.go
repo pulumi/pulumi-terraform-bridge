@@ -22,7 +22,63 @@ func makeUrn(stackName, projectName, typeName, resourceName string) resource.URN
 	return resource.URN(fmt.Sprintf("urn:pulumi:%s::%s::%s::%s", stackName, projectName, typeName, resourceName))
 }
 
+func createProgram(outputFolder string) error {
+	// random name
+	projectName := "pulumi-state-adapter-" + strconv.Itoa(rand.Intn(1000000))
+
+	// write a Pulumi.yaml file
+	pulumiYaml := map[string]any{
+		"name":    projectName,
+		"runtime": "nodejs",
+	}
+	bytes, err := yaml.Marshal(pulumiYaml)
+	if err != nil {
+		return fmt.Errorf("failed to marshal Pulumi.yaml: %w", err)
+	}
+
+	err = os.WriteFile(filepath.Join(outputFolder, "Pulumi.yaml"), bytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("failed to write Pulumi.yaml: %w", err)
+	}
+
+	packageJson := map[string]any{
+		"name": "pulumi_aws_tf_conv2",
+		"main": "index.ts",
+		"devDependencies": map[string]any{
+			"@types/node": "^18",
+			"typescript":  "^5.0.0",
+		},
+		"dependencies": map[string]any{
+			"@pulumi/aws":    "7.11.1",
+			"@pulumi/pulumi": "^3.113.0",
+		},
+	}
+
+	bytes, err = json.Marshal(packageJson)
+	if err != nil {
+		return fmt.Errorf("failed to marshal package.json: %w", err)
+	}
+
+	err = os.WriteFile(filepath.Join(outputFolder, "package.json"), bytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("failed to write package.json: %w", err)
+	}
+
+	// create an index.ts file
+	indexTs := `
+			import * as pulumi from "@pulumi/pulumi";
+			import * as aws from "@pulumi/aws";
+			`
+	err = os.WriteFile(filepath.Join(outputFolder, "index.ts"), []byte(indexTs), 0o600)
+	if err != nil {
+		return fmt.Errorf("failed to write index.ts: %w", err)
+	}
+
+	return nil
+}
+
 func MakeDeployment(state *PulumiState, outputFolder string) (apitype.DeploymentV3, error) {
+	ctx := context.Background()
 	if outputFolder == "" {
 		var err error
 		outputFolder, err = os.MkdirTemp("", "pulumi-state-adapter-")
@@ -30,45 +86,42 @@ func MakeDeployment(state *PulumiState, outputFolder string) (apitype.Deployment
 			return apitype.DeploymentV3{}, fmt.Errorf("failed to create temporary output folder: %w", err)
 		}
 
-		// random name
-		projectName := "pulumi-state-adapter-" + strconv.Itoa(rand.Intn(1000000))
-
-		// write a Pulumi.yaml file
-		pulumiYaml := map[string]any{
-			"name":    projectName,
-			"runtime": "nodejs",
-		}
-		bytes, err := yaml.Marshal(pulumiYaml)
+		// TODO: Figure out how to run pulumi new with automation API.
+		err = createProgram(outputFolder)
 		if err != nil {
-			return apitype.DeploymentV3{}, fmt.Errorf("failed to marshal Pulumi.yaml: %w", err)
-		}
-
-		err = os.WriteFile(filepath.Join(outputFolder, "Pulumi.yaml"), bytes, 0o600)
-		if err != nil {
-			return apitype.DeploymentV3{}, fmt.Errorf("failed to write Pulumi.yaml: %w", err)
+			return apitype.DeploymentV3{}, fmt.Errorf("failed to create program: %w", err)
 		}
 	}
 
 	stackName := "dev"
 
-	workspace, err := auto.NewLocalWorkspace(context.Background(), auto.WorkDir(outputFolder))
+	workspace, err := auto.NewLocalWorkspace(ctx, auto.WorkDir(outputFolder))
 	if err != nil {
 		return apitype.DeploymentV3{}, fmt.Errorf("failed to create workspace: %w", err)
 	}
 
-	projectSettings, err := workspace.ProjectSettings(context.Background())
+	projectSettings, err := workspace.ProjectSettings(ctx)
 	if err != nil {
 		return apitype.DeploymentV3{}, fmt.Errorf("failed to get project settings: %w", err)
 	}
 
 	projectName := string(projectSettings.Name)
 
-	// err = workspace.CreateStack(context.Background(), stackName)
-	// if err != nil {
-	// 	return apitype.DeploymentV3{}, fmt.Errorf("failed to create stack: %w", err)
-	// }
+	// check if the stack already exists
+	err = workspace.SelectStack(ctx, stackName)
+	if err != nil {
+		workspace.Install(ctx, &auto.InstallOptions{})
+		s, err := auto.UpsertStackLocalSource(ctx, stackName, outputFolder)
+		if err != nil {
+			return apitype.DeploymentV3{}, fmt.Errorf("failed to create stack: %w", err)
+		}
+		_, err = s.Up(ctx)
+		if err != nil {
+			return apitype.DeploymentV3{}, fmt.Errorf("failed to run up: %w", err)
+		}
+	}
 
-	stack, err := workspace.ExportStack(context.Background(), stackName)
+	stack, err := workspace.ExportStack(ctx, stackName)
 	if err != nil {
 		return apitype.DeploymentV3{}, fmt.Errorf("failed to export stack: %w", err)
 	}
@@ -119,7 +172,7 @@ func MakeDeployment(state *PulumiState, outputFolder string) (apitype.Deployment
 		})
 	}
 
-	err = workspace.ImportStack(context.Background(), stackName, stack)
+	err = workspace.ImportStack(ctx, stackName, stack)
 	if err != nil {
 		return apitype.DeploymentV3{}, fmt.Errorf("failed to import stack: %w", err)
 	}

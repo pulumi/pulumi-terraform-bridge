@@ -18,6 +18,15 @@ func TestReadTerraformState(t *testing.T) {
 	autogold.ExpectFile(t, state)
 }
 
+func TestReadTerraformStateWithChildModules(t *testing.T) {
+	state, err := readTerraformState("testdata/tofu_state.json")
+	if err != nil {
+		t.Fatalf("failed to read Terraform state: %v", err)
+	}
+
+	autogold.ExpectFile(t, state)
+}
+
 func TestResourceToCtyValue(t *testing.T) {
 	state, err := readTerraformState("testdata/tfstate.json")
 	if err != nil {
