@@ -1030,6 +1030,13 @@ type SetChecker interface {
 
 var _ SetChecker = shim.Provider(nil)
 
+type TerraformState interface {
+	Object(tfs shim.SchemaMap) (map[string]interface{}, error)
+	Meta() map[string]interface{}
+}
+
+var _ TerraformState = shim.InstanceState(nil)
+
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 //
@@ -1037,7 +1044,7 @@ var _ SetChecker = shim.Provider(nil)
 func MakeTerraformResult(
 	ctx context.Context,
 	p SetChecker,
-	state shim.InstanceState,
+	state TerraformState,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 	assets AssetTable,
