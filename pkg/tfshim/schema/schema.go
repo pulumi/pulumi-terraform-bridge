@@ -34,6 +34,11 @@ func (s *Schema) Shim() shim.Schema {
 	return SchemaShim{s, internalinter.Internal{}}
 }
 
+var (
+	_ shim.Schema                    = SchemaShim{}
+	_ shim.SchemaWithHasDynamicTypes = SchemaShim{}
+)
+
 //nolint:revive
 type SchemaShim struct {
 	V *Schema
@@ -150,6 +155,32 @@ func (s SchemaShim) SetElementHash(v interface{}) (int, error) {
 		return 0, err
 	}
 	return s.SetHash(v), nil
+}
+
+// modelled after https://github.com/zclconf/go-cty/blob/da4c600729aefcf628d6b042ee439e6927d1104e/cty/type.go#L86
+func (s SchemaShim) HasDynamicTypes() bool {
+	if s.Type() == shim.TypeDynamic {
+		return true
+	}
+
+	if s.Type() == shim.TypeList || s.Type() == shim.TypeSet || s.Type() == shim.TypeMap {
+		_, isSchemaElem := s.Elem().(shim.Schema)
+		if isSchemaElem {
+			schemaElem := s.Elem().(shim.SchemaWithHasDynamicTypes)
+			return schemaElem.HasDynamicTypes()
+		}
+
+		_, isResElem := s.Elem().(shim.Resource)
+		if isResElem {
+			resElem := s.Elem().(shim.ResourceWithHasDynamicTypes)
+			return resElem.HasDynamicTypes()
+		}
+
+		// unknown collection element type - best we can do is dynamic
+		return true
+	}
+
+	return false
 }
 
 //nolint:revive

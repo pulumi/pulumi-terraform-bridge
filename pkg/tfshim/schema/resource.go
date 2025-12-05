@@ -6,6 +6,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var _ = shim.ResourceMap(ResourceMap{})
@@ -22,6 +23,11 @@ type Resource struct {
 func (r *Resource) Shim() shim.Resource {
 	return ResourceShim{V: r}
 }
+
+var (
+	_ shim.Resource                    = ResourceShim{}
+	_ shim.ResourceWithHasDynamicTypes = ResourceShim{}
+)
 
 type ResourceShim struct {
 	V *Resource
@@ -58,6 +64,20 @@ func (r ResourceShim) InstanceState(id string, object, meta map[string]interface
 
 func (r ResourceShim) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
 	return nil, fmt.Errorf("mock schema does not support resource timeout decoding")
+}
+
+func (r ResourceShim) HasDynamicTypes() bool {
+	hasDynamicTypes := false
+	r.V.Schema.Range(func(key string, value shim.Schema) bool {
+		schemaWithHasDynamicTypes, ok := value.(shim.SchemaWithHasDynamicTypes)
+		contract.Assertf(ok, "Schema must implement SchemaWithHasDynamicTypes")
+		if schemaWithHasDynamicTypes.HasDynamicTypes() {
+			hasDynamicTypes = true
+			return false
+		}
+		return true
+	})
+	return hasDynamicTypes
 }
 
 type ResourceMap map[string]shim.Resource
