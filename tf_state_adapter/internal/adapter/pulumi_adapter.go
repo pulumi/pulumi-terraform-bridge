@@ -75,7 +75,6 @@ func convertTFValueToPulumiValue(
 		meta:         nil,
 	}
 
-	// TODO: assets - handle assets in the state
 	// TODO: schema upgrades - what if the schema version is different?
 	props, err := tfbridge.MakeTerraformResult(context.TODO(), setChecker{}, instanceState, tfs, pulumiResource.Fields, nil, true)
 	return props, err

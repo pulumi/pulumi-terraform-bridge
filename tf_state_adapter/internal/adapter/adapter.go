@@ -166,6 +166,17 @@ func camelPascalPulumiName(name string, prov *info.Provider) (string, string) {
 	return camel, pascal
 }
 
+func pulumiTypeToken(tfTypeName string, pulumiProvider *info.Provider) (tokens.Type, error) {
+	resourceInfo := pulumiProvider.Resources[tfTypeName]
+	if resourceInfo.Tok != "" {
+		return resourceInfo.Tok, nil
+	}
+	camelName, pascalName := camelPascalPulumiName(tfTypeName, pulumiProvider)
+	pkgName := tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(pulumiProvider.Name)))
+	modTok := tokens.NewModuleToken(pkgName, tokens.ModuleName(camelName))
+	return tokens.NewTypeToken(modTok, tokens.TypeName(pascalName)), nil
+}
+
 func convertState(tfState *TerraformState, pulumiProviders map[string]*info.Provider) (*PulumiState, error) {
 	pulumiState := &PulumiState{}
 
@@ -214,14 +225,11 @@ func convertResourceState(res TerraformResource, pulumiProviders map[string]*inf
 		return PulumiResource{}, fmt.Errorf("failed to convert resource to CTY value: %w", err)
 	}
 
-	resourceInfo := prov.Resources[res.TypeName]
-	pulumiTypeToken := resourceInfo.Tok
-	if pulumiTypeToken == "" {
-		camelName, pascalName := camelPascalPulumiName(res.TypeName, prov)
-		pkgName := tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(prov.Name)))
-		modTok := tokens.NewModuleToken(pkgName, tokens.ModuleName(camelName))
-		pulumiTypeToken = tokens.NewTypeToken(modTok, tokens.TypeName(pascalName))
+	pulumiTypeToken, err := pulumiTypeToken(res.TypeName, prov)
+	if err != nil {
+		return PulumiResource{}, fmt.Errorf("failed to get Pulumi type token: %w", err)
 	}
+	resourceInfo := prov.Resources[res.TypeName]
 	props, err := convertTFValueToPulumiValue(ctyValue, res.TypeName, shimResource.Schema(), resourceInfo)
 	if err != nil {
 		return PulumiResource{}, fmt.Errorf("failed to convert value to Pulumi value: %w", err)
