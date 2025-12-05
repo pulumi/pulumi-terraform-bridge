@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -39,32 +40,83 @@ func (p *provider) InvokeWithContext(
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, "")
 
-	handle, err := p.datasourceHandle(ctx, tok)
+	// First check if this is an action
+	actionHandle, isAction, err := p.actionHandle(ctx, tok)
 	if err != nil {
 		return nil, nil, err
 	}
+	if isAction {
+		typ := actionHandle.schema.Type(ctx).(tftypes.Object)
 
-	typ := handle.schema.Type(ctx).(tftypes.Object)
+		urn, has := args["urn"]
+		if !has {
+			return nil, nil, fmt.Errorf("missing required argument 'urn' to Invoke for action %q", actionHandle.token)
+		}
+		if !urn.IsString() {
+			return nil, nil, fmt.Errorf("expected argument 'urn' to Invoke for action %q to be a string", actionHandle.token)
+		}
+		urnStr := resource.URN(urn.StringValue())
+		delete(args, "urn")
 
-	// Transform args to apply Pulumi-level defaults.
-	argsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
-		SchemaMap:      handle.schemaOnlyShim.Schema(),
-		SchemaInfos:    handle.pulumiDataSourceInfo.GetFields(),
-		PropertyMap:    args,
-		ProviderConfig: p.lastKnownProviderConfig,
-	})
+		var previewFlag bool
+		if preview, has := args["preview"]; has {
+			if !preview.IsBool() {
+				return nil, nil, fmt.Errorf("expected argument 'preview' to Invoke for action %q to be a boolean", actionHandle.token)
+			}
+			previewFlag = preview.BoolValue()
+			delete(args, "preview")
+		}
 
-	config, err := convert.EncodePropertyMapToDynamic(handle.encoder, typ, argsWithDefaults)
+		// Transform args to apply Pulumi-level defaults.
+		argsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
+			SchemaMap:      actionHandle.schemaOnlyShim.Schema(),
+			SchemaInfos:    actionHandle.pulumiActionInfo.GetFields(),
+			PropertyMap:    args,
+			ProviderConfig: p.lastKnownProviderConfig,
+		})
+
+		config, err := convert.EncodePropertyMapToDynamic(actionHandle.encoder, typ, argsWithDefaults)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot encode config to call ReadDataSource for %q: %w",
+				actionHandle.terraformActionName, err)
+		}
+
+		if failures, err := p.validateActionConfig(ctx, actionHandle, config); err != nil || len(failures) > 0 {
+			return nil, failures, err
+		}
+
+		return p.invokeAction(ctx, actionHandle, urnStr, previewFlag, config)
+	}
+
+	datasourceHandle, isDatasource, err := p.datasourceHandle(ctx, tok)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot encode config to call ReadDataSource for %q: %w",
-			handle.terraformDataSourceName, err)
+		return nil, nil, err
+	}
+	if isDatasource {
+		typ := datasourceHandle.schema.Type(ctx).(tftypes.Object)
+
+		// Transform args to apply Pulumi-level defaults.
+		argsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
+			SchemaMap:      datasourceHandle.schemaOnlyShim.Schema(),
+			SchemaInfos:    datasourceHandle.pulumiDataSourceInfo.GetFields(),
+			PropertyMap:    args,
+			ProviderConfig: p.lastKnownProviderConfig,
+		})
+
+		config, err := convert.EncodePropertyMapToDynamic(datasourceHandle.encoder, typ, argsWithDefaults)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot encode config to call ReadDataSource for %q: %w",
+				datasourceHandle.terraformDataSourceName, err)
+		}
+
+		if failures, err := p.validateDataResourceConfig(ctx, datasourceHandle, config); err != nil || len(failures) > 0 {
+			return nil, failures, err
+		}
+
+		return p.readDataSource(ctx, datasourceHandle, config)
 	}
 
-	if failures, err := p.validateDataResourceConfig(ctx, handle, config); err != nil || len(failures) > 0 {
-		return nil, failures, err
-	}
-
-	return p.readDataSource(ctx, handle, config)
+	return nil, nil, fmt.Errorf("[pf/tfbridge] unknown datasource or action token: %v", tok)
 }
 
 func (p *provider) validateDataResourceConfig(ctx context.Context, handle datasourceHandle,
@@ -143,6 +195,108 @@ func (p *provider) parseInvokePropertyCheckFailures(ds datasourceHandle, diags [
 
 	for _, d := range diags {
 		if pk, ok := functionPropertyKey(ds, d.Attribute); ok {
+			reason := strings.Join([]string{d.Summary, d.Detail}, ": ")
+			failure := plugin.CheckFailure{
+				Property: pk,
+				Reason:   reason,
+			}
+			failures = append(failures, failure)
+			continue
+		}
+		rest = append(rest, d)
+	}
+
+	return failures, rest
+}
+
+func (p *provider) validateActionConfig(ctx context.Context, handle actionHandle,
+	config *tfprotov6.DynamicValue,
+) ([]plugin.CheckFailure, error) {
+	req := &tfprotov6.ValidateActionConfigRequest{
+		ActionType: handle.terraformActionName,
+		Config:     config,
+	}
+
+	aserver := p.tfServer.(tfprotov6.ActionServer)
+	resp, err := aserver.ValidateActionConfig(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("error calling ValidateActionConfig: %w", err)
+	}
+	return p.processActionInvokeDiagnostics(handle, resp.Diagnostics)
+}
+
+func (p *provider) invokeAction(ctx context.Context, handle actionHandle,
+	urn resource.URN, preview bool, config *tfprotov6.DynamicValue,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
+
+	aserver := p.tfServer.(tfprotov6.ActionServer)
+
+	if preview {
+		req := &tfprotov6.PlanActionRequest{
+			Config:     config,
+			ActionType: handle.terraformActionName,
+			// TODO: Set Capabilities
+		}
+		resp, err := aserver.PlanAction(ctx, req)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error calling ReadDataSource: %w", err)
+		}
+
+		// TODO: Do we need to look at resp.Deferred?
+
+		failures, err := p.processActionInvokeDiagnostics(handle, resp.Diagnostics)
+		if err != nil || len(failures) > 0 {
+			return nil, failures, err
+		}
+
+		return resource.PropertyMap{}, failures, nil
+	} else {
+		req := &tfprotov6.InvokeActionRequest{
+			Config:     config,
+			ActionType: handle.terraformActionName,
+			// TODO: Set Capabilities
+		}
+		resp, err := aserver.InvokeAction(ctx, req)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error calling ReadDataSource: %w", err)
+		}
+
+		var diagnostics []*tfprotov6.Diagnostic
+		for event := range resp.Events {
+			switch e := event.Type.(type) {
+			case tfprotov6.ProgressInvokeActionEventType:
+				p.logSink.Log(ctx, diag.Info, urn, e.Message)
+			case tfprotov6.CompletedInvokeActionEventType:
+				diagnostics = e.Diagnostics
+			}
+		}
+
+		failures, err := p.processActionInvokeDiagnostics(handle, diagnostics)
+		if err != nil || len(failures) > 0 {
+			return nil, failures, err
+		}
+
+		return resource.PropertyMap{}, failures, nil
+	}
+}
+
+func (p *provider) processActionInvokeDiagnostics(act actionHandle,
+	diags []*tfprotov6.Diagnostic,
+) ([]plugin.CheckFailure, error) {
+	failures, rest := p.parseActionInvokePropertyCheckFailures(act, diags)
+	return failures, p.processDiagnostics(rest)
+}
+
+// Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an
+// optimal rendering by Pulumi CLI.
+func (p *provider) parseActionInvokePropertyCheckFailures(act actionHandle, diags []*tfprotov6.Diagnostic) (
+	[]plugin.CheckFailure, []*tfprotov6.Diagnostic,
+) {
+	rest := []*tfprotov6.Diagnostic{}
+	failures := []plugin.CheckFailure{}
+
+	for _, d := range diags {
+		if pk, ok := actionPropertyKey(act, d.Attribute); ok {
 			reason := strings.Join([]string{d.Summary, d.Detail}, ": ")
 			failure := plugin.CheckFailure{
 				Property: pk,
