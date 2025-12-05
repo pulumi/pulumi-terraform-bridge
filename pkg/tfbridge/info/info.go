@@ -31,6 +31,7 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 const (
@@ -1010,7 +1011,10 @@ func (m MarshallableResourceShim) Unmarshal() shim.Resource {
 	for k, v := range m {
 		s[k] = v.Unmarshal()
 	}
-	return (&schema.Resource{Schema: s}).Shim()
+	return (&schema.Resource{
+		Schema:     s,
+		SchemaType: valueshim.FromCtyType(schema.ImpliedType(s, true)),
+	}).Shim()
 }
 
 // MarshallableElemShim is the JSON-marshallable form of a Terraform schema's element field.
