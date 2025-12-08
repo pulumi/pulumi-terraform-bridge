@@ -84,9 +84,9 @@ func resourceToCtyValue(resource *TerraformResource, resourceType valueshim.Type
 	if err != nil {
 		return cty.Value{}, err
 	}
-	ty, ok := valueshim.ToCtyType(resourceType)
-	if !ok {
-		return cty.Value{}, fmt.Errorf("expected cty-based Type implementation")
+	ty, err := valueshim.ToCtyType(resourceType)
+	if err != nil {
+		return cty.Value{}, fmt.Errorf("failed to convert Type to cty.Type: %w", err)
 	}
 	return ctyjson.Unmarshal(data, ty)
 }

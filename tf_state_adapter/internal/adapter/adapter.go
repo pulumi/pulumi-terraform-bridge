@@ -230,7 +230,7 @@ func convertResourceState(res TerraformResource, pulumiProviders map[string]*inf
 		return PulumiResource{}, fmt.Errorf("failed to get Pulumi type token: %w", err)
 	}
 	resourceInfo := prov.Resources[res.TypeName]
-	props, err := convertTFValueToPulumiValue(ctyValue, res.TypeName, shimResource.Schema(), resourceInfo)
+	props, err := convertTFValueToPulumiValue(ctyValue, res.TypeName, shimResource, resourceInfo)
 	if err != nil {
 		return PulumiResource{}, fmt.Errorf("failed to convert value to Pulumi value: %w", err)
 	}

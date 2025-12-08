@@ -66,16 +66,21 @@ func (s setChecker) IsSet(ctx context.Context, v interface{}) ([]interface{}, bo
 }
 
 func convertTFValueToPulumiValue(
-	tfValue cty.Value, resourceType string, tfs shim.SchemaMap, pulumiResource *info.Resource,
+	tfValue cty.Value, resourceType string, res shim.Resource, pulumiResource *info.Resource,
 ) (resource.PropertyMap, error) {
 	instanceState := adapterInstanceState{
 		resourceType: resourceType,
 		stateValue:   tfValue,
 		// TODO: meta handling
-		meta:         nil,
+		meta: nil,
 	}
 
 	// TODO: schema upgrades - what if the schema version is different?
-	props, err := tfbridge.MakeTerraformResult(context.TODO(), setChecker{}, instanceState, tfs, pulumiResource.Fields, nil, true)
+	props, err := tfbridge.MakeTerraformResult(context.TODO(), setChecker{}, instanceState, res.Schema(), pulumiResource.Fields, nil, true)
+
+	// TODO: fix raw states
+	// if err := tfbridge.RawStateInjectDelta(context.TODO(), res.Schema(), pulumiResource.Fields, props, res.SchemaType(), instanceState); err != nil {
+	// 	return nil, err
+	// }
 	return props, err
 }
