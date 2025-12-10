@@ -455,7 +455,7 @@ func RawStateInjectDelta(
 	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
 	outMap resource.PropertyMap,
 	schemaType valueshim.Type,
-	instanceState shim.InstanceState,
+	instanceState TerraformState,
 ) error {
 	// If called in a pulumi preview e.g. Create(preview=true) or in a continue-on-error scenario, bail because the
 	// code for deltas cannot process unknowns.
