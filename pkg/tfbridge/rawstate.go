@@ -449,6 +449,12 @@ func rawStateEncodeAssetOrArhiveValue(value any) (rawstate.Builder, error) {
 	}
 }
 
+type TerraformStateWithTypedValue interface {
+	Value() valueshim.Value
+}
+
+var _ TerraformStateWithTypedValue = (shim.InstanceStateWithTypedValue)(nil)
+
 func RawStateInjectDelta(
 	ctx context.Context,
 	schemaMap shim.SchemaMap, // top-level schema for a resource
@@ -463,7 +469,7 @@ func RawStateInjectDelta(
 		return nil
 	}
 
-	instanceStateCty, ok := instanceState.(shim.InstanceStateWithTypedValue)
+	instanceStateCty, ok := instanceState.(TerraformStateWithTypedValue)
 	if !ok {
 		return nil
 	}
