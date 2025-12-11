@@ -449,13 +449,19 @@ func rawStateEncodeAssetOrArhiveValue(value any) (rawstate.Builder, error) {
 	}
 }
 
+type TerraformStateWithTypedValue interface {
+	Value() valueshim.Value
+}
+
+var _ TerraformStateWithTypedValue = (shim.InstanceStateWithTypedValue)(nil)
+
 func RawStateInjectDelta(
 	ctx context.Context,
 	schemaMap shim.SchemaMap, // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
 	outMap resource.PropertyMap,
 	schemaType valueshim.Type,
-	instanceState shim.InstanceState,
+	instanceState TerraformState,
 ) error {
 	// If called in a pulumi preview e.g. Create(preview=true) or in a continue-on-error scenario, bail because the
 	// code for deltas cannot process unknowns.
@@ -463,7 +469,7 @@ func RawStateInjectDelta(
 		return nil
 	}
 
-	instanceStateCty, ok := instanceState.(shim.InstanceStateWithTypedValue)
+	instanceStateCty, ok := instanceState.(TerraformStateWithTypedValue)
 	if !ok {
 		return nil
 	}
