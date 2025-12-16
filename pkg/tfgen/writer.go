@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -28,7 +29,7 @@ import (
 type genWriter struct {
 	tool string    // the name of the code-generator.
 	f    io.Closer // the file being written to.
-	w    io.Writer
+	w    *bufio.Writer
 }
 
 func newGenWriter(tool string, fs afero.Fs, file string) (*genWriter, error) {
@@ -41,7 +42,7 @@ func newGenWriter(tool string, fs afero.Fs, file string) (*genWriter, error) {
 
 // Close flushes and closes the underlying writer.
 func (g *genWriter) Close() error {
-	return g.f.Close()
+	return errors.Join(g.w.Flush(), g.f.Close())
 }
 
 // WriteString writes the provided string to the underlying buffer _without_ formatting it.
