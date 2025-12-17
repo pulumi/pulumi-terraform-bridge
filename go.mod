@@ -44,7 +44,7 @@ require (
 	github.com/opentofu/registry-address v0.0.0-20230922120653-901b9ae4061a
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.2.1
-	github.com/pulumi/providertest v0.3.0
+	github.com/pulumi/providertest v0.6.0
 	github.com/pulumi/pulumi-java/pkg v1.12.0
 	github.com/pulumi/pulumi-yaml v1.19.1
 	github.com/pulumi/schema-tools v0.1.2
