@@ -50,7 +50,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		aResource, err := simple.Newresource(ctx, "a_resource", &simple.resourceArgs{
+		aResource, err := simple.NewResource(ctx, "a_resource", &simple.ResourceArgs{
 			RenamedInput1: pulumi.String("hello"),
 			InputTwo:      pulumi.String("true"),
 		})
