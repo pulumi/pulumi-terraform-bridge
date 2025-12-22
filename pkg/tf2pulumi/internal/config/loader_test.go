@@ -9,12 +9,12 @@ import (
 )
 
 func TestErrNoConfigsFound_impl(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var _ error = new(ErrNoConfigsFound)
 }
 
 func TestIsEmptyDir(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	val, err := IsEmptyDir(fixtureDir)
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -25,7 +25,7 @@ func TestIsEmptyDir(t *testing.T) {
 }
 
 func TestIsEmptyDir_noExist(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	val, err := IsEmptyDir(filepath.Join(fixtureDir, "nopenopenope"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -36,7 +36,7 @@ func TestIsEmptyDir_noExist(t *testing.T) {
 }
 
 func TestIsEmptyDir_noConfigs(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	val, err := IsEmptyDir(filepath.Join(fixtureDir, "dir-empty"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -47,7 +47,7 @@ func TestIsEmptyDir_noConfigs(t *testing.T) {
 }
 
 func TestLoadFile_badType(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "bad_type.tf.nope"))
 	if err == nil {
 		t.Fatal("should have error")
@@ -55,7 +55,7 @@ func TestLoadFile_badType(t *testing.T) {
 }
 
 func TestLoadFile_gitCrypt(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "git-crypt.tf"))
 	if err == nil {
 		t.Fatal("should have error")
@@ -65,7 +65,7 @@ func TestLoadFile_gitCrypt(t *testing.T) {
 }
 
 func TestLoadFile_lifecycleKeyCheck(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "lifecycle_cbd_typo.tf"))
 	if err == nil {
 		t.Fatal("should have error")
@@ -75,7 +75,7 @@ func TestLoadFile_lifecycleKeyCheck(t *testing.T) {
 }
 
 func TestLoadFile_varInvalidKey(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "var-invalid-key.tf"))
 	if err == nil {
 		t.Fatal("should have error")
@@ -83,7 +83,7 @@ func TestLoadFile_varInvalidKey(t *testing.T) {
 }
 
 func TestLoadFile_resourceArityMistake(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "resource-arity-mistake.tf"))
 	if err == nil {
 		t.Fatal("should have error")
@@ -96,7 +96,7 @@ func TestLoadFile_resourceArityMistake(t *testing.T) {
 }
 
 func TestLoadFile_resourceMultiLifecycle(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "resource-multi-lifecycle.tf"))
 	if err == nil {
 		t.Fatal("should have error")
@@ -104,7 +104,7 @@ func TestLoadFile_resourceMultiLifecycle(t *testing.T) {
 }
 
 func TestLoadFile_dataSourceArityMistake(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "data-source-arity-mistake.tf"))
 	if err == nil {
 		t.Fatal("should have error")
@@ -117,7 +117,7 @@ func TestLoadFile_dataSourceArityMistake(t *testing.T) {
 }
 
 func TestLoadFileWindowsLineEndings(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testFile := filepath.Join(fixtureDir, "windows-line-endings.tf")
 
 	contents, err := ioutil.ReadFile(testFile)
@@ -148,7 +148,7 @@ func TestLoadFileWindowsLineEndings(t *testing.T) {
 }
 
 func TestLoadFileHeredoc(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "heredoc.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -174,7 +174,7 @@ func TestLoadFileHeredoc(t *testing.T) {
 }
 
 func TestLoadFileEscapedQuotes(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "escapedquotes.tf"))
 	if err == nil {
 		t.Fatalf("expected syntax error as escaped quotes are no longer supported")
@@ -186,7 +186,7 @@ func TestLoadFileEscapedQuotes(t *testing.T) {
 }
 
 func TestLoadFileBasic(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "basic.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -236,7 +236,7 @@ func TestLoadFileBasic(t *testing.T) {
 }
 
 func TestLoadFileBasic_empty(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "empty.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -248,7 +248,7 @@ func TestLoadFileBasic_empty(t *testing.T) {
 }
 
 func TestLoadFileBasic_import(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	// Skip because we disabled importing
 	t.Skip()
 
@@ -278,7 +278,7 @@ func TestLoadFileBasic_import(t *testing.T) {
 }
 
 func TestLoadFileBasic_json(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "basic.tf.json"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -323,7 +323,7 @@ func TestLoadFileBasic_json(t *testing.T) {
 }
 
 func TestLoadFileBasic_modules(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "modules.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -344,7 +344,7 @@ func TestLoadFileBasic_modules(t *testing.T) {
 }
 
 func TestLoadFile_unnamedModule(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "module-unnamed.tf"))
 	if err == nil {
 		t.Fatalf("bad: expected error")
@@ -357,7 +357,7 @@ func TestLoadFile_unnamedModule(t *testing.T) {
 }
 
 func TestLoadFile_outputDependsOn(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "output-depends-on.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -378,7 +378,7 @@ func TestLoadFile_outputDependsOn(t *testing.T) {
 }
 
 func TestLoadFile_terraformBackend(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "terraform-backend.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -404,7 +404,7 @@ backend (s3)
 }
 
 func TestLoadFile_terraformBackendJSON(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "terraform-backend.tf.json"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -431,7 +431,7 @@ backend (s3)
 
 // test that the alternate, more obvious JSON format also decodes properly
 func TestLoadFile_terraformBackendJSON2(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "terraform-backend-2.tf.json"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -457,7 +457,7 @@ backend (s3)
 }
 
 func TestLoadFile_terraformBackendMulti(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "terraform-backend-multi.tf"))
 	if err == nil {
 		t.Fatal("expected error")
@@ -470,7 +470,7 @@ func TestLoadFile_terraformBackendMulti(t *testing.T) {
 }
 
 func TestLoadJSONBasic(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	raw, err := ioutil.ReadFile(filepath.Join(fixtureDir, "basic.tf.json"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -516,7 +516,7 @@ func TestLoadJSONBasic(t *testing.T) {
 }
 
 func TestLoadJSONAmbiguous(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	js := `
 {
   "variable": {
@@ -564,7 +564,7 @@ func TestLoadJSONAmbiguous(t *testing.T) {
 }
 
 func TestLoadFileBasic_jsonNoName(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "resource-no-name.tf.json"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -581,7 +581,7 @@ func TestLoadFileBasic_jsonNoName(t *testing.T) {
 }
 
 func TestLoadFile_variables(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "variables.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -601,7 +601,7 @@ func TestLoadFile_variables(t *testing.T) {
 }
 
 func TestLoadDir_basic(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	dir := filepath.Join(fixtureDir, "dir-basic")
 	c, err := LoadDir(dir)
 	if err != nil {
@@ -642,7 +642,7 @@ func TestLoadDir_basic(t *testing.T) {
 }
 
 func TestLoadDir_file(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadDir(filepath.Join(fixtureDir, "variables.tf"))
 	if err == nil {
 		t.Fatal("should error")
@@ -650,7 +650,7 @@ func TestLoadDir_file(t *testing.T) {
 }
 
 func TestLoadDir_noConfigs(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadDir(filepath.Join(fixtureDir, "dir-empty"))
 	if err == nil {
 		t.Fatal("should error")
@@ -658,7 +658,7 @@ func TestLoadDir_noConfigs(t *testing.T) {
 }
 
 func TestLoadDir_noMerge(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadDir(filepath.Join(fixtureDir, "dir-merge"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -670,7 +670,7 @@ func TestLoadDir_noMerge(t *testing.T) {
 }
 
 func TestLoadDir_override(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadDir(filepath.Join(fixtureDir, "dir-override"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -702,7 +702,7 @@ func TestLoadDir_override(t *testing.T) {
 }
 
 func TestLoadDir_overrideVar(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadDir(filepath.Join(fixtureDir, "dir-override-var"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -719,7 +719,7 @@ func TestLoadDir_overrideVar(t *testing.T) {
 }
 
 func TestLoadFile_variableNoName(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "variable-no-name.tf"))
 	if err == nil {
 		t.Fatalf("bad: expected error")
@@ -732,7 +732,7 @@ func TestLoadFile_variableNoName(t *testing.T) {
 }
 
 func TestLoadFile_provisioners(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "provisioners.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -749,7 +749,7 @@ func TestLoadFile_provisioners(t *testing.T) {
 }
 
 func TestLoadFile_provisionersDestroy(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "provisioners-destroy.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -766,7 +766,7 @@ func TestLoadFile_provisionersDestroy(t *testing.T) {
 }
 
 func TestLoadFile_unnamedOutput(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadFile(filepath.Join(fixtureDir, "output-unnamed.tf"))
 	if err == nil {
 		t.Fatalf("bad: expected error")
@@ -779,7 +779,7 @@ func TestLoadFile_unnamedOutput(t *testing.T) {
 }
 
 func TestLoadFile_connections(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "connection.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -818,7 +818,7 @@ func TestLoadFile_connections(t *testing.T) {
 }
 
 func TestLoadFile_createBeforeDestroy(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "create-before-destroy.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -856,7 +856,7 @@ func TestLoadFile_createBeforeDestroy(t *testing.T) {
 }
 
 func TestLoadFile_ignoreChanges(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "ignore-changes.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -904,7 +904,7 @@ func TestLoadFile_ignoreChanges(t *testing.T) {
 }
 
 func TestLoad_preventDestroyString(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "prevent-destroy-string.tf"))
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -942,7 +942,7 @@ func TestLoad_preventDestroyString(t *testing.T) {
 }
 
 func TestLoad_temporary_files(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	_, err := LoadDir(filepath.Join(fixtureDir, "dir-temporary-files"))
 	if err == nil {
 		t.Fatalf("Expected to see an error stating no config files found")
@@ -950,7 +950,7 @@ func TestLoad_temporary_files(t *testing.T) {
 }
 
 func TestLoad_hclAttributes(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "attributes.tf"))
 	if err != nil {
 		t.Fatalf("Bad: %s", err)
@@ -995,7 +995,7 @@ func TestLoad_hclAttributes(t *testing.T) {
 }
 
 func TestLoad_jsonAttributes(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "attributes.tf.json"))
 	if err != nil {
 		t.Fatalf("Bad: %s", err)
@@ -1040,7 +1040,7 @@ func TestLoad_jsonAttributes(t *testing.T) {
 }
 
 func TestLoad_onlyOverride(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c, err := LoadDir(filepath.Join(fixtureDir, "dir-only-override"))
 	if err != nil {
 		t.Fatalf("err: %s", err)

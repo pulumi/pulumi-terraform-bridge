@@ -1346,6 +1346,21 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 			return nil, fmt.Errorf("expected non-empty ID for new state during Create of %s", urn)
 		}
 
+		// Use Terraform's AssertObjectCompatible for inconsistency detection
+		if res.TF != nil && ShouldDetectInconsistentApply(res.TFName) {
+			// Get planned state from the diff
+			plannedState, pErr := diff.ProposedState(res.TF, nil)
+			if pErr == nil && plannedState != nil {
+				detectionErr := detectInconsistentApplyWithTerraform(
+					ctx, res.TFName, plannedState, newstate, res.TF.Schema())
+				if detectionErr != nil {
+					// Log error but don't fail the operation
+					logger := GetLogger(ctx)
+					logger.Warn(fmt.Sprintf("Error during inconsistency detection on %s: %v", urn, detectionErr))
+				}
+			}
+		}
+
 		if err != nil {
 			reasons = append(reasons, errors.Wrapf(err, "creating %s", urn).Error())
 		}
@@ -1724,6 +1739,22 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		if newstate.ID() == "" {
 			return nil, fmt.Errorf("expected non-empty ID for new state during Update of %s", urn)
 		}
+
+		// Use Terraform's AssertObjectCompatible for inconsistency detection
+		if res.TF != nil && ShouldDetectInconsistentApply(res.TFName) {
+			// Get planned state from the diff
+			plannedState, pErr := diff.ProposedState(res.TF, state)
+			if pErr == nil && plannedState != nil {
+				detectionErr := detectInconsistentApplyWithTerraform(
+					ctx, res.TFName, plannedState, newstate, res.TF.Schema())
+				if detectionErr != nil {
+					// Log error but don't fail the operation
+					logger := GetLogger(ctx)
+					logger.Warn(fmt.Sprintf("Error during inconsistency detection on %s: %v", urn, detectionErr))
+				}
+			}
+		}
+
 		if err != nil {
 			reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
 		}
