@@ -26,9 +26,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -46,7 +49,6 @@ type examplesCache struct {
 	ProviderName        string                       `json:"providerName"`
 	PulumiVersion       string                       `json:"pulumiVersion"`
 	SoftwareVersions    map[string]string            `json:"softwareVersions"`
-	BuildFileHashes     map[string]string            `json:"buildFileHashes"`
 	Plugins             map[string]map[string]string `json:"plugins"`
 	CliConverterEnabled bool                         `json:"cliConverterEnabled"`
 	ProviderInfoHash    string                       `json:"providerInfoHash"`
@@ -121,18 +123,28 @@ func (*examplesCache) checksum(bytes []byte) string {
 	return hex.EncodeToString(hash[:])
 }
 
+// exampleKey determines the cache key to use for the given HCL. It's computed
+// from the HCL, target language, our Pulumi & Bridge versions, and the
+// provider's info.
 func (ec *examplesCache) exampleKey(originalHCL, language string) string {
-	sep := "|"
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "originalHCL=%v%s", originalHCL, sep)
-	fmt.Fprintf(&buf, "language=%v%s", language, sep)
+
+	fmt.Fprint(&buf, originalHCL)
+	fmt.Fprint(&buf, language)
+	fmt.Fprint(&buf, ec.ProviderInfoHash)
+
+	// Sorted for stable keys.
+	for _, key := range slices.Sorted(maps.Keys(ec.SoftwareVersions)) {
+		fmt.Fprint(&buf, key)
+		fmt.Fprint(&buf, ec.SoftwareVersions[key])
+	}
+
 	return ec.checksum(buf.Bytes())
 }
 
 func (ec *examplesCache) inferToolingVersions() {
 	ec.PulumiVersion = ec.inferPulumiVersion()
 	ec.Plugins = ec.inferPlugins()
-	ec.BuildFileHashes = ec.inferBuildFileHashes()
 	ec.CliConverterEnabled = cliConverterEnabled()
 	ec.SoftwareVersions = ec.inferSoftwareVersions()
 }
@@ -167,55 +179,30 @@ func (*examplesCache) inferPlugins() map[string]map[string]string {
 	return rr
 }
 
-func (ec *examplesCache) inferBuildFileHashes() map[string]string {
-	candidates := []string{
-		"go.work",
-		"go.work.sum",
-	}
-	rr := map[string]string{}
-	for _, c := range candidates {
-		rr[c] = ec.filehash(c)
-	}
-	return rr
-}
-
 func (ec *examplesCache) inferSoftwareVersions() map[string]string {
-	used := []string{
-		"github.com/pulumi/pulumi/pkg/v3",
-		"github.com/pulumi/pulumi-terraform-bridge/v3",
-		"github.com/pulumi/pulumi-terraform-bridge/v3/pf",
-	}
-	p := map[string]string{}
-	for _, u := range used {
-		cmd := exec.Command("go", "list", "-m", "-json", u)
-		cmd.Dir = "provider"
-		j, err := cmd.CombinedOutput()
-		if err != nil {
-			continue
-		}
-		type result struct {
-			Version string `json:"Version"`
-			Replace struct {
-				Version string `json:"Version"`
-			} `json:"Replace"`
-		}
-		var r result
-		err = json.Unmarshal(j, &r)
-		contract.AssertNoErrorf(err, "go list -json -m <pkg> result parsing failed")
-		p[u] = r.Version
-		if r.Replace.Version != "" {
-			p[u] = r.Replace.Version
-		}
-	}
-	return p
-}
+	v := map[string]string{}
 
-func (ec *examplesCache) filehash(p string) string {
-	bytes, err := os.ReadFile(p)
-	if err != nil {
-		return ""
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return v
 	}
-	return ec.checksum(bytes)
+
+	for _, mod := range bi.Deps {
+		if mod.Replace != nil {
+			mod = mod.Replace
+		}
+
+		switch mod.Path {
+		case "github.com/pulumi/pulumi/pkg/v3",
+			"github.com/pulumi/pulumi/sdk/v3",
+			"github.com/pulumi/pulumi-terraform-bridge/v3":
+
+			v[mod.Path] = mod.Version
+		default:
+		}
+	}
+
+	return v
 }
 
 func (ec *examplesCache) computeProviderInfoHash(info *tfbridge.ProviderInfo) {
