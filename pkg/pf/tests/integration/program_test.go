@@ -253,6 +253,28 @@ func TestResourceWithoutID(t *testing.T) {
 	})
 }
 
+// E2E test for using an ephemeral resource
+func TestEphemeralResource(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
+	}
+	wd, err := os.Getwd()
+	assert.NoError(t, err)
+
+	bin := filepath.Join(wd, "..", "bin")
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{fmt.Sprintf("PATH=%s", bin)},
+		Dir: filepath.Join("..", "testdata", "ephemeral-resource"),
+		PrepareProject: func(info *engine.Projinfo) error {
+			return prepareStateFolder(info.Root)
+		},
+	})
+}
+
 func prepareStateFolder(root string) error {
 	err := os.Mkdir(filepath.Join(root, "state"), 0o777)
 	if os.IsExist(err) {
