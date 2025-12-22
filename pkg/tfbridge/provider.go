@@ -1974,7 +1974,10 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 
 		ret, err = plugin.MarshalProperties(
 			props,
-			plugin.MarshalOptions{Label: fmt.Sprintf("%s.returns", label)})
+			plugin.MarshalOptions{
+				Label:       fmt.Sprintf("%s.returns", label),
+				KeepSecrets: p.supportsSecrets,
+			})
 		if err != nil {
 			return nil, err
 		}
