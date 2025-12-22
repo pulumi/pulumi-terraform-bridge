@@ -956,6 +956,7 @@ type MarshallableSchemaShim struct {
 	MaxItems           int                   `json:"maxItems,omitempty"`
 	MinItems           int                   `json:"minItems,omitempty"`
 	DeprecationMessage string                `json:"deprecated,omitempty"`
+	Sensitive          bool                  `json:"sensitive,omitempty"`
 }
 
 // MarshalSchemaShim converts a Terraform schema into a MarshallableSchema.
@@ -970,6 +971,7 @@ func MarshalSchemaShim(s shim.Schema) *MarshallableSchemaShim {
 		MaxItems:           s.MaxItems(),
 		MinItems:           s.MinItems(),
 		DeprecationMessage: s.Deprecated(),
+		Sensitive:          s.Sensitive(),
 	}
 }
 
@@ -985,6 +987,7 @@ func (m *MarshallableSchemaShim) Unmarshal() shim.Schema {
 		MaxItems:   m.MaxItems,
 		MinItems:   m.MinItems,
 		Deprecated: m.DeprecationMessage,
+		Sensitive:  m.Sensitive,
 	}).Shim()
 }
 
