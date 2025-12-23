@@ -41,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	schemaTools "github.com/pulumi/schema-tools/pkg"
 	"github.com/spf13/afero"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
@@ -1110,7 +1109,7 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 // API.
 func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaResult) (*GenerateSchemaResult, error) {
 	pulumiPackageSpec := genSchemaResult.PackageSpec
-	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
+	schemaStats = countStats(pulumiPackageSpec)
 
 	// Serialize the schema and attach it to the provider shim.
 	var err error

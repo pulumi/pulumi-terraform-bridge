@@ -16,8 +16,6 @@ package tfgen
 
 import (
 	"fmt"
-
-	schemaTools "github.com/pulumi/schema-tools/pkg"
 )
 
 var (
@@ -32,7 +30,7 @@ var (
 	argumentDescriptionsFromAttributes int
 	entitiesMissingDocs                int
 
-	schemaStats schemaTools.PulumiSchemaStats
+	schemaStats pulumiSchemaStats
 )
 
 // printDocStats outputs metrics relating to document parsing and conversion
