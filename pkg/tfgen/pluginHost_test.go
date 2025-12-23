@@ -36,12 +36,12 @@ func TestCachingPluginHost(t *testing.T) {
 	for _, pkg := range []tokens.Package{"a", "b"} {
 		for _, version := range []*semver.Version{nil, &v1, &v2} {
 			p1, err := h.Provider(workspace.PackageDescriptor{
-				PluginSpec: workspace.PluginSpec{Name: string(pkg), Version: version},
+				PluginDescriptor: workspace.PluginDescriptor{Name: string(pkg), Version: version},
 			})
 			require.NoError(t, err)
 
 			p2, err := c.Provider(workspace.PackageDescriptor{
-				PluginSpec: workspace.PluginSpec{Name: string(pkg), Version: version},
+				PluginDescriptor: workspace.PluginDescriptor{Name: string(pkg), Version: version},
 			})
 			require.NoError(t, err)
 
@@ -51,7 +51,7 @@ func TestCachingPluginHost(t *testing.T) {
 	}
 
 	_, err := newCachingProviderHost(&testHost{nil, true}).Provider(workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{Name: "a", Version: &v1},
+		PluginDescriptor: workspace.PluginDescriptor{Name: "a", Version: &v1},
 	})
 	require.Error(t, err)
 }

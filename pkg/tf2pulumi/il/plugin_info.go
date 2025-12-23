@@ -195,7 +195,7 @@ func (pluginProviderInfoSource) GetProviderInfo(
 		Color: colors.Never,
 	})
 	ctx := context.Background()
-	path, err := workspace.GetPluginPath(ctx, diag, workspace.PluginSpec{
+	path, err := workspace.GetPluginPath(ctx, diag, workspace.PluginDescriptor{
 		Kind: apitype.ResourcePlugin,
 		Name: pluginName,
 	}, nil)

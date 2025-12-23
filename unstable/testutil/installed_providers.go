@@ -42,7 +42,7 @@ func pluginDependency(t *testing.T, name string, version semver.Version) integra
 		diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
-		workspace.PluginSpec{
+		workspace.PluginDescriptor{
 			Name:    name,
 			Kind:    apitype.ResourcePlugin,
 			Version: &version,

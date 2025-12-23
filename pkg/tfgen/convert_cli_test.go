@@ -519,11 +519,11 @@ func (*testPluginHost) LanguageRuntime(string) (plugin.LanguageRuntime, error) {
 	panic("Unexpected call")
 }
 
-func (*testPluginHost) EnsurePlugins([]workspace.PluginSpec, plugin.Flags) error {
+func (*testPluginHost) EnsurePlugins([]workspace.PluginDescriptor, plugin.Flags) error {
 	panic("Unexpected call")
 }
 
-func (*testPluginHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+func (*testPluginHost) ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 	return &workspace.PluginInfo{
 		Name:    spec.Name,
 		Kind:    spec.Kind,
