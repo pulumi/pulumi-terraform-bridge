@@ -1,6 +1,6 @@
 [tools]
 # Runtimes
-go = '1.24.1'
+go = '1.24.10'
 # Executable tools
 golangci-lint = '2.5.0'
 pulumi = "{{ exec(command='go list -m -f={{.Version}} github.com/pulumi/pulumi/sdk/v3') | trim | replace(from='v', to='') }}"
