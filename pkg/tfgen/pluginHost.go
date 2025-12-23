@@ -130,7 +130,7 @@ func (host *inmemoryProviderHost) Provider(pkg workspace.PackageDescriptor) (plu
 // to load. inmemoryProviderHost does this by checking if the generating provider is being
 // loaded. If it is, it returns it's provider. Otherwise, we defer
 // inmemoryProviderHost.Host.
-func (host *inmemoryProviderHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+func (host *inmemoryProviderHost) ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
 	if spec.Name == host.provider.name.String() {
 		info, err := host.provider.GetPluginInfo(context.TODO())
 		if err != nil {
