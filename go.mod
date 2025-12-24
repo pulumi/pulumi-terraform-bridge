@@ -9,6 +9,7 @@ require (
 	github.com/apparentlymart/go-versions v1.0.3
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+	github.com/deckarep/golang-set/v2 v2.5.0
 	github.com/go-test/deep v1.1.1
 	github.com/golang/glog v1.2.5
 	github.com/golang/protobuf v1.5.4
@@ -47,7 +48,6 @@ require (
 	github.com/pulumi/providertest v0.6.0
 	github.com/pulumi/pulumi-java/pkg v1.12.0
 	github.com/pulumi/pulumi-yaml v1.19.1
-	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.10.0
@@ -90,7 +90,6 @@ require (
 	github.com/charmbracelet/lipgloss v0.7.1 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
-	github.com/deckarep/golang-set/v2 v2.5.0 // indirect
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
