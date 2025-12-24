@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
-
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
@@ -224,9 +223,4 @@ func versionlessName(name string) string {
 		mod = modParts[0]
 	}
 	return fmt.Sprintf("%s:%s", mod, parts[2])
-}
-
-// Is it of the form "azure-native:appplatform/v20230101preview" or just "azure-native:appplatform"?
-func isVersionedName(name string) bool {
-	return strings.Contains(name, "/v")
 }

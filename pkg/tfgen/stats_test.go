@@ -22,6 +22,8 @@ import (
 )
 
 func TestCountStats(t *testing.T) {
+	t.Parallel()
+
 	testSchema := schema.PackageSpec{
 		Functions: map[string]schema.FunctionSpec{
 			"test:index/getFoo:getFoo": {
@@ -139,6 +141,8 @@ func TestCountStats(t *testing.T) {
 }
 
 func TestCountStats_InternalRefs_Inputs(t *testing.T) {
+	t.Parallel()
+
 	testSchema := schema.PackageSpec{
 		Types: map[string]schema.ComplexTypeSpec{
 			"test:index/myType:myType": {
@@ -177,6 +181,8 @@ func TestCountStats_InternalRefs_Inputs(t *testing.T) {
 }
 
 func TestCountStats_InternalRefs_Outputs(t *testing.T) {
+	t.Parallel()
+
 	testSchema := schema.PackageSpec{
 		Types: map[string]schema.ComplexTypeSpec{
 			"test:index/myType:myType": {
@@ -218,6 +224,8 @@ func TestCountStats_InternalRefs_Outputs(t *testing.T) {
 }
 
 func TestCountStats_NoInputs(t *testing.T) {
+	t.Parallel()
+
 	testSchema := schema.PackageSpec{
 		Functions: map[string]schema.FunctionSpec{
 			"test:index/getFooNoInputs:getFooNoInputs": {
@@ -234,7 +242,8 @@ func TestCountStats_NoInputs(t *testing.T) {
 		Resources: map[string]schema.ResourceSpec{
 			"test:index/noInputs:noInputs": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: "This is a resource that has no inputs. Not known whether this case exists in the wild, but it sure shouldn't panic if we hit it!",
+					Description: "This is a resource that has no inputs. " +
+						"Not known whether this case exists in the wild, but it sure shouldn't panic if we hit it!",
 					Properties: map[string]schema.PropertySpec{
 						"output1": {
 							Description: "0123456789",
@@ -249,6 +258,8 @@ func TestCountStats_NoInputs(t *testing.T) {
 }
 
 func TestCountStats_ExternalRef(t *testing.T) {
+	t.Parallel()
+
 	testSchema := schema.PackageSpec{
 		Resources: map[string]schema.ResourceSpec{
 			"awsx:cloudtrail:Trail": {
@@ -272,5 +283,10 @@ func TestCountStats_ExternalRef(t *testing.T) {
 }
 
 func TestVersionlessName(t *testing.T) {
-	assert.Equal(t, "config:assumeRoleWithWebIdentity", versionlessName("#/types/aws:config/assumeRoleWithWebIdentity:assumeRoleWithWebIdentity"))
+	t.Parallel()
+
+	assert.Equal(t,
+		"config:assumeRoleWithWebIdentity",
+		versionlessName("#/types/aws:config/assumeRoleWithWebIdentity:assumeRoleWithWebIdentity"),
+	)
 }
