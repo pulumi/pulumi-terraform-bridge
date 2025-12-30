@@ -5,6 +5,11 @@ export PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION := true
 
 PROJECT_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
+build::
+	go mod tidy
+	go build ${PROJECT}/v3/pkg/...
+	go build ${PROJECT}/v3/internal/...
+
 install_plugins::
 	pulumi plugin install converter terraform 1.0.20
 	pulumi plugin install resource random 4.16.3
@@ -15,11 +20,6 @@ install_plugins::
 	pulumi plugin install resource http 0.0.11
 	pulumi plugin install resource gcp 8.22.0
 	pulumi plugin install resource equinix 0.6.0 --server github://api.github.com/equinix
-
-build::
-	go mod tidy
-	go build ${PROJECT}/v3/pkg/...
-	go build ${PROJECT}/v3/internal/...
 
 fmt::
 	@gofmt -w -s .
