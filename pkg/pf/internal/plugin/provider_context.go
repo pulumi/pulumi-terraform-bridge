@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -74,7 +73,7 @@ type ProviderWithContext interface {
 	CallWithContext(ctx context.Context, tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 		options plugin.CallOptions) (plugin.CallResult, error)
 
-	GetPluginInfoWithContext(ctx context.Context) (workspace.PluginInfo, error)
+	GetPluginInfoWithContext(ctx context.Context) (plugin.PluginInfo, error)
 
 	SignalCancellationWithContext(ctx context.Context) error
 
@@ -214,7 +213,7 @@ func (prov *provider) Call(
 	return prov.CallWithContext(ctx, req.Tok, req.Args, req.Info, req.Options)
 }
 
-func (prov *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
+func (prov *provider) GetPluginInfo(ctx context.Context) (plugin.PluginInfo, error) {
 	return prov.GetPluginInfoWithContext(ctx)
 }
 

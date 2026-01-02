@@ -88,18 +88,16 @@ func (p *inmemoryProvider) GetMappings(
 	return plugin.GetMappingsResponse{}, nil
 }
 
-func (p *inmemoryProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (p *inmemoryProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	var version *semver.Version
 	if p.info.Version != "" {
 		v, err := semver.ParseTolerant(p.info.Version)
 		if err != nil {
-			return workspace.PluginInfo{}, fmt.Errorf("failed to parse pkg %q version: %w", p.name, err)
+			return plugin.PluginInfo{}, fmt.Errorf("failed to parse pkg %q version: %w", p.name, err)
 		}
 		version = &v
 	}
-	return workspace.PluginInfo{
-		Name:    p.info.Name,
-		Kind:    apitype.ResourcePlugin,
+	return plugin.PluginInfo{
 		Version: version,
 	}, nil
 }
@@ -119,7 +117,7 @@ type inmemoryProviderHost struct {
 	provider *inmemoryProvider
 }
 
-func (host *inmemoryProviderHost) Provider(pkg workspace.PackageDescriptor) (plugin.Provider, error) {
+func (host *inmemoryProviderHost) Provider(pkg workspace.PluginDescriptor) (plugin.Provider, error) {
 	if tokens.Package(pkg.Name) == host.provider.Pkg() {
 		return host.provider, nil
 	}
@@ -136,7 +134,11 @@ func (host *inmemoryProviderHost) ResolvePlugin(spec workspace.PluginDescriptor)
 		if err != nil {
 			return nil, err
 		}
-		return &info, nil
+		return &workspace.PluginInfo{
+			Name:    spec.Name,
+			Kind:    apitype.ResourcePlugin,
+			Version: info.Version,
+		}, nil
 	}
 	return host.Host.ResolvePlugin(spec)
 }
@@ -172,7 +174,7 @@ func (host *cachingProviderHost) getProvider(key string) (plugin.Provider, bool)
 	return provider, ok
 }
 
-func (host *cachingProviderHost) Provider(pkg workspace.PackageDescriptor) (plugin.Provider, error) {
+func (host *cachingProviderHost) Provider(pkg workspace.PluginDescriptor) (plugin.Provider, error) {
 	key := pkg.String()
 	if provider, ok := host.getProvider(key); ok {
 		return provider, nil

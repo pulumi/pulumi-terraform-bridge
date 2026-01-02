@@ -505,7 +505,7 @@ func (*testPluginHost) PolicyAnalyzer(
 
 func (*testPluginHost) ListAnalyzers() []plugin.Analyzer { panic("Unexpected call") }
 
-func (*testPluginHost) Provider(pkg workspace.PackageDescriptor) (plugin.Provider, error) {
+func (*testPluginHost) Provider(pkg workspace.PluginDescriptor) (plugin.Provider, error) {
 	return &plugin.MockProvider{}, nil
 }
 
