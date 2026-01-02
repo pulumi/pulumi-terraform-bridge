@@ -26,14 +26,12 @@ import (
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
@@ -284,11 +282,9 @@ func (p *provider) GetSchemaWithContext(ctx context.Context, req plugin.GetSchem
 }
 
 // GetPluginInfo returns this plugin's information.
-func (p *provider) GetPluginInfoWithContext(_ context.Context) (workspace.PluginInfo, error) {
-	info := workspace.PluginInfo{
-		Name:    p.info.Name,
+func (p *provider) GetPluginInfoWithContext(_ context.Context) (plugin.PluginInfo, error) {
+	info := plugin.PluginInfo{
 		Version: &p.version,
-		Kind:    apitype.ResourcePlugin,
 	}
 	return info, nil
 }
