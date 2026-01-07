@@ -103,11 +103,17 @@ func (s *blockSchema) Elem() interface{} {
 }
 
 func (s *blockSchema) Optional() bool {
-	return !s.Required()
+	// Blocks in TF Plugin Framework are always optional by default.
+	// There is no Required field on blocks, unlike attributes.
+	return true
 }
 
 func (s *blockSchema) Required() bool {
-	return s.block.GetMinItems() > 0
+	// Blocks in TF Plugin Framework are always optional by default.
+	// MinItems from validators only constrains size when the block IS provided;
+	// it does not make the block itself required.
+	// See: https://github.com/pulumi/pulumi-terraform-bridge/issues/3080
+	return false
 }
 
 func (*blockSchema) Computed() bool       { return false }
