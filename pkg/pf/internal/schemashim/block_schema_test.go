@@ -17,9 +17,9 @@ package schemashim
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
@@ -29,6 +29,7 @@ import (
 // are still marked as optional, not required.
 // This test addresses: https://github.com/pulumi/pulumi-terraform-bridge/issues/3080
 func TestBlockOptionalityWithValidator(t *testing.T) {
+	t.Parallel()
 	// Create a ListNestedBlock with a SizeBetween(1, 2) validator
 	// This mimics aws_bedrockagentcore_gateway's interceptor_configuration block
 	block := rschema.ListNestedBlock{
@@ -66,6 +67,7 @@ func TestBlockOptionalityWithValidator(t *testing.T) {
 // TestBlockOptionalityWithoutValidator tests that blocks without validators
 // are also marked as optional.
 func TestBlockOptionalityWithoutValidator(t *testing.T) {
+	t.Parallel()
 	// Create a ListNestedBlock without any validators
 	block := rschema.ListNestedBlock{
 		NestedObject: rschema.NestedBlockObject{
@@ -91,6 +93,7 @@ func TestBlockOptionalityWithoutValidator(t *testing.T) {
 
 // TestSingleNestedBlockOptionality tests that SingleNestedBlock is also optional.
 func TestSingleNestedBlockOptionality(t *testing.T) {
+	t.Parallel()
 	block := rschema.SingleNestedBlock{
 		Attributes: map[string]rschema.Attribute{
 			"test_field": rschema.StringAttribute{
