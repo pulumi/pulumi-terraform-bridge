@@ -16,7 +16,9 @@ package pfutils
 
 import (
 	"context"
+	"iter"
 	"regexp"
+	"slices"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -24,6 +26,7 @@ import (
 	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/pgavlin/fx/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -36,6 +39,7 @@ type Block interface {
 	GetMaxItems() int64
 	GetMinItems() int64
 	HasNestedObject() bool
+	IsRequired() bool
 }
 
 type BlockLike interface {
@@ -59,6 +63,7 @@ func FromResourceBlock(x rschema.Block) Block {
 }
 
 func FromBlockLike(x BlockLike) Block {
+	isRequired := detectIsRequired(x)
 	minItems, maxItems, _ := detectSizeConstraints(x)
 	attrs, blocks, mode := extractBlockNesting(x)
 	return &blockAdapter{
@@ -68,11 +73,46 @@ func FromBlockLike(x BlockLike) Block {
 		nestingMode:  mode,
 		minItems:     minItems,
 		maxItems:     maxItems,
+		isRequired:   isRequired,
 	}
 }
 
 type hasListValidators interface {
 	ListValidators() []validator.List
+}
+
+type hasObjectValidators interface {
+	ObjectValidators() []validator.Object
+}
+
+type hasSetValidators interface {
+	SetValidators() []validator.Set
+}
+
+func validatorDescriptions(x BlockLike) iter.Seq[string] {
+	ctx := context.Background()
+	switch x := x.(type) {
+	case hasListValidators:
+		return fx.Map(slices.Values(x.ListValidators()), func(v validator.List) string {
+			return v.Description(ctx)
+		})
+	case hasObjectValidators:
+		return fx.Map(slices.Values(x.ObjectValidators()), func(v validator.Object) string {
+			return v.Description(ctx)
+		})
+	case hasSetValidators:
+		return fx.Map(slices.Values(x.SetValidators()), func(v validator.Set) string {
+			return v.Description(ctx)
+		})
+	default:
+		return fx.Empty[string]()
+	}
+}
+
+var blockIsRequired = "must have a configuration value as the provider has marked it as required"
+
+func detectIsRequired(x BlockLike) bool {
+	return fx.Any(validatorDescriptions(x), func(d string) bool { return d == blockIsRequired })
 }
 
 var listSizeRegExpAtLeastAtMost = regexp.MustCompile(
@@ -81,25 +121,20 @@ var listSizeRegExpAtLeastAtMost = regexp.MustCompile(
 var listSizeRegExpAtMost = regexp.MustCompile(`^list must contain at most (\d+) elements$`)
 
 func detectSizeConstraints(x BlockLike) (int64, int64, bool) {
-	ctx := context.Background()
-
-	// List size constraints are especially important to Pulumi so this code goes the extra mile to try to detect
+	// Size constraints are especially important to Pulumi so this code goes the extra mile to try to detect
 	// them. This influences flattening lists with MaxItems=1.
-	if listBlock, isList := x.(hasListValidators); isList {
-		for _, v := range listBlock.ListValidators() {
-			desc := v.Description(ctx)
-			if m := listSizeRegExpAtLeastAtMost.FindStringSubmatch(desc); m != nil {
-				minElements, err := strconv.Atoi(m[1])
-				contract.AssertNoErrorf(err, "Atoi failed on %q", m[1])
-				maxElements, err := strconv.Atoi(m[2])
-				contract.AssertNoErrorf(err, "Atoi failed on %q", m[2])
-				return int64(minElements), int64(maxElements), true
-			}
-			if m := listSizeRegExpAtMost.FindStringSubmatch(desc); m != nil {
-				maxElements, err := strconv.Atoi(m[1])
-				contract.AssertNoErrorf(err, "Atoi failed on %q", m[1])
-				return int64(0), int64(maxElements), true
-			}
+	for desc := range validatorDescriptions(x) {
+		if m := listSizeRegExpAtLeastAtMost.FindStringSubmatch(desc); m != nil {
+			minElements, err := strconv.Atoi(m[1])
+			contract.AssertNoErrorf(err, "Atoi failed on %q", m[1])
+			maxElements, err := strconv.Atoi(m[2])
+			contract.AssertNoErrorf(err, "Atoi failed on %q", m[2])
+			return int64(minElements), int64(maxElements), true
+		}
+		if m := listSizeRegExpAtMost.FindStringSubmatch(desc); m != nil {
+			maxElements, err := strconv.Atoi(m[1])
+			contract.AssertNoErrorf(err, "Atoi failed on %q", m[1])
+			return int64(0), int64(maxElements), true
 		}
 	}
 
@@ -110,6 +145,7 @@ type blockAdapter struct {
 	nestedAttrs  map[string]Attr
 	nestedBlocks map[string]Block
 	nestingMode  BlockNestingMode
+	isRequired   bool
 	minItems     int64
 	maxItems     int64
 	BlockLike
@@ -122,6 +158,10 @@ func (b *blockAdapter) HasNestedObject() bool {
 	default:
 		return false
 	}
+}
+
+func (b *blockAdapter) IsRequired() bool {
+	return b.isRequired
 }
 
 func (b *blockAdapter) GetMinItems() int64 {
