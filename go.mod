@@ -43,6 +43,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/opentofu/registry-address v0.0.0-20230922120653-901b9ae4061a
+	github.com/pgavlin/fx/v2 v2.0.10
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.2.1
 	github.com/pulumi/providertest v0.6.0
@@ -109,7 +110,6 @@ require (
 	github.com/nightlyone/lockfile v1.0.0 // indirect
 	github.com/nxadm/tail v1.4.11 // indirect
 	github.com/pgavlin/fx v0.1.6 // indirect
-	github.com/pgavlin/fx/v2 v2.0.10 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
 	github.com/pulumi/esc v0.21.0 // indirect

@@ -107,7 +107,7 @@ func (s *blockSchema) Optional() bool {
 }
 
 func (s *blockSchema) Required() bool {
-	return s.block.GetMinItems() > 0
+	return s.block.IsRequired()
 }
 
 func (*blockSchema) Computed() bool       { return false }
