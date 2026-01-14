@@ -157,7 +157,7 @@ func getRepoPath(gitHost string, org string, provider string, version string) (_
 
 	command := exec.Command("go", "mod", "download", "-json", moduleCoordinates)
 	command.Dir = curWd
-	output, err := command.CombinedOutput()
+	output, err := command.Output()
 	if err != nil {
 		msg := "error running 'go mod download -json' in %q dir for module: %w\n\nOutput: %s"
 		return "", fmt.Errorf(msg, curWd, err, output)

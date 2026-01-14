@@ -138,13 +138,13 @@ func (ec *examplesCache) inferToolingVersions() {
 }
 
 func (*examplesCache) inferPulumiVersion() string {
-	pv, err := exec.Command("pulumi", "version").CombinedOutput()
+	pv, err := exec.Command("pulumi", "version").Output()
 	contract.AssertNoErrorf(err, "`pulumi version` failed")
 	return strings.TrimSpace(string(pv))
 }
 
 func (*examplesCache) inferPlugins() map[string]map[string]string {
-	j, err := exec.Command("pulumi", "plugin", "ls", "--json").CombinedOutput()
+	j, err := exec.Command("pulumi", "plugin", "ls", "--json").Output()
 	contract.AssertNoErrorf(err, "`pulumi plugin ls --json` failed")
 	type info struct {
 		Name    string `json:"name"`
@@ -189,7 +189,7 @@ func (ec *examplesCache) inferSoftwareVersions() map[string]string {
 	for _, u := range used {
 		cmd := exec.Command("go", "list", "-m", "-json", u)
 		cmd.Dir = "provider"
-		j, err := cmd.CombinedOutput()
+		j, err := cmd.Output()
 		if err != nil {
 			continue
 		}
