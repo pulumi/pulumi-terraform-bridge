@@ -944,8 +944,8 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/prometheus/client_model v0.2.0/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/prometheus/client_model v0.3.0/go.mod h1:LDGWKZIo7rky3hgvBe+caln+Dr3dPggB5dvjtD7w9+w=
-github.com/pulumi/pulumi/sdk/v3 v3.213.0 h1:ICp0WJlTShaTLrx2fDI52fJ3xwCf1h8T8tVrKDRNUB4=
-github.com/pulumi/pulumi/sdk/v3 v3.213.0/go.mod h1:Bn5Z9Rzp1lPqdAccaB+F2ivUBiamEl2TNR3Gg/h7iLs=
+github.com/pulumi/pulumi/sdk/v3 v3.215.0 h1:XZMiv9aSE1pD3kW4JpA53cy7mFflbJYn1fFKH1NMIAY=
+github.com/pulumi/pulumi/sdk/v3 v3.215.0/go.mod h1:Bn5Z9Rzp1lPqdAccaB+F2ivUBiamEl2TNR3Gg/h7iLs=
 github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9 h1:VHeasqoSdMgpxw8Rx46TybHixfnBlCk0i0JLDusNn4Y=
 github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9/go.mod h1:w029Faz4rGcWSr4gPHWjlzU7CdvbxwQNjgiYWBC0FzU=
 github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
