@@ -11,6 +11,7 @@ type Provider struct {
 	Schema         shim.SchemaMap
 	ResourcesMap   shim.ResourceMap
 	DataSourcesMap shim.ResourceMap
+	ActionsMap     shim.ActionMap
 	internalinter.Internal
 }
 
@@ -24,6 +25,9 @@ func (p *Provider) Shim() shim.Provider {
 	}
 	if c.DataSourcesMap == nil {
 		c.DataSourcesMap = ResourceMap{}
+	}
+	if c.ActionsMap == nil {
+		c.ActionsMap = ActionMap{}
 	}
 	return newProviderShim(c)
 }
@@ -47,6 +51,10 @@ func (s ProviderShim) ResourcesMap() shim.ResourceMap {
 
 func (s ProviderShim) DataSourcesMap() shim.ResourceMap {
 	return s.V.DataSourcesMap
+}
+
+func (s ProviderShim) ActionsMap() shim.ActionMap {
+	return s.V.ActionsMap
 }
 
 func (s ProviderShim) InternalValidate() error {
