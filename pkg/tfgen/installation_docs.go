@@ -174,13 +174,10 @@ func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg
 	return generateInstructions
 }
 
-// TODO: remove this note after 90 days: https://github.com/pulumi/pulumi-terraform-bridge/issues/2885
+// TODO: remove this note after 90 days: https://github.com/pulumi/pulumi-terraform-bridge/issues/3304
 func getDeprecatedProviderNames() []string {
 	providerNames := []string{
-		"civo",
-		"rke",
-		"libvirt",
-		"sumologic",
+		"wavefront",
 	}
 	return providerNames
 }
