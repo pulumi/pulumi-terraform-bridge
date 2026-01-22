@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
@@ -112,6 +113,21 @@ func (p *provider) UpdateWithContext(
 		return nil, 0, err
 	}
 
+	// Use Terraform's AssertObjectCompatible for inconsistency detection
+	if !preview {
+		if err := detectAndReportPFInconsistenciesWithTerraform(
+			ctx,
+			rh.terraformResourceName,
+			planResp.PlannedState,
+			resp.NewState,
+			rh.schema,
+		); err != nil {
+			// Log error but don't fail the operation
+			logger := tfbridge.GetLogger(ctx)
+			logger.Warn(fmt.Sprintf("Error during inconsistency detection: %v", err))
+		}
+	}
+
 	updatedState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState, resp.Private)
 	if err != nil {
 		return nil, 0, err
@@ -128,6 +144,14 @@ func (p *provider) UpdateWithContext(
 		if err != nil {
 			return nil, 0, err
 		}
+	}
+
+	// Ensure ID is populated.
+	//
+	// TF providers sometimes return an empty ID following update. We interpret empty ID to mean that the resource was
+	// deleted; by ensuring that this doesn't happen during an update we avoid spurious resource recreation.
+	if propVal, ok := updatedStateMap["id"]; !ok || propVal.IsNull() || propVal.StringValue() == "" {
+		updatedStateMap["id"] = resource.NewStringProperty(string(id))
 	}
 
 	if err := insertRawStateDelta(ctx, &rh, updatedStateMap, updatedState.Value); err != nil {

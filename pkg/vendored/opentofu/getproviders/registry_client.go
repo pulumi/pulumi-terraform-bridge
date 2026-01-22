@@ -26,7 +26,6 @@ import (
 	svchost "github.com/hashicorp/terraform-svchost"
 	svcauth "github.com/hashicorp/terraform-svchost/auth"
 
-	
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/addrs"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/httpclient"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/logging"

@@ -90,7 +90,11 @@ type Provider struct {
 	//
 	// If there is a mapping in Resources or DataSources, it can override IgnoreMappings. This is common
 	// when you need to ignore a datasource but not the resource with the same name, or vice versa.
-	IgnoreMappings          []string
+	IgnoreMappings []string
+
+	// InconsistencyFilter defines custom filtering logic for inconsistency detection
+	// This allows provider-specific configuration of what inconsistencies to ignore
+	InconsistencyFilter     InconsistencyFilter
 	PluginDownloadURL       string             // an optional URL to download the provider binary from.
 	JavaScript              *JavaScript        // optional overlay information for augmented JavaScript code-generation.
 	Python                  *Python            // optional overlay information for augmented Python code-generation.

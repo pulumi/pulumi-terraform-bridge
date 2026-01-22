@@ -16,8 +16,7 @@ import (
 // plugin client config.
 var VersionedPlugins = map[int]plugin.PluginSet{
 	5: {
-		"provider":    &GRPCProviderPlugin{},
-		
+		"provider": &GRPCProviderPlugin{},
 	},
 	6: {
 		"provider": &plugin6.GRPCProviderPlugin{},

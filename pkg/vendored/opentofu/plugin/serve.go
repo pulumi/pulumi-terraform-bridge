@@ -71,7 +71,7 @@ func pluginSet(opts *ServeOpts) map[int]plugin.PluginSet {
 				GRPCProvider: opts.GRPCProviderFunc,
 			}
 		}
-		
+
 	}
 	return plugins
 }

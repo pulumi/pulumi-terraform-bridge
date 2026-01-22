@@ -9,7 +9,7 @@ import (
 )
 
 func TestAppend(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	cases := []struct {
 		c1, c2, result *Config
 		err            bool
