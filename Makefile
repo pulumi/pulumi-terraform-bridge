@@ -31,11 +31,12 @@ lint_fix:
 	go run scripts/build.go fix-lint
 
 RUN_TEST_CMD ?= ./...
+GO_TEST_CMD ?= go test
 test:: install_plugins
 	@mkdir -p bin
 	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
 	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
-		go test -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
+		$(value GO_TEST_CMD) -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
 
 # Run tests while accepting current output as expected output "golden"
 # tests. In case where system behavior changes intentionally this can

@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -34,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
 	gmast "github.com/yuin/goldmark/ast"
@@ -735,6 +733,15 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		return nil
 	}
 
+	if sectionKind == sectionImports {
+		reformattedH2Section, isEmpty := p.reformatSubsection(h2Section[1:])
+		if isEmpty {
+			return nil
+		}
+		p.parseImports(strings.Join(reformattedH2Section, "\n"))
+		return nil
+	}
+
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
 	// snippets that are unparseable (we don't want to ignore entire H2 sections).
 	var wroteHeader bool
@@ -1202,165 +1209,496 @@ func (p *tfMarkdownParser) parseImports(body string) {
 		}
 	}
 
-	if i, ok := tryParseV2Imports(token, body); ok {
-		p.ret.Import = i
-		return
+	if token == "" {
+		token = "MISSING_TOK"
 	}
-
-	importDocs := new(bytes.Buffer)
-	for _, line := range strings.Split(body, "\n") {
-		if strings.Contains(line, "**NOTE:") || strings.Contains(line, "**Please Note:") ||
-			strings.Contains(line, "**Note:**") {
-			// This is a Terraform import specific comment that we don't need to parse or include in our docs
-			continue
-		}
-
-		// Skip another redundant comment
-		if strings.Contains(line, "Import is supported using the following syntax") {
-			continue
-		}
-
-		// Remove the shell comment characters to avoid writing this line as a Markdown H1:
-		if line == "#" {
-			line = ""
-		} else {
-			line = strings.TrimPrefix(line, "# ")
-		}
-
-		// There are multiple variations of codeblocks for import syntax
-		line = strings.ReplaceAll(line, "```shell", "")
-		line = strings.ReplaceAll(line, "```sh", "")
-		line = strings.ReplaceAll(line, "```console", "")
-		line = strings.ReplaceAll(line, "```", "")
-
-		// We have find a line that we assume looks like this:
-		//
-		//	$ terraform import some_resource_token.resource_name import-id
-		//
-		// We want to transform it into a block like this (formatting handled by emitImportCodeBlock):
-		//
-		//	$ pulumi import some:index/resourceToken:ResourceToken resource_name import-id
-		//
-		// We do so by progressive string manipulation of the line
-		if strings.Contains(line, "terraform import") {
-			// First, remove the `$`
-			line := strings.ReplaceAll(line, "$ ", "")
-			// Next, remove `terraform import` from the codeblock
-			line = strings.ReplaceAll(line, "terraform import ", "")
-			var resourceNAme, importID string
-			for i, part := range strings.Split(line, " ") {
-				switch i {
-				case 0:
-					// We assume the first item in the import block is
-					// <some_resource_token>.<resource_name>. We discard
-					// <some_resource_token> and take <resource_name>.
-					if !isBlank(part) {
-						ids := strings.Split(part, ".")
-						resourceNAme = ids[len(ids)-1]
-					}
-				default:
-					// Otherwise, we assume that it is part of the import ID.
-					if !isBlank(part) {
-						importID += " " + part
-					}
-				}
-			}
-			var tok string
-			if token != "" {
-				tok = token
-			} else {
-				tok = "MISSING_TOK"
-			}
-			emitImportCodeBlock(importDocs, tok, resourceNAme, strings.TrimSpace(importID))
-			importDocs.WriteRune('\n')
-		} else {
-			if !isBlank(line) {
-				// Ensure every section receives a line break.
-				//
-				// TODO[https://github.com/pulumi/pulumi-terraform-bridge/issues/2955]: The
-				// above comment says "section", but each line is actually just a line. We
-				// probably shouldn't be adding 2 \n for each line.
-				importDocs.WriteString(line)
-				importDocs.WriteString("\n\n")
-			}
-		}
-	}
-
-	if importDocs.Len() > 0 {
-		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocs)
+	if rewritten, ok := rewriteImportMarkdown(body, token); ok {
+		p.ret.Import = rewritten
 	}
 }
 
-// Recognizes import sections such as ones found in aws_accessanalyzer_analyzer. If the section is
-// recognized, patches up instructions to make sense for the Pulumi projection.
-func tryParseV2Imports(typeToken string, markdown string) (string, bool) {
-	var out bytes.Buffer
-	fmt.Fprintf(&out, "## Import\n\n")
+var (
+	fenceStart = regexp.MustCompile("^([\\t ]*)```(.*)$")
+	fenceEnd   = regexp.MustCompile("^([\\t ]*)```\\s*$")
+)
 
-	pn := parseNode(markdown)
-	if pn == nil {
+const (
+	// true keeps old behavior of extra new lines
+	hoistedCommentBlankLines = true
+	// true keeps property reference conversion for import sections
+	importFixupPropertyRefs = false
+)
+
+// rewriteImportMarkdown scans an import section, preserving raw markdown except for
+// Terraform import examples which are rewritten to pulumi import syntax.
+//
+// Example (input):
+//
+//	Import is supported using the following syntax:
+//	```shell
+//	terraform import snowflake_api_integration.example name
+//	```
+//
+// Example (output):
+//
+//	## Import
+//
+//	Import is supported using the following syntax:
+//	```sh
+//	$ pulumi import snowflake:index/apiIntegration:ApiIntegration example name
+//	```
+func rewriteImportMarkdown(body, typeToken string) (string, bool) {
+	if body == "" {
 		return "", false
 	}
 
-	foundCode := false
+	var out []string
+	var fenceLines []string
+	var fenceIndent string
+	var fenceInfo string
+	var fenceStartLine string
+	var inFence bool
 
-	for {
-		recognized := false
-		switch pn.Type {
-		case bf.CodeBlock:
-			code := string(pn.Literal)
-			switch string(pn.Info) {
-			case "terraform":
-				// Ignore terraform blocks such as:
-				//
-				// ```terraform
-				// import {
-				// 	to = aws_accessanalyzer_analyzer.example
-				// 	id = "example"
-				// }
-				// ```
-				recognized = true
-			case "console", "":
-				// Recognize import example codeblocks.
-				if parsed, ok := parseImportCode(code); ok {
-					emitImportCodeBlock(&out, typeToken, parsed.Name, parsed.ID)
-					recognized = ok
-					foundCode = true
+	lines := strings.Split(body, "\n")
+	for _, line := range lines {
+		if !inFence {
+			if matches := fenceStart.FindStringSubmatch(line); matches != nil {
+				// Example:
+				//   line: "  ```shell"
+				//   matches[0]: "  ```shell", matches[1]: "  ", matches[2]: "shell"
+				inFence = true
+				// Example: matches[1] == "  " (leading indentation before the fence).
+				fenceIndent = matches[1]
+				// Example: matches[2] == "shell" (raw fence info string).
+				fenceInfo = strings.TrimSpace(matches[2])
+				fenceStartLine = line
+				fenceLines = fenceLines[:0]
+				continue
+			}
+			out = append(out, line)
+			continue
+		}
+
+		// End of a fenced block: rewrite or drop the fence based on its contents.
+		// This acts as a post-processor for the collected fence lines.
+		if fenceEnd.MatchString(line) {
+			rewritten, keep, dropSyntaxLine := rewriteImportFence(
+				fenceStartLine, line, fenceIndent, fenceInfo, fenceLines, typeToken)
+			if keep {
+				if dropSyntaxLine {
+					out = dropImportSyntaxLine(out)
 				}
+				out = append(out, rewritten...)
 			}
-		case bf.Heading:
-			if pn.FirstChild != nil && pn.FirstChild.Type == bf.Text {
-				if string(pn.FirstChild.Literal) == "Import" {
-					// Skip "## Import" heading.
-					recognized = true
-				}
-			}
-		case bf.Paragraph:
-			// Propagate paragraphs to output.
-			paraMD, err := parseTextSeq(pn.FirstChild, false)
-			if err == nil {
-				fmt.Fprintf(&out, "%s\n\n", paraMD)
-				recognized = true
-			}
+			inFence = false
+			continue
 		}
-		if !recognized {
-			return "", false
-		}
-		pn = pn.Next
-		if pn == nil {
-			break
-		}
+		fenceLines = append(fenceLines, line)
 	}
-	if !foundCode {
+
+	if inFence {
+		out = append(out, fenceStartLine)
+		out = append(out, fenceLines...)
+	}
+
+	// Normalize the collected lines:
+	// - Drop boilerplate "Import is supported..." line (always)
+	// - Trim leading/trailing blank lines from the assembled block
+	// - Drop an existing "## Import" heading from the source to avoid duplicates
+	// - If there's no remaining content, signal "no import section"
+	//
+	// Example:
+	//   out == []string{"", "## Import", "", "Import is supported using the following syntax:",
+	//                   "", "```sh", "$ pulumi import ...", "```", ""}
+	//   content becomes: "Import is supported using the following syntax:\n\n```sh\n$ pulumi import ...\n```"
+	out = dropImportSyntaxLine(out)
+	content := strings.Trim(strings.Join(out, "\n"), "\n")
+	if content != "" {
+		lines := strings.Split(content, "\n")
+		i := 0
+		for i < len(lines) && strings.TrimSpace(lines[i]) == "" {
+			i++
+		}
+		if i < len(lines) {
+			heading := strings.TrimSpace(lines[i])
+			if heading == "## Import" || heading == "# Import" {
+				i++
+				for i < len(lines) && strings.TrimSpace(lines[i]) == "" {
+					i++
+				}
+				lines = lines[i:]
+			}
+		}
+		content = strings.Trim(strings.Join(lines, "\n"), "\n")
+	}
+	if strings.TrimSpace(content) == "" {
 		return "", false
 	}
-	return out.String(), true
+	return fmt.Sprintf("## Import\n\n%s\n\n", content), true
 }
 
-func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
-	fmt.Fprintf(w, "```sh\n")
-	fmt.Fprintf(w, "$ pulumi import %s %s %s\n", typeToken, name, id)
-	fmt.Fprintf(w, "```\n")
+// rewriteImportFence rewrites a fenced import block, preserving raw content except for
+// Terraform import examples which are converted to pulumi import syntax.
+//
+// Example (input fence content):
+//
+//	# Example:
+//	terraform import auth0_pages.my_pages "22f4f21b-017a-319d-92e7-2291c1ca36c4"
+//
+// Example (output fence content):
+//
+//	# Example:
+//	$ pulumi import auth0/index/pages:Pages my_pages "22f4f21b-017a-319d-92e7-2291c1ca36c4"
+func rewriteImportFence(
+	startLine, endLine, indent, info string, lines []string, typeToken string,
+) ([]string, bool, bool) {
+	if fields := strings.Fields(info); len(fields) > 0 {
+		info = fields[0]
+	} else {
+		info = ""
+	}
+	code := strings.Join(lines, "\n")
+	if info == "terraform" && looksLikeTerraformImportBlock(code) {
+		return nil, false, false
+	}
+	if info == "" || info == "console" || info == "shell" || info == "sh" {
+		forcedStart := startLine
+		forcedEnd := endLine
+		if info == "" || info == "console" || info == "shell" {
+			forcedStart = fmt.Sprintf("%s```sh", indent)
+			forcedEnd = fmt.Sprintf("%s```", indent)
+		}
+		hoistMode := hasHoistableImportComments(lines)
+		if hoistMode {
+			if rewritten, updated := rewriteImportFenceWithHoistedComments(lines, indent, typeToken); updated {
+				return rewritten, true, true
+			}
+		}
+		// Rewrite `terraform import` examples inside shell/console fences.
+		//
+		// Example (input fence lines):
+		//   # Example:
+		//   terraform import auth0_pages.my_pages "..."
+		// Example (output fence lines):
+		//   # Example:
+		//   $ pulumi import auth0/index/pages:Pages my_pages "..."
+		comments, remaining, hoist := extractImportFenceComments(lines, indent)
+		rewritten, updated := rewriteImportLines(remaining, typeToken)
+		if updated {
+			out := make([]string, 0, len(rewritten)+2)
+			if hoist && len(comments) > 0 {
+				out = append(out, comments...)
+				out = append(out, fmt.Sprintf("%s```sh", indent))
+				out = append(out, rewritten...)
+				out = append(out, fmt.Sprintf("%s```", indent))
+				return out, true, true
+			}
+			fenceStart := forcedStart
+			fenceEnd := forcedEnd
+			out = append(out, fenceStart)
+			out = append(out, rewritten...)
+			out = append(out, fenceEnd)
+			return out, true, false
+		}
+	}
+
+	rewritten := make([]string, 0, len(lines)+2)
+	if info == "" || info == "console" || info == "shell" {
+		rewritten = append(rewritten, fmt.Sprintf("%s```sh", indent))
+	} else {
+		rewritten = append(rewritten, startLine)
+	}
+	rewritten = append(rewritten, lines...)
+	rewritten = append(rewritten, fmt.Sprintf("%s```", indent))
+	return rewritten, true, false
+}
+
+func hasHoistableImportComments(lines []string) bool {
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if isHoistablePreambleLine(trimmed) {
+			return true
+		}
+	}
+	return false
+}
+
+func rewriteImportFenceWithHoistedComments(lines []string, indent, typeToken string) ([]string, bool) {
+	var out []string
+	updated := false
+	remaining := lines
+	for len(remaining) > 0 {
+		trimmed := strings.TrimLeft(remaining[0], " \t")
+		if isHoistablePreambleLine(trimmed) {
+			comments := []string{}
+			sawComment := false
+			for len(remaining) > 0 {
+				trimmed = strings.TrimLeft(remaining[0], " \t")
+				if strings.HasPrefix(trimmed, "#") {
+					sawComment = true
+					comments = append(comments, strings.TrimSpace(strings.TrimPrefix(trimmed, "#")))
+					remaining = remaining[1:]
+					continue
+				}
+				if trimmed == "" && sawComment {
+					comments = append(comments, "")
+					remaining = remaining[1:]
+					continue
+				}
+				if trimmed != "" && isHoistablePreambleLine(trimmed) {
+					sawComment = true
+					comments = append(comments, trimmed)
+					remaining = remaining[1:]
+					continue
+				}
+				break
+			}
+			if len(comments) > 0 {
+				out = append(out, formatHoistedImportComments(comments, indent)...)
+			}
+			continue
+		}
+
+		chunk := []string{}
+		for len(remaining) > 0 {
+			trimmed = strings.TrimLeft(remaining[0], " \t")
+			if strings.HasPrefix(trimmed, "#") {
+				break
+			}
+			chunk = append(chunk, remaining[0])
+			remaining = remaining[1:]
+		}
+		if len(chunk) == 0 {
+			continue
+		}
+		if allBlank(chunk) {
+			continue
+		}
+		chunk, hadTrailingBlank := trimTrailingBlankLines(chunk)
+		rewritten, chunkUpdated := rewriteImportLines(chunk, typeToken)
+		if chunkUpdated {
+			updated = true
+		}
+		out = trimTrailingBlankLinesTo(out, 1)
+		out = append(out, fmt.Sprintf("%s```sh", indent))
+		out = append(out, rewritten...)
+		out = append(out, fmt.Sprintf("%s```", indent))
+		if hadTrailingBlank {
+			out = append(out, "")
+			continue
+		}
+		if nextNonBlankIsComment(remaining) {
+			out = append(out, "")
+		}
+	}
+	return out, updated
+}
+
+func rewriteImportLines(lines []string, typeToken string) ([]string, bool) {
+	updated := false
+	rewritten := make([]string, 0, len(lines))
+	for i := 0; i < len(lines); {
+		line := lines[i]
+		leading := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+		trimmed := strings.TrimLeft(line, " \t")
+
+		if strings.Contains(trimmed, "terraform import") || strings.Contains(trimmed, "pulumi import") {
+			j := i
+			cmdLines := []string{trimmed}
+			for strings.HasSuffix(strings.TrimRight(lines[j], " \t"), "\\") && j+1 < len(lines) {
+				j++
+				cmdLines = append(cmdLines, strings.TrimLeft(lines[j], " \t"))
+			}
+			cmd := strings.Join(cmdLines, "\n")
+			if parsed, ok := parseImportCode(cmd); ok {
+				rewritten = append(rewritten,
+					fmt.Sprintf("%s$ pulumi import %s %s %s", leading, typeToken, parsed.Name, parsed.ID))
+				updated = true
+				i = j + 1
+				continue
+			}
+
+			for k := i; k <= j; k++ {
+				rewritten = append(rewritten, lines[k])
+			}
+			i = j + 1
+			continue
+		}
+
+		rewritten = append(rewritten, line)
+		i++
+	}
+	return rewritten, updated
+}
+
+// extractImportFenceComments hoists leading comment lines (starting with '#') from a fence.
+//
+// Example (input):
+//
+//	# As this is not a resource identifiable by an ID within the Auth0 Management API,
+//	# pages can be imported using a random string.
+//	terraform import auth0_pages.my_pages "..."
+//
+// Example (output):
+//
+//	comments: []string{"As this is not a resource identifiable by an ID within the Auth0 Management API,",
+//	                   "", "pages can be imported using a random string.", ""}
+//	remaining: []string{"terraform import auth0_pages.my_pages \"...\""}
+func extractImportFenceComments(lines []string, indent string) ([]string, []string, bool) {
+	var comments []string
+	remaining := lines
+	for i, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if strings.HasPrefix(trimmed, "#") {
+			trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "#"))
+			comments = append(comments, trimmed)
+			remaining = lines[i+1:]
+			continue
+		}
+		if trimmed == "" {
+			if len(comments) > 0 {
+				comments = append(comments, "")
+				remaining = lines[i+1:]
+				continue
+			}
+		}
+		if trimmed != "" && isHoistablePreambleLine(trimmed) {
+			comments = append(comments, trimmed)
+			remaining = lines[i+1:]
+			continue
+		}
+		break
+	}
+	hoist := len(comments) > 0
+	if len(comments) == 0 || !hoist {
+		return nil, lines, false
+	}
+	return formatHoistedImportComments(comments, indent), remaining, true
+}
+
+func formatHoistedImportComments(comments []string, indent string) []string {
+	out := make([]string, 0, len(comments)+1)
+	previousBlank := true
+	for _, line := range comments {
+		if line == "" {
+			out = append(out, "")
+			previousBlank = true
+			continue
+		}
+		if hoistedCommentBlankLines && !previousBlank {
+			out = append(out, "")
+		}
+		out = append(out, indent+line)
+		previousBlank = false
+	}
+	out = append(out, "")
+	return out
+}
+
+func trimTrailingBlankLines(lines []string) ([]string, bool) {
+	i := len(lines)
+	for i > 0 && strings.TrimSpace(lines[i-1]) == "" {
+		i--
+	}
+	return lines[:i], i != len(lines)
+}
+
+func trimTrailingBlankLinesTo(lines []string, max int) []string {
+	if max < 0 {
+		max = 0
+	}
+	i := len(lines)
+	for i > 0 && strings.TrimSpace(lines[i-1]) == "" {
+		i--
+	}
+	blankCount := len(lines) - i
+	if blankCount <= max {
+		return lines
+	}
+	out := make([]string, 0, i+max)
+	out = append(out, lines[:i]...)
+	for j := 0; j < max; j++ {
+		out = append(out, "")
+	}
+	return out
+}
+
+func allBlank(lines []string) bool {
+	for _, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			return false
+		}
+	}
+	return true
+}
+
+func nextNonBlankIsComment(lines []string) bool {
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if trimmed == "" {
+			continue
+		}
+		return strings.HasPrefix(trimmed, "#")
+	}
+	return false
+}
+
+func isHoistablePreambleLine(trimmed string) bool {
+	if trimmed == "" {
+		return false
+	}
+	if strings.HasPrefix(trimmed, "$") {
+		return false
+	}
+	lower := strings.ToLower(trimmed)
+	if strings.Contains(lower, "terraform import") || strings.Contains(lower, "pulumi import") {
+		return false
+	}
+	return true
+}
+
+// dropImportSyntaxLine removes boilerplate import-syntax lines anywhere in the section.
+//
+// Example:
+//
+//	before: ["Import is supported using the following syntax:", ""]
+//	after:  [""]
+func dropImportSyntaxLine(lines []string) []string {
+	if len(lines) == 0 {
+		return lines
+	}
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if strings.Contains(line, "Import is supported using the following syntax") ||
+			strings.Contains(line, "`terraform import` command") {
+			continue
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
+// looksLikeTerraformImportBlock detects the HCL `import { ... }` syntax so it can be dropped.
+//
+// Example:
+// ```terraform
+//
+//	import {
+//	  to = aws_iam_role.example
+//	  id = "developer_name"
+//	}
+//
+// ```
+func looksLikeTerraformImportBlock(code string) bool {
+	for _, line := range strings.Split(code, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		return strings.HasPrefix(trimmed, "import ") || strings.HasPrefix(trimmed, "import{") ||
+			strings.HasPrefix(trimmed, "import {")
+	}
+	return false
 }
 
 // Parses import example codeblocks.
@@ -1373,7 +1711,7 @@ func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
 //	      some_resource.name \
 //	      <some-ID>
 var importCodePattern = regexp.MustCompile(
-	`^[%$] (?:pulumi|terraform) import[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
+	`^\s*(?:[%$]\s+)?(?:pulumi|terraform) import[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
 
 // Recognize import example codeblocks.
 //
@@ -2129,11 +2467,23 @@ func cleanupDoc(
 		}
 	}
 
+	importText := doc.Import
+	if importText != "" {
+		cleanedImport, importElided := reformatImportText(infoCtx, importText, footerLinks)
+		if importElided {
+			g.warn("Found <elided> in import docs for [%v]. The import section will be dropped in the "+
+				"Pulumi provider.", name)
+			elidedDoc = true
+			cleanedImport = ""
+		}
+		importText = cleanedImport
+	}
+
 	return entityDocs{
 		Description: cleanupText,
 		Arguments:   newargs,
 		Attributes:  newattrs,
-		Import:      doc.Import,
+		Import:      importText,
 	}, elidedDoc
 }
 
@@ -2296,9 +2646,32 @@ func elide(text string) bool {
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
+	return reformatTextWithOptions(g, text, footerLinks, true, true, true)
+}
+
+func reformatImportText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
+	clean, elided := reformatTextWithOptions(g, text, footerLinks, false, false, importFixupPropertyRefs)
+	if elided {
+		return "", true
+	}
+	if clean != "" {
+		if strings.HasSuffix(clean, "\n\n") {
+			return clean, false
+		}
+		if strings.HasSuffix(clean, "\n") {
+			return clean + "\n", false
+		}
+		return clean + "\n\n", false
+	}
+	return clean, false
+}
+
+func reformatTextWithOptions(
+	g infoContext, text string, footerLinks map[string]string, allowElide bool, trimSpace bool, fixupPropertyRefs bool,
+) (string, bool) {
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation.
-		if elide(text) {
+		if allowElide && elide(text) {
 			return "", true
 		}
 
@@ -2341,7 +2714,9 @@ func reformatText(g infoContext, text string, footerLinks map[string]string) (st
 		})
 
 		// Fixup resource and property name references
-		text = g.fixupPropertyReference(text)
+		if fixupPropertyRefs {
+			text = g.fixupPropertyReference(text)
+		}
 
 		return text, false
 	}
@@ -2372,7 +2747,13 @@ func reformatText(g infoContext, text string, footerLinks map[string]string) (st
 		parts = append(parts, clean)
 	}
 
-	return strings.TrimSpace(strings.Join(parts, "")), false
+	result := strings.Join(parts, "")
+	if trimSpace {
+		result = strings.TrimSpace(result)
+	} else {
+		result = strings.TrimLeftFunc(result, unicode.IsSpace)
+	}
+	return result, false
 }
 
 // For example:
