@@ -735,6 +735,15 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		return nil
 	}
 
+	if sectionKind == sectionImports {
+		reformattedH2Section, isEmpty := p.reformatSubsection(h2Section[1:])
+		if isEmpty {
+			return nil
+		}
+		p.parseImports(strings.Join(reformattedH2Section, "\n"))
+		return nil
+	}
+
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
 	// snippets that are unparseable (we don't want to ignore entire H2 sections).
 	var wroteHeader bool
@@ -1330,11 +1339,22 @@ func tryParseV2Imports(typeToken string, markdown string) (string, bool) {
 			}
 		case bf.Heading:
 			if pn.FirstChild != nil && pn.FirstChild.Type == bf.Text {
-				if string(pn.FirstChild.Literal) == "Import" {
-					// Skip "## Import" heading.
-					recognized = true
+				headingText, err := parseTextSeq(pn.FirstChild, false)
+				if err == nil {
+					headingText = strings.TrimSpace(headingText)
+					if headingText == "Import" && pn.HeadingData.Level == 2 {
+						// Skip "## Import" heading.
+						recognized = true
+						break
+					}
+					if headingText != "" {
+						fmt.Fprintf(&out, "%s %s\n\n", strings.Repeat("#", pn.HeadingData.Level), headingText)
+						recognized = true
+					}
 				}
 			}
+		case bf.List:
+			recognized = renderImportList(&out, pn, 0)
 		case bf.Paragraph:
 			// Propagate paragraphs to output.
 			paraMD, err := parseTextSeq(pn.FirstChild, false)
@@ -1355,6 +1375,44 @@ func tryParseV2Imports(typeToken string, markdown string) (string, bool) {
 		return "", false
 	}
 	return out.String(), true
+}
+
+func renderImportList(out *bytes.Buffer, list *bf.Node, indent int) bool {
+	if list == nil || list.Type != bf.List {
+		return false
+	}
+	for item := list.FirstChild; item != nil; item = item.Next {
+		if item.Type != bf.Item {
+			return false
+		}
+		wroteItem := false
+		for child := item.FirstChild; child != nil; child = child.Next {
+			switch child.Type {
+			case bf.Paragraph:
+				text, err := parseTextSeq(child.FirstChild, false)
+				if err != nil {
+					return false
+				}
+				fmt.Fprintf(out, "%s- %s\n", strings.Repeat("  ", indent), strings.TrimSpace(text))
+				wroteItem = true
+			case bf.List:
+				if !wroteItem {
+					fmt.Fprintf(out, "%s- \n", strings.Repeat("  ", indent))
+					wroteItem = true
+				}
+				if !renderImportList(out, child, indent+1) {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		if !wroteItem {
+			fmt.Fprintf(out, "%s- \n", strings.Repeat("  ", indent))
+		}
+	}
+	out.WriteString("\n")
+	return true
 }
 
 func emitImportCodeBlock(w io.Writer, typeToken, name, id string) {
@@ -2129,11 +2187,23 @@ func cleanupDoc(
 		}
 	}
 
+	importText := doc.Import
+	if importText != "" {
+		cleanedImport, importElided := reformatImportText(infoCtx, importText, footerLinks)
+		if importElided {
+			g.warn("Found <elided> in import docs for [%v]. The import section will be dropped in the "+
+				"Pulumi provider.", name)
+			elidedDoc = true
+			cleanedImport = ""
+		}
+		importText = cleanedImport
+	}
+
 	return entityDocs{
 		Description: cleanupText,
 		Arguments:   newargs,
 		Attributes:  newattrs,
-		Import:      doc.Import,
+		Import:      importText,
 	}, elidedDoc
 }
 
@@ -2296,9 +2366,19 @@ func elide(text string) bool {
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
+	return reformatTextWithOptions(g, text, footerLinks, true)
+}
+
+func reformatImportText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
+	return reformatTextWithOptions(g, text, footerLinks, false)
+}
+
+func reformatTextWithOptions(
+	g infoContext, text string, footerLinks map[string]string, allowElide bool,
+) (string, bool) {
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation.
-		if elide(text) {
+		if allowElide && elide(text) {
 			return "", true
 		}
 
