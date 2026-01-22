@@ -19,3 +19,7 @@ pulumi-hcl-lint
 .envrc
 .env
 .aider*
+dynamic/indexfileonly
+dynamic/localdir
+.pulumi
+__pycache__
