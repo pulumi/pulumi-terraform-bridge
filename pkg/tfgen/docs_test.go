@@ -101,6 +101,21 @@ func TestReformatText(t *testing.T) {
 	}
 }
 
+func TestReformatImportText(t *testing.T) {
+	t.Parallel()
+	infoCtx := infoContext{
+		pkg:      "aws",
+		language: "nodejs",
+		info: tfbridge.ProviderInfo{
+			Name: "aws",
+		},
+	}
+	input := "### Identity Schema\n\n#### Required\n\n- `load_balancer_name` (String) Name."
+	text, elided := reformatImportText(infoCtx, input, nil)
+	require.False(t, elided)
+	assert.Contains(t, text, "pulumi-lang-nodejs=\"`loadBalancerName`\"")
+}
+
 func TestArgumentRegex(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -1925,6 +1940,29 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			token:    "auth0/index/pages:Pages",
 			expected: "## Import\n\n### This is a sub-section\n\n```sh\n$ pulumi import auth0/index/pages:Pages my_pages \"22f4f21b-017a-319d-92e7-2291c1ca36c4\"\n```\n\n",
 		},
+		{
+			input: strings.Join([]string{
+				"",
+				"### Identity Schema",
+				"",
+				"#### Required",
+				"",
+				"- `arn` (String) Amazon Resource Name (ARN) of the load balancer.",
+				"",
+				"Using `pulumi import`, import LBs using their ARN. For example:",
+				"",
+				"```console",
+				"% terraform import aws_lb.bar arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188",
+				"```",
+				"",
+			}, "\n"),
+			token: "aws:lb/loadBalancer:LoadBalancer",
+			expected: "## Import\n\n### Identity Schema\n\n#### Required\n\n" +
+				"- `arn` (String) Amazon Resource Name (ARN) of the load balancer.\n\n" +
+				"Using `pulumi import`, import LBs using their ARN. For example:\n\n" +
+				"```sh\n$ pulumi import aws:lb/loadBalancer:LoadBalancer bar " +
+				"arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188\n```\n",
+		},
 	}
 
 	for _, tt := range tests {
@@ -2691,6 +2729,24 @@ func TestFixupImports(t *testing.T) {
 		foo: bar
 		` + "```\n",
 			`post text:
+		` + "```yaml" + `
+		foo: bar
+		` + "```\n",
+		},
+		{
+			text: "In Terraform v1.12.0 and later, the `import` block can be used with the `identity` attribute. For example:\n" +
+				"\n" +
+				"```terraform" + `
+		import {
+		to = aws_lb.example
+		identity = {
+		"arn" = "arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188"
+		}
+		}` + "\n```\n" + `post text:
+		` + "```yaml" + `
+		foo: bar
+		` + "```\n",
+			expected: `post text:
 		` + "```yaml" + `
 		foo: bar
 		` + "```\n",
