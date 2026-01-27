@@ -1,4 +1,9 @@
 // Code copied from github.com/opentofu/opentofu by go generate; DO NOT EDIT.
+// Copyright (c) The OpenTofu Authors
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2023 HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package convert
 
 import (

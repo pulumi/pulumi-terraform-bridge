@@ -19,16 +19,16 @@
     "opentofu_src": {
       "flake": false,
       "locked": {
-        "lastModified": 1717423158,
-        "narHash": "sha256-g0aMpSENMKHCyKyB2Lhq9XjH9GIx7l4/Sz9GDXmzUqU=",
+        "lastModified": 1765303354,
+        "narHash": "sha256-NnYon8VrW8oSd2DQzXTSFmf0vh4i7tJIVFHVYdKYUGk=",
         "owner": "opentofu",
         "repo": "opentofu",
-        "rev": "aeaeacc94d8b5fad8792a8fff273857594085599",
+        "rev": "8e6309a401376dc3a164dcd4f230ba42e5c8ace6",
         "type": "github"
       },
       "original": {
         "owner": "opentofu",
-        "ref": "v1.7.2",
+        "ref": "v1.11.0",
         "repo": "opentofu",
         "type": "github"
       }

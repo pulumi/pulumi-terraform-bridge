@@ -223,6 +223,42 @@ func (p LogReplayProvider) GetFunctions(
 	return mustUnmarshalLog[tfplugin6.GetFunctions_Response](p, "GetFunctions", req), nil
 }
 
+func (p LogReplayProvider) GetResourceIdentitySchemas(
+	ctx context.Context, req *tfplugin6.GetResourceIdentitySchemas_Request, opts ...grpc.CallOption,
+) (*tfplugin6.GetResourceIdentitySchemas_Response, error) {
+	return mustUnmarshalLog[tfplugin6.GetResourceIdentitySchemas_Response](p, "GetResourceIdentitySchemas", req), nil
+}
+
+func (p LogReplayProvider) UpgradeResourceIdentity(
+	ctx context.Context, req *tfplugin6.UpgradeResourceIdentity_Request, opts ...grpc.CallOption,
+) (*tfplugin6.UpgradeResourceIdentity_Response, error) {
+	return mustUnmarshalLog[tfplugin6.UpgradeResourceIdentity_Response](p, "UpgradeResourceIdentity", req), nil
+}
+
+func (p LogReplayProvider) ValidateEphemeralResourceConfig(
+	ctx context.Context, req *tfplugin6.ValidateEphemeralResourceConfig_Request, opts ...grpc.CallOption,
+) (*tfplugin6.ValidateEphemeralResourceConfig_Response, error) {
+	return mustUnmarshalLog[tfplugin6.ValidateEphemeralResourceConfig_Response](p, "ValidateEphemeralResourceConfig", req), nil
+}
+
+func (p LogReplayProvider) OpenEphemeralResource(
+	ctx context.Context, req *tfplugin6.OpenEphemeralResource_Request, opts ...grpc.CallOption,
+) (*tfplugin6.OpenEphemeralResource_Response, error) {
+	return mustUnmarshalLog[tfplugin6.OpenEphemeralResource_Response](p, "OpenEphemeralResource", req), nil
+}
+
+func (p LogReplayProvider) RenewEphemeralResource(
+	ctx context.Context, req *tfplugin6.RenewEphemeralResource_Request, opts ...grpc.CallOption,
+) (*tfplugin6.RenewEphemeralResource_Response, error) {
+	return mustUnmarshalLog[tfplugin6.RenewEphemeralResource_Response](p, "RenewEphemeralResource", req), nil
+}
+
+func (p LogReplayProvider) CloseEphemeralResource(
+	ctx context.Context, req *tfplugin6.CloseEphemeralResource_Request, opts ...grpc.CallOption,
+) (*tfplugin6.CloseEphemeralResource_Response, error) {
+	return mustUnmarshalLog[tfplugin6.CloseEphemeralResource_Response](p, "CloseEphemeralResource", req), nil
+}
+
 func (p LogReplayProvider) Close() error {
 	return nil
 }

@@ -9,6 +9,9 @@ package addrs
 import (
 	"fmt"
 	"strings"
+
+	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/tfdiags"
 )
 
 // Resource is an address for a resource block within configuration, which
@@ -27,6 +30,8 @@ func (r Resource) String() string {
 		return fmt.Sprintf("%s.%s", r.Type, r.Name)
 	case DataResourceMode:
 		return fmt.Sprintf("data.%s.%s", r.Type, r.Name)
+	case EphemeralResourceMode:
+		return fmt.Sprintf("ephemeral.%s.%s", r.Type, r.Name)
 	default:
 		// Should never happen, but we'll return a string here rather than
 		// crashing just in case it does.
@@ -41,7 +46,7 @@ func (r Resource) Equal(o Resource) bool {
 func (r Resource) Less(o Resource) bool {
 	switch {
 	case r.Mode != o.Mode:
-		return r.Mode == DataResourceMode
+		return ResourceModeLess(r.Mode, o.Mode)
 
 	case r.Type != o.Type:
 		return r.Type < o.Type
@@ -61,7 +66,7 @@ func (r Resource) UniqueKey() UniqueKey {
 func (r Resource) uniqueKeySigil() {}
 
 // Instance produces the address for a specific instance of the receiver
-// that is idenfied by the given key.
+// that is identified by the given key.
 func (r Resource) Instance(key InstanceKey) ResourceInstance {
 	return ResourceInstance{
 		Resource: r,
@@ -169,7 +174,7 @@ func (m ModuleInstance) Resource(mode ResourceMode, typeName string, name string
 }
 
 // Instance produces the address for a specific instance of the receiver
-// that is idenfied by the given key.
+// that is identified by the given key.
 func (r AbsResource) Instance(key InstanceKey) AbsResourceInstance {
 	return AbsResourceInstance{
 		Module:   r.Module,
@@ -277,7 +282,7 @@ func (m ModuleInstance) ResourceInstance(mode ResourceMode, typeName string, nam
 }
 
 // ContainingResource returns the address of the resource that contains the
-// receving resource instance. In other words, it discards the key portion
+// receiving resource instance. In other words, it discards the key portion
 // of the address to produce an AbsResource value.
 func (r AbsResourceInstance) ContainingResource() AbsResource {
 	return AbsResource{
@@ -392,6 +397,29 @@ type ConfigResource struct {
 	Resource Resource
 }
 
+// ParseConfigResource parses the module address from the given traversal
+// and then parses the resource address from the leftover. Returning ConfigResource
+// contains both module and resource addresses. ParseConfigResource doesn't support
+// instance keys and will return an error if it encounters one.
+func ParseConfigResource(traversal hcl.Traversal) (ConfigResource, tfdiags.Diagnostics) {
+	modulePath, remainTraversal, diags := parseModulePrefix(traversal)
+	if diags.HasErrors() {
+		return ConfigResource{}, diags
+	}
+
+	if len(remainTraversal) == 0 {
+		return ConfigResource{}, diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Module address is not allowed",
+			Detail:   "Expected reference to either resource or data block. Provided reference appears to be a module.",
+			Subject:  traversal.SourceRange().Ptr(),
+		})
+	}
+
+	configRes, moreDiags := parseResourceUnderModule(modulePath, remainTraversal)
+	return configRes, diags.Append(moreDiags)
+}
+
 // Resource returns the address of a particular resource within the module.
 func (m Module) Resource(mode ResourceMode, typeName string, name string) ConfigResource {
 	return ConfigResource{
@@ -472,7 +500,7 @@ func (k configResourceKey) uniqueKeySigil() {}
 // resource lifecycle has a slightly different address format.
 type ResourceMode rune
 
-//go:generate go run golang.org/x/tools/cmd/stringer -type ResourceMode
+//go:generate go tool golang.org/x/tools/cmd/stringer -type ResourceMode
 
 const (
 	// InvalidResourceMode is the zero value of ResourceMode and is not
@@ -486,4 +514,38 @@ const (
 	// DataResourceMode indicates a data resource, as defined by
 	// "data" blocks in configuration.
 	DataResourceMode ResourceMode = 'D'
+
+	// EphemeralResourceMode indicates an ephemeral resource, as defined by
+	// the "ephemeral" blocks in configuration.
+	EphemeralResourceMode ResourceMode = 'E'
 )
+
+// ResourceModeLess is comparing two ResourceMode.
+// The ranking is as follows: EphemeralResourceMode, DataResourceMode, ManagedResourceMode.
+func ResourceModeLess(a, b ResourceMode) bool {
+	switch a {
+	case ManagedResourceMode:
+		return false // No other mode should be after ManagedResourceMode
+	case DataResourceMode:
+		return b == ManagedResourceMode // DataResourceMode is always lower than ManagedResourceMode
+	case EphemeralResourceMode:
+		return b == ManagedResourceMode || b == DataResourceMode // EphemeralResourceMode is always lower than ManagedResourceMode and DataResourceMode
+	}
+	return false
+}
+
+// ResourceModeBlockName returns the name of the block that the given ResourceMode is mapped to.
+// At the time of writing this, the string values returned from this one are hardcoded all over the place so this is not
+// the source of truth for the name of those blocks.
+func ResourceModeBlockName(rm ResourceMode) string {
+	switch rm {
+	case ManagedResourceMode:
+		return "resource"
+	case DataResourceMode:
+		return "data"
+	case EphemeralResourceMode:
+		return "ephemeral"
+	default:
+		return "unknown"
+	}
+}
