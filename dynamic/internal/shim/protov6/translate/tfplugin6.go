@@ -212,6 +212,7 @@ func schemaAttribute(i *tfplugin6.Schema_Attribute) *tfprotov6.SchemaAttribute {
 		Sensitive:       i.Sensitive,
 		DescriptionKind: stringKind(i.DescriptionKind),
 		Deprecated:      i.Deprecated,
+		WriteOnly:       i.WriteOnly,
 	}
 }
 
@@ -342,13 +343,21 @@ func dynamicValueRequest(i *tfprotov6.DynamicValue) *tfplugin6.DynamicValue {
 	}
 }
 
+// clientCapabilities returns client capabilities indicating support for write-only attributes.
+func clientCapabilities() *tfplugin6.ClientCapabilities {
+	return &tfplugin6.ClientCapabilities{
+		WriteOnlyAttributesAllowed: true,
+	}
+}
+
 func ConfigureProviderRequest(i *tfprotov6.ConfigureProviderRequest) *tfplugin6.ConfigureProvider_Request {
 	if i == nil {
 		return nil
 	}
 	return &tfplugin6.ConfigureProvider_Request{
-		TerraformVersion: i.TerraformVersion,
-		Config:           dynamicValueRequest(i.Config),
+		TerraformVersion:   i.TerraformVersion,
+		Config:             dynamicValueRequest(i.Config),
+		ClientCapabilities: clientCapabilities(),
 	}
 }
 
@@ -385,8 +394,9 @@ func ValidateResourceConfigRequest(
 	}
 
 	return &tfplugin6.ValidateResourceConfig_Request{
-		TypeName: i.TypeName,
-		Config:   dynamicValueRequest(i.Config),
+		TypeName:           i.TypeName,
+		Config:             dynamicValueRequest(i.Config),
+		ClientCapabilities: clientCapabilities(),
 	}
 }
 
@@ -408,10 +418,11 @@ func ReadResourceRequest(i *tfprotov6.ReadResourceRequest) *tfplugin6.ReadResour
 	}
 
 	return &tfplugin6.ReadResource_Request{
-		TypeName:     i.TypeName,
-		CurrentState: dynamicValueRequest(i.CurrentState),
-		Private:      i.Private,
-		ProviderMeta: dynamicValueRequest(i.ProviderMeta),
+		TypeName:           i.TypeName,
+		CurrentState:       dynamicValueRequest(i.CurrentState),
+		Private:            i.Private,
+		ProviderMeta:       dynamicValueRequest(i.ProviderMeta),
+		ClientCapabilities: clientCapabilities(),
 	}
 }
 
@@ -478,12 +489,13 @@ func PlanResourceChangeRequest(i *tfprotov6.PlanResourceChangeRequest) *tfplugin
 	}
 
 	return &tfplugin6.PlanResourceChange_Request{
-		TypeName:         i.TypeName,
-		PriorState:       dynamicValueRequest(i.PriorState),
-		ProposedNewState: dynamicValueRequest(i.ProposedNewState),
-		Config:           dynamicValueRequest(i.Config),
-		PriorPrivate:     i.PriorPrivate,
-		ProviderMeta:     dynamicValueRequest(i.ProviderMeta),
+		TypeName:           i.TypeName,
+		PriorState:         dynamicValueRequest(i.PriorState),
+		ProposedNewState:   dynamicValueRequest(i.ProposedNewState),
+		Config:             dynamicValueRequest(i.Config),
+		PriorPrivate:       i.PriorPrivate,
+		ProviderMeta:       dynamicValueRequest(i.ProviderMeta),
+		ClientCapabilities: clientCapabilities(),
 	}
 }
 
@@ -562,8 +574,9 @@ func ImportResourceStateRequest(i *tfprotov6.ImportResourceStateRequest) *tfplug
 	}
 
 	return &tfplugin6.ImportResourceState_Request{
-		TypeName: i.TypeName,
-		Id:       i.ID,
+		TypeName:           i.TypeName,
+		Id:                 i.ID,
+		ClientCapabilities: clientCapabilities(),
 	}
 }
 
@@ -653,9 +666,10 @@ func ReadDataSourceRequest(i *tfprotov6.ReadDataSourceRequest) *tfplugin6.ReadDa
 	}
 
 	return &tfplugin6.ReadDataSource_Request{
-		TypeName:     i.TypeName,
-		Config:       dynamicValueRequest(i.Config),
-		ProviderMeta: dynamicValueRequest(i.ProviderMeta),
+		TypeName:           i.TypeName,
+		Config:             dynamicValueRequest(i.Config),
+		ProviderMeta:       dynamicValueRequest(i.ProviderMeta),
+		ClientCapabilities: clientCapabilities(),
 	}
 }
 
