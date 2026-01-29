@@ -1,7 +1,7 @@
 {
   inputs = {
     nixpkgs.url = github:NixOS/nixpkgs/nixos-24.05;
-    opentofu_src.url = github:opentofu/opentofu/v1.11.0;
+    opentofu_src.url = github:opentofu/opentofu/v1.11.4;
     opentofu_src.flake = false;
   };
 

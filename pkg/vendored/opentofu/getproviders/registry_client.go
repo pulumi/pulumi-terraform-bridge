@@ -397,7 +397,7 @@ func (c *registryClient) addHeadersToRequest(req *http.Request) {
 	if c.creds != nil {
 		c.creds.PrepareRequest(req)
 	}
-	req.Header.Set(terraformVersionHeader, "v1.11.0")
+	req.Header.Set(terraformVersionHeader, "v1.11.4")
 }
 
 func (c *registryClient) errQueryFailed(provider addrs.Provider, err error) error {

@@ -55,6 +55,7 @@ func Schema_Attribute(in *tfprotov6.SchemaAttribute) *tfplugin6.Schema_Attribute
 		Required:        in.Required,
 		Sensitive:       in.Sensitive,
 		Type:            CtyType(in.Type),
+		WriteOnly:       in.WriteOnly,
 	}
 
 	return resp

@@ -31,7 +31,7 @@ import (
 func New(ctx context.Context) *http.Client {
 	cli := cleanhttp.DefaultPooledClient()
 	cli.Transport = &userAgentRoundTripper{
-		userAgent: OpenTofuUserAgent("v1.11.0"),
+		userAgent: OpenTofuUserAgent("v1.11.4"),
 		inner:     cli.Transport,
 	}
 

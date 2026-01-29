@@ -30,8 +30,8 @@ import (
 )
 
 func main() {
-	vendorTerraformPluginGo("v0.22.0")
-	vendorOpenTOFU("v1.11.0")
+	vendorTerraformPluginGo("v0.29.0")
+	vendorOpenTOFU("v1.11.4")
 }
 
 func vendorOpenTOFU(version string) {
@@ -139,7 +139,6 @@ func vendorOpenTOFU(version string) {
 		s = strings.ReplaceAll(s, imp, "")
 		return s
 	}
-
 
 	// Strip tracing imports
 	stripTracing := func(s string) string {
@@ -661,11 +660,6 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
-			src:        "internal/plugin/convert/deferral.go",
-			dest:       "plugin/convert/deferral.go",
-			transforms: transforms,
-		},
-		{
 			src:        "internal/plugin/validation/write_only.go",
 			dest:       "plugin/validation/write_only.go",
 			transforms: transforms,
@@ -678,16 +672,6 @@ func vendorOpenTOFU(version string) {
 		{
 			src:        "internal/providers/schema_cache.go",
 			dest:       "providers/schema_cache.go",
-			transforms: transforms,
-		},
-		{
-			src:        "internal/providers/deferral.go",
-			dest:       "providers/deferral.go",
-			transforms: transforms,
-		},
-		{
-			src:        "internal/providers/deferralreason_string.go",
-			dest:       "providers/deferralreason_string.go",
 			transforms: transforms,
 		},
 		{
@@ -730,11 +714,6 @@ func vendorOpenTOFU(version string) {
 		{
 			src:        "internal/plugin6/convert/function.go",
 			dest:       "plugin6/convert/function.go",
-			transforms: transforms,
-		},
-		{
-			src:        "internal/plugin6/convert/deferral.go",
-			dest:       "plugin6/convert/deferral.go",
 			transforms: transforms,
 		},
 		{
