@@ -238,7 +238,11 @@ func (p LogReplayProvider) UpgradeResourceIdentity(
 func (p LogReplayProvider) ValidateEphemeralResourceConfig(
 	ctx context.Context, req *tfplugin6.ValidateEphemeralResourceConfig_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ValidateEphemeralResourceConfig_Response, error) {
-	return mustUnmarshalLog[tfplugin6.ValidateEphemeralResourceConfig_Response](p, "ValidateEphemeralResourceConfig", req), nil
+	return mustUnmarshalLog[tfplugin6.ValidateEphemeralResourceConfig_Response](
+		p,
+		"ValidateEphemeralResourceConfig",
+		req,
+	), nil
 }
 
 func (p LogReplayProvider) OpenEphemeralResource(

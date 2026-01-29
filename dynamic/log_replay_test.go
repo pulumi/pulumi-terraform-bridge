@@ -148,5 +148,5 @@ outputs:
 	)
 	require.NoError(t, err)
 	res := pt.Up(t)
-	require.Equal(t, "heartily-sharing-monkey", res.Outputs["petName"].Value)
+	require.Equal(t, "curiously-diverse-newt", res.Outputs["petName"].Value)
 }
