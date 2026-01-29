@@ -14,19 +14,19 @@
     {
         "name": "github.com/hashicorp/terraform-plugin-mux/tf5to6server.v5tov6Server.ConfigureProvider",
         "call": "/Users/vvm/go/pkg/mod/github.com/hashicorp/terraform-plugin-mux@v0.16.0/tf5to6server/tf5to6server.go:60",
-        "request": "terraform_version:\"pulumi-terraform-bridge\" config:{msgpack:\"\\x80\"}",
+        "request": "terraform_version:\"pulumi-terraform-bridge\" config:{msgpack:\"\\x80\"} client_capabilities:{write_only_attributes_allowed:true}",
         "response": "{}"
     },
     {
         "name": "github.com/hashicorp/terraform-plugin-mux/tf5to6server.v5tov6Server.ValidateResourceConfig",
         "call": "/Users/vvm/go/pkg/mod/github.com/hashicorp/terraform-plugin-mux@v0.16.0/tf5to6server/tf5to6server.go:208",
-        "request": "type_name:\"random_pet\" config:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"}",
+        "request": "type_name:\"random_pet\" config:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"} client_capabilities:{write_only_attributes_allowed:true}",
         "response": "{}"
     },
     {
         "name": "github.com/hashicorp/terraform-plugin-mux/tf5to6server.v5tov6Server.PlanResourceChange",
         "call": "/Users/vvm/go/pkg/mod/github.com/hashicorp/terraform-plugin-mux@v0.16.0/tf5to6server/tf5to6server.go:126",
-        "request": "type_name:\"random_pet\" prior_state:{msgpack:\"\\xc0\"} proposed_new_state:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"} config:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"}",
+        "request": "type_name:\"random_pet\" prior_state:{msgpack:\"\\xc0\"} proposed_new_state:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"} config:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"} client_capabilities:{write_only_attributes_allowed:true}",
         "response": "{\"planned_state\":{\"msgpack\":\"haJpZNQAAKdrZWVwZXJzwKZsZW5ndGgDpnByZWZpeMCpc2VwYXJhdG9yoS0=\"}}"
     },
     {
@@ -44,19 +44,19 @@
     {
         "name": "github.com/hashicorp/terraform-plugin-mux/tf5to6server.v5tov6Server.ConfigureProvider",
         "call": "/Users/vvm/go/pkg/mod/github.com/hashicorp/terraform-plugin-mux@v0.16.0/tf5to6server/tf5to6server.go:60",
-        "request": "terraform_version:\"pulumi-terraform-bridge\" config:{msgpack:\"\\x80\"}",
+        "request": "terraform_version:\"pulumi-terraform-bridge\" config:{msgpack:\"\\x80\"} client_capabilities:{write_only_attributes_allowed:true}",
         "response": "{}"
     },
     {
         "name": "github.com/hashicorp/terraform-plugin-mux/tf5to6server.v5tov6Server.ValidateResourceConfig",
         "call": "/Users/vvm/go/pkg/mod/github.com/hashicorp/terraform-plugin-mux@v0.16.0/tf5to6server/tf5to6server.go:208",
-        "request": "type_name:\"random_pet\" config:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"}",
+        "request": "type_name:\"random_pet\" config:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"} client_capabilities:{write_only_attributes_allowed:true}",
         "response": "{}"
     },
     {
         "name": "github.com/hashicorp/terraform-plugin-mux/tf5to6server.v5tov6Server.PlanResourceChange",
         "call": "/Users/vvm/go/pkg/mod/github.com/hashicorp/terraform-plugin-mux@v0.16.0/tf5to6server/tf5to6server.go:126",
-        "request": "type_name:\"random_pet\" prior_state:{msgpack:\"\\xc0\"} proposed_new_state:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"} config:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"}",
+        "request": "type_name:\"random_pet\" prior_state:{msgpack:\"\\xc0\"} proposed_new_state:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"} config:{msgpack:\"\\x85\\xa2id\\xc0\\xa7keepers\\xc0\\xa6length\\x03\\xa6prefix\\xc0\\xa9separator\\xc0\"} client_capabilities:{write_only_attributes_allowed:true}",
         "response": "{\"planned_state\":{\"msgpack\":\"haJpZNQAAKdrZWVwZXJzwKZsZW5ndGgDpnByZWZpeMCpc2VwYXJhdG9yoS0=\"}}"
     },
     {
