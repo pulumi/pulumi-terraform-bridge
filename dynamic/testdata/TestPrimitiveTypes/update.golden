@@ -17,6 +17,11 @@
             "replace": {
               "raw": null
             }
+          },
+          "attrStringWriteOnly": {
+            "replace": {
+              "raw": null
+            }
           }
         }
       }
