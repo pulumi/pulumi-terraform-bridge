@@ -13,9 +13,9 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-getter"
-	
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 
-	
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/tracing"
 )
 
 // We borrow the "unpack a zip file into a target directory" logic from
@@ -38,8 +38,8 @@ var _ PackageLocation = PackageLocalArchive("")
 func (p PackageLocalArchive) String() string { return string(p) }
 
 func (p PackageLocalArchive) InstallProviderPackage(ctx context.Context, meta PackageMeta, targetDir string, allowedHashes []Hash) (*PackageAuthenticationResult, error) {
-	_ = ctx
-	
+	_, span := tracing.Tracer().Start(ctx, "Decompress (local archive)")
+	defer span.End()
 
 	var authResult *PackageAuthenticationResult
 	if meta.Authentication != nil {
@@ -55,20 +55,20 @@ func (p PackageLocalArchive) InstallProviderPackage(ctx context.Context, meta Pa
 				"failed to calculate checksum for %s %s package at %s: %w",
 				meta.Provider, meta.Version, meta.Location, err,
 			)
-			
+			tracing.SetSpanError(span, err)
 			return authResult, err
 		} else if !matches {
 			err := fmt.Errorf(
 				"the current package for %s %s doesn't match any of the checksums previously recorded in the dependency lock file; for more information: https://opentofu.org/docs/language/files/dependency-lock/#checksum-verification",
 				meta.Provider, meta.Version,
 			)
-			
+			tracing.SetSpanError(span, err)
 			return authResult, err
 		}
 	}
 
 	filename := meta.Location.String()
-	
+	span.SetAttributes(semconv.FilePath(filename))
 
 	// NOTE: Packages are immutable, but we may want to skip overwriting the existing
 	// files in due to specific scenarios defined below.
@@ -94,7 +94,7 @@ func (p PackageLocalArchive) InstallProviderPackage(ctx context.Context, meta Pa
 	//nolint:mnd // magic number predates us using this linter
 	err := unzip.Decompress(targetDir, filename, true, 0000)
 	if err != nil {
-		
+		tracing.SetSpanError(span, err)
 		return authResult, err
 	}
 

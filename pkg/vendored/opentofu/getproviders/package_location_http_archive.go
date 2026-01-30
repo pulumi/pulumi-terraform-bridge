@@ -17,10 +17,10 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/httpclient"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/logging"
-	
-	
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
+	"go.opentelemetry.io/otel/trace"
 
-	
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/tracing"
 )
 
 // PackageHTTPURL is a provider package location accessible via HTTP.
@@ -54,7 +54,10 @@ func (p PackageHTTPURL) String() string { return p.URL }
 func (p PackageHTTPURL) InstallProviderPackage(ctx context.Context, meta PackageMeta, targetDir string, allowedHashes []Hash) (*PackageAuthenticationResult, error) {
 	url := meta.Location.String()
 
-	_ = ctx
+	ctx, span := tracing.Tracer().Start(ctx, "Install (http)", trace.WithAttributes(
+		semconv.URLFull(url),
+	))
+	defer span.End()
 
 	// When we're installing from an HTTP URL we expect the URL to refer to
 	// a zip file. We'll fetch that into a temporary file here and then

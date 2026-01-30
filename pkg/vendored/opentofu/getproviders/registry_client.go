@@ -21,13 +21,13 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/opentofu/svchost"
 	"github.com/opentofu/svchost/svcauth"
-	
-	
-	
+	otelAttr "go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	"go.opentelemetry.io/otel/trace"
 
-	
-	
-	
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/tracing"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/tracing/traceattrs"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/addrs"
 )
 
@@ -66,7 +66,13 @@ func newRegistryClient(ctx context.Context, baseURL *url.URL, creds svcauth.Host
 // ErrUnauthorized if the registry responds with 401 or 403 status codes, or
 // ErrQueryFailed for any other protocol or operational problem.
 func (c *registryClient) ProviderVersions(ctx context.Context, addr addrs.Provider) (map[string][]string, []string, error) {
-	_ = ctx
+	ctx, span := tracing.Tracer().Start(ctx,
+		"List Versions",
+		trace.WithAttributes(
+			otelAttr.String(traceattrs.ProviderAddress, addr.String()),
+		),
+	)
+	defer span.End()
 	endpointPath, err := url.Parse(path.Join(addr.Namespace, addr.Type, "versions"))
 	if err != nil {
 		// Should never happen because we're constructing this from
@@ -74,7 +80,7 @@ func (c *registryClient) ProviderVersions(ctx context.Context, addr addrs.Provid
 		return nil, nil, err
 	}
 	endpointURL := c.baseURL.ResolveReference(endpointPath)
-	
+	span.SetAttributes(semconv.URLFull(endpointURL.String()))
 	req, err := retryablehttp.NewRequest("GET", endpointURL.String(), nil)
 	if err != nil {
 		return nil, nil, err
@@ -85,7 +91,7 @@ func (c *registryClient) ProviderVersions(ctx context.Context, addr addrs.Provid
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		errResult := c.errQueryFailed(addr, err)
-		
+		tracing.SetSpanError(span, errResult)
 		return nil, nil, errResult
 	}
 	defer resp.Body.Close()
@@ -97,15 +103,15 @@ func (c *registryClient) ProviderVersions(ctx context.Context, addr addrs.Provid
 		err := ErrRegistryProviderNotKnown{
 			Provider: addr,
 		}
-		
+		tracing.SetSpanError(span, err)
 		return nil, nil, err
 	case http.StatusUnauthorized, http.StatusForbidden:
 		err := c.errUnauthorized(addr.Hostname)
-		
+		tracing.SetSpanError(span, err)
 		return nil, nil, err
 	default:
 		err := c.errQueryFailed(addr, errors.New(resp.Status))
-		
+		tracing.SetSpanError(span, err)
 		return nil, nil, err
 	}
 
@@ -124,7 +130,7 @@ func (c *registryClient) ProviderVersions(ctx context.Context, addr addrs.Provid
 	dec := json.NewDecoder(resp.Body)
 	if err := dec.Decode(&body); err != nil {
 		errResult := c.errQueryFailed(addr, err)
-		
+		tracing.SetSpanError(span, errResult)
 		return nil, nil, errResult
 	}
 
@@ -160,7 +166,13 @@ func (c *registryClient) PackageMeta(ctx context.Context, provider addrs.Provide
 		target.OS,
 		target.Arch,
 	))
-	_ = ctx
+	ctx, span := tracing.Tracer().Start(ctx,
+		"Fetch metadata",
+		trace.WithAttributes(
+			otelAttr.String(traceattrs.ProviderAddress, provider.String()),
+			otelAttr.String(traceattrs.ProviderVersion, version.String()),
+		))
+	defer span.End()
 
 	if err != nil {
 		// Should never happen because we're constructing this from
@@ -168,7 +180,9 @@ func (c *registryClient) PackageMeta(ctx context.Context, provider addrs.Provide
 		return PackageMeta{}, err
 	}
 	endpointURL := c.baseURL.ResolveReference(endpointPath)
-	
+	span.SetAttributes(
+		semconv.URLFull(endpointURL.String()),
+	)
 
 	req, err := retryablehttp.NewRequest("GET", endpointURL.String(), nil)
 	if err != nil {
@@ -179,7 +193,7 @@ func (c *registryClient) PackageMeta(ctx context.Context, provider addrs.Provide
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		
+		tracing.SetSpanError(span, err)
 		return PackageMeta{}, c.errQueryFailed(provider, err)
 	}
 	defer resp.Body.Close()

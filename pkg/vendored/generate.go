@@ -140,17 +140,20 @@ func vendorOpenTOFU(version string) {
 		return s
 	}
 
-	// Strip tracing imports
-	stripTracing := func(s string) string {
-		s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/tracing"`, "")
-		s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/tracing/traceattrs"`, "")
-		// Remove traceattrs references
-		s = strings.ReplaceAll(s, "traceattrs.ProviderAddress", `"provider.address"`)
-		s = strings.ReplaceAll(s, "traceattrs.ProviderVersion", `"provider.version"`)
-		return s
-	}
+	// Replaces refs to internal/tracing in all files so we can reference it
+	replaceTracingRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/tracing" -> "%s/tracing"`,
+		oldPkg, newPkg,
+	))
 
-	// Strip collections import and replace type usage
+	// Replaces refs to internal/tracing/traceattrs in all files so we can reference it
+	replaceTraceattrsRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/tracing/traceattrs" -> "%s/tracing/traceattrs"`,
+		oldPkg, newPkg,
+	))
+
+	// Avoids adding internal/collections to vendored code
+	// Rewrites the usages in our files to use a raw map instead.
 	stripCollections := func(s string) string {
 		s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/collections"`, "")
 		// Replace collections.Set[string] with map[string]struct{}
@@ -159,15 +162,21 @@ func vendorOpenTOFU(version string) {
 		s = strings.ReplaceAll(s, "collections.NewSet(keyID)", `map[string]struct{}{keyID: {}}`)
 		return s
 	}
-
-	// Replace validation imports with vendored paths
-	replaceValidation := func(s string) string {
-		s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/plugin/validation"`,
-			`"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/plugin/validation"`)
-		s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/plugin6/validation"`,
-			`"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/plugin6/validation"`)
-		return s
-	}
+	// Replaces refs to internal/plugin/validation in all files so we can reference it
+	replacePluginValidationRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/plugin/validation" -> "%s/plugin/validation"`,
+		oldPkg, newPkg,
+	))
+	// Replaces refs to internal/pluginv6/validation in all files so we can reference it
+	replacePlugin6ValidationRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/plugin6/validation" -> "%s/plugin6/validation"`,
+		oldPkg, newPkg,
+	))
+	// Replaces refs to internal/flock in all files so we can reference it
+	replaceFlockRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/flock" -> "%s/flock"`,
+		oldPkg, newPkg,
+	))
 
 	transforms := []func(string) string{
 		replacePkg,
@@ -188,9 +197,12 @@ func vendorOpenTOFU(version string) {
 		replaceConfigsHcl2ShimRef,
 		replacePlugin6Ref,
 		removeOpentofuVersion,
-		stripTracing,
+		replaceTracingRef,
+		replaceTraceattrsRef,
 		stripCollections,
-		replaceValidation,
+		replacePluginValidationRef,
+		replacePlugin6ValidationRef,
+		replaceFlockRef,
 	}
 
 	files := []file{
@@ -232,6 +244,7 @@ func vendorOpenTOFU(version string) {
 			dest:       "configs/configschema/nestingmode_string.go",
 			transforms: transforms,
 		},
+		// Needed for write-only support
 		{
 			src:        "internal/configs/configschema/write_only.go",
 			dest:       "configs/configschema/write_only.go",
@@ -242,10 +255,10 @@ func vendorOpenTOFU(version string) {
 			dest: "configs/configschema/marks.go",
 			transforms: append(transforms, func(s string) string {
 				// Remove lang/marks import and keep only copyAndExtendPath function
+				// We don't need lang/marks because the bridge doesn't use it.
 				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/lang/marks"`, "")
 				s = strings.ReplaceAll(s, `"fmt"`, "")
 				// Remove ValueMarks and RemoveEphemeralFromWriteOnly methods that use marks
-				// Keep only copyAndExtendPath function
 				idx := strings.Index(s, "// ValueMarks returns")
 				if idx > 0 {
 					s = s[:idx]
@@ -338,14 +351,10 @@ func vendorOpenTOFU(version string) {
 			dest:       "tfdiags/sourceless.go",
 			transforms: transforms,
 		},
+		// Needed by /tfdiags/diagnostics.go
 		{
 			src:        "internal/tfdiags/diagnostic_extra.go",
 			dest:       "tfdiags/diagnostic_extra.go",
-			transforms: transforms,
-		},
-		{
-			src:        "internal/tfdiags/override.go",
-			dest:       "tfdiags/override.go",
 			transforms: transforms,
 		},
 		{
@@ -458,40 +467,9 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
-			src:  "internal/getproviders/registry_client.go",
-			dest: "getproviders/registry_client.go",
-			transforms: append(transforms, func(s string) string {
-				// Remove otel imports
-				s = strings.ReplaceAll(s, `otelAttr "go.opentelemetry.io/otel/attribute"`, "")
-				s = strings.ReplaceAll(s, `semconv "go.opentelemetry.io/otel/semconv/v1.21.0"`, "")
-				s = strings.ReplaceAll(s, `semconv "go.opentelemetry.io/otel/semconv/v1.30.0"`, "")
-				s = strings.ReplaceAll(s, `"go.opentelemetry.io/otel/trace"`, "")
-				// Remove tracing span creation blocks (note: traceattrs already replaced by earlier transform)
-				s = strings.ReplaceAll(s, `ctx, span := tracing.Tracer().Start(ctx,
-		"List Versions",
-		trace.WithAttributes(
-			otelAttr.String("provider.address", addr.String()),
-		),
-	)
-	defer span.End()`, `_ = ctx`)
-				s = strings.ReplaceAll(s, `ctx, span := tracing.Tracer().Start(ctx,
-		"Fetch metadata",
-		trace.WithAttributes(
-			otelAttr.String("provider.address", provider.String()),
-			otelAttr.String("provider.version", version.String()),
-		))
-	defer span.End()`, `_ = ctx`)
-				// Remove tracing error calls
-				s = strings.ReplaceAll(s, "tracing.SetSpanError(span, errResult)", "")
-				s = strings.ReplaceAll(s, "tracing.SetSpanError(span, err)", "")
-				// Remove span.SetAttributes calls (single and multi-line)
-				s = strings.ReplaceAll(s, "span.SetAttributes(semconv.URLFull(endpointURL.String()))", "")
-				s = strings.ReplaceAll(s, "span.SetAttributes(semconv.URLFull(downloadURL))", "")
-				s = strings.ReplaceAll(s, `span.SetAttributes(
-		semconv.URLFull(endpointURL.String()),
-	)`, "")
-				return s
-			}),
+			src:        "internal/getproviders/registry_client.go",
+			dest:       "getproviders/registry_client.go",
+			transforms: transforms,
 		},
 		{
 			src:        "internal/getproviders/registry_source.go",
@@ -514,35 +492,14 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
-			src:  "internal/getproviders/package_location_local_archive.go",
-			dest: "getproviders/package_location_local_archive.go",
-			transforms: append(transforms, func(s string) string {
-				// Remove tracing imports and calls
-				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/tracing"`, "")
-				s = strings.ReplaceAll(s, `semconv "go.opentelemetry.io/otel/semconv/v1.30.0"`, "")
-				s = strings.ReplaceAll(s, `_, span := tracing.Tracer().Start(ctx, "Decompress (local archive)")`, `_ = ctx`)
-				s = strings.ReplaceAll(s, `defer span.End()`, "")
-				s = strings.ReplaceAll(s, `tracing.SetSpanError(span, err)`, "")
-				s = strings.ReplaceAll(s, `span.SetAttributes(semconv.FilePath(filename))`, "")
-				return s
-			}),
+			src:        "internal/getproviders/package_location_local_archive.go",
+			dest:       "getproviders/package_location_local_archive.go",
+			transforms: transforms,
 		},
 		{
-			src:  "internal/getproviders/package_location_http_archive.go",
-			dest: "getproviders/package_location_http_archive.go",
-			transforms: append(transforms, func(s string) string {
-				// Remove otel imports
-				s = strings.ReplaceAll(s, `"go.opentelemetry.io/otel/trace"`, "")
-				s = strings.ReplaceAll(s, `semconv "go.opentelemetry.io/otel/semconv/v1.30.0"`, "")
-				// Remove tracing span creation block
-				s = strings.ReplaceAll(s, `ctx, span := tracing.Tracer().Start(ctx, "Install (http)", trace.WithAttributes(
-		semconv.URLFull(url),
-	))
-	defer span.End()`, `_ = ctx`)
-				// Remove span.SetAttributes calls
-				s = strings.ReplaceAll(s, "span.SetAttributes(semconv.HTTPRequestBodySize(written))", "")
-				return s
-			}),
+			src:        "internal/getproviders/package_location_http_archive.go",
+			dest:       "getproviders/package_location_http_archive.go",
+			transforms: transforms,
 		},
 		{
 			src:        "internal/httpclient/client.go",
@@ -569,6 +526,32 @@ func vendorOpenTOFU(version string) {
 			dest:       "logging/panic.go",
 			transforms: transforms,
 		},
+		// Tracing package - vendored because tracing is woven throughout core files for basic functionality.
+		{
+			src:        "internal/tracing/init.go",
+			dest:       "tracing/init.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tracing/utils.go",
+			dest:       "tracing/utils.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tracing/data.go",
+			dest:       "tracing/data.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tracing/context_probe.go",
+			dest:       "tracing/context_probe.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tracing/traceattrs/traceattrs.go",
+			dest:       "tracing/traceattrs/traceattrs.go",
+			transforms: transforms,
+		},
 		{
 			src:        "internal/providercache/cached_provider.go",
 			dest:       "providercache/cached_provider.go",
@@ -580,16 +563,9 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
-			src:  "internal/providercache/dir_modify.go",
-			dest: "providercache/dir_modify.go",
-			transforms: append(transforms, func(s string) string {
-				// Remove flock import
-				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/flock"`, "")
-				// Replace flock calls with no-ops (typed nil for error)
-				s = strings.ReplaceAll(s, "flock.LockBlocking(ctx, f)", "(error)(nil)")
-				s = strings.ReplaceAll(s, "flock.Unlock(f)", "(error)(nil)")
-				return s
-			}),
+			src:        "internal/providercache/dir_modify.go",
+			dest:       "providercache/dir_modify.go",
+			transforms: transforms,
 		},
 		{
 			src:        "internal/providercache/dir_testing.go",
@@ -719,6 +695,16 @@ func vendorOpenTOFU(version string) {
 		{
 			src:        "internal/plugin6/validation/write_only.go",
 			dest:       "plugin6/validation/write_only.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/flock/filesystem_lock_unix.go",
+			dest:       "/flock/filesystem_lock_unix.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/flock/filesystem_lock_windows.go",
+			dest:       "/flock/filesystem_lock_windows.go",
 			transforms: transforms,
 		},
 	}

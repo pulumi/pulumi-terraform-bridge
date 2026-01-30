@@ -18,7 +18,6 @@ import (
 	"sort"
 	"strings"
 
-	
 	"golang.org/x/mod/sumdb/dirhash"
 )
 

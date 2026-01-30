@@ -15,8 +15,8 @@ import (
 	"path/filepath"
 	"time"
 
-	
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/addrs"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/flock"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/getproviders"
 )
 
@@ -166,7 +166,7 @@ func (d *Dir) lock(ctx context.Context, provider addrs.Provider, version getprov
 		defer cancelWhenSlow()
 	}
 
-	err = (error)(nil)
+	err = flock.LockBlocking(ctx, f)
 	if err != nil {
 		// Ensure that we are not in a partially failed state
 		return nil, fmt.Errorf("unable to acquire file lock on %q: %w", lockFile, err)
@@ -175,7 +175,7 @@ func (d *Dir) lock(ctx context.Context, provider addrs.Provider, version getprov
 	return func() error {
 		log.Printf("[TRACE] Releasing global provider lock %s", lockFile)
 
-		unlockErr := (error)(nil)
+		unlockErr := flock.Unlock(f)
 
 		// Prefer close error over unlock error
 		err := f.Close()

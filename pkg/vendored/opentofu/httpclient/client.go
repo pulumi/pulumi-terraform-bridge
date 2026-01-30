@@ -13,8 +13,6 @@ import (
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	otelTrace "go.opentelemetry.io/otel/trace"
-
-	
 )
 
 // New returns the DefaultPooledClient from the cleanhttp
