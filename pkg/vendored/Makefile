@@ -6,10 +6,10 @@ build::
 
 # This and the following targets run inside nix. Use `nix develop` to debug.
 tfplugin5.proto:
-	cp "${OPENTOFU}/docs/plugin-protocol/tfplugin5.5.proto" "$@"
+	cp "${OPENTOFU}/docs/plugin-protocol/tfplugin5.9.proto" "$@"
 
 tfplugin6.proto:
-	cp "${OPENTOFU}/docs/plugin-protocol/tfplugin6.5.proto" "$@"
+	cp "${OPENTOFU}/docs/plugin-protocol/tfplugin6.9.proto" "$@"
 
 tfplugin5_pulumi.proto: tfplugin5.proto
 	./sub.sh 5 "$<" "$@"

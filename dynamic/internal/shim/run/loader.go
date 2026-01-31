@@ -28,8 +28,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
-	disco "github.com/hashicorp/terraform-svchost/disco"
-	tfaddr "github.com/opentofu/registry-address"
+	regaddr "github.com/opentofu/registry-address/v2"
+	disco "github.com/opentofu/svchost/disco"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"google.golang.org/grpc"
@@ -39,6 +39,7 @@ import (
 	v5shim "github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/protov5"
 	v6shim "github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/protov6"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/addrs"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/getproviders"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/logging"
 	tfplugin "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/plugin"
@@ -72,7 +73,7 @@ type Provider interface {
 //
 // `=`, `<=`, `>=` sigils can be used just like in TF.
 func NamedProvider(ctx context.Context, key, version string) (Provider, error) {
-	p, err := tfaddr.ParseProviderSource(key)
+	p, err := regaddr.ParseProviderSource(key)
 	if err != nil {
 		return nil, fmt.Errorf("invalid provider name: %w", err)
 	}
@@ -93,7 +94,7 @@ func LocalProvider(ctx context.Context, path string) (Provider, error) {
 	}
 
 	return runProvider(ctx, &providercache.CachedProvider{
-		Provider:   tfaddr.Provider{Type: name},
+		Provider:   addrs.Provider{Type: name},
 		Version:    versions.Version{},
 		PackageDir: dir,
 	})
@@ -132,8 +133,8 @@ func (p provider) URL() string { return p.url }
 func (p provider) Close() error { return p.close() }
 
 func getProviderServer(
-	ctx context.Context, addr tfaddr.Provider, version getproviders.VersionConstraints,
-	registrySource *disco.Disco,
+	ctx context.Context, addr addrs.Provider, version getproviders.VersionConstraints,
+	registryDisco *disco.Disco,
 ) (Provider, error) {
 	cacheDir, err := getPluginCache()
 	if err != nil {
@@ -161,7 +162,7 @@ func getProviderServer(
 	// We have not found a package that fits our constraints, so we need to download
 	// one.
 
-	source := getproviders.NewRegistrySource(registrySource)
+	source := getproviders.NewRegistrySource(ctx, registryDisco, nil, getproviders.LocationConfig{})
 
 	availableVersions, warnings, err := source.AvailableVersions(ctx, addr)
 	for _, w := range warnings {
@@ -182,7 +183,7 @@ func getProviderServer(
 		return nil, err
 	}
 
-	_, err = systemCache.InstallPackage(ctx, meta, nil)
+	_, err = systemCache.InstallPackage(ctx, meta, nil, true)
 	if err != nil {
 		return nil, err
 	}

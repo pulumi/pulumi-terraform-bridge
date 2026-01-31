@@ -30,8 +30,8 @@ import (
 )
 
 func main() {
-	vendorTerraformPluginGo("v0.22.0")
-	vendorOpenTOFU("v1.7.2")
+	vendorTerraformPluginGo("v0.29.0")
+	vendorOpenTOFU("v1.11.4")
 }
 
 func vendorOpenTOFU(version string) {
@@ -140,6 +140,44 @@ func vendorOpenTOFU(version string) {
 		return s
 	}
 
+	// Replaces refs to internal/tracing in all files so we can reference it
+	replaceTracingRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/tracing" -> "%s/tracing"`,
+		oldPkg, newPkg,
+	))
+
+	// Replaces refs to internal/tracing/traceattrs in all files so we can reference it
+	replaceTraceattrsRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/tracing/traceattrs" -> "%s/tracing/traceattrs"`,
+		oldPkg, newPkg,
+	))
+
+	// Avoids adding internal/collections to vendored code
+	// Rewrites the usages in our files to use a raw map instead.
+	stripCollections := func(s string) string {
+		s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/collections"`, "")
+		// Replace collections.Set[string] with map[string]struct{}
+		s = strings.ReplaceAll(s, "collections.Set[string]", "map[string]struct{}")
+		// Replace collections.NewSet(keyID) with map[string]struct{}{keyID: {}}
+		s = strings.ReplaceAll(s, "collections.NewSet(keyID)", `map[string]struct{}{keyID: {}}`)
+		return s
+	}
+	// Replaces refs to internal/plugin/validation in all files so we can reference it
+	replacePluginValidationRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/plugin/validation" -> "%s/plugin/validation"`,
+		oldPkg, newPkg,
+	))
+	// Replaces refs to internal/pluginv6/validation in all files so we can reference it
+	replacePlugin6ValidationRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/plugin6/validation" -> "%s/plugin6/validation"`,
+		oldPkg, newPkg,
+	))
+	// Replaces refs to internal/flock in all files so we can reference it
+	replaceFlockRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/flock" -> "%s/flock"`,
+		oldPkg, newPkg,
+	))
+
 	transforms := []func(string) string{
 		replacePkg,
 		doNotEditWarning,
@@ -159,6 +197,12 @@ func vendorOpenTOFU(version string) {
 		replaceConfigsHcl2ShimRef,
 		replacePlugin6Ref,
 		removeOpentofuVersion,
+		replaceTracingRef,
+		replaceTraceattrsRef,
+		stripCollections,
+		replacePluginValidationRef,
+		replacePlugin6ValidationRef,
+		replaceFlockRef,
 	}
 
 	files := []file{
@@ -199,6 +243,28 @@ func vendorOpenTOFU(version string) {
 			src:        "internal/configs/configschema/nestingmode_string.go",
 			dest:       "configs/configschema/nestingmode_string.go",
 			transforms: transforms,
+		},
+		// Needed for write-only support
+		{
+			src:        "internal/configs/configschema/write_only.go",
+			dest:       "configs/configschema/write_only.go",
+			transforms: transforms,
+		},
+		{
+			src:  "internal/configs/configschema/marks.go",
+			dest: "configs/configschema/marks.go",
+			transforms: append(transforms, func(s string) string {
+				// Remove lang/marks import and keep only copyAndExtendPath function
+				// We don't need lang/marks because the bridge doesn't use it.
+				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/lang/marks"`, "")
+				s = strings.ReplaceAll(s, `"fmt"`, "")
+				// Remove ValueMarks and RemoveEphemeralFromWriteOnly methods that use marks
+				idx := strings.Index(s, "// ValueMarks returns")
+				if idx > 0 {
+					s = s[:idx]
+				}
+				return s
+			}),
 		},
 		{
 			src:        "internal/plans/objchange/objchange.go",
@@ -283,6 +349,12 @@ func vendorOpenTOFU(version string) {
 		{
 			src:        "internal/tfdiags/sourceless.go",
 			dest:       "tfdiags/sourceless.go",
+			transforms: transforms,
+		},
+		// Needed by /tfdiags/diagnostics.go
+		{
+			src:        "internal/tfdiags/diagnostic_extra.go",
+			dest:       "tfdiags/diagnostic_extra.go",
 			transforms: transforms,
 		},
 		{
@@ -410,6 +482,26 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
+			src:        "internal/getproviders/location_config.go",
+			dest:       "getproviders/location_config.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/package_location_local_dir.go",
+			dest:       "getproviders/package_location_local_dir.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/package_location_local_archive.go",
+			dest:       "getproviders/package_location_local_archive.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/package_location_http_archive.go",
+			dest:       "getproviders/package_location_http_archive.go",
+			transforms: transforms,
+		},
+		{
 			src:        "internal/httpclient/client.go",
 			dest:       "httpclient/client.go",
 			transforms: transforms,
@@ -420,6 +512,11 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
+			src:        "internal/httpclient/registry_client.go",
+			dest:       "httpclient/registry_client.go",
+			transforms: transforms,
+		},
+		{
 			src:        "internal/logging/logging.go",
 			dest:       "logging/logging.go",
 			transforms: transforms,
@@ -427,6 +524,32 @@ func vendorOpenTOFU(version string) {
 		{
 			src:        "internal/logging/panic.go",
 			dest:       "logging/panic.go",
+			transforms: transforms,
+		},
+		// Tracing package - vendored because tracing is woven throughout core files for basic functionality.
+		{
+			src:        "internal/tracing/init.go",
+			dest:       "tracing/init.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tracing/utils.go",
+			dest:       "tracing/utils.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tracing/data.go",
+			dest:       "tracing/data.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tracing/context_probe.go",
+			dest:       "tracing/context_probe.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tracing/traceattrs/traceattrs.go",
+			dest:       "tracing/traceattrs/traceattrs.go",
 			transforms: transforms,
 		},
 		{
@@ -445,8 +568,13 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
-			src:        "internal/providercache/package_install.go",
-			dest:       "providercache/package_install.go",
+			src:        "internal/providercache/dir_testing.go",
+			dest:       "providercache/dir_testing.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/providercache/installer_events.go",
+			dest:       "providercache/installer_events.go",
 			transforms: transforms,
 		},
 		{
@@ -508,6 +636,11 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
+			src:        "internal/plugin/validation/write_only.go",
+			dest:       "plugin/validation/write_only.go",
+			transforms: transforms,
+		},
+		{
 			src:        "internal/providers/schemas.go",
 			dest:       "providers/schemas.go",
 			transforms: transforms,
@@ -535,16 +668,6 @@ func vendorOpenTOFU(version string) {
 			}),
 		},
 		{
-			src:        "internal/configs/hcl2shim/flatmap.go",
-			dest:       "configs/hcl2shim/flatmap.go",
-			transforms: transforms,
-		},
-		{
-			src:        "internal/configs/hcl2shim/values.go",
-			dest:       "configs/hcl2shim/values.go",
-			transforms: transforms,
-		},
-		{
 			src:        "internal/plugin6/grpc_provider.go",
 			dest:       "plugin6/grpc_provider.go",
 			transforms: transforms,
@@ -567,6 +690,21 @@ func vendorOpenTOFU(version string) {
 		{
 			src:        "internal/plugin6/convert/function.go",
 			dest:       "plugin6/convert/function.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin6/validation/write_only.go",
+			dest:       "plugin6/validation/write_only.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/flock/filesystem_lock_unix.go",
+			dest:       "/flock/filesystem_lock_unix.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/flock/filesystem_lock_windows.go",
+			dest:       "/flock/filesystem_lock_windows.go",
 			transforms: transforms,
 		},
 	}

@@ -64,6 +64,11 @@ func (r *resourceValidateInputs) Schema(
 				Optional: true,
 				Default:  stringdefault.StaticString("should-be-overridden"),
 			},
+			"attr_string_write_only": schema.StringAttribute{
+				Optional:            true,
+				WriteOnly:           true,
+				MarkdownDescription: "A write-only attribute that is not stored in state",
+			},
 		},
 	}
 	mapInsert(resp.Schema.Attributes,
@@ -203,6 +208,8 @@ type data struct {
 
 	SD  types.String `tfsdk:"attr_string_default"`
 	SDO types.String `tfsdk:"attr_string_default_overridden"`
+
+	WriteOnly types.String `tfsdk:"attr_string_write_only"`
 
 	ID types.String `tfsdk:"id"`
 }

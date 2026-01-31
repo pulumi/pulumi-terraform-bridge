@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/url"
 
-	svchost "github.com/hashicorp/terraform-svchost"
+	"github.com/opentofu/svchost"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/addrs"
 )
@@ -20,7 +20,7 @@ import (
 type ErrHostNoProviders struct {
 	Hostname svchost.Hostname
 
-	// HasOtherVersionis set to true if the discovery process detected
+	// HasOtherVersion is set to true if the discovery process detected
 	// declarations of services named "providers" whose version numbers did not
 	// match any version supported by the current version of OpenTofu.
 	//
@@ -159,7 +159,7 @@ func (err ErrPlatformNotSupported) Error() string {
 // ErrProtocolNotSupported is an error type used to indicate that a particular
 // version of a provider is not supported by the current version of OpenTofu.
 //
-// Specfically, this is returned when the version's plugin protocol is not supported.
+// Specifically, this is returned when the version's plugin protocol is not supported.
 //
 // When available, the error will include a suggested version that can be displayed to
 // the user. Otherwise it will return UnspecifiedVersion
@@ -183,7 +183,7 @@ func (err ErrProtocolNotSupported) Error() string {
 // unexpected error.
 //
 // This is used for any error responses other than "Not Found", which would
-// indicate the absense of a provider and is thus reported using
+// indicate the absence of a provider and is thus reported using
 // ErrProviderNotKnown instead.
 type ErrQueryFailed struct {
 	Provider addrs.Provider

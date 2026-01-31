@@ -2,7 +2,15 @@
   "id": "example-id",
   "properties": {
     "__pulumi_raw_state_delta": {
-      "obj": {}
+      "obj": {
+        "ps": {
+          "attrStringWriteOnly": {
+            "replace": {
+              "raw": null
+            }
+          }
+        }
+      }
     },
     "attrBoolComputed": false,
     "attrBoolRequired": true,
