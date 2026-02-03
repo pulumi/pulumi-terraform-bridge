@@ -546,8 +546,27 @@ func (p *providerServer) Construct(ctx context.Context,
 	}
 
 	aliases := make([]resource.Alias, len(req.GetAliases()))
-	for i, urn := range req.GetAliases() {
-		aliases[i] = resource.Alias{URN: resource.URN(urn)}
+	for i, aliasObject := range req.GetAliases() {
+		if aliasSpec := aliasObject.GetSpec(); aliasSpec != nil {
+			var parent resource.URN
+			var noParent bool
+			switch p := aliasSpec.GetParent().(type) {
+			case *pulumirpc.Alias_Spec_ParentUrn:
+				parent = resource.URN(p.ParentUrn)
+			case *pulumirpc.Alias_Spec_NoParent:
+				noParent = p.NoParent
+			}
+			aliases[i] = resource.Alias{
+				Name:     aliasSpec.Name,
+				Type:     aliasSpec.Type,
+				Stack:    aliasSpec.Stack,
+				Project:  aliasSpec.Project,
+				Parent:   parent,
+				NoParent: noParent,
+			}
+		} else {
+			aliases[i] = resource.Alias{URN: resource.URN(aliasObject.GetUrn())}
+		}
 	}
 	dependencies := make([]resource.URN, len(req.GetDependencies()))
 	for i, urn := range req.GetDependencies() {
