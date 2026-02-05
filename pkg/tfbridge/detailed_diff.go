@@ -26,6 +26,26 @@ func isPresent(val resource.PropertyValue) bool {
 		(!val.IsObject() || val.ObjectValue() != nil)
 }
 
+// isZeroValue checks if a property value is the zero value for the given schema type.
+// This is used to handle the case where SDKv2 fills in zero values for Optional
+// non-Computed fields in the planned state.
+func isZeroValue(val resource.PropertyValue, tfs shim.Schema) bool {
+	switch tfs.Type() {
+	case shim.TypeString:
+		return val.IsString() && val.StringValue() == ""
+	case shim.TypeBool:
+		return val.IsBool() && !val.BoolValue()
+	case shim.TypeInt, shim.TypeFloat:
+		return val.IsNumber() && val.NumberValue() == 0
+	case shim.TypeList, shim.TypeSet:
+		return val.IsArray() && len(val.ArrayValue()) == 0
+	case shim.TypeMap:
+		return val.IsObject() && len(val.ObjectValue()) == 0
+	default:
+		return false
+	}
+}
+
 func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 	keys := make(map[K]struct{})
 	for k := range a {
@@ -239,6 +259,16 @@ func validInputsFromPlan(
 
 		if inputsSubVal.DeepEquals(planSubVal) {
 			return nil
+		}
+
+		// For Optional non-Computed fields without a Default, SDKv2 fills in the zero value
+		// in the planned state even when the user doesn't specify the field (input is null).
+		// We should treat null input as equal to the zero value for these fields.
+		// See https://github.com/pulumi/pulumi-terraform-bridge/issues/3324
+		if inputsSubVal.IsNull() && !tfs.Computed() {
+			if isZeroValue(planSubVal, tfs) {
+				return nil
+			}
 		}
 
 		return abortErr
