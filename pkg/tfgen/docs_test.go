@@ -1981,6 +1981,9 @@ func TestParseImports_NoOverrides(t *testing.T) {
 }
 
 func TestParseImports_ImportOnlyFence(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skippping on windows - tests cases need to be made robust to newline handling")
+	}
 	t.Parallel()
 	input := readfile(t, "test_data/parse-imports/import-only.md")
 	expected := readfile(t, "test_data/parse-imports/import-only-expected.md")
