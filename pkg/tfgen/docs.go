@@ -1222,13 +1222,6 @@ var (
 	fenceEnd   = regexp.MustCompile("^([\\t ]*)```\\s*$")
 )
 
-const (
-	// true keeps old behavior of extra new lines
-	hoistedCommentBlankLines = true
-	// true keeps property reference conversion for import sections
-	importFixupPropertyRefs = false
-)
-
 // rewriteImportMarkdown scans an import section, preserving raw markdown except for
 // Terraform import examples which are rewritten to pulumi import syntax.
 //
@@ -1578,18 +1571,12 @@ func extractImportFenceComments(lines []string, indent string) ([]string, []stri
 
 func formatHoistedImportComments(comments []string, indent string) []string {
 	out := make([]string, 0, len(comments)+1)
-	previousBlank := true
 	for _, line := range comments {
 		if line == "" {
 			out = append(out, "")
-			previousBlank = true
 			continue
 		}
-		if hoistedCommentBlankLines && !previousBlank {
-			out = append(out, "")
-		}
 		out = append(out, indent+line)
-		previousBlank = false
 	}
 	out = append(out, "")
 	return out
@@ -2646,11 +2633,11 @@ func elide(text string) bool {
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-	return reformatTextWithOptions(g, text, footerLinks, true, true, true)
+	return reformatTextWithOptions(g, text, footerLinks, true, true)
 }
 
 func reformatImportText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-	clean, elided := reformatTextWithOptions(g, text, footerLinks, false, false, importFixupPropertyRefs)
+	clean, elided := reformatTextWithOptions(g, text, footerLinks, false, false)
 	if elided {
 		return "", true
 	}
@@ -2667,7 +2654,7 @@ func reformatImportText(g infoContext, text string, footerLinks map[string]strin
 }
 
 func reformatTextWithOptions(
-	g infoContext, text string, footerLinks map[string]string, allowElide bool, trimSpace bool, fixupPropertyRefs bool,
+	g infoContext, text string, footerLinks map[string]string, allowElide bool, trimSpace bool,
 ) (string, bool) {
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation.
@@ -2713,10 +2700,8 @@ func reformatTextWithOptions(
 			return parts[1]
 		})
 
-		// Fixup resource and property name references
-		if fixupPropertyRefs {
-			text = g.fixupPropertyReference(text)
-		}
+		// Fixup resource and property name references.
+		text = g.fixupPropertyReference(text)
 
 		return text, false
 	}

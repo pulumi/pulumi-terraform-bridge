@@ -114,7 +114,7 @@ func TestReformatImportText(t *testing.T) {
 	text, elided := reformatImportText(infoCtx, input, nil)
 	require.False(t, elided)
 	assert.Contains(t, text, "`load_balancer_name`")
-	assert.NotContains(t, text, "pulumi-lang-nodejs")
+	assert.Contains(t, text, "pulumi-lang-nodejs")
 }
 
 func TestArgumentRegex(t *testing.T) {
