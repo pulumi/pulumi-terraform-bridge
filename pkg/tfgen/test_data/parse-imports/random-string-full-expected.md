@@ -42,7 +42,7 @@ replacement can be avoided by using:
     }
     ```
 
-3. `ignore_changes` specifying the attributes to ignore:
+3. <span pulumi-lang-nodejs="`ignoreChanges`" pulumi-lang-dotnet="`IgnoreChanges`" pulumi-lang-go="`ignoreChanges`" pulumi-lang-python="`ignore_changes`" pulumi-lang-yaml="`ignoreChanges`" pulumi-lang-java="`ignoreChanges`">`ignore_changes`</span> specifying the attributes to ignore:
     ```terraform
     resource "random_string" "test" {
       length = 16
@@ -57,6 +57,6 @@ replacement can be avoided by using:
     }
     ```
 
-    **NOTE** `ignore_changes` is only required until the resource is recreated after import,
+    **NOTE** <span pulumi-lang-nodejs="`ignoreChanges`" pulumi-lang-dotnet="`IgnoreChanges`" pulumi-lang-go="`ignoreChanges`" pulumi-lang-python="`ignore_changes`" pulumi-lang-yaml="`ignoreChanges`" pulumi-lang-java="`ignoreChanges`">`ignore_changes`</span> is only required until the resource is recreated after import,
     after which it will use the configuration values specified.
 
