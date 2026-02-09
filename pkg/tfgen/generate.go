@@ -1491,14 +1491,11 @@ func (g *Generator) gatherResource(rawname string,
 
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
 		doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, key)
-		rawdoc, elided := reformatText(infoContext{
+		rawdoc, _ := reformatText(infoContext{
 			language: g.language,
 			pkg:      g.pkg,
 			info:     g.info,
 		}, propschema.Description(), nil)
-		if elided {
-			rawdoc = ""
-		}
 
 		propinfo := info.Fields[key]
 		// If we are generating a provider, we do not emit output property definitions as provider outputs are not

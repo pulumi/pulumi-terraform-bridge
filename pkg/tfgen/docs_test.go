@@ -46,8 +46,9 @@ var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 func TestReformatText(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name  string
-		input string
+		name            string
+		input           string
+		assertPreserved bool
 	}{
 		{
 			name:  "No changes on valid links",
@@ -70,12 +71,14 @@ func TestReformatText(t *testing.T) {
 			input: "\n(Required)\nThe app_ip of name of the Firebase webApp.",
 		},
 		{
-			name:  "Removes lines with @hashicorp.com in the text",
-			input: "An example username is jdoa@hashicorp.com",
+			name:            "Preserves text with @hashicorp.com",
+			input:           "An example username is jdoa@hashicorp.com",
+			assertPreserved: true,
 		},
 		{
-			name:  "Removes the word Terraform from text",
-			input: "An example password is Terraform-secret",
+			name:            "Preserves text with Terraform",
+			input:           "An example password is Terraform-secret",
+			assertPreserved: true,
 		},
 	}
 
@@ -97,6 +100,10 @@ func TestReformatText(t *testing.T) {
 			autogold.ExpectFile(t, autogold.Raw(text))
 			assert.Equalf(t, text == "", elided,
 				"We should only see an empty result for non-empty inputs if we have elided text")
+			if tc.assertPreserved {
+				assert.False(t, elided, "Terraform/Hashicorp cleanup should not elide content")
+				assert.NotEmpty(t, text, "Terraform/Hashicorp cleanup should preserve transformed content")
+			}
 		})
 	}
 }

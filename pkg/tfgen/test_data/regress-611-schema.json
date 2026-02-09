@@ -2294,7 +2294,8 @@
           "type": "string"
         },
         "forceDestroy": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Delete user even if it has non-Terraform-managed IAM access keys, login profile or MFA devices"
         },
         "name": {
           "type": "string"
@@ -2329,7 +2330,8 @@
       ],
       "inputProperties": {
         "forceDestroy": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Delete user even if it has non-Terraform-managed IAM access keys, login profile or MFA devices"
         },
         "name": {
           "type": "string"
@@ -2354,7 +2356,8 @@
             "type": "string"
           },
           "forceDestroy": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Delete user even if it has non-Terraform-managed IAM access keys, login profile or MFA devices"
           },
           "name": {
             "type": "string"
