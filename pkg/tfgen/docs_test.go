@@ -101,6 +101,22 @@ func TestReformatText(t *testing.T) {
 	}
 }
 
+func TestReformatImportText(t *testing.T) {
+	t.Parallel()
+	infoCtx := infoContext{
+		pkg:      "aws",
+		language: "nodejs",
+		info: tfbridge.ProviderInfo{
+			Name: "aws",
+		},
+	}
+	input := "### Identity Schema\n\n#### Required\n\n- `load_balancer_name` (String) Name."
+	text, elided := reformatImportText(infoCtx, input, nil)
+	require.False(t, elided)
+	assert.Contains(t, text, "`load_balancer_name`")
+	assert.Contains(t, text, "pulumi-lang-nodejs")
+}
+
 func TestArgumentRegex(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -1876,12 +1892,22 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			}, "\n"),
 			token:    "gcp:accesscontextmanager/accessLevel:AccessLevel",
-			expected: "## Import\n\nThis is a first line in a multi-line import section\n\n* `{{name}}`\n\n* `{{id}}`\n\nFor example:\n\n```sh\n$ pulumi import gcp:accesscontextmanager/accessLevel:AccessLevel example name\n```\n\n",
+			expected: "## Import\n\nThis is a first line in a multi-line import section\n* `{{name}}`\n* `{{id}}`\nFor example:\n```sh\n$ pulumi import gcp:accesscontextmanager/accessLevel:AccessLevel example name\n```\n\n",
 		},
 		{
 			input:        readfile(t, "test_data/parse-imports/accessanalyzer.md"),
 			token:        "aws:accessanalyzer/analyzer:Analyzer",
 			expectedFile: "test_data/parse-imports/accessanalyzer-expected.md",
+		},
+		{
+			input:        readfile(t, "test_data/parse-imports/aws-iam-role.md"),
+			token:        "aws:iam/role:Role",
+			expectedFile: "test_data/parse-imports/aws-iam-role-expected.md",
+		},
+		{
+			input:        readfile(t, "test_data/parse-imports/random-id.md"),
+			token:        "random:index/id:Id",
+			expectedFile: "test_data/parse-imports/random-id-expected.md",
 		},
 		{
 			input:        readfile(t, "test_data/parse-imports/gameliftconfig.md"),
@@ -1894,21 +1920,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			expectedFile: "test_data/parse-imports/lambdalayer-expected.md",
 		},
 		{
-			input: strings.Join([]string{
-				"",
-				"Import is supported using the following syntax:",
-				"",
-				"```shell",
-				"# As this is not a resource identifiable by an ID within the Auth0 Management API,",
-				"# pages can be imported using a random string.",
-				"#",
-				"# We recommend [Version 4 UUID](https://www.uuidgenerator.net/version4)",
-				"#",
-				"# Example:",
-				`terraform import auth0_pages.my_pages "22f4f21b-017a-319d-92e7-2291c1ca36c4"`,
-				"```",
-				"",
-			}, "\n"),
+			input:        readfile(t, "test_data/parse-imports/auth0pages.md"),
 			token:        "auth0/index/pages:Pages",
 			expectedFile: "test_data/parse-imports/auth0pages-expected.md",
 		},
@@ -1924,6 +1936,29 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			}, "\n"),
 			token:    "auth0/index/pages:Pages",
 			expected: "## Import\n\n### This is a sub-section\n\n```sh\n$ pulumi import auth0/index/pages:Pages my_pages \"22f4f21b-017a-319d-92e7-2291c1ca36c4\"\n```\n\n",
+		},
+		{
+			input: strings.Join([]string{
+				"",
+				"### Identity Schema",
+				"",
+				"#### Required",
+				"",
+				"- `arn` (String) Amazon Resource Name (ARN) of the load balancer.",
+				"",
+				"Using `pulumi import`, import LBs using their ARN. For example:",
+				"",
+				"```console",
+				"% terraform import aws_lb.bar arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188",
+				"```",
+				"",
+			}, "\n"),
+			token: "aws:lb/loadBalancer:LoadBalancer",
+			expected: "## Import\n\n### Identity Schema\n\n#### Required\n\n" +
+				"- `arn` (String) Amazon Resource Name (ARN) of the load balancer.\n\n" +
+				"Using `pulumi import`, import LBs using their ARN. For example:\n\n" +
+				"```sh\n$ pulumi import aws:lb/loadBalancer:LoadBalancer bar " +
+				"arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188\n```\n\n",
 		},
 	}
 
@@ -1945,6 +1980,17 @@ func TestParseImports_NoOverrides(t *testing.T) {
 	}
 }
 
+func TestParseImports_ImportOnlyFence(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skippping on windows - tests cases need to be made robust to newline handling")
+	}
+	t.Parallel()
+	input := readfile(t, "test_data/parse-imports/import-only.md")
+	expected := readfile(t, "test_data/parse-imports/import-only-expected.md")
+	actual := parseImportsNoOverrides(t, input, "pkg:mod/name:Type")
+	assert.Equal(t, expected, actual)
+}
+
 func TestParseImports_WithOverride(t *testing.T) {
 	t.Parallel()
 	parser := tfMarkdownParser{
@@ -1958,6 +2004,69 @@ func TestParseImports_WithOverride(t *testing.T) {
 	parser.parseImports("this doesn't matter because we are overriding it")
 
 	assert.Equal(t, "## Import\n\noverridden import details", parser.ret.Import)
+}
+
+func TestParseImports_EndToEnd(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skippping on windows - tests cases need to be made robust to newline handling")
+	}
+
+	tests := []struct {
+		name         string
+		token        tokens.Token
+		rawname      string
+		markdownName string
+		pkg          tokens.Package
+		expectedFile string
+	}{
+		{
+			name:         "aws_iam_role",
+			token:        "aws:iam/role:Role",
+			rawname:      "role",
+			markdownName: "aws-iam-role-full.md",
+			pkg:          "aws",
+			expectedFile: "test_data/parse-imports/aws-iam-role-full-expected.md",
+		},
+		{
+			name:         "random_string",
+			token:        "random:index/string:String",
+			rawname:      "string",
+			markdownName: "random-string-full.md",
+			pkg:          "random",
+			expectedFile: "test_data/parse-imports/random-string-full-expected.md",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			parser := tfMarkdownParser{
+				sink:             mockSink{t},
+				info:             &mockResource{token: tt.token},
+				kind:             ResourceDocs,
+				markdownFileName: tt.markdownName,
+				rawname:          tt.rawname,
+				infoCtx: infoContext{
+					pkg:      tt.pkg,
+					language: "nodejs",
+					info:     tfbridge.ProviderInfo{Name: string(tt.pkg)},
+				},
+				editRules: defaultEditRules(),
+			}
+
+			input := readfile(t, "test_data/parse-imports/"+tt.markdownName)
+			doc, err := parser.parse([]byte(input))
+			require.NoError(t, err)
+			actual := doc.Import
+
+			if accept {
+				writefile(t, tt.expectedFile, []byte(actual))
+			}
+			expected := readfile(t, tt.expectedFile)
+			assert.Equal(t, expected, actual)
+		})
+	}
 }
 
 func ref[T any](t T) *T { return &t }
@@ -2630,6 +2739,17 @@ func readfile(t *testing.T, file string) string {
 	return string(bytes)
 }
 
+func parseImportsNoOverrides(t *testing.T, input string, token tokens.Token) string {
+	t.Helper()
+	parser := tfMarkdownParser{
+		info: &mockResource{
+			token: token,
+		},
+	}
+	parser.parseImports(input)
+	return parser.ret.Import
+}
+
 func writefile(t *testing.T, file string, bytes []byte) {
 	t.Helper()
 	err := os.WriteFile(file, bytes, 0o600)
@@ -2691,6 +2811,24 @@ func TestFixupImports(t *testing.T) {
 		foo: bar
 		` + "```\n",
 			`post text:
+		` + "```yaml" + `
+		foo: bar
+		` + "```\n",
+		},
+		{
+			text: "In Terraform v1.12.0 and later, the `import` block can be used with the `identity` attribute. For example:\n" +
+				"\n" +
+				"```terraform" + `
+		import {
+		to = aws_lb.example
+		identity = {
+		"arn" = "arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188"
+		}
+		}` + "\n```\n" + `post text:
+		` + "```yaml" + `
+		foo: bar
+		` + "```\n",
+			expected: `post text:
 		` + "```yaml" + `
 		foo: bar
 		` + "```\n",

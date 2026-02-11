@@ -146,7 +146,7 @@ func fixupImports() tfbridge.DocsEdit {
 
 	// (?s) makes the '.' match newlines (in addition to everything else).
 	blockImportRegexp := regexp.MustCompile("(?s)In [tT]erraform v[0-9]+\\.[0-9]+\\.[0-9]+ and later," +
-		" use an `import` block.*?```.+?```\n")
+		".*?`import` block.*?```.+?```\n")
 
 	return tfbridge.DocsEdit{
 		Path: "*",
