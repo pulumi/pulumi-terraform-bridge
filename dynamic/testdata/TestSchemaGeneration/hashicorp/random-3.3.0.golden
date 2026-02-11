@@ -532,7 +532,8 @@
                     "description": "Random permutation of the list of strings given in \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\"\u003e`input`\u003c/span\u003e."
                 },
                 "seed": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Arbitrary string with which to seed the random number generator, in order to produce less-volatile permutations of the list.\n\n**Important:** Even with an identical seed, it is not guaranteed that the same permutation will be produced across different versions of Terraform. This argument causes the result to be *less volatile*, but not fixed for all time."
                 }
             },
             "required": [
@@ -559,7 +560,8 @@
                     "description": "The number of results to return. Defaults to the number of items in the \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\"\u003e`input`\u003c/span\u003e list. If fewer items are requested, some elements will be excluded from the result. If more items are requested, items will be repeated in the result but not more frequently than the number of items in the input list."
                 },
                 "seed": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Arbitrary string with which to seed the random number generator, in order to produce less-volatile permutations of the list.\n\n**Important:** Even with an identical seed, it is not guaranteed that the same permutation will be produced across different versions of Terraform. This argument causes the result to be *less volatile*, but not fixed for all time."
                 }
             },
             "requiredInputs": [
@@ -594,7 +596,8 @@
                         "description": "Random permutation of the list of strings given in \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\"\u003e`input`\u003c/span\u003e."
                     },
                     "seed": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Arbitrary string with which to seed the random number generator, in order to produce less-volatile permutations of the list.\n\n**Important:** Even with an identical seed, it is not guaranteed that the same permutation will be produced across different versions of Terraform. This argument causes the result to be *less volatile*, but not fixed for all time."
                     }
                 },
                 "type": "object"

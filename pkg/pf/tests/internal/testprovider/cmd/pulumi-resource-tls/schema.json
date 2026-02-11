@@ -268,7 +268,8 @@
         "tls:index/certRequest:CertRequest": {
             "properties": {
                 "certRequestPem": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "The certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                 },
                 "dnsNames": {
                     "type": "array",
@@ -290,6 +291,7 @@
                 },
                 "privateKeyPem": {
                     "type": "string",
+                    "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong to. This can be read from a separate file using the [\u003cspan pulumi-lang-nodejs=\"`file`\" pulumi-lang-dotnet=\"`File`\" pulumi-lang-go=\"`file`\" pulumi-lang-python=\"`file`\" pulumi-lang-yaml=\"`file`\" pulumi-lang-java=\"`file`\"\u003e`file`\u003c/span\u003e](https://www.terraform.io/language/functions/file) interpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.",
                     "secret": true
                 },
                 "subject": {
@@ -326,6 +328,7 @@
                 },
                 "privateKeyPem": {
                     "type": "string",
+                    "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong to. This can be read from a separate file using the [\u003cspan pulumi-lang-nodejs=\"`file`\" pulumi-lang-dotnet=\"`File`\" pulumi-lang-go=\"`file`\" pulumi-lang-python=\"`file`\" pulumi-lang-yaml=\"`file`\" pulumi-lang-java=\"`file`\"\u003e`file`\u003c/span\u003e](https://www.terraform.io/language/functions/file) interpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.",
                     "secret": true
                 },
                 "subject": {
@@ -347,7 +350,8 @@
                 "description": "Input properties used for looking up and filtering CertRequest resources.\n",
                 "properties": {
                     "certRequestPem": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                     },
                     "dnsNames": {
                         "type": "array",
@@ -369,6 +373,7 @@
                     },
                     "privateKeyPem": {
                         "type": "string",
+                        "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong to. This can be read from a separate file using the [\u003cspan pulumi-lang-nodejs=\"`file`\" pulumi-lang-dotnet=\"`File`\" pulumi-lang-go=\"`file`\" pulumi-lang-python=\"`file`\" pulumi-lang-yaml=\"`file`\" pulumi-lang-java=\"`file`\"\u003e`file`\u003c/span\u003e](https://www.terraform.io/language/functions/file) interpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.",
                         "secret": true
                     },
                     "subject": {
@@ -409,14 +414,16 @@
                     "secret": true
                 },
                 "certPem": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                 },
                 "certRequestPem": {
                     "type": "string",
                     "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format."
                 },
                 "earlyRenewalHours": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This can be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old certificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate revocation. Also, this advance update can only be performed should the Terraform configuration be applied during the early renewal period. (default: \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e)"
                 },
                 "isCaCertificate": {
                     "type": "boolean",
@@ -480,7 +487,8 @@
                     "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format."
                 },
                 "earlyRenewalHours": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This can be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old certificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate revocation. Also, this advance update can only be performed should the Terraform configuration be applied during the early renewal period. (default: \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e)"
                 },
                 "isCaCertificate": {
                     "type": "boolean",
@@ -526,14 +534,16 @@
                         "secret": true
                     },
                     "certPem": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                     },
                     "certRequestPem": {
                         "type": "string",
                         "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format."
                     },
                     "earlyRenewalHours": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This can be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old certificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate revocation. Also, this advance update can only be performed should the Terraform configuration be applied during the early renewal period. (default: \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e)"
                     },
                     "isCaCertificate": {
                         "type": "boolean",
@@ -597,10 +607,12 @@
                     "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected private key format is compatible, similarly to \u003cspan pulumi-lang-nodejs=\"`publicKeyOpenssh`\" pulumi-lang-dotnet=\"`PublicKeyOpenssh`\" pulumi-lang-go=\"`publicKeyOpenssh`\" pulumi-lang-python=\"`public_key_openssh`\" pulumi-lang-yaml=\"`publicKeyOpenssh`\" pulumi-lang-java=\"`publicKeyOpenssh`\"\u003e`public_key_openssh`\u003c/span\u003e and the ECDSA P224 limitations."
                 },
                 "publicKeyOpenssh": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "The public key data in [\"Authorized Keys\"](https://www.ssh.com/academy/ssh/authorized_keys/openssh#format-of-the-authorized-keys-file) format. This is not populated for `ECDSA` with curve `P224`, as it is not supported. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                 },
                 "publicKeyPem": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Public key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                 },
                 "rsaBits": {
                     "type": "integer",
@@ -671,10 +683,12 @@
                         "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected private key format is compatible, similarly to \u003cspan pulumi-lang-nodejs=\"`publicKeyOpenssh`\" pulumi-lang-dotnet=\"`PublicKeyOpenssh`\" pulumi-lang-go=\"`publicKeyOpenssh`\" pulumi-lang-python=\"`public_key_openssh`\" pulumi-lang-yaml=\"`publicKeyOpenssh`\" pulumi-lang-java=\"`publicKeyOpenssh`\"\u003e`public_key_openssh`\u003c/span\u003e and the ECDSA P224 limitations."
                     },
                     "publicKeyOpenssh": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The public key data in [\"Authorized Keys\"](https://www.ssh.com/academy/ssh/authorized_keys/openssh#format-of-the-authorized-keys-file) format. This is not populated for `ECDSA` with curve `P224`, as it is not supported. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                     },
                     "publicKeyPem": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Public key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                     },
                     "rsaBits": {
                         "type": "integer",
@@ -694,7 +708,8 @@
                     "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: \u003cspan pulumi-lang-nodejs=\"`anyExtended`\" pulumi-lang-dotnet=\"`AnyExtended`\" pulumi-lang-go=\"`anyExtended`\" pulumi-lang-python=\"`any_extended`\" pulumi-lang-yaml=\"`anyExtended`\" pulumi-lang-java=\"`anyExtended`\"\u003e`any_extended`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`certSigning`\" pulumi-lang-dotnet=\"`CertSigning`\" pulumi-lang-go=\"`certSigning`\" pulumi-lang-python=\"`cert_signing`\" pulumi-lang-yaml=\"`certSigning`\" pulumi-lang-java=\"`certSigning`\"\u003e`cert_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`clientAuth`\" pulumi-lang-dotnet=\"`ClientAuth`\" pulumi-lang-go=\"`clientAuth`\" pulumi-lang-python=\"`client_auth`\" pulumi-lang-yaml=\"`clientAuth`\" pulumi-lang-java=\"`clientAuth`\"\u003e`client_auth`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`codeSigning`\" pulumi-lang-dotnet=\"`CodeSigning`\" pulumi-lang-go=\"`codeSigning`\" pulumi-lang-python=\"`code_signing`\" pulumi-lang-yaml=\"`codeSigning`\" pulumi-lang-java=\"`codeSigning`\"\u003e`code_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`contentCommitment`\" pulumi-lang-dotnet=\"`ContentCommitment`\" pulumi-lang-go=\"`contentCommitment`\" pulumi-lang-python=\"`content_commitment`\" pulumi-lang-yaml=\"`contentCommitment`\" pulumi-lang-java=\"`contentCommitment`\"\u003e`content_commitment`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`crlSigning`\" pulumi-lang-dotnet=\"`CrlSigning`\" pulumi-lang-go=\"`crlSigning`\" pulumi-lang-python=\"`crl_signing`\" pulumi-lang-yaml=\"`crlSigning`\" pulumi-lang-java=\"`crlSigning`\"\u003e`crl_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`dataEncipherment`\" pulumi-lang-dotnet=\"`DataEncipherment`\" pulumi-lang-go=\"`dataEncipherment`\" pulumi-lang-python=\"`data_encipherment`\" pulumi-lang-yaml=\"`dataEncipherment`\" pulumi-lang-java=\"`dataEncipherment`\"\u003e`data_encipherment`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`decipherOnly`\" pulumi-lang-dotnet=\"`DecipherOnly`\" pulumi-lang-go=\"`decipherOnly`\" pulumi-lang-python=\"`decipher_only`\" pulumi-lang-yaml=\"`decipherOnly`\" pulumi-lang-java=\"`decipherOnly`\"\u003e`decipher_only`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`digitalSignature`\" pulumi-lang-dotnet=\"`DigitalSignature`\" pulumi-lang-go=\"`digitalSignature`\" pulumi-lang-python=\"`digital_signature`\" pulumi-lang-yaml=\"`digitalSignature`\" pulumi-lang-java=\"`digitalSignature`\"\u003e`digital_signature`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`emailProtection`\" pulumi-lang-dotnet=\"`EmailProtection`\" pulumi-lang-go=\"`emailProtection`\" pulumi-lang-python=\"`email_protection`\" pulumi-lang-yaml=\"`emailProtection`\" pulumi-lang-java=\"`emailProtection`\"\u003e`email_protection`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`encipherOnly`\" pulumi-lang-dotnet=\"`EncipherOnly`\" pulumi-lang-go=\"`encipherOnly`\" pulumi-lang-python=\"`encipher_only`\" pulumi-lang-yaml=\"`encipherOnly`\" pulumi-lang-java=\"`encipherOnly`\"\u003e`encipher_only`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`ipsecEndSystem`\" pulumi-lang-dotnet=\"`IpsecEndSystem`\" pulumi-lang-go=\"`ipsecEndSystem`\" pulumi-lang-python=\"`ipsec_end_system`\" pulumi-lang-yaml=\"`ipsecEndSystem`\" pulumi-lang-java=\"`ipsecEndSystem`\"\u003e`ipsec_end_system`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`ipsecTunnel`\" pulumi-lang-dotnet=\"`IpsecTunnel`\" pulumi-lang-go=\"`ipsecTunnel`\" pulumi-lang-python=\"`ipsec_tunnel`\" pulumi-lang-yaml=\"`ipsecTunnel`\" pulumi-lang-java=\"`ipsecTunnel`\"\u003e`ipsec_tunnel`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`ipsecUser`\" pulumi-lang-dotnet=\"`IpsecUser`\" pulumi-lang-go=\"`ipsecUser`\" pulumi-lang-python=\"`ipsec_user`\" pulumi-lang-yaml=\"`ipsecUser`\" pulumi-lang-java=\"`ipsecUser`\"\u003e`ipsec_user`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`keyAgreement`\" pulumi-lang-dotnet=\"`KeyAgreement`\" pulumi-lang-go=\"`keyAgreement`\" pulumi-lang-python=\"`key_agreement`\" pulumi-lang-yaml=\"`keyAgreement`\" pulumi-lang-java=\"`keyAgreement`\"\u003e`key_agreement`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`keyEncipherment`\" pulumi-lang-dotnet=\"`KeyEncipherment`\" pulumi-lang-go=\"`keyEncipherment`\" pulumi-lang-python=\"`key_encipherment`\" pulumi-lang-yaml=\"`keyEncipherment`\" pulumi-lang-java=\"`keyEncipherment`\"\u003e`key_encipherment`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`microsoftCommercialCodeSigning`\" pulumi-lang-dotnet=\"`MicrosoftCommercialCodeSigning`\" pulumi-lang-go=\"`microsoftCommercialCodeSigning`\" pulumi-lang-python=\"`microsoft_commercial_code_signing`\" pulumi-lang-yaml=\"`microsoftCommercialCodeSigning`\" pulumi-lang-java=\"`microsoftCommercialCodeSigning`\"\u003e`microsoft_commercial_code_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`microsoftKernelCodeSigning`\" pulumi-lang-dotnet=\"`MicrosoftKernelCodeSigning`\" pulumi-lang-go=\"`microsoftKernelCodeSigning`\" pulumi-lang-python=\"`microsoft_kernel_code_signing`\" pulumi-lang-yaml=\"`microsoftKernelCodeSigning`\" pulumi-lang-java=\"`microsoftKernelCodeSigning`\"\u003e`microsoft_kernel_code_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`microsoftServerGatedCrypto`\" pulumi-lang-dotnet=\"`MicrosoftServerGatedCrypto`\" pulumi-lang-go=\"`microsoftServerGatedCrypto`\" pulumi-lang-python=\"`microsoft_server_gated_crypto`\" pulumi-lang-yaml=\"`microsoftServerGatedCrypto`\" pulumi-lang-java=\"`microsoftServerGatedCrypto`\"\u003e`microsoft_server_gated_crypto`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`netscapeServerGatedCrypto`\" pulumi-lang-dotnet=\"`NetscapeServerGatedCrypto`\" pulumi-lang-go=\"`netscapeServerGatedCrypto`\" pulumi-lang-python=\"`netscape_server_gated_crypto`\" pulumi-lang-yaml=\"`netscapeServerGatedCrypto`\" pulumi-lang-java=\"`netscapeServerGatedCrypto`\"\u003e`netscape_server_gated_crypto`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`ocspSigning`\" pulumi-lang-dotnet=\"`OcspSigning`\" pulumi-lang-go=\"`ocspSigning`\" pulumi-lang-python=\"`ocsp_signing`\" pulumi-lang-yaml=\"`ocspSigning`\" pulumi-lang-java=\"`ocspSigning`\"\u003e`ocsp_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`serverAuth`\" pulumi-lang-dotnet=\"`ServerAuth`\" pulumi-lang-go=\"`serverAuth`\" pulumi-lang-python=\"`server_auth`\" pulumi-lang-yaml=\"`serverAuth`\" pulumi-lang-java=\"`serverAuth`\"\u003e`server_auth`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`timestamping`\" pulumi-lang-dotnet=\"`Timestamping`\" pulumi-lang-go=\"`timestamping`\" pulumi-lang-python=\"`timestamping`\" pulumi-lang-yaml=\"`timestamping`\" pulumi-lang-java=\"`timestamping`\"\u003e`timestamping`\u003c/span\u003e."
                 },
                 "certPem": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                 },
                 "dnsNames": {
                     "type": "array",
@@ -704,7 +719,8 @@
                     "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "earlyRenewalHours": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This can be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old certificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate revocation. Also, this advance update can only be performed should the Terraform configuration be applied during the early renewal period. (default: \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e)"
                 },
                 "ipAddresses": {
                     "type": "array",
@@ -723,6 +739,7 @@
                 },
                 "privateKeyPem": {
                     "type": "string",
+                    "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong to. This can be read from a separate file using the [\u003cspan pulumi-lang-nodejs=\"`file`\" pulumi-lang-dotnet=\"`File`\" pulumi-lang-go=\"`file`\" pulumi-lang-python=\"`file`\" pulumi-lang-yaml=\"`file`\" pulumi-lang-java=\"`file`\"\u003e`file`\u003c/span\u003e](https://www.terraform.io/language/functions/file) interpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.",
                     "secret": true
                 },
                 "readyForRenewal": {
@@ -791,7 +808,8 @@
                     "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects)."
                 },
                 "earlyRenewalHours": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This can be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old certificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate revocation. Also, this advance update can only be performed should the Terraform configuration be applied during the early renewal period. (default: \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e)"
                 },
                 "ipAddresses": {
                     "type": "array",
@@ -806,6 +824,7 @@
                 },
                 "privateKeyPem": {
                     "type": "string",
+                    "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong to. This can be read from a separate file using the [\u003cspan pulumi-lang-nodejs=\"`file`\" pulumi-lang-dotnet=\"`File`\" pulumi-lang-go=\"`file`\" pulumi-lang-python=\"`file`\" pulumi-lang-yaml=\"`file`\" pulumi-lang-java=\"`file`\"\u003e`file`\u003c/span\u003e](https://www.terraform.io/language/functions/file) interpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.",
                     "secret": true
                 },
                 "setAuthorityKeyId": {
@@ -848,7 +867,8 @@
                         "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC 5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key Usages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: \u003cspan pulumi-lang-nodejs=\"`anyExtended`\" pulumi-lang-dotnet=\"`AnyExtended`\" pulumi-lang-go=\"`anyExtended`\" pulumi-lang-python=\"`any_extended`\" pulumi-lang-yaml=\"`anyExtended`\" pulumi-lang-java=\"`anyExtended`\"\u003e`any_extended`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`certSigning`\" pulumi-lang-dotnet=\"`CertSigning`\" pulumi-lang-go=\"`certSigning`\" pulumi-lang-python=\"`cert_signing`\" pulumi-lang-yaml=\"`certSigning`\" pulumi-lang-java=\"`certSigning`\"\u003e`cert_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`clientAuth`\" pulumi-lang-dotnet=\"`ClientAuth`\" pulumi-lang-go=\"`clientAuth`\" pulumi-lang-python=\"`client_auth`\" pulumi-lang-yaml=\"`clientAuth`\" pulumi-lang-java=\"`clientAuth`\"\u003e`client_auth`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`codeSigning`\" pulumi-lang-dotnet=\"`CodeSigning`\" pulumi-lang-go=\"`codeSigning`\" pulumi-lang-python=\"`code_signing`\" pulumi-lang-yaml=\"`codeSigning`\" pulumi-lang-java=\"`codeSigning`\"\u003e`code_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`contentCommitment`\" pulumi-lang-dotnet=\"`ContentCommitment`\" pulumi-lang-go=\"`contentCommitment`\" pulumi-lang-python=\"`content_commitment`\" pulumi-lang-yaml=\"`contentCommitment`\" pulumi-lang-java=\"`contentCommitment`\"\u003e`content_commitment`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`crlSigning`\" pulumi-lang-dotnet=\"`CrlSigning`\" pulumi-lang-go=\"`crlSigning`\" pulumi-lang-python=\"`crl_signing`\" pulumi-lang-yaml=\"`crlSigning`\" pulumi-lang-java=\"`crlSigning`\"\u003e`crl_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`dataEncipherment`\" pulumi-lang-dotnet=\"`DataEncipherment`\" pulumi-lang-go=\"`dataEncipherment`\" pulumi-lang-python=\"`data_encipherment`\" pulumi-lang-yaml=\"`dataEncipherment`\" pulumi-lang-java=\"`dataEncipherment`\"\u003e`data_encipherment`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`decipherOnly`\" pulumi-lang-dotnet=\"`DecipherOnly`\" pulumi-lang-go=\"`decipherOnly`\" pulumi-lang-python=\"`decipher_only`\" pulumi-lang-yaml=\"`decipherOnly`\" pulumi-lang-java=\"`decipherOnly`\"\u003e`decipher_only`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`digitalSignature`\" pulumi-lang-dotnet=\"`DigitalSignature`\" pulumi-lang-go=\"`digitalSignature`\" pulumi-lang-python=\"`digital_signature`\" pulumi-lang-yaml=\"`digitalSignature`\" pulumi-lang-java=\"`digitalSignature`\"\u003e`digital_signature`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`emailProtection`\" pulumi-lang-dotnet=\"`EmailProtection`\" pulumi-lang-go=\"`emailProtection`\" pulumi-lang-python=\"`email_protection`\" pulumi-lang-yaml=\"`emailProtection`\" pulumi-lang-java=\"`emailProtection`\"\u003e`email_protection`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`encipherOnly`\" pulumi-lang-dotnet=\"`EncipherOnly`\" pulumi-lang-go=\"`encipherOnly`\" pulumi-lang-python=\"`encipher_only`\" pulumi-lang-yaml=\"`encipherOnly`\" pulumi-lang-java=\"`encipherOnly`\"\u003e`encipher_only`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`ipsecEndSystem`\" pulumi-lang-dotnet=\"`IpsecEndSystem`\" pulumi-lang-go=\"`ipsecEndSystem`\" pulumi-lang-python=\"`ipsec_end_system`\" pulumi-lang-yaml=\"`ipsecEndSystem`\" pulumi-lang-java=\"`ipsecEndSystem`\"\u003e`ipsec_end_system`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`ipsecTunnel`\" pulumi-lang-dotnet=\"`IpsecTunnel`\" pulumi-lang-go=\"`ipsecTunnel`\" pulumi-lang-python=\"`ipsec_tunnel`\" pulumi-lang-yaml=\"`ipsecTunnel`\" pulumi-lang-java=\"`ipsecTunnel`\"\u003e`ipsec_tunnel`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`ipsecUser`\" pulumi-lang-dotnet=\"`IpsecUser`\" pulumi-lang-go=\"`ipsecUser`\" pulumi-lang-python=\"`ipsec_user`\" pulumi-lang-yaml=\"`ipsecUser`\" pulumi-lang-java=\"`ipsecUser`\"\u003e`ipsec_user`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`keyAgreement`\" pulumi-lang-dotnet=\"`KeyAgreement`\" pulumi-lang-go=\"`keyAgreement`\" pulumi-lang-python=\"`key_agreement`\" pulumi-lang-yaml=\"`keyAgreement`\" pulumi-lang-java=\"`keyAgreement`\"\u003e`key_agreement`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`keyEncipherment`\" pulumi-lang-dotnet=\"`KeyEncipherment`\" pulumi-lang-go=\"`keyEncipherment`\" pulumi-lang-python=\"`key_encipherment`\" pulumi-lang-yaml=\"`keyEncipherment`\" pulumi-lang-java=\"`keyEncipherment`\"\u003e`key_encipherment`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`microsoftCommercialCodeSigning`\" pulumi-lang-dotnet=\"`MicrosoftCommercialCodeSigning`\" pulumi-lang-go=\"`microsoftCommercialCodeSigning`\" pulumi-lang-python=\"`microsoft_commercial_code_signing`\" pulumi-lang-yaml=\"`microsoftCommercialCodeSigning`\" pulumi-lang-java=\"`microsoftCommercialCodeSigning`\"\u003e`microsoft_commercial_code_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`microsoftKernelCodeSigning`\" pulumi-lang-dotnet=\"`MicrosoftKernelCodeSigning`\" pulumi-lang-go=\"`microsoftKernelCodeSigning`\" pulumi-lang-python=\"`microsoft_kernel_code_signing`\" pulumi-lang-yaml=\"`microsoftKernelCodeSigning`\" pulumi-lang-java=\"`microsoftKernelCodeSigning`\"\u003e`microsoft_kernel_code_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`microsoftServerGatedCrypto`\" pulumi-lang-dotnet=\"`MicrosoftServerGatedCrypto`\" pulumi-lang-go=\"`microsoftServerGatedCrypto`\" pulumi-lang-python=\"`microsoft_server_gated_crypto`\" pulumi-lang-yaml=\"`microsoftServerGatedCrypto`\" pulumi-lang-java=\"`microsoftServerGatedCrypto`\"\u003e`microsoft_server_gated_crypto`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`netscapeServerGatedCrypto`\" pulumi-lang-dotnet=\"`NetscapeServerGatedCrypto`\" pulumi-lang-go=\"`netscapeServerGatedCrypto`\" pulumi-lang-python=\"`netscape_server_gated_crypto`\" pulumi-lang-yaml=\"`netscapeServerGatedCrypto`\" pulumi-lang-java=\"`netscapeServerGatedCrypto`\"\u003e`netscape_server_gated_crypto`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`ocspSigning`\" pulumi-lang-dotnet=\"`OcspSigning`\" pulumi-lang-go=\"`ocspSigning`\" pulumi-lang-python=\"`ocsp_signing`\" pulumi-lang-yaml=\"`ocspSigning`\" pulumi-lang-java=\"`ocspSigning`\"\u003e`ocsp_signing`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`serverAuth`\" pulumi-lang-dotnet=\"`ServerAuth`\" pulumi-lang-go=\"`serverAuth`\" pulumi-lang-python=\"`server_auth`\" pulumi-lang-yaml=\"`serverAuth`\" pulumi-lang-java=\"`serverAuth`\"\u003e`server_auth`\u003c/span\u003e, \u003cspan pulumi-lang-nodejs=\"`timestamping`\" pulumi-lang-dotnet=\"`Timestamping`\" pulumi-lang-go=\"`timestamping`\" pulumi-lang-python=\"`timestamping`\" pulumi-lang-yaml=\"`timestamping`\" pulumi-lang-java=\"`timestamping`\"\u003e`timestamping`\u003c/span\u003e."
                     },
                     "certPem": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the [underlying](https://pkg.go.dev/encoding/pem#Encode) [libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at the end of the PEM. In case this disrupts your use case, we recommend using [`trimspace()`](https://www.terraform.io/language/functions/trimspace)."
                     },
                     "dnsNames": {
                         "type": "array",
@@ -858,7 +878,8 @@
                         "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects)."
                     },
                     "earlyRenewalHours": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This can be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old certificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate revocation. Also, this advance update can only be performed should the Terraform configuration be applied during the early renewal period. (default: \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\"\u003e`0`\u003c/span\u003e)"
                     },
                     "ipAddresses": {
                         "type": "array",
@@ -877,6 +898,7 @@
                     },
                     "privateKeyPem": {
                         "type": "string",
+                        "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong to. This can be read from a separate file using the [\u003cspan pulumi-lang-nodejs=\"`file`\" pulumi-lang-dotnet=\"`File`\" pulumi-lang-go=\"`file`\" pulumi-lang-python=\"`file`\" pulumi-lang-yaml=\"`file`\" pulumi-lang-java=\"`file`\"\u003e`file`\u003c/span\u003e](https://www.terraform.io/language/functions/file) interpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.",
                         "secret": true
                     },
                     "readyForRenewal": {
