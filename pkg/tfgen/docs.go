@@ -2395,13 +2395,7 @@ func cleanupDoc(
 
 	importText := doc.Import
 	if importText != "" {
-		cleanedImport, importElided := reformatImportText(infoCtx, importText, footerLinks)
-		if importElided {
-			g.warn("Found <elided> in import docs for [%v]. The import section will be dropped in the "+
-				"Pulumi provider.", name)
-			cleanedImport = ""
-		}
-		importText = cleanedImport
+		importText = reformatImportText(infoCtx, importText, footerLinks)
 	}
 
 	return entityDocs{
@@ -2429,8 +2423,6 @@ var (
 
 // Regex for catching reference links, e.g. [1]: /docs/providers/aws/d/networ_interface.html
 var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(?:/[a-z1-9_]+)+\.[a-z]+`)
-
-const elidedDocComment = "<elided>"
 
 type infoContext struct {
 	language Language
@@ -2564,21 +2556,18 @@ func reformatText(g infoContext, text string, footerLinks map[string]string) (st
 	return reformatTextWithOptions(g, text, footerLinks, true, true)
 }
 
-func reformatImportText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-	clean, elided := reformatTextWithOptions(g, text, footerLinks, false, false)
-	if elided {
-		return "", true
-	}
+func reformatImportText(g infoContext, text string, footerLinks map[string]string) string {
+	clean, _ := reformatTextWithOptions(g, text, footerLinks, false, false)
 	if clean != "" {
 		if strings.HasSuffix(clean, "\n\n") {
-			return clean, false
+			return clean
 		}
 		if strings.HasSuffix(clean, "\n") {
-			return clean + "\n", false
+			return clean + "\n"
 		}
-		return clean + "\n\n", false
+		return clean + "\n\n"
 	}
-	return clean, false
+	return clean
 }
 
 func reformatTextWithOptions(

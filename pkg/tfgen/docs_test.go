@@ -118,8 +118,7 @@ func TestReformatImportText(t *testing.T) {
 		},
 	}
 	input := "### Identity Schema\n\n#### Required\n\n- `load_balancer_name` (String) Name."
-	text, elided := reformatImportText(infoCtx, input, nil)
-	require.False(t, elided)
+	text := reformatImportText(infoCtx, input, nil)
 	assert.Contains(t, text, "`load_balancer_name`")
 	assert.Contains(t, text, "pulumi-lang-nodejs")
 }
