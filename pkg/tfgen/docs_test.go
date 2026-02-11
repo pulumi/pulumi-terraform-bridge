@@ -96,12 +96,9 @@ func TestReformatText(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			text, elided := reformatText(infoCtx, tc.input, nil)
+			text := reformatText(infoCtx, tc.input, nil)
 			autogold.ExpectFile(t, autogold.Raw(text))
-			assert.Equalf(t, text == "", elided,
-				"We should only see an empty result for non-empty inputs if we have elided text")
 			if tc.assertPreserved {
-				assert.False(t, elided, "Terraform/Hashicorp cleanup should not elide content")
 				assert.NotEmpty(t, text, "Terraform/Hashicorp cleanup should preserve transformed content")
 			}
 		})

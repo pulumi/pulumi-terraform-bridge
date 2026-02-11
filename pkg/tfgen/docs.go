@@ -2378,7 +2378,7 @@ func cleanupDoc(
 		} else {
 			g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
 		}
-		cleanedText, _ := reformatText(infoCtx, v.description, footerLinks)
+		cleanedText := reformatText(infoCtx, v.description, footerLinks)
 
 		newargs[k] = &argumentDocs{description: cleanedText}
 	}
@@ -2386,12 +2386,12 @@ func cleanupDoc(
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
-		cleanedText, _ := reformatText(infoCtx, v, footerLinks)
+		cleanedText := reformatText(infoCtx, v, footerLinks)
 		newattrs[k] = cleanedText
 	}
 
 	g.debug("Cleaning up description text for [%v]", name)
-	cleanupText, _ := reformatText(infoCtx, doc.Description, footerLinks)
+	cleanupText := reformatText(infoCtx, doc.Description, footerLinks)
 
 	importText := doc.Import
 	if importText != "" {
@@ -2552,12 +2552,12 @@ func extractExamples(description string) string {
 }
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-	return reformatTextWithOptions(g, text, footerLinks, true, true)
+func reformatText(g infoContext, text string, footerLinks map[string]string) string {
+	return reformatTextWithOptions(g, text, footerLinks, true)
 }
 
 func reformatImportText(g infoContext, text string, footerLinks map[string]string) string {
-	clean, _ := reformatTextWithOptions(g, text, footerLinks, false, false)
+	clean := reformatTextWithOptions(g, text, footerLinks, false)
 	if clean != "" {
 		if strings.HasSuffix(clean, "\n\n") {
 			return clean
@@ -2571,9 +2571,9 @@ func reformatImportText(g infoContext, text string, footerLinks map[string]strin
 }
 
 func reformatTextWithOptions(
-	g infoContext, text string, footerLinks map[string]string, allowElide bool, trimSpace bool,
-) (string, bool) {
-	cleanupText := func(text string) (string, bool) {
+	g infoContext, text string, footerLinks map[string]string, trimSpace bool,
+) string {
+	cleanupText := func(text string) string {
 		// Replace occurrences of "->" or "~>" with just ">", to get a proper Markdown note.
 		text = strings.ReplaceAll(text, "-> ", "> ")
 		text = strings.ReplaceAll(text, "~> ", "> ")
@@ -2615,7 +2615,7 @@ func reformatTextWithOptions(
 		// Fixup resource and property name references.
 		text = g.fixupPropertyReference(text)
 
-		return text, false
+		return text
 	}
 
 	// Detect all code blocks in the text so we can avoid processing them.
@@ -2627,21 +2627,13 @@ func reformatTextWithOptions(
 	for _, codeBlock := range codeBlocks {
 		end = codeBlock[0]
 
-		clean, elided := cleanupText(text[start:end])
-		if elided {
-			return "", true
-		}
-		parts = append(parts, clean)
+		parts = append(parts, cleanupText(text[start:end]))
 
 		start = codeBlock[1]
 		parts = append(parts, text[end:start])
 	}
 	if start != len(text) {
-		clean, elided := cleanupText(text[start:])
-		if elided {
-			return "", true
-		}
-		parts = append(parts, clean)
+		parts = append(parts, cleanupText(text[start:]))
 	}
 
 	result := strings.Join(parts, "")
@@ -2650,7 +2642,7 @@ func reformatTextWithOptions(
 	} else {
 		result = strings.TrimLeftFunc(result, unicode.IsSpace)
 	}
-	return result, false
+	return result
 }
 
 // For example:
