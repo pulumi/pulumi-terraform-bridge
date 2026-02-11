@@ -21,14 +21,14 @@
 package tfgen
 
 import (
+	"bytes"
 	"crypto/md5" //nolint:gosec
 	"encoding/hex"
 	"encoding/json"
-	"maps"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -120,15 +120,11 @@ func (*examplesCache) checksum(bytes []byte) string {
 }
 
 func (ec *examplesCache) exampleKey(originalHCL, language string) string {
-	h := md5.New()
-	if hash, err := hex.DecodeString(ec.ProviderInfoHash); err == nil {
-		_, _ = h.Write(hash)
-	}
-
-	_, _ = h.Write([]byte(originalHCL))
-	_, _ = h.Write([]byte(language))
-
-	return hex.EncodeToString(h.Sum(nil))
+	sep := "|"
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "originalHCL=%v%s", originalHCL, sep)
+	fmt.Fprintf(&buf, "language=%v%s", language, sep)
+	return ec.checksum(buf.Bytes())
 }
 
 func (ec *examplesCache) inferToolingVersions() {
@@ -190,29 +186,11 @@ func (ec *examplesCache) filehash(p string) string {
 	return ec.checksum(bytes)
 }
 
-// computeProviderInfoHash derives a checksum for the current state of the
-// provider and its build dependencies. This is an input to our cache key
-// function, so changes to the provider or its dependencies invalidate the
-// cache.
 func (ec *examplesCache) computeProviderInfoHash(info *tfbridge.ProviderInfo) {
-	h := md5.New()
-
 	mpi := tfbridge.MarshalProviderInfo(info)
-	bytes, err := json.Marshal(mpi) // This isn't guaranteed to be stable...
-	_, _ = h.Write(bytes)
-
-	h.Write([]byte(ec.PulumiVersion))
-	if ec.CliConverterEnabled {
-		h.Write([]byte{1})
-	}
-	for _, key := range slices.Sorted(maps.Keys(ec.BuildFileHashes)) {
-		if hash, err := hex.DecodeString(ec.BuildFileHashes[key]); err == nil {
-			h.Write(hash)
-		}
-	}
-
+	bytes, err := json.Marshal(mpi)
 	contract.AssertNoErrorf(err, "failed to marshal MarshallableProviderInfo to JSON")
-	ec.ProviderInfoHash = hex.EncodeToString(h.Sum(nil))
+	ec.ProviderInfoHash = ec.checksum(bytes)
 }
 
 func (ec *examplesCache) uniqueDirHash() string {
