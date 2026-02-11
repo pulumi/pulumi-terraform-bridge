@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
@@ -505,7 +506,7 @@ func (*testPluginHost) PolicyAnalyzer(
 
 func (*testPluginHost) ListAnalyzers() []plugin.Analyzer { panic("Unexpected call") }
 
-func (*testPluginHost) Provider(pkg workspace.PluginDescriptor) (plugin.Provider, error) {
+func (*testPluginHost) Provider(pkg workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
 	return &plugin.MockProvider{}, nil
 }
 

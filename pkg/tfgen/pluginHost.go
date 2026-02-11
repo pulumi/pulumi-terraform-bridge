@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -117,11 +118,11 @@ type inmemoryProviderHost struct {
 	provider *inmemoryProvider
 }
 
-func (host *inmemoryProviderHost) Provider(pkg workspace.PluginDescriptor) (plugin.Provider, error) {
+func (host *inmemoryProviderHost) Provider(pkg workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 	if tokens.Package(pkg.Name) == host.provider.Pkg() {
 		return host.provider, nil
 	}
-	return host.Host.Provider(pkg)
+	return host.Host.Provider(pkg, e)
 }
 
 // ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin
@@ -174,7 +175,7 @@ func (host *cachingProviderHost) getProvider(key string) (plugin.Provider, bool)
 	return provider, ok
 }
 
-func (host *cachingProviderHost) Provider(pkg workspace.PluginDescriptor) (plugin.Provider, error) {
+func (host *cachingProviderHost) Provider(pkg workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 	key := pkg.String()
 	if provider, ok := host.getProvider(key); ok {
 		return provider, nil
@@ -183,7 +184,7 @@ func (host *cachingProviderHost) Provider(pkg workspace.PluginDescriptor) (plugi
 	host.m.Lock()
 	defer host.m.Unlock()
 
-	provider, err := host.Host.Provider(pkg)
+	provider, err := host.Host.Provider(pkg, e)
 	if err != nil {
 		return nil, err
 	}
