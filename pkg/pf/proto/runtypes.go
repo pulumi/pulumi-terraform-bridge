@@ -41,6 +41,14 @@ func (p Provider) DataSources(context.Context) (runtypes.DataSources, error) {
 	return datasources{collection(v.DataSourceSchemas)}, nil
 }
 
+func (p Provider) ListResources(ctx context.Context) (runtypes.ListResources, error) {
+	v, err := p.getSchema()
+	if err != nil {
+		return nil, err
+	}
+	return listresources{collection(v.ListResourceSchemas)}, nil
+}
+
 type schema struct {
 	s      *tfprotov6.Schema
 	tfName runtypes.TypeName
@@ -82,6 +90,12 @@ func (resources) IsResources() {}
 type datasources struct{ collection }
 
 var _ runtypes.DataSources = datasources{}
+
+type listresources struct{ collection }
+
+func (listresources) IsListResources() {}
+
+var _ runtypes.ListResources = listresources{}
 
 func (datasources) IsDataSources() {}
 

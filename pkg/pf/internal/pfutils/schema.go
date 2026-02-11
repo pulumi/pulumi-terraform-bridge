@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	lrschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -64,6 +65,12 @@ func FromResourceSchema(x rschema.Schema) Schema {
 	attrs := convertMap(FromResourceAttribute, x.Attributes)
 	blocks := convertMap(FromResourceBlock, x.Blocks)
 	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, &x)
+}
+
+func FromListResourceSchema(x lrschema.Schema) Schema {
+	attrs := convertMap(FromListResourceAttribute, x.Attributes)
+	blocks := convertMap(FromListResourceBlock, x.Blocks)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, nil)
 }
 
 type schemaAdapter struct {

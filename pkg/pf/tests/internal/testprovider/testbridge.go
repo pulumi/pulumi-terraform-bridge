@@ -22,6 +22,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/list"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -130,6 +131,10 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 		},
 
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
+
+		ListResources: map[string]*tfbridge.ListResourceInfo{
+			"testbridge_testres": {Tok: "testbridge:index:listTestres"},
+		},
 	}
 
 	info.SetAutonaming(255, "-")
@@ -145,6 +150,7 @@ type resourceData struct {
 }
 
 var _ provider.Provider = (*syntheticProvider)(nil)
+var _ provider.ProviderWithListResources = (*syntheticProvider)(nil)
 
 func (p *syntheticProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "testbridge"
@@ -224,6 +230,12 @@ func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 				},
 			},
 		},
+	}
+}
+
+func (p *syntheticProvider) ListResources(context.Context) []func() list.ListResource {
+	return []func() list.ListResource{
+		newListTestres,
 	}
 }
 
