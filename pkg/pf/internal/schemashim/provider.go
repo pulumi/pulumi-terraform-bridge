@@ -33,10 +33,11 @@ import (
 var _ = pf.ShimProvider(&SchemaOnlyProvider{})
 
 type SchemaOnlyProvider struct {
-	ctx           context.Context
-	tf            pfprovider.Provider
-	resourceMap   schemaOnlyResourceMap
-	dataSourceMap schemaOnlyDataSourceMap
+	ctx                  context.Context
+	tf                   pfprovider.Provider
+	resourceMap          schemaOnlyResourceMap
+	dataSourceMap        schemaOnlyDataSourceMap
+	ephemeralResourceMap schemaOnlyEphemeralResourceMap
 	internalinter.Internal
 }
 
@@ -60,6 +61,10 @@ func (p *SchemaOnlyProvider) Resources(ctx context.Context) (runtypes.Resources,
 
 func (p *SchemaOnlyProvider) DataSources(ctx context.Context) (runtypes.DataSources, error) {
 	return p.dataSourceMap, nil
+}
+
+func (p *SchemaOnlyProvider) EphemeralResources(ctx context.Context) (runtypes.EphemeralResources, error) {
+	return p.ephemeralResourceMap, nil
 }
 
 func (p *SchemaOnlyProvider) Config(ctx context.Context) (tftypes.Object, error) {
@@ -91,6 +96,10 @@ func (p *SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
 
 func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
 	return p.dataSourceMap
+}
+
+func (p *SchemaOnlyProvider) EphemeralResourcesMap() shim.ResourceMap {
+	return p.ephemeralResourceMap
 }
 
 func (p *SchemaOnlyProvider) InternalValidate() error {
