@@ -75,7 +75,7 @@ func resourceNestedDescriptionsSchema() map[string]*schema.Schema {
 									Type:     schema.TypeString,
 									Optional: true,
 									Description: "Identifier of the action parameter to modify. " +
-										"When Terraform is mentioned here, the description should be dropped.",
+										"When Terraform is mentioned here, the description should not be dropped.",
 								},
 								"translateField": {
 									Type:        schema.TypeString,

@@ -79,7 +79,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		return nil, err
 	}
 	// Reformat field names.
-	contentStr, _ = reformatText(infoContext{
+	contentStr = reformatText(infoContext{
 		language: RegistryDocs,
 		pkg:      g.pkg,
 		info:     g.info,

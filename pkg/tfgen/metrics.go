@@ -19,10 +19,8 @@ import (
 )
 
 var (
-	ignoredDocHeaders     = make(map[string]int)
-	elidedArguments       int
-	elidedNestedArguments int
-	unexpectedSnippets    int
+	ignoredDocHeaders  = make(map[string]int)
+	unexpectedSnippets int
 
 	// Arguments metrics:
 	totalArgumentsFromDocs int
@@ -53,12 +51,6 @@ func printDocStats() {
 	fmt.Printf("\t%d argument descriptions were parsed from the upstream docs\n", totalArgumentsFromDocs)
 	fmt.Printf("\t%d top-level input property descriptions came from an upstream attribute (as opposed to an argument). "+
 		"Nested arguments are not included in this count.\n", argumentDescriptionsFromAttributes)
-	if elidedArguments > 0 || elidedNestedArguments > 0 {
-		fmt.Printf("\t%d arguments contained an <elided> reference and had their descriptions dropped.\n",
-			elidedArguments)
-		fmt.Printf("\t%d nested arguments contained an <elided> reference and had their descriptions dropped.\n",
-			elidedNestedArguments)
-	}
 	fmt.Printf(
 		"\t%d of %d resource inputs (%.2f%%) are missing descriptions in the schema\n",
 		schemaStats.Resources.InputPropertiesMissingDescriptions,

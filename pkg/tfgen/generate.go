@@ -643,7 +643,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 			}
 			// Description fields have no footers, so we pass in an empty map
 			fakeFooterLinks := map[string]string{}
-			doc, _ = reformatText(docsInfoCtx, doc, fakeFooterLinks)
+			doc = reformatText(docsInfoCtx, doc, fakeFooterLinks)
 		}
 		// If we still have no docs for this type, we use our final strategy to look up any docs
 		// that are parsed from entity (markdown) docs and have a unique path leaf.
@@ -1312,7 +1312,7 @@ func (g *Generator) gatherConfig() (*module, error) {
 			info:     g.info,
 		}
 		fakeFooterLinks := map[string]string{}
-		rawdoc, _ := reformatText(docsInfoCtx, sch.Description(), fakeFooterLinks)
+		rawdoc := reformatText(docsInfoCtx, sch.Description(), fakeFooterLinks)
 		prop, err := g.propertyVariable(cfgPath,
 			key, cfg, custom, "", rawdoc, true /*out*/, entityDocs{})
 		if err != nil {
@@ -1491,14 +1491,11 @@ func (g *Generator) gatherResource(rawname string,
 
 		// TODO[pulumi/pulumi#397]: represent sensitive types using a Secret<T> type.
 		doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, key)
-		rawdoc, elided := reformatText(infoContext{
+		rawdoc := reformatText(infoContext{
 			language: g.language,
 			pkg:      g.pkg,
 			info:     g.info,
 		}, propschema.Description(), nil)
-		if elided {
-			rawdoc = ""
-		}
 
 		propinfo := info.Fields[key]
 		// If we are generating a provider, we do not emit output property definitions as provider outputs are not

@@ -46,8 +46,9 @@ var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 func TestReformatText(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name  string
-		input string
+		name            string
+		input           string
+		assertPreserved bool
 	}{
 		{
 			name:  "No changes on valid links",
@@ -70,12 +71,14 @@ func TestReformatText(t *testing.T) {
 			input: "\n(Required)\nThe app_ip of name of the Firebase webApp.",
 		},
 		{
-			name:  "Removes lines with @hashicorp.com in the text",
-			input: "An example username is jdoa@hashicorp.com",
+			name:            "Preserves text with @hashicorp.com",
+			input:           "An example username is jdoa@hashicorp.com",
+			assertPreserved: true,
 		},
 		{
-			name:  "Removes the word Terraform from text",
-			input: "An example password is Terraform-secret",
+			name:            "Preserves text with Terraform",
+			input:           "An example password is Terraform-secret",
+			assertPreserved: true,
 		},
 	}
 
@@ -93,10 +96,11 @@ func TestReformatText(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			text, elided := reformatText(infoCtx, tc.input, nil)
+			text := reformatText(infoCtx, tc.input, nil)
 			autogold.ExpectFile(t, autogold.Raw(text))
-			assert.Equalf(t, text == "", elided,
-				"We should only see an empty result for non-empty inputs if we have elided text")
+			if tc.assertPreserved {
+				assert.NotEmpty(t, text, "Terraform/Hashicorp cleanup should preserve transformed content")
+			}
 		})
 	}
 }
@@ -111,8 +115,7 @@ func TestReformatImportText(t *testing.T) {
 		},
 	}
 	input := "### Identity Schema\n\n#### Required\n\n- `load_balancer_name` (String) Name."
-	text, elided := reformatImportText(infoCtx, input, nil)
-	require.False(t, elided)
+	text := reformatImportText(infoCtx, input, nil)
 	assert.Contains(t, text, "`load_balancer_name`")
 	assert.Contains(t, text, "pulumi-lang-nodejs")
 }

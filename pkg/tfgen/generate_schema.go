@@ -669,20 +669,14 @@ func getDefaultReadme(pulumiPackageName tokens.Package, tfProviderShortName stri
 }
 
 func (g *schemaGenerator) genDocComment(comment string) string {
-	if comment == elidedDocComment {
-		return ""
-	}
-
 	buffer := &bytes.Buffer{}
-	if comment != elidedDocComment {
-		lines := strings.Split(comment, "\n")
-		for i, docLine := range lines {
-			// Break if we get to the last line and it's empty
-			if i == len(lines)-1 && strings.TrimSpace(docLine) == "" {
-				break
-			}
-			fmt.Fprintf(buffer, "%s\n", docLine)
+	lines := strings.Split(comment, "\n")
+	for i, docLine := range lines {
+		// Break if we get to the last line and it's empty
+		if i == len(lines)-1 && strings.TrimSpace(docLine) == "" {
+			break
 		}
+		fmt.Fprintf(buffer, "%s\n", docLine)
 	}
 
 	return buffer.String()
@@ -690,7 +684,7 @@ func (g *schemaGenerator) genDocComment(comment string) string {
 
 func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 	description := ""
-	if prop.doc != "" && prop.doc != elidedDocComment {
+	if prop.doc != "" {
 		description = g.genDocComment(prop.doc)
 	} else if prop.rawdoc != "" {
 		description = prop.rawdoc

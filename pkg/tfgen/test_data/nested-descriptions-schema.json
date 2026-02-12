@@ -55,7 +55,8 @@
     "cloudflare:index/RulesetRuleActionParameters:RulesetRuleActionParameters": {
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "Identifier of the action parameter to modify. When Terraform is mentioned here, the description should not be dropped.\n"
         },
         "translateField": {
           "type": "string",

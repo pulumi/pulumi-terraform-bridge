@@ -1180,21 +1180,6 @@ func (p *tfMarkdownParser) parseImports(body string) {
 	if p.info != nil && p.info.GetTok() != "" {
 		token = p.info.GetTok().String()
 	}
-	defer func() {
-		// TODO[pulumi/ci-mgmt#533] enforce these checks better than a warning
-		if elide(p.ret.Import) {
-			message := fmt.Sprintf(
-				`parseImports %q should not render <elided> text in its emitted markdown.
-**Input**:\n%s\n\n**Rendered**:
-%s
-
-`,
-				token, body, p.ret.Import)
-			if p.sink != nil {
-				p.sink.warn(message)
-			}
-		}
-	}()
 
 	// check for import overwrites
 	info := p.info
@@ -2385,7 +2370,6 @@ func cleanupDoc(
 	name string, g diagsSink, infoCtx infoContext, doc entityDocs,
 	footerLinks map[string]string,
 ) (entityDocs, bool) {
-	elidedDoc := false
 	newargs := make(map[docsPath]*argumentDocs, len(doc.Arguments))
 
 	for k, v := range doc.Arguments {
@@ -2394,19 +2378,7 @@ func cleanupDoc(
 		} else {
 			g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
 		}
-		cleanedText, elided := reformatText(infoCtx, v.description, footerLinks)
-		if elided {
-			if k.nested() {
-				elidedNestedArguments++
-				g.warn("Found <elided> in docs for nested argument [%v] in [%v]. The argument's description will be "+
-					"dropped in the Pulumi provider.", k, name)
-			} else {
-				elidedArguments++
-				g.warn("Found <elided> in docs for argument [%v] in [%v]. The argument's description will be dropped in "+
-					"the Pulumi provider.", k, name)
-			}
-			elidedDoc = true
-		}
+		cleanedText := reformatText(infoCtx, v.description, footerLinks)
 
 		newargs[k] = &argumentDocs{description: cleanedText}
 	}
@@ -2414,56 +2386,16 @@ func cleanupDoc(
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
-		cleanedText, elided := reformatText(infoCtx, v, footerLinks)
-		if elided {
-			g.warn("Found <elided> in docs for attribute [%v] in [%v]. The attribute's description will be dropped "+
-				"in the Pulumi provider.", k, name)
-			elidedDoc = true
-		}
+		cleanedText := reformatText(infoCtx, v, footerLinks)
 		newattrs[k] = cleanedText
 	}
 
 	g.debug("Cleaning up description text for [%v]", name)
-	cleanupText, elided := reformatText(infoCtx, doc.Description, footerLinks)
-	if elided {
-		g.debug("Found <elided> in the description. Attempting to extract examples from the description and " +
-			"reformat examples only.")
-
-		// Attempt to keep the Example Usage if the elided text was only in the description:
-		// TODO: *Also* attempt to keep the description if the elided text is only in the Example Usage
-		examples := extractExamples(doc.Description)
-		if examples == "" {
-			g.debug("Unable to find any examples in the description text. The entire description will be discarded.")
-
-			g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in the "+
-				"Pulumi provider.", name)
-			elidedDoc = true
-		} else {
-			g.debug("Found examples in the description text. Attempting to reformat the examples.")
-
-			cleanedupExamples, examplesElided := reformatText(infoCtx, examples, footerLinks)
-			if examplesElided {
-				g.warn("Found <elided> in description for [%v]. The description and any examples will be dropped in "+
-					"the Pulumi provider.", name)
-				elidedDoc = true
-			} else {
-				g.warn("Found <elided> in description for [%v], but was able to preserve the examples. The description "+
-					"proper will be dropped in the Pulumi provider.", name)
-				cleanupText = cleanedupExamples
-			}
-		}
-	}
+	cleanupText := reformatText(infoCtx, doc.Description, footerLinks)
 
 	importText := doc.Import
 	if importText != "" {
-		cleanedImport, importElided := reformatImportText(infoCtx, importText, footerLinks)
-		if importElided {
-			g.warn("Found <elided> in import docs for [%v]. The import section will be dropped in the "+
-				"Pulumi provider.", name)
-			elidedDoc = true
-			cleanedImport = ""
-		}
-		importText = cleanedImport
+		importText = reformatImportText(infoCtx, importText, footerLinks)
 	}
 
 	return entityDocs{
@@ -2471,7 +2403,7 @@ func cleanupDoc(
 		Arguments:   newargs,
 		Attributes:  newattrs,
 		Import:      importText,
-	}, elidedDoc
+	}, false
 }
 
 var (
@@ -2491,8 +2423,6 @@ var (
 
 // Regex for catching reference links, e.g. [1]: /docs/providers/aws/d/networ_interface.html
 var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(?:/[a-z1-9_]+)+\.[a-z]+`)
-
-const elidedDocComment = "<elided>"
 
 type infoContext struct {
 	language Language
@@ -2621,47 +2551,29 @@ func extractExamples(description string) string {
 	return strings.ReplaceAll(description, parts[0], "")
 }
 
-var (
-	reTerraform = regexp.MustCompile("[Tt]erraform")
-	reHashicorp = regexp.MustCompile("[Hh]ashicorp")
-)
-
-func elide(text string) bool {
-	return reTerraform.MatchString(text) ||
-		reHashicorp.MatchString(text)
-}
-
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
-func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-	return reformatTextWithOptions(g, text, footerLinks, true, true)
+func reformatText(g infoContext, text string, footerLinks map[string]string) string {
+	return reformatTextWithOptions(g, text, footerLinks, true)
 }
 
-func reformatImportText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-	clean, elided := reformatTextWithOptions(g, text, footerLinks, false, false)
-	if elided {
-		return "", true
-	}
+func reformatImportText(g infoContext, text string, footerLinks map[string]string) string {
+	clean := reformatTextWithOptions(g, text, footerLinks, false)
 	if clean != "" {
 		if strings.HasSuffix(clean, "\n\n") {
-			return clean, false
+			return clean
 		}
 		if strings.HasSuffix(clean, "\n") {
-			return clean + "\n", false
+			return clean + "\n"
 		}
-		return clean + "\n\n", false
+		return clean + "\n\n"
 	}
-	return clean, false
+	return clean
 }
 
 func reformatTextWithOptions(
-	g infoContext, text string, footerLinks map[string]string, allowElide bool, trimSpace bool,
-) (string, bool) {
-	cleanupText := func(text string) (string, bool) {
-		// Remove incorrect documentation.
-		if allowElide && elide(text) {
-			return "", true
-		}
-
+	g infoContext, text string, footerLinks map[string]string, trimSpace bool,
+) string {
+	cleanupText := func(text string) string {
 		// Replace occurrences of "->" or "~>" with just ">", to get a proper Markdown note.
 		text = strings.ReplaceAll(text, "-> ", "> ")
 		text = strings.ReplaceAll(text, "~> ", "> ")
@@ -2703,7 +2615,7 @@ func reformatTextWithOptions(
 		// Fixup resource and property name references.
 		text = g.fixupPropertyReference(text)
 
-		return text, false
+		return text
 	}
 
 	// Detect all code blocks in the text so we can avoid processing them.
@@ -2715,21 +2627,13 @@ func reformatTextWithOptions(
 	for _, codeBlock := range codeBlocks {
 		end = codeBlock[0]
 
-		clean, elided := cleanupText(text[start:end])
-		if elided {
-			return "", true
-		}
-		parts = append(parts, clean)
+		parts = append(parts, cleanupText(text[start:end]))
 
 		start = codeBlock[1]
 		parts = append(parts, text[end:start])
 	}
 	if start != len(text) {
-		clean, elided := cleanupText(text[start:])
-		if elided {
-			return "", true
-		}
-		parts = append(parts, clean)
+		parts = append(parts, cleanupText(text[start:]))
 	}
 
 	result := strings.Join(parts, "")
@@ -2738,7 +2642,7 @@ func reformatTextWithOptions(
 	} else {
 		result = strings.TrimLeftFunc(result, unicode.IsSpace)
 	}
-	return result, false
+	return result
 }
 
 // For example:
