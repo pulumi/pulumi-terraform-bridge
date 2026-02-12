@@ -81,8 +81,8 @@ func newExamplesCache(info *tfbridge.ProviderInfo, cacheDir string) *examplesCac
 		dir:          dir,
 		ProviderName: providerName,
 	}
-	ec.inferToolingVersions()
 	ec.computeProviderInfoHash(info)
+	ec.inferToolingVersions()
 	ec.prepareDir()
 	return ec
 }
