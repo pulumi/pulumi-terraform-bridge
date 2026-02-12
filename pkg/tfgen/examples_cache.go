@@ -43,13 +43,11 @@ const (
 type examplesCache struct {
 	enabled             bool
 	dir                 string
-	ProviderName        string                       `json:"providerName"`
-	PulumiVersion       string                       `json:"pulumiVersion"`
-	SoftwareVersions    map[string]string            `json:"softwareVersions"`
-	BuildFileHashes     map[string]string            `json:"buildFileHashes"`
-	Plugins             map[string]map[string]string `json:"plugins"`
-	CliConverterEnabled bool                         `json:"cliConverterEnabled"`
-	ProviderInfoHash    string                       `json:"providerInfoHash"`
+	ProviderName        string            `json:"providerName"`
+	PulumiVersion       string            `json:"pulumiVersion"`
+	BuildFileHashes     map[string]string `json:"buildFileHashes"`
+	CliConverterEnabled bool              `json:"cliConverterEnabled"`
+	ProviderInfoHash    string            `json:"providerInfoHash"`
 }
 
 func (g *Generator) getOrCreateExamplesCache() *examplesCache {
@@ -131,10 +129,8 @@ func (ec *examplesCache) exampleKey(originalHCL, language string) string {
 
 func (ec *examplesCache) inferToolingVersions() {
 	ec.PulumiVersion = ec.inferPulumiVersion()
-	ec.Plugins = ec.inferPlugins()
 	ec.BuildFileHashes = ec.inferBuildFileHashes()
 	ec.CliConverterEnabled = cliConverterEnabled()
-	ec.SoftwareVersions = ec.inferSoftwareVersions()
 }
 
 func (*examplesCache) inferPulumiVersion() string {
@@ -143,71 +139,43 @@ func (*examplesCache) inferPulumiVersion() string {
 	return strings.TrimSpace(string(pv))
 }
 
-func (*examplesCache) inferPlugins() map[string]map[string]string {
-	j, err := exec.Command("pulumi", "plugin", "ls", "--json").Output()
-	contract.AssertNoErrorf(err, "`pulumi plugin ls --json` failed")
-	type info struct {
-		Name    string `json:"name"`
-		Kind    string `json:"kind"`
-		Version string `json:"version"`
-	}
-
-	var infos []info
-	err = json.Unmarshal(j, &infos)
-	contract.AssertNoErrorf(err, "`pulumi plugin ls --json` output parsing failed")
-
-	rr := map[string]map[string]string{}
-	for _, i := range infos {
-		if _, ok := rr[i.Kind]; !ok {
-			rr[i.Kind] = map[string]string{}
-		}
-
-		rr[i.Kind][i.Name] = i.Version
-	}
-	return rr
-}
-
 func (ec *examplesCache) inferBuildFileHashes() map[string]string {
+	// Walk up until we find a .git root or a workspace.
+	dir := ec.dir
+	for {
+		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+			break
+		}
+		if _, err := os.Stat(filepath.Join(dir, "go.work")); err == nil {
+			break
+		}
+		dir = filepath.Dir(dir)
+		if dir == "/" || dir == "." {
+			contract.Failf("examplesCache failed to find .git or go.work root when looking for build files to hash")
+		}
+	}
+
 	candidates := []string{
-		"go.work",
+		".config/mise.toml",
+		"go.mod",
+		"go.sum",
 		"go.work.sum",
+		"go.work",
+		"mise.toml",
+		"provider/go.mod",
+		"provider/go.sum",
 	}
 	rr := map[string]string{}
 	for _, c := range candidates {
-		rr[c] = ec.filehash(c)
+		if h := ec.filehash(filepath.Join(dir, c)); h != "" {
+			rr[c] = h
+		}
+	}
+	if len(rr) == 0 {
+		cwd, _ := os.Getwd()
+		contract.Failf("examplesCache failed to find any build files to hash; cwd is %q", cwd)
 	}
 	return rr
-}
-
-func (ec *examplesCache) inferSoftwareVersions() map[string]string {
-	used := []string{
-		"github.com/pulumi/pulumi/pkg/v3",
-		"github.com/pulumi/pulumi-terraform-bridge/v3",
-		"github.com/pulumi/pulumi-terraform-bridge/v3/pf",
-	}
-	p := map[string]string{}
-	for _, u := range used {
-		cmd := exec.Command("go", "list", "-m", "-json", u)
-		cmd.Dir = "provider"
-		j, err := cmd.Output()
-		if err != nil {
-			continue
-		}
-		type result struct {
-			Version string `json:"Version"`
-			Replace struct {
-				Version string `json:"Version"`
-			} `json:"Replace"`
-		}
-		var r result
-		err = json.Unmarshal(j, &r)
-		contract.AssertNoErrorf(err, "go list -json -m <pkg> result parsing failed")
-		p[u] = r.Version
-		if r.Replace.Version != "" {
-			p[u] = r.Replace.Version
-		}
-	}
-	return p
 }
 
 func (ec *examplesCache) filehash(p string) string {

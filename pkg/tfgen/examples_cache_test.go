@@ -15,9 +15,12 @@
 package tfgen
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -51,7 +54,15 @@ func TestExamplesCache(t *testing.T) {
 	`
 
 	t.Run("enabled", func(t *testing.T) {
-		dir := t.TempDir()
+		tmp := t.TempDir()
+		dir := filepath.Join(tmp, "examples-cache")
+
+		// Setup a dummy project structure with a .git and provider directory.
+		require.NoError(t, os.Mkdir(dir, 0o700))
+		require.NoError(t, os.Mkdir(filepath.Join(tmp, ".git"), 0o700))
+		require.NoError(t, os.Mkdir(filepath.Join(tmp, "provider"), 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, "provider/go.mod"), []byte("go 1.24.0"), 0o600))
+
 		cache := newExamplesCache(exInfo, dir)
 
 		_, ok := cache.Lookup(hcl, "typescript")
@@ -62,6 +73,23 @@ func TestExamplesCache(t *testing.T) {
 		recall, ok := cache.Lookup(hcl, "typescript")
 		assert.True(t, ok)
 		assert.Equal(t, ts, recall)
+
+		t.Run("persistence", func(t *testing.T) {
+			// A new cache with the same settings should hit.
+			newCache := newExamplesCache(exInfo, dir)
+			_, ok := newCache.Lookup(hcl, "typescript")
+			assert.True(t, ok)
+		})
+
+		t.Run("invalidation", func(t *testing.T) {
+			// A new cache with modified dependencies should miss.
+			err := os.WriteFile(filepath.Join(tmp, "mise.toml"), []byte("touched"), 0o600)
+			require.NoError(t, err)
+
+			newCache := newExamplesCache(exInfo, dir)
+			_, ok := newCache.Lookup(hcl, "typescript")
+			assert.False(t, ok)
+		})
 	})
 
 	t.Run("disabled", func(t *testing.T) {
