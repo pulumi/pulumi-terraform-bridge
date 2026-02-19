@@ -50,7 +50,7 @@ require (
 	github.com/pulumi/inflector v0.2.1
 	github.com/pulumi/providertest v0.6.0
 	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.101.0
-	github.com/pulumi/pulumi-java/pkg v1.12.0
+	github.com/pulumi/pulumi-java/pkg v1.21.0
 	github.com/pulumi/pulumi-yaml v1.28.0
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
