@@ -7,7 +7,7 @@ toolchain go1.24.1
 require (
 	github.com/hashicorp/hcl/v2 v2.23.0
 	github.com/hexops/autogold/v2 v2.2.1
-	github.com/pulumi/terraform v0.12.1-0.20230322133416-a268cd0892c9
+	github.com/pulumi/terraform v0.13.0
 	github.com/spf13/afero v1.11.0
 	github.com/stretchr/testify v1.10.0
 )
