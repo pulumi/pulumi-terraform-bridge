@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
@@ -43,7 +44,7 @@ func TestConvert(t *testing.T) {
 	ctx := context.Background()
 	pluginContext, err := plugin.NewContext(
 		ctx, nil, nil, nil, nil,
-		cwd, nil, false, nil)
+		cwd, nil, false, nil, schema.NewLoaderServerFromHost)
 	require.NoError(t, err)
 	defer contract.IgnoreClose(pluginContext)
 
