@@ -986,7 +986,9 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		}
 
 		ctx := context.Background()
-		pluginContext, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, false, nil)
+		pluginContext, err := plugin.NewContext(
+			ctx, sink, sink, nil, nil, cwd, nil, false, nil, pschema.NewLoaderServerFromHost,
+		)
 		if err != nil {
 			return nil, err
 		}

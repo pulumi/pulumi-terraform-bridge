@@ -487,6 +487,7 @@ func TestNotSupportedLifecyleHookErrorHandling(t *testing.T) {
 type testPluginHost struct{}
 
 func (*testPluginHost) ServerAddr() string { panic("Unexpected call") }
+func (*testPluginHost) LoaderAddr() string { panic("Unexpected call") }
 
 func (*testPluginHost) Log(diag.Severity, resource.URN, string, int32) {
 	panic("Unexpected call")
