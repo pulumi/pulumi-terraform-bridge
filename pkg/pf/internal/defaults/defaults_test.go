@@ -84,6 +84,14 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 		}
 	}
 
+	// Avoid hardcoding a specific suffix from NewUniqueName; transitive RNG updates can
+	// change deterministic output for the same seed without changing defaulting semantics.
+	expectedN1Name := func() resource.PropertyValue {
+		unique, err := resource.NewUniqueName([]byte(`123`), "n1-", 3, 12, []rune("12345"))
+		require.NoError(t, err)
+		return resource.NewStringProperty(unique)
+	}()
+
 	testCases := []testCase{
 		{
 			name: "simple top-level string",
@@ -222,7 +230,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				},
 			},
 			expected: resource.PropertyMap{
-				"stringProp": resource.NewStringProperty("n1-453"),
+				"stringProp": expectedN1Name,
 			},
 		},
 		{
@@ -240,7 +248,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				Seed:       []byte(`123`),
 			},
 			expected: resource.PropertyMap{
-				"stringProp": resource.NewStringProperty("n1-453"),
+				"stringProp": expectedN1Name,
 			},
 		},
 		{
@@ -298,7 +306,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			expected: resource.PropertyMap{
 				"objectProp": resource.NewObjectProperty(resource.PropertyMap{
 					"xProp": resource.NewStringProperty("X"),
-					"yProp": resource.NewStringProperty("n1-453"),
+					"yProp": expectedN1Name,
 				}),
 			},
 		},
@@ -328,7 +336,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			expected: resource.PropertyMap{
 				"objectProp": resource.NewObjectProperty(resource.PropertyMap{
 					"xProp": resource.NewStringProperty("X"),
-					"yProp": resource.NewStringProperty("n1-453"),
+					"yProp": expectedN1Name,
 				}),
 			},
 		},
