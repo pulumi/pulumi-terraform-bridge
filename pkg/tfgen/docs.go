@@ -1339,10 +1339,10 @@ func rewriteImportFence(
 	if info == "terraform" && looksLikeTerraformImportBlock(code) {
 		return nil, false, false
 	}
-	if info == "" || info == "console" || info == "shell" || info == "sh" {
+	if info == "" || info == "console" || info == "shell" || info == "sh" || info == "bash" {
 		forcedStart := startLine
 		forcedEnd := endLine
-		if info == "" || info == "console" || info == "shell" {
+		if info == "" || info == "console" || info == "shell" || info == "bash" {
 			forcedStart = fmt.Sprintf("%s```sh", indent)
 			forcedEnd = fmt.Sprintf("%s```", indent)
 		}
@@ -1381,7 +1381,7 @@ func rewriteImportFence(
 	}
 
 	rewritten := make([]string, 0, len(lines)+2)
-	if info == "" || info == "console" || info == "shell" {
+	if info == "" || info == "console" || info == "shell" || info == "bash" {
 		rewritten = append(rewritten, fmt.Sprintf("%s```sh", indent))
 	} else {
 		rewritten = append(rewritten, startLine)
