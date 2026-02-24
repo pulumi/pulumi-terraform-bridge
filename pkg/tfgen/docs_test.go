@@ -1928,6 +1928,11 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			expectedFile: "test_data/parse-imports/auth0pages-expected.md",
 		},
 		{
+			input:        readfile(t, "test_data/parse-imports/bash-import.md"),
+			token:        "pkg:mod/name:Type",
+			expectedFile: "test_data/parse-imports/bash-import-expected.md",
+		},
+		{
 			input: strings.Join([]string{
 				"",
 				"### This is a sub-section",
