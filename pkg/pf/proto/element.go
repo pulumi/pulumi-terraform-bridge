@@ -30,20 +30,25 @@ var (
 type element struct {
 	typ      tftypes.Type
 	optional bool
+	computed bool
 	internalinter.Internal
 }
 
-func newElement(typ tftypes.Type, optional bool) *element {
-	return &element{typ, optional, internalinter.Internal{}}
+func newElement(typ tftypes.Type, optional, computed bool) *element {
+	return &element{typ, optional, computed, internalinter.Internal{}}
 }
 
 type elementObject struct {
 	pseudoResource
-	typ tftypes.Object
+	typ      tftypes.Object
+	computed bool
 	internalinter.Internal
 }
 
-type elementObjectMap tftypes.Object
+type elementObjectMap struct {
+	obj      tftypes.Object
+	computed bool
+}
 
 func (e element) Type() shim.ValueType {
 	t := e.typ
@@ -71,13 +76,13 @@ func (e element) Type() shim.ValueType {
 func (e element) Elem() interface{} {
 	switch t := e.typ.(type) {
 	case tftypes.Object:
-		return elementObject{typ: t}
+		return elementObject{typ: t, computed: e.computed}
 	case tftypes.Set:
-		return element{typ: t.ElementType}
+		return element{typ: t.ElementType, computed: e.computed}
 	case tftypes.Map:
-		return element{typ: t.ElementType}
+		return element{typ: t.ElementType, computed: e.computed}
 	case tftypes.List:
-		return element{typ: t.ElementType}
+		return element{typ: t.ElementType, computed: e.computed}
 	}
 
 	return nil
@@ -93,7 +98,7 @@ func (e element) DefaultFunc() shim.SchemaDefaultFunc         { return nil }
 func (e element) DefaultValue() (interface{}, error)          { return nil, nil }
 func (e element) HasDefault() bool                            { return false }
 func (e element) Description() string                         { return "" }
-func (e element) Computed() bool                              { return false }
+func (e element) Computed() bool                              { return e.computed }
 func (e element) ForceNew() bool                              { return false }
 func (e element) StateFunc() shim.SchemaStateFunc             { return nil }
 func (e element) MaxItems() int                               { return 0 }
@@ -111,30 +116,30 @@ func (e element) WriteOnly() bool                             { return false }
 
 func (o elementObject) DeprecationMessage() string { return "" }
 func (o elementObject) Schema() shim.SchemaMap {
-	return elementObjectMap(o.typ)
+	return elementObjectMap{obj: o.typ, computed: o.computed}
 }
 
 func (o elementObject) SchemaType() valueshim.Type {
 	return valueshim.FromTType(o.typ)
 }
 
-func (m elementObjectMap) Len() int { return len(m.AttributeTypes) }
+func (m elementObjectMap) Len() int { return len(m.obj.AttributeTypes) }
 
 func (m elementObjectMap) Get(key string) shim.Schema { return getSchemaMap(m, key) }
 
 func (m elementObjectMap) GetOk(key string) (shim.Schema, bool) {
-	v, ok := m.AttributeTypes[key]
+	v, ok := m.obj.AttributeTypes[key]
 	if !ok {
 		return nil, false
 	}
-	_, optional := m.OptionalAttributes[key]
-	return newElement(v, optional), true
+	_, optional := m.obj.OptionalAttributes[key]
+	return newElement(v, optional, m.computed), true
 }
 
 func (m elementObjectMap) Range(each func(key string, value shim.Schema) bool) {
-	for k, v := range m.AttributeTypes {
-		_, optional := m.OptionalAttributes[k]
-		if !each(k, newElement(v, optional)) {
+	for k, v := range m.obj.AttributeTypes {
+		_, optional := m.obj.OptionalAttributes[k]
+		if !each(k, newElement(v, optional, m.computed)) {
 			return
 		}
 	}
