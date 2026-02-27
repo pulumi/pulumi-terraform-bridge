@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDeleteNestedDefaults(t *testing.T) {
+func TestDeleteNestedDefaultsSDKV2(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
