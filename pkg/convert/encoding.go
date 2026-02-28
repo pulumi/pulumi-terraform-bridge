@@ -89,6 +89,28 @@ func (e *encoding) NewDataSourceDecoder(
 	return dec, nil
 }
 
+func (e *encoding) NewListResourceEncoder(
+	listResource string, objectType tftypes.Object,
+) (Encoder, error) {
+	mctx := newListResourceSchemaMapContext(listResource, e.SchemaOnlyProvider, e.ProviderInfo)
+	enc, err := NewObjectEncoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive an encoder for list resource %q: %w", listResource, err)
+	}
+	return enc, nil
+}
+
+func (e *encoding) NewListResourceDecoder(
+	listResource string, objectType tftypes.Object,
+) (Decoder, error) {
+	mctx := newListResourceSchemaMapContext(listResource, e.SchemaOnlyProvider, e.ProviderInfo)
+	dec, err := NewObjectDecoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive an decoder for list resource %q: %w", listResource, err)
+	}
+	return dec, nil
+}
+
 func buildPropertyEncoders(
 	mctx *schemaMapContext, objectType tftypes.Object,
 ) (map[terraformPropertyName]Encoder, error) {

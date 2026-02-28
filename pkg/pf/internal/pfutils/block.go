@@ -23,6 +23,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	lrschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -59,6 +60,10 @@ func FromDataSourceBlock(x dschema.Block) Block {
 }
 
 func FromResourceBlock(x rschema.Block) Block {
+	return FromBlockLike(x)
+}
+
+func FromListResourceBlock(x lrschema.Block) Block {
 	return FromBlockLike(x)
 }
 

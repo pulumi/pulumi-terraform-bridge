@@ -66,3 +66,8 @@ type DataSources interface {
 	collection
 	IsDataSources()
 }
+
+type ListResources interface {
+	collection
+	IsListResources()
+}

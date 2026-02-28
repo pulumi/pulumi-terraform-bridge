@@ -65,6 +65,15 @@ func TestSchemaGen(t *testing.T) {
 		actionParameterPhases := spec.Types["testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases"]
 		assert.Equal(t, "object", actionParameterPhases.Type)
 		assert.Equal(t, "boolean", actionParameterPhases.Properties["p2"].Type)
+
+		listTestResourceFunc := spec.Functions["testbridge:index:listTestres"]
+		assert.Equal(t, "integer", listTestResourceFunc.Inputs.Properties["limit"].Type)
+		assert.Equal(t, "boolean", listTestResourceFunc.Inputs.Properties["includeResource"].Type)
+		config, ok := listTestResourceFunc.Inputs.Properties["config"]
+		require.True(t, ok)
+		assert.Equal(t,
+			"#/types/testbridge:index/ListTestresConfigArgs:ListTestresConfigArgs",
+			config.Ref)
 	})
 }
 

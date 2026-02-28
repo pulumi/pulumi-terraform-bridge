@@ -33,6 +33,7 @@ type ShimProvider interface {
 
 	Server(context.Context) (tfprotov6.ProviderServer, error)
 	Resources(context.Context) (runtypes.Resources, error)
+	ListResources(context.Context) (runtypes.ListResources, error)
 	DataSources(context.Context) (runtypes.DataSources, error)
 	Config(context.Context) (tftypes.Object, error)
 }
