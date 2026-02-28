@@ -81,6 +81,7 @@ type provider struct {
 	info          tfbridge.ProviderInfo
 	resources     runtypes.Resources
 	datasources   runtypes.DataSources
+	actions       runtypes.Actions
 	pulumiSchema  func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
 	encoding      convert.Encoding
 	diagSink      diag.Sink
@@ -148,6 +149,10 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	if err != nil {
 		return nil, err
 	}
+	actions, err := pfServer.Actions(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	if info.MetadataInfo == nil {
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
@@ -189,6 +194,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		info:               info,
 		resources:          resources,
 		datasources:        datasources,
+		actions:            actions,
 		pulumiSchema:       schema,
 		encoding:           enc,
 		configEncoder:      configEncoder,
@@ -307,13 +313,22 @@ func (p *provider) terraformResourceNameOrRenamedEntity(resourceToken tokens.Typ
 	return "", fmt.Errorf("[pf/tfbridge] unknown resource token: %v", resourceToken)
 }
 
-func (p *provider) terraformDatasourceNameOrRenamedEntity(functionToken tokens.ModuleMember) (string, error) {
-	for tfname, v := range p.info.DataSources {
+func (p *provider) terraformActionNameOrRenamedEntity(functionToken tokens.ModuleMember) (string, bool) {
+	for tfname, v := range p.info.Actions {
 		if v.Tok == functionToken {
-			return tfname, nil
+			return tfname, true
 		}
 	}
-	return "", fmt.Errorf("[pf/tfbridge] unknown datasource token: %v", functionToken)
+	return "", false
+}
+
+func (p *provider) terraformDatasourceNameOrRenamedEntity(functionToken tokens.ModuleMember) (string, bool) {
+	for tfname, v := range p.info.DataSources {
+		if v.Tok == functionToken {
+			return tfname, true
+		}
+	}
+	return "", false
 }
 
 func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {

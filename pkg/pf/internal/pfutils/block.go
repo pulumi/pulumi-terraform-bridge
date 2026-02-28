@@ -21,6 +21,7 @@ import (
 	"slices"
 	"strconv"
 
+	aschema "github.com/hashicorp/terraform-plugin-framework/action/schema"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -59,6 +60,10 @@ func FromDataSourceBlock(x dschema.Block) Block {
 }
 
 func FromResourceBlock(x rschema.Block) Block {
+	return FromBlockLike(x)
+}
+
+func FromActionBlock(x aschema.Block) Block {
 	return FromBlockLike(x)
 }
 

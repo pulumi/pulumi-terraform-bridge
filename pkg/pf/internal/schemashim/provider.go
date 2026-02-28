@@ -37,6 +37,7 @@ type SchemaOnlyProvider struct {
 	tf            pfprovider.Provider
 	resourceMap   schemaOnlyResourceMap
 	dataSourceMap schemaOnlyDataSourceMap
+	actionsMap    schemaOnlyActionMap
 	internalinter.Internal
 }
 
@@ -60,6 +61,10 @@ func (p *SchemaOnlyProvider) Resources(ctx context.Context) (runtypes.Resources,
 
 func (p *SchemaOnlyProvider) DataSources(ctx context.Context) (runtypes.DataSources, error) {
 	return p.dataSourceMap, nil
+}
+
+func (p *SchemaOnlyProvider) Actions(ctx context.Context) (runtypes.Actions, error) {
+	return p.actionsMap, nil
 }
 
 func (p *SchemaOnlyProvider) Config(ctx context.Context) (tftypes.Object, error) {
@@ -91,6 +96,10 @@ func (p *SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
 
 func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
 	return p.dataSourceMap
+}
+
+func (p *SchemaOnlyProvider) ActionsMap() shim.ActionMap {
+	return p.actionsMap
 }
 
 func (p *SchemaOnlyProvider) InternalValidate() error {

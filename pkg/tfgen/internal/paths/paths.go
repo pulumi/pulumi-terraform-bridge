@@ -23,8 +23,8 @@ import (
 
 // TypePath values uniquely identify locations within a Pulumi Package Schema that require generating types in a target
 // programming language when a provider SDK for that language is being built. Examples of such types include resources
-// (see ResourcePath), data sources (DataSourcePath), provider configuration (ConfigPath), and nested object types that
-// are used to describe the type of resource properties.
+// (see ResourcePath), data sources (DataSourcePath), actions (ActionPath), provider configuration (ConfigPath), and
+// nested object types that are used to describe the type of resource properties.
 type TypePath interface {
 	// Parent path, can be nil for root paths.
 	Parent() TypePath
@@ -223,6 +223,80 @@ func (p *DataSourceMemberPath) String() string {
 }
 
 func (p *DataSourceMemberPath) UniqueKey() string {
+	return p.String()
+}
+
+// Identifies a data source uniquely.
+type ActionPath struct {
+	key   string
+	token tokens.ModuleMember
+}
+
+func NewActionPath(key string, token tokens.ModuleMember) *ActionPath {
+	return &ActionPath{
+		key:   key,
+		token: token,
+	}
+}
+
+// Pulumi token uniquely identifiying the Action.
+func (p *ActionPath) Token() tokens.ModuleMember {
+	return p.token
+}
+
+// Unique identifier for the Action preserved from the shim layer, typically the Terraform name.
+func (p *ActionPath) Key() string {
+	return p.key
+}
+
+func (p *ActionPath) Args() *ActionMemberPath {
+	return &ActionMemberPath{
+		ActionPath:       p,
+		ActionMemberKind: ActionArgs,
+	}
+}
+
+func (p *ActionPath) String() string {
+	return fmt.Sprintf("datasource[key=%q,token=%q]",
+		p.key,
+		p.token.String())
+}
+
+type ActionMemberKind int
+
+const (
+	ActionArgs ActionMemberKind = iota
+	ActionResults
+)
+
+func (s ActionMemberKind) String() string {
+	switch s {
+	case ActionArgs:
+		return "args"
+	case ActionResults:
+		return "results"
+	}
+	return "unknown"
+}
+
+type ActionMemberPath struct {
+	ActionPath       *ActionPath
+	ActionMemberKind ActionMemberKind
+}
+
+var _ TypePath = (*ActionMemberPath)(nil)
+
+func (p *ActionMemberPath) Parent() TypePath {
+	return nil
+}
+
+func (p *ActionMemberPath) String() string {
+	return fmt.Sprintf("%s.%s",
+		p.ActionPath.String(),
+		p.ActionMemberKind.String())
+}
+
+func (p *ActionMemberPath) UniqueKey() string {
 	return p.String()
 }
 
