@@ -155,7 +155,6 @@ func TestRegress923(t *testing.T) {
 	  "response": {
             "id": "*",
             "inputs": {
-              "__defaults": [],
               "name": "webhookname"
             },
             "properties": {
