@@ -1359,3 +1359,58 @@ func Test_isSimilarNumber(t *testing.T) {
 		})
 	}
 }
+
+// Regression test for https://github.com/pulumi/pulumi-terraform-provider/issues/103
+//
+// When a Terraform provider returns unknown values in its ApplyResourceChange response, the PF bridge path calls
+// RawStateComputeDelta with a PropertyMap containing unknowns and hits a panic:
+//
+//	contract.Assertf(!isUnknown, "rawStateDeltaHelper cannot process unknown PropertyValue values")
+//
+// Note that the SDKv2 path (RawStateInjectDelta) already guards against this with ContainsUnknowns().
+// This test verifies RawStateComputeDelta panics on unknowns, confirming the bug.
+func Test_rawstate_delta_panics_on_unknown_values(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	terraformSchema := map[string]*schema.Schema{
+		"group_id": {
+			Type:     schema.TypeString,
+			Required: true,
+		},
+		"type": {
+			Type:     schema.TypeString,
+			Required: true,
+		},
+		"status": {
+			Type:     schema.TypeString,
+			Computed: true,
+		},
+	}
+
+	schemaMap := sdkv2.NewSchemaMap(terraformSchema)
+
+	// Simulate a PropertyMap that contains an unknown value, as would happen when
+	// a TF provider returns an unknown value in its apply response and the bridge
+	// decodes it via convert.decode().
+	pulumiOutputs := resource.PropertyMap{
+		"groupId": resource.NewStringProperty("group-123"),
+		"type":    resource.NewStringProperty("DBT_CORE"),
+		// This is the problematic value: an unknown output, as produced by convert.decode()
+		// when the TF provider returns !v.IsKnown() for this attribute.
+		"status": resource.NewOutputProperty(resource.Output{Known: false}),
+	}
+
+	terraformState := cty.ObjectVal(map[string]cty.Value{
+		"group_id": cty.StringVal("group-123"),
+		"type":     cty.StringVal("DBT_CORE"),
+		"status":   cty.StringVal("active"),
+	})
+
+	terraformStateValue := valueshim.FromHCtyValue(terraformState)
+	terraformStateType := valueshim.FromHCtyType(terraformState.Type())
+
+	assert.Panics(t, func() {
+		_, _ = RawStateComputeDelta(ctx, schemaMap, nil, pulumiOutputs, terraformStateType, terraformStateValue)
+	}, "RawStateComputeDelta should panic on unknown PropertyValue values")
+}
