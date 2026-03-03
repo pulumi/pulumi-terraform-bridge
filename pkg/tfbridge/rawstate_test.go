@@ -1359,4 +1359,3 @@ func Test_isSimilarNumber(t *testing.T) {
 		})
 	}
 }
-
