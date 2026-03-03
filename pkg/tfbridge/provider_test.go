@@ -1508,6 +1508,68 @@ This will become a hard error in the future.
 `).Equal(t, logs.String())
 }
 
+func TestCheckWarningsPropertyReplacement(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	var logs bytes.Buffer
+	ctx = logging.InitLogging(ctx, logging.LogOptions{
+		LogSink: &testWarnLogSink{&logs},
+	})
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"example_resource": {
+				Schema: map[string]*schemav2.Schema{
+					"resource_group_name": {
+						Type:       schemav2.TypeString,
+						Optional:   true,
+						Deprecated: `use "new_resource_group" instead`,
+					},
+					"new_resource_group": {
+						Type:     schemav2.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		},
+	}
+	shimProvider := shimv2.NewProvider(p)
+
+	provider := &Provider{
+		tf:            shimProvider,
+		module:        "testprov",
+		config:        shimv2.NewSchemaMap(p.Schema),
+		hasTypeErrors: make(map[resource.URN]struct{}),
+		resources: map[tokens.Type]Resource{
+			"ExampleResource": {
+				TF:     shimProvider.ResourcesMap().Get("example_resource"),
+				TFName: "example_resource",
+				Schema: &ResourceInfo{
+					Tok: "ExampleResource",
+				},
+			},
+		},
+	}
+
+	args, err := structpb.NewStruct(map[string]interface{}{
+		"resourceGroupName": "my-rg",
+	})
+	require.NoError(t, err)
+	_, err = provider.Check(ctx, &pulumirpc.CheckRequest{
+		Urn:  "urn:pulumi:dev::teststack::ExampleResource::exres",
+		Olds: &structpb.Struct{},
+		News: args,
+	})
+	require.NoError(t, err)
+
+	logStr := logs.String()
+	// The warning should contain Pulumi camelCase names, not Terraform snake_case.
+	assert.Contains(t, logStr, `"newResourceGroup"`)
+	assert.NotContains(t, logStr, `"new_resource_group"`)
+	// The warning should not redundantly include the URN in the message text.
+	assert.NotContains(t, logStr, "urn:pulumi:")
+}
+
 func TestSDKv2CheckConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("minimal", func(t *testing.T) {

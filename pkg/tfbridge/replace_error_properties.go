@@ -7,6 +7,9 @@ import (
 )
 
 func replaceSubstringsRegex(s string, replacements map[string]string) (string, error) {
+	if len(replacements) == 0 {
+		return s, nil
+	}
 	regexPattern := `"(`
 	for k := range replacements {
 		regexPattern += regexp.QuoteMeta(k) + "|"
@@ -35,6 +38,18 @@ func getConfigReplacements(
 		return true
 	})
 	return renames
+}
+
+// rewriteWarningMessage replaces Terraform property names (snake_case) in the given
+// warning message with their Pulumi equivalents (camelCase).
+func rewriteWarningMessage(msg string, schemaInfos map[string]*SchemaInfo, schemaMap shim.SchemaMap) string {
+	if schemaMap == nil {
+		return msg
+	}
+	if replaced, err := replaceSubstringsRegex(msg, getConfigReplacements(schemaInfos, schemaMap)); err == nil {
+		msg = replaced
+	}
+	return msg
 }
 
 // ReplaceConfigProperties replaces all Terraform config property names
