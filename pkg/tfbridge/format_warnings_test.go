@@ -235,6 +235,31 @@ func TestFormatValidationWarningMapPath(t *testing.T) {
 	assert.Contains(t, result, "this tag is no longer supported")
 }
 
+func TestFormatValidationWarningTranslatesReplacementField(t *testing.T) {
+	t.Parallel()
+	schemaMap := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+		"old_field": {
+			Type:       schemav2.TypeString,
+			Optional:   true,
+			Deprecated: "use new_field instead",
+		},
+		"new_field": {
+			Type:     schemav2.TypeString,
+			Optional: true,
+		},
+	})
+	schemaInfos := map[string]*SchemaInfo{}
+
+	warn := diagnostics.ValidationWarning{
+		AttributePath: cty.GetAttrPath("old_field"),
+		Summary:       "Argument is deprecated",
+		Detail:        "use new_field instead",
+	}
+
+	result := formatValidationWarning(warn, schemaMap, schemaInfos)
+	assert.Equal(t, `property "oldField" is deprecated: use newField instead`, result)
+}
+
 func TestIsDeprecationMessage(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -279,6 +304,95 @@ func TestFormatValidationWarningNonDeprecationWithPath(t *testing.T) {
 	assert.Contains(t, result, `property "someField"`)
 	assert.Contains(t, result, "value must be between 1 and 100")
 	assert.NotContains(t, result, "deprecated")
+}
+
+func TestTranslateFieldNamesInMessage(t *testing.T) {
+	t.Parallel()
+	schemaMap := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+		"old_field": {
+			Type:     schemav2.TypeString,
+			Optional: true,
+		},
+		"new_field": {
+			Type:     schemav2.TypeString,
+			Optional: true,
+		},
+		"custom_name": {
+			Type:     schemav2.TypeString,
+			Optional: true,
+		},
+		"single": {
+			Type:     schemav2.TypeString,
+			Optional: true,
+		},
+	})
+	schemaInfos := map[string]*SchemaInfo{
+		"custom_name": {Name: "myCustomName"},
+	}
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "known field is translated",
+			input:    "use new_field instead",
+			expected: "use newField instead",
+		},
+		{
+			name:     "unknown field is not translated",
+			input:    "use unknown_field instead",
+			expected: "use unknown_field instead",
+		},
+		{
+			name:     "custom SchemaInfo.Name override",
+			input:    "use custom_name instead",
+			expected: "use myCustomName instead",
+		},
+		{
+			name:     "single-word field not matched",
+			input:    "use single instead",
+			expected: "use single instead",
+		},
+		{
+			name:     "multiple fields translated",
+			input:    "use new_field instead of old_field",
+			expected: "use newField instead of oldField",
+		},
+		{
+			name:     "field at start of message",
+			input:    "new_field should be used",
+			expected: "newField should be used",
+		},
+		{
+			name:     "field at end of message",
+			input:    "use new_field",
+			expected: "use newField",
+		},
+		{
+			name:     "no fields to translate",
+			input:    "this field is deprecated",
+			expected: "this field is deprecated",
+		},
+		{
+			name:     "empty message",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "longer token containing field name not matched",
+			input:    "use my_new_field_extra instead",
+			expected: "use my_new_field_extra instead",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := TranslateFieldNamesInMessage(tt.input, schemaMap, schemaInfos)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 func TestCleanTerraformLanguage(t *testing.T) {

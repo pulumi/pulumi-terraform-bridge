@@ -181,6 +181,7 @@ func (p *provider) formatDiagnosticMessage(d *tfprotov6.Diagnostic, sc *schemaCo
 				detail = d.Summary
 			}
 			detail = tfbridge.CleanTerraformLanguage(detail)
+			detail = tfbridge.TranslateFieldNamesInMessage(detail, sc.schemaMap, sc.schemaInfos)
 			if tfbridge.IsDeprecationMessage(d.Summary) {
 				return fmt.Sprintf("[%s] property %q is deprecated: %s",
 					d.Severity.String(), pp.ValuePath(), detail)

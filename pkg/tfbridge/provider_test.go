@@ -1516,9 +1516,9 @@ func TestCheckDeprecationWarnings(t *testing.T) {
 		LogSink: &testWarnLogSink{&logs},
 	})
 
-	// TF provider with two deprecated fields:
-	// 1. resource_group_name - default camelCase translation
-	// 2. custom_name_field - has SchemaInfo.Name override
+	// TF provider with two deprecated fields and their replacements:
+	// 1. resource_group_name - default camelCase translation, replacement is new_field
+	// 2. custom_name_field - has SchemaInfo.Name override, replacement is replacement_field
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
@@ -1529,10 +1529,18 @@ func TestCheckDeprecationWarnings(t *testing.T) {
 						Optional:   true,
 						Deprecated: "will be removed in 4.0 of the Azure Provider. Terraform recommends using new_field.",
 					},
+					"new_field": {
+						Type:     schemav2.TypeString,
+						Optional: true,
+					},
 					"custom_name_field": {
 						Type:       schemav2.TypeString,
 						Optional:   true,
 						Deprecated: "use replacement_field instead",
+					},
+					"replacement_field": {
+						Type:     schemav2.TypeString,
+						Optional: true,
 					},
 					"required_field": {
 						Type:     schemav2.TypeString,
@@ -1595,13 +1603,14 @@ func TestCheckDeprecationWarnings(t *testing.T) {
 	// 1. Default camelCase translation + CleanTerraformLanguage applied.
 	assert.Contains(t, output, `property "resourceGroupName" is deprecated`)
 	assert.Contains(t, output, "will be removed in a future version")
-	assert.Contains(t, output, "the upstream provider recommends")
+	assert.Contains(t, output, "the upstream provider recommends using newField")
 	assert.NotContains(t, output, "4.0 of the Azure Provider")
 	assert.NotContains(t, output, "Terraform recommends")
 
 	// 2. Custom SchemaInfo.Name override respected.
 	assert.Contains(t, output, `property "myCustomField" is deprecated`)
-	assert.Contains(t, output, "use replacement_field instead")
+	// Replacement field name is also translated to camelCase.
+	assert.Contains(t, output, "use replacementField instead")
 }
 
 func TestSDKv2CheckConfig(t *testing.T) {

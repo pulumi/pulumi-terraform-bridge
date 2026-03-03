@@ -21,10 +21,13 @@
 //	  → formatValidationWarning() in this file:
 //	      1. Picks Detail over Summary for the message text
 //	      2. Applies CleanTerraformLanguage() to the message
-//	      3. Calls formatAttributePathAsPropertyPath() (pkg/tfbridge/adapt_check_failures.go)
+//	      3. Applies TranslateFieldNamesInMessage() to replace snake_case field names
+//	         in the message text with their Pulumi camelCase equivalents (only for
+//	         fields that exist in the current schema)
+//	      4. Calls formatAttributePathAsPropertyPath() (pkg/tfbridge/adapt_check_failures.go)
 //	         which calls NewCheckFailurePath() → TerraformToPulumiNameV2()
 //	         converting e.g. "resource_group_name" → "resourceGroupName"
-//	      4. If Summary contains "deprecated" (case-insensitive):
+//	      5. If Summary contains "deprecated" (case-insensitive):
 //	         Returns: property "resourceGroupName" is deprecated: <cleaned message>
 //	         Otherwise returns: property "resourceGroupName": <cleaned message>
 //
@@ -35,11 +38,11 @@
 //
 // What the user sees (Check):
 //
-//	warning: <URN> verification warning: property "resourceGroupName" is deprecated: use new_field instead
+//	warning: <URN> verification warning: property "resourceGroupName" is deprecated: use newField instead
 //
 // What the user sees (CheckConfig):
 //
-//	warning: provider config warning: property "resourceGroupName" is deprecated: use new_field instead
+//	warning: provider config warning: property "resourceGroupName" is deprecated: use newField instead
 //
 // # SDK v1 Providers
 //
@@ -113,6 +116,7 @@ func formatValidationWarning(
 		msg = warn.Detail
 	}
 	msg = CleanTerraformLanguage(msg)
+	msg = TranslateFieldNamesInMessage(msg, schemaMap, schemaInfos)
 
 	pp := formatAttributePathAsPropertyPath(schemaMap, schemaInfos, warn.AttributePath)
 	if pp != nil {
@@ -145,3 +149,36 @@ var tfVersionRemovalRegex = regexp.MustCompile(
 
 // Matches "Terraform" when used to refer to the provider system (not as part of a compound word).
 var terraformRefRegex = regexp.MustCompile(`(^|\W)Terraform(\W|$)`)
+
+// snakeCaseIdentifier matches snake_case identifiers containing at least one underscore.
+var snakeCaseIdentifier = regexp.MustCompile(`[a-z][a-z0-9]*(?:_[a-z0-9]+)+`)
+
+// TranslateFieldNamesInMessage replaces snake_case field names in the message text
+// with their Pulumi camelCase equivalents, but only when the token exactly matches
+// a known field in the schema. This is conservative: unknown tokens pass through unchanged.
+func TranslateFieldNamesInMessage(msg string, schemaMap shim.SchemaMap, schemaInfos map[string]*SchemaInfo) string {
+	if schemaMap == nil || schemaMap.Len() == 0 {
+		return msg
+	}
+
+	// Build lookup of tf_name -> pulumi_name for fields where they differ.
+	lookup := make(map[string]string)
+	schemaMap.Range(func(tfName string, _ shim.Schema) bool {
+		pulumiName := TerraformToPulumiNameV2(tfName, schemaMap, schemaInfos)
+		if pulumiName != tfName {
+			lookup[tfName] = pulumiName
+		}
+		return true
+	})
+
+	if len(lookup) == 0 {
+		return msg
+	}
+
+	return snakeCaseIdentifier.ReplaceAllStringFunc(msg, func(match string) string {
+		if replacement, ok := lookup[match]; ok {
+			return replacement
+		}
+		return match
+	})
+}
