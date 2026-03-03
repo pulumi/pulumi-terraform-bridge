@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,4 +75,39 @@ func TestParseResourceStateFromTFInner(t *testing.T) {
 		t.Log(err)
 		require.Error(t, err)
 	})
+}
+
+// Regression test for https://github.com/pulumi/pulumi-terraform-provider/issues/103
+//
+// insertRawStateDelta must not panic when the property map contains unknown values, but bypass setting the delta.
+func TestInsertRawStateDelta_skips_unknowns(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	propertyMap := resource.PropertyMap{
+		"groupId": resource.NewStringProperty("group-123"),
+		"type":    resource.NewStringProperty("DBT_CORE"),
+		"status":  resource.NewOutputProperty(resource.Output{Known: false}),
+	}
+
+	state := tftypes.NewValue(tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"group_id": tftypes.String,
+			"type":     tftypes.String,
+			"status":   tftypes.String,
+		},
+	}, map[string]tftypes.Value{
+		"group_id": tftypes.NewValue(tftypes.String, "group-123"),
+		"type":     tftypes.NewValue(tftypes.String, "DBT_CORE"),
+		"status":   tftypes.NewValue(tftypes.String, "active"),
+	})
+
+	// insertRawStateDelta should return no error, without panicking.
+	rh := &resourceHandle{}
+	err := insertRawStateDelta(ctx, rh, propertyMap, state)
+	require.NoError(t, err)
+
+	// The delta key should NOT be set — the function skipped the computation.
+	_, hasDelta := propertyMap["__pulumi_raw_state_delta"]
+	require.False(t, hasDelta)
 }
