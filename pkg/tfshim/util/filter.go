@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
 // Filters provider ResourceMap and DataSourceMap by token. When reproducing issues on a large provider it can be
@@ -65,19 +66,21 @@ func (p *FilteringProvider) InternalValidate() error {
 	return p.Provider.InternalValidate()
 }
 
-func (p *FilteringProvider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
+func (p *FilteringProvider) Validate(
+	ctx context.Context, c shim.ResourceConfig,
+) ([]diagnostics.ValidationWarning, []error) {
 	return p.Provider.Validate(ctx, c)
 }
 
 func (p *FilteringProvider) ValidateResource(
 	ctx context.Context, t string, c shim.ResourceConfig,
-) ([]string, []error) {
+) ([]diagnostics.ValidationWarning, []error) {
 	return p.Provider.ValidateResource(ctx, t, c)
 }
 
 func (p *FilteringProvider) ValidateDataSource(
 	ctx context.Context, t string, c shim.ResourceConfig,
-) ([]string, []error) {
+) ([]diagnostics.ValidationWarning, []error) {
 	return p.Provider.ValidateDataSource(ctx, t, c)
 }
 

@@ -11,20 +11,19 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
-func warningsAndErrors(diags diag.Diagnostics) ([]string, []error) {
-	var warnings []string
+func warningsAndErrors(diags diag.Diagnostics) ([]diagnostics.ValidationWarning, []error) {
+	var warnings []diagnostics.ValidationWarning
 	var errors []error
 	for _, d := range diags {
 		switch d.Severity {
 		case diag.Error:
 			errors = append(errors, fromV2Diag(d))
 		case diag.Warning:
-			// the summary doesn't contain the parameter name for which the warning occurs to
-			details := d.Summary
-			if d.Detail != "" {
-				details = d.Detail
-			}
-			warnings = append(warnings, details)
+			warnings = append(warnings, diagnostics.ValidationWarning{
+				AttributePath: d.AttributePath,
+				Summary:       d.Summary,
+				Detail:        d.Detail,
+			})
 		}
 	}
 	return warnings, errors

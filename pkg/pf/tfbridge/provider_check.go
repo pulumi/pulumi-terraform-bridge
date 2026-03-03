@@ -131,7 +131,8 @@ func (p *provider) validateResourceConfig(
 		remainingDiagnostics = append(remainingDiagnostics, diag)
 	}
 
-	if err := p.processDiagnostics(ctx, remainingDiagnostics); err != nil {
+	sc := &schemaContext{schemaMap: schemaMap, schemaInfos: schemaInfos}
+	if err := p.processDiagnosticsWithContext(ctx, remainingDiagnostics, sc); err != nil {
 		return nil, err
 	}
 

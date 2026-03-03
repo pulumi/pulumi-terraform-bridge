@@ -751,7 +751,8 @@ func validateProviderConfig(
 	// Perform validation of the config state so we can offer nice errors.
 	warns, errs := p.tf.Validate(ctx, config)
 	for _, warn := range warns {
-		logErr := p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", warn))
+		msg := formatValidationWarning(warn, p.config, p.info.GetConfig())
+		logErr := p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", msg))
 		if logErr != nil {
 			glog.V(9).Infof("Failed to log to the engine: %v", logErr)
 			continue
@@ -1031,7 +1032,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
 	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
 	for _, warn := range warns {
-		logger.Warn(fmt.Sprintf("%v verification warning: %v", urn, warn))
+		msg := formatValidationWarning(warn, schemaMap, schemaInfos)
+		logger.Warn(fmt.Sprintf("%v verification warning: %v", urn, msg))
 	}
 
 	// Now produce CheckFalures for any properties that failed verification.
@@ -1940,7 +1942,8 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
 	warns, errs := p.tf.ValidateDataSource(ctx, tfname, rescfg)
 	for _, warn := range warns {
-		if err = p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("%v verification warning: %v", tok, warn)); err != nil {
+		msg := formatValidationWarning(warn, ds.TF.Schema(), ds.Schema.Fields)
+		if err = p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("%v verification warning: %v", tok, msg)); err != nil {
 			return nil, err
 		}
 	}
