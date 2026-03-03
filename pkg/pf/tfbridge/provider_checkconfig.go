@@ -223,7 +223,7 @@ func (p *provider) validateProviderConfig(
 		}
 	}
 
-	if err := p.processDiagnostics(remainingDiagnostics); err != nil {
+	if err := p.processDiagnostics(ctx, remainingDiagnostics); err != nil {
 		return nil, err
 	}
 

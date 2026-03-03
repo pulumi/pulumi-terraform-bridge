@@ -95,5 +95,5 @@ func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.Pro
 	}
 
 	resp.Diagnostics = replaceConfigInDiagnostics(p.info.Config, p.info.P.Schema(), resp.Diagnostics)
-	return p.processDiagnostics(resp.Diagnostics)
+	return p.processDiagnostics(ctx, resp.Diagnostics)
 }

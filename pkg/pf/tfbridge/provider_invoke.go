@@ -78,7 +78,7 @@ func (p *provider) validateDataResourceConfig(ctx context.Context, handle dataso
 	if err != nil {
 		return nil, fmt.Errorf("error calling ValidateDataResourceConfig: %w", err)
 	}
-	return p.processInvokeDiagnostics(handle, resp.Diagnostics)
+	return p.processInvokeDiagnostics(ctx, handle, resp.Diagnostics)
 }
 
 func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
@@ -97,7 +97,7 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 		return nil, nil, fmt.Errorf("error calling ReadDataSource: %w", err)
 	}
 
-	failures, err := p.processInvokeDiagnostics(handle, resp.Diagnostics)
+	failures, err := p.processInvokeDiagnostics(ctx, handle, resp.Diagnostics)
 	if err != nil || len(failures) > 0 {
 		return nil, failures, err
 	}
@@ -126,11 +126,11 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 	return propertyMap, nil, nil
 }
 
-func (p *provider) processInvokeDiagnostics(ds datasourceHandle,
+func (p *provider) processInvokeDiagnostics(ctx context.Context, ds datasourceHandle,
 	diags []*tfprotov6.Diagnostic,
 ) ([]plugin.CheckFailure, error) {
 	failures, rest := p.parseInvokePropertyCheckFailures(ds, diags)
-	return failures, p.processDiagnostics(rest)
+	return failures, p.processDiagnostics(ctx, rest)
 }
 
 // Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an

@@ -83,7 +83,7 @@ func (p *provider) DiffWithContext(
 	// state. Currently assume that planResp will signal RequiresReplace if needed anyway and there is no useful way
 	// to surface private state differences to the user from the Diff method.
 
-	if err := p.processDiagnostics(planResp.Diagnostics); err != nil {
+	if err := p.processDiagnostics(ctx, planResp.Diagnostics); err != nil {
 		return plugin.DiffResult{}, err
 	}
 

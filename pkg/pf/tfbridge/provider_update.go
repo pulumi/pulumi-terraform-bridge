@@ -108,7 +108,7 @@ func (p *provider) UpdateWithContext(
 		return nil, 0, err
 	}
 
-	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+	if err := p.processDiagnostics(ctx, resp.Diagnostics); err != nil {
 		return nil, 0, err
 	}
 

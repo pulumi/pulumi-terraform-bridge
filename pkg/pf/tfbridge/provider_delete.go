@@ -73,7 +73,7 @@ func (p *provider) DeleteWithContext(
 
 	// NOTE: no need to handle resp.Private in Delete.
 
-	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+	if err := p.processDiagnostics(ctx, resp.Diagnostics); err != nil {
 		return resource.StatusPartialFailure, err
 	}
 
