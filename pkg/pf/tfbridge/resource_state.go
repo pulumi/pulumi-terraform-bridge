@@ -181,6 +181,12 @@ func updateMeta(m resource.PropertyMap, newMeta metaState) (resource.PropertyMap
 
 // Stores delta under reservedkeys.RawStateDelta; should be called right before returning to the engine.
 func insertRawStateDelta(ctx context.Context, rh *resourceHandle, pm resource.PropertyMap, state tftypes.Value) error {
+	// The delta computation cannot process unknowns. Some Any TF providers violate the protocol and return
+	// unknown values in their responses. Do not insert RawStateDelta for those resources.
+	if resource.NewObjectProperty(pm).ContainsUnknowns() {
+		return nil
+	}
+
 	schemaInfos := rh.pulumiResourceInfo.GetFields()
 	v := valueshim.FromTValue(state)
 
