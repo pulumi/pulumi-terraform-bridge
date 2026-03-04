@@ -15,18 +15,18 @@
 package tfbridge
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 )
 
-func (p *provider) processDiagnostics(diagnostics []*tfprotov6.Diagnostic) error {
-	// Format and flush to diagSink.
-	if p.diagSink != nil {
-		for _, d := range diagnostics {
-			p.logDiagnostic(d)
-		}
+func (p *provider) processDiagnostics(ctx context.Context, diagnostics []*tfprotov6.Diagnostic) error {
+	// Format and log diagnostics via context-based logging.
+	for _, d := range diagnostics {
+		p.logDiagnostic(ctx, d)
 	}
 
 	// Check for errors and return non-nil if there is an error.
@@ -46,8 +46,9 @@ func (p *provider) processDiagnostics(diagnostics []*tfprotov6.Diagnostic) error
 	return nil
 }
 
-func (p *provider) logDiagnostic(d *tfprotov6.Diagnostic) {
-	if p.diagSink == nil {
+func (p *provider) logDiagnostic(ctx context.Context, d *tfprotov6.Diagnostic) {
+	logger := log.TryGetLogger(ctx)
+	if logger == nil {
 		return
 	}
 	msg := fmt.Sprintf("[%s] %s", d.Severity.String(), d.Detail)
@@ -59,8 +60,8 @@ func (p *provider) logDiagnostic(d *tfprotov6.Diagnostic) {
 	}
 	switch d.Severity {
 	case tfprotov6.DiagnosticSeverityError, tfprotov6.DiagnosticSeverityInvalid:
-		p.diagSink.Errorf(&diag.Diag{Message: msg})
+		logger.Error(msg)
 	case tfprotov6.DiagnosticSeverityWarning:
-		p.diagSink.Warningf(&diag.Diag{Message: msg})
+		logger.Warn(msg)
 	}
 }

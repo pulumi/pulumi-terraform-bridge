@@ -166,7 +166,7 @@ func (p *provider) readResource(
 		return plugin.ReadResult{}, nil, err
 	}
 
-	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+	if err := p.processDiagnostics(ctx, resp.Diagnostics); err != nil {
 		return plugin.ReadResult{}, nil, err
 	}
 
@@ -236,7 +236,7 @@ func (p *provider) importResource(
 		return plugin.ReadResult{}, nil, err
 	}
 
-	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+	if err := p.processDiagnostics(ctx, resp.Diagnostics); err != nil {
 		return plugin.ReadResult{}, nil, err
 	}
 

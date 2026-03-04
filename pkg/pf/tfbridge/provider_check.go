@@ -131,7 +131,7 @@ func (p *provider) validateResourceConfig(
 		remainingDiagnostics = append(remainingDiagnostics, diag)
 	}
 
-	if err := p.processDiagnostics(remainingDiagnostics); err != nil {
+	if err := p.processDiagnostics(ctx, remainingDiagnostics); err != nil {
 		return nil, err
 	}
 

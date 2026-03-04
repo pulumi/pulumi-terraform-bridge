@@ -291,7 +291,7 @@ func (p *provider) upgradeResourceState(
 	if err != nil {
 		return nil, fmt.Errorf("error calling UpgradeResourceState: %w", err)
 	}
-	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+	if err := p.processDiagnostics(ctx, resp.Diagnostics); err != nil {
 		return nil, err
 	}
 	v, err := resp.UpgradedState.Unmarshal(tfType)
