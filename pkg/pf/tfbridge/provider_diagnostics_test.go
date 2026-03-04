@@ -131,7 +131,9 @@ func TestFormatDiagnosticMessageWarningNilSchemaContext(t *testing.T) {
 	}
 
 	result := p.formatDiagnosticMessage(d, nil)
-	assert.Equal(t, `[WARNING] use new_field instead: Argument deprecated at attribute AttributeName("deprecated_field")`, result)
+	expected := `[WARNING] use new_field instead: Argument deprecated` +
+		` at attribute AttributeName("deprecated_field")`
+	assert.Equal(t, expected, result)
 }
 
 // TestFormatDiagnosticMessageWarningNoAttribute tests the PF path where no attribute
@@ -154,8 +156,8 @@ func TestFormatDiagnosticMessageWarningNoAttribute(t *testing.T) {
 	assert.Equal(t, "[WARNING] upgrade to v2: provider is deprecated", result)
 }
 
-// TestFormatDiagnosticMessageError tests that error diagnostics always use the default
-// format, even when schema context and attribute path are available.
+// TestFormatDiagnosticMessageError tests that error diagnostics with schema context
+// get translated property paths, just like warnings.
 func TestFormatDiagnosticMessageError(t *testing.T) {
 	t.Parallel()
 	p := &provider{}
@@ -174,7 +176,23 @@ func TestFormatDiagnosticMessageError(t *testing.T) {
 	}
 
 	result := p.formatDiagnosticMessage(d, sc)
-	// Errors use the default format, not the property-path translation.
+	assert.Equal(t, `[ERROR] property "someField": must be non-empty`, result)
+}
+
+// TestFormatDiagnosticMessageErrorWithoutSchemaContext tests that error diagnostics
+// without schema context fall back to the default format with raw attribute paths.
+func TestFormatDiagnosticMessageErrorWithoutSchemaContext(t *testing.T) {
+	t.Parallel()
+	p := &provider{}
+
+	d := &tfprotov6.Diagnostic{
+		Severity:  tfprotov6.DiagnosticSeverityError,
+		Summary:   "Invalid value",
+		Detail:    "must be non-empty",
+		Attribute: tftypes.NewAttributePath().WithAttributeName("some_field"),
+	}
+
+	result := p.formatDiagnosticMessage(d, nil)
 	assert.Equal(t, `[ERROR] must be non-empty: Invalid value at attribute AttributeName("some_field")`, result)
 }
 
@@ -544,6 +562,38 @@ func TestProcessDiagnosticsWithContextErrorWithAttribute(t *testing.T) {
 	err := p.processDiagnosticsWithContext(ctx, diags, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "some_field")
+	assert.Contains(t, err.Error(), "Invalid value")
+	assert.Contains(t, err.Error(), "must be non-empty")
+}
+
+// TestProcessDiagnosticsWithContextErrorTranslatedPath tests that error diagnostics
+// from processDiagnosticsWithContext use translated Pulumi property paths when schema
+// context is available.
+func TestProcessDiagnosticsWithContextErrorTranslatedPath(t *testing.T) {
+	t.Parallel()
+	p := &provider{}
+	ctx := context.Background()
+
+	sc := &schemaContext{
+		schemaMap: shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"some_field": {Type: schemav2.TypeString, Optional: true},
+		}),
+		schemaInfos: map[string]*tfbridge.SchemaInfo{},
+	}
+
+	diags := []*tfprotov6.Diagnostic{
+		{
+			Severity:  tfprotov6.DiagnosticSeverityError,
+			Summary:   "Invalid value",
+			Detail:    "must be non-empty",
+			Attribute: tftypes.NewAttributePath().WithAttributeName("some_field"),
+		},
+	}
+
+	err := p.processDiagnosticsWithContext(ctx, diags, sc)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "someField")
+	assert.NotContains(t, err.Error(), "some_field")
 	assert.Contains(t, err.Error(), "Invalid value")
 	assert.Contains(t, err.Error(), "must be non-empty")
 }

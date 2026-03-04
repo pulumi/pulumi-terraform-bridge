@@ -144,7 +144,17 @@ func (p *provider) processDiagnosticsWithContext(
 		if d.Severity == tfprotov6.DiagnosticSeverityError {
 			prefix := ""
 			if d.Attribute != nil {
-				prefix = fmt.Sprintf("[%s] ", d.Attribute.String())
+				if sc != nil {
+					if pp, err := formatAttributePathAsPropertyPath(
+						sc.schemaMap, sc.schemaInfos, d.Attribute,
+					); err == nil {
+						prefix = fmt.Sprintf("[%s] ", pp.ValuePath())
+					} else {
+						prefix = fmt.Sprintf("[%s] ", d.Attribute.String())
+					}
+				} else {
+					prefix = fmt.Sprintf("[%s] ", d.Attribute.String())
+				}
 			}
 			if d.Summary == d.Detail {
 				return fmt.Errorf("%s%s", prefix, d.Summary)
@@ -171,25 +181,17 @@ func (p *provider) logDiagnostic(ctx context.Context, d *tfprotov6.Diagnostic, s
 }
 
 func (p *provider) formatDiagnosticMessage(d *tfprotov6.Diagnostic, sc *schemaContext) string {
-	// For warnings with schema context and an attribute path, translate to Pulumi property names.
-	if d.Severity == tfprotov6.DiagnosticSeverityWarning && sc != nil && d.Attribute != nil &&
-		len(d.Attribute.Steps()) > 0 {
+	// When schema context and attribute path are available, translate to Pulumi property names.
+	if sc != nil && d.Attribute != nil && len(d.Attribute.Steps()) > 0 {
 		pp, err := formatAttributePathAsPropertyPath(sc.schemaMap, sc.schemaInfos, d.Attribute)
 		if err == nil {
-			detail := d.Detail
-			if detail == "" {
-				detail = d.Summary
-			}
-			detail = tfbridge.CleanTerraformLanguage(detail)
-			detail = tfbridge.TranslateFieldNamesInMessage(detail, sc.schemaMap, sc.schemaInfos)
-			if tfbridge.IsDeprecationMessage(d.Summary) {
-				return fmt.Sprintf("[%s] property %q is deprecated: %s",
-					d.Severity.String(), pp.ValuePath(), detail)
-			}
-			return fmt.Sprintf("[%s] property %q: %s",
-				d.Severity.String(), pp.ValuePath(), detail)
+			isDeprecation := d.Severity == tfprotov6.DiagnosticSeverityWarning &&
+				tfbridge.IsDeprecationMessage(d.Summary)
+			msg := tfbridge.FormatPropertyDiagnostic(pp, d.Summary, d.Detail,
+				isDeprecation, sc.schemaMap, sc.schemaInfos)
+			return fmt.Sprintf("[%s] %s", d.Severity.String(), msg)
 		}
-		glog.V(9).Infof("Failed to translate warning attribute path: %v", err)
+		glog.V(9).Infof("Failed to translate diagnostic attribute path: %v", err)
 	}
 
 	// Default formatting.

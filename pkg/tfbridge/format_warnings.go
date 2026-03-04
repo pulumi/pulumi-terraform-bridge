@@ -104,6 +104,27 @@ func IsDeprecationMessage(summary string) bool {
 	return strings.Contains(strings.ToLower(summary), "deprecated")
 }
 
+// FormatPropertyDiagnostic formats a diagnostic message for a property with a translated path.
+// Used by both SDK v2 and PF diagnostic formatting.
+func FormatPropertyDiagnostic(
+	pp CheckFailurePath,
+	summary, detail string,
+	isDeprecation bool,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*SchemaInfo,
+) string {
+	msg := summary
+	if detail != "" {
+		msg = detail
+	}
+	msg = CleanTerraformLanguage(msg)
+	msg = TranslateFieldNamesInMessage(msg, schemaMap, schemaInfos)
+	if isDeprecation {
+		return fmt.Sprintf("property %q is deprecated: %s", pp.ValuePath(), msg)
+	}
+	return fmt.Sprintf("property %q: %s", pp.ValuePath(), msg)
+}
+
 // formatValidationWarning translates a structured ValidationWarning into a user-friendly string
 // with Pulumi property names instead of Terraform attribute names.
 func formatValidationWarning(
@@ -111,19 +132,10 @@ func formatValidationWarning(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 ) string {
-	msg := warn.Summary
-	if warn.Detail != "" {
-		msg = warn.Detail
-	}
-	msg = CleanTerraformLanguage(msg)
-	msg = TranslateFieldNamesInMessage(msg, schemaMap, schemaInfos)
-
 	pp := formatAttributePathAsPropertyPath(schemaMap, schemaInfos, warn.AttributePath)
 	if pp != nil {
-		if IsDeprecationMessage(warn.Summary) {
-			return fmt.Sprintf("property %q is deprecated: %s", pp.ValuePath(), msg)
-		}
-		return fmt.Sprintf("property %q: %s", pp.ValuePath(), msg)
+		return FormatPropertyDiagnostic(*pp, warn.Summary, warn.Detail,
+			IsDeprecationMessage(warn.Summary), schemaMap, schemaInfos)
 	}
 
 	return warn.String()
