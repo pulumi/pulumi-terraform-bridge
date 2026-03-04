@@ -74,14 +74,14 @@
 //
 // # Summary Table
 //
-//	| Provider Type     | Path Available? | Path Type              | Name Translation            | CleanTerraformLanguage | Applies During                     |
-//	|-------------------|-----------------|------------------------|-----------------------------|------------------------|------------------------------------|
-//	| SDK v2            | Yes             | cty.Path               | Full (respects SchemaInfo)  | Yes                    | Check, CheckConfig, Invoke         |
-//	| SDK v1            | No              | N/A                    | None                        | No (fallback path)     | N/A                                |
-//	| PF                | Yes             | tftypes.AttributePath  | Full (respects SchemaInfo)  | Yes                    | Check, CheckConfig, Invoke         |
-//	| PF                | Yes             | tftypes.AttributePath  | None                        | No                     | Diff, Create, Update, Read, Delete |
-//	| Dynamic (v5/v6)   | Yes             | tftypes.AttributePath  | Default camelCase only      | Yes                    | Check, CheckConfig, Invoke         |
-//	| Dynamic (v5/v6)   | Yes             | tftypes.AttributePath  | None                        | No                     | Diff, Create, Update, Read, Delete |
+//	| Provider Type   | Path? | Path Type             | Name Translation   | CleanTF | Applies During        |
+//	|-----------------|-------|-----------------------|--------------------|---------|-----------------------|
+//	| SDK v2          | Yes   | cty.Path              | Full (SchemaInfo)  | Yes     | Check, CheckConfig    |
+//	| SDK v1          | No    | N/A                   | None               | No      | N/A                   |
+//	| PF              | Yes   | tftypes.AttributePath | Full (SchemaInfo)  | Yes     | Check, CheckConfig    |
+//	| PF              | Yes   | tftypes.AttributePath | None               | No      | Diff, Create, Update  |
+//	| Dynamic (v5/v6) | Yes   | tftypes.AttributePath | Default camelCase  | Yes     | Check, CheckConfig    |
+//	| Dynamic (v5/v6) | Yes   | tftypes.AttributePath | None               | No      | Diff, Create, Update  |
 package tfbridge
 
 import (

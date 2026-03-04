@@ -8,6 +8,7 @@ import (
 )
 
 func TestValidationWarningString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		warning  ValidationWarning
