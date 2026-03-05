@@ -13,11 +13,6 @@ env:
 jobs:
   weekly-pulumi-update:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        goversion:
-        - 1.24.x
     steps:
     - name: Fetch secrets from ESC
       id: esc-secrets
@@ -35,11 +30,6 @@ jobs:
       with:
         version: 2026.2.20
         github_token: ${{ env.GITHUB_TOKEN }}
-    - name: Install golangci-lint
-      uses: golangci/golangci-lint-action@v8
-      with:
-          skip-cache: true
-          version: v2.1
     - name: Update Pulumi/Pulumi
       id: gomod
       run: >-
