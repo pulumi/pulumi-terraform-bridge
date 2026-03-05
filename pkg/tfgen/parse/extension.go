@@ -185,8 +185,14 @@ func (tableRenderer *tableRenderer) renderTable(
 		_, err := writer.WriteRune('\n')
 		contract.AssertNoErrorf(err, "impossible")
 		tableRenderer.tableWriter.Header(tableRenderer.headerRow)
-		tableRenderer.tableWriter.Bulk(tableRenderer.rows)
-		tableRenderer.tableWriter.Render()
+		err = tableRenderer.tableWriter.Bulk(tableRenderer.rows)
+		if err != nil {
+			return ast.WalkStop, err
+		}
+		err = tableRenderer.tableWriter.Render()
+		if err != nil {
+			return ast.WalkStop, err
+		}
 	}
 	return ast.WalkContinue, nil
 }
