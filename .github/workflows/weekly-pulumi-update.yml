@@ -28,12 +28,13 @@ jobs:
         lfs: true
     - name: Unshallow clone for tags
       run: git fetch --prune --unshallow --tags
-    - name: Install Go
-      uses: actions/setup-go@v5
+    - name: Setup mise
+      uses: jdx/mise-action@c1a019b8d2586943b4dbebc456323b516910e310
+      env:
+        MISE_FETCH_REMOTE_VERSIONS_TIMEOUT: 30s
       with:
-        go-version: ${{matrix.goversion}}
-        cache-dependency-path: |
-            **/go.sum
+        version: 2026.2.20
+        github_token: ${{ env.GITHUB_TOKEN }}
     - name: Install golangci-lint
       uses: golangci/golangci-lint-action@v8
       with:
