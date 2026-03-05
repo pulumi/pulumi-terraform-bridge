@@ -28,23 +28,15 @@ jobs:
     steps:
       - name: Check out source code
         uses: actions/checkout@master
-      - name: Install Go
-        uses: actions/setup-go@v5
+      - name: Setup mise
+        uses: jdx/mise-action@c1a019b8d2586943b4dbebc456323b516910e310
+        env:
+          MISE_FETCH_REMOTE_VERSIONS_TIMEOUT: 30s
         with:
-          # Use latest - we only need this for the toolchain
-          go-version: 1.25.x
-      - name: Find pulumi version
-        id: pulumi_version
-        shell: bash
-        run: |
-          GO_MODULE_VERSION=$(go list -m -f '{{.Version}}' github.com/pulumi/pulumi/pkg/v3)
-          GO_VERSION=$(echo "$GO_MODULE_VERSION" | sed 's/^v//')
-          echo "pulumi_version=$GO_VERSION"
-          echo "pulumi_version=$GO_VERSION" >> $GITHUB_OUTPUT
-      - name: Install pulumi
-        uses: pulumi/actions@8582a9e8cc630786854029b4e09281acd6794b58 # v6
-        with:
-          pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
+          version: 2026.2.20
+          github_token: ${{ env.GITHUB_TOKEN }}
+          # only saving the cache in the prerequisites job
+          cache_save: true
       - name: Cache plugins
         uses: actions/cache@v4
         with:
