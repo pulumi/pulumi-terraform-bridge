@@ -19,6 +19,8 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/tw"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
@@ -26,7 +28,7 @@ import (
 	"github.com/yuin/goldmark/extension"
 	extensionast "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
+	gmrenderer "github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
@@ -49,7 +51,7 @@ func (s tfRegistryExtension) Extend(md goldmark.Markdown) {
 		parser.WithASTTransformers(
 			util.Prioritized(recognizeHeaderAfterHTML{}, 902),
 		))
-	md.Renderer().AddOptions(renderer.WithNodeRenderers(
+	md.Renderer().AddOptions(gmrenderer.WithNodeRenderers(
 		// The markdown renderer we use does not support rendering out tables.[^1].
 		//
 		// Without intervention, tables are rendered out as HTML. This works fine
@@ -127,14 +129,14 @@ func WalkNode[T ast.Node](node ast.Node, f func(T)) {
 
 type renderType struct {
 	kind ast.NodeKind
-	f    renderer.NodeRendererFunc
+	f    gmrenderer.NodeRendererFunc
 }
 
-func (renderType renderType) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
+func (renderType renderType) RegisterFuncs(r gmrenderer.NodeRendererFuncRegisterer) {
 	r.Register(renderType.kind, renderType.f)
 }
 
-var _ renderer.NodeRenderer = (*tableRenderer)(nil)
+var _ gmrenderer.NodeRenderer = (*tableRenderer)(nil)
 
 type tableRenderer struct {
 	renderer    *markdown.Renderer
@@ -145,7 +147,7 @@ type tableRenderer struct {
 	tableWidth  int
 }
 
-func (tableRenderer tableRenderer) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
+func (tableRenderer tableRenderer) RegisterFuncs(r gmrenderer.NodeRendererFuncRegisterer) {
 	r.Register(extensionast.KindTable, tableRenderer.renderTable)
 	r.Register(extensionast.KindTableHeader, tableRenderer.renderHeader)
 	r.Register(extensionast.KindTableRow, tableRenderer.renderRow)
@@ -162,18 +164,28 @@ func (tableRenderer *tableRenderer) renderTable(
 		tableRenderer.tableWidth = len(n.(*extensionast.Table).Alignments)
 		tableRenderer.headerRow = make([]string, 0, tableRenderer.tableWidth)
 		tableRenderer.rows = [][]string{}
-		tableRenderer.tableWriter = tablewriter.NewWriter(writer)
+		tableRenderer.tableWriter = tablewriter.NewTable(
+			writer,
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+				Borders:  tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off, Overwrite: false},
+				Settings: tw.Settings{Separators: tw.Separators{BetweenColumns: tw.On}},
+				Symbols:  tw.NewSymbols(tw.StyleMarkdown),
+			})),
+			tablewriter.WithConfig(tablewriter.Config{
+				Header: tw.CellConfig{
+					Formatting: tw.CellFormatting{AutoFormat: tw.Off},
+				},
+				Row: tw.CellConfig{
+					Formatting: tw.CellFormatting{AutoWrap: tw.WrapNone},
+					Merging:    tw.CellMerging{Mode: tw.MergeNone},
+				},
+			}),
+		)
 	} else {
 		_, err := writer.WriteRune('\n')
 		contract.AssertNoErrorf(err, "impossible")
-		tableRenderer.tableWriter.SetHeader(tableRenderer.headerRow)
-		tableRenderer.tableWriter.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-		tableRenderer.tableWriter.SetCenterSeparator("|")
-		tableRenderer.tableWriter.SetAutoFormatHeaders(false)
-		tableRenderer.tableWriter.SetAutoMergeCells(false)
-		tableRenderer.tableWriter.SetAutoWrapText(false)
-		tableRenderer.tableWriter.SetReflowDuringAutoWrap(false)
-		tableRenderer.tableWriter.AppendBulk(tableRenderer.rows)
+		tableRenderer.tableWriter.Header(tableRenderer.headerRow)
+		tableRenderer.tableWriter.Bulk(tableRenderer.rows)
 		tableRenderer.tableWriter.Render()
 	}
 	return ast.WalkContinue, nil
