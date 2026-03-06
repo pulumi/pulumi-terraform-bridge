@@ -100,16 +100,6 @@ func (p *provider) DiffWithContext(
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
-	checkedPromotableReplacePaths, err := checkRequiresReplace(
-		priorState,
-		plannedStateValue,
-		filterAttributePaths(planResp.RequiresReplace, func(path *tftypes.AttributePath) bool {
-			return !hasElementKeyValue(path)
-		}),
-	)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
 
 	tfDiff, err := priorState.Value.Diff(plannedStateValue)
 	if err != nil {
@@ -148,6 +138,17 @@ func (p *provider) DiffWithContext(
 	}
 
 	if providerOpts.enableAccuratePFBridgePreview {
+		checkedPromotableReplacePaths, err := checkRequiresReplace(
+			priorState,
+			plannedStateValue,
+			filterAttributePaths(planResp.RequiresReplace, func(path *tftypes.AttributePath) bool {
+				return !hasElementKeyValue(path)
+			}),
+		)
+		if err != nil {
+			return plugin.DiffResult{}, err
+		}
+
 		replaceOverride := len(replaceKeys) > 0
 		pluginDetailedDiff, err := calculateDetailedDiff(
 			ctx, &rh, priorState, plannedStateValue, checkedInputs, checkedPromotableReplacePaths, &replaceOverride)
