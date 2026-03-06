@@ -2,3 +2,5 @@
 # For more details,see: https://github.com/golangci/golangci-lint/issues/580
 *.go text eol=lf
 **/vendor/** linguist-vendored
+
+.github/workflows/*.lock.yml linguist-generated=true merge=ours
