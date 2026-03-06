@@ -19,12 +19,12 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 func TestTopLevelPropertyKeySet(t *testing.T) {
@@ -272,7 +272,11 @@ func TestPromoteDetailedDiffForReplacePaths(t *testing.T) {
 		nil,
 	)
 
-	require.Equal(t, plugin.DiffAddReplace, detailedDiff["export.tableConfigurations.COST_AND_USAGE_REPORT.BILLING_VIEW_ARN"].Kind)
+	require.Equal(
+		t,
+		plugin.DiffAddReplace,
+		detailedDiff["export.tableConfigurations.COST_AND_USAGE_REPORT.BILLING_VIEW_ARN"].Kind,
+	)
 	_, hasMeta := detailedDiff[reservedkeys.Meta]
 	require.False(t, hasMeta)
 }
