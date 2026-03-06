@@ -25,6 +25,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestSplitMirrorURL(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		key            string
+		wantMirrorBase string
+		wantProvider   string
+	}{
+		{
+			key:          "hashicorp/random",
+			wantProvider: "hashicorp/random",
+		},
+		{
+			key:          "registry.terraform.io/hashicorp/random",
+			wantProvider: "registry.terraform.io/hashicorp/random",
+		},
+		{
+			key:            "tofu.example.com/providers/registry.tofu.io/hashicorp/random",
+			wantMirrorBase: "https://tofu.example.com/providers",
+			wantProvider:   "registry.tofu.io/hashicorp/random",
+		},
+		{
+			key:            "https://mirror.example.com/terraform/providers/registry.terraform.io/hashicorp/aws",
+			wantMirrorBase: "https://mirror.example.com/terraform/providers",
+			wantProvider:   "registry.terraform.io/hashicorp/aws",
+		},
+		{
+			key:            "mirror.example.com/registry.terraform.io/hashicorp/tls",
+			wantMirrorBase: "https://mirror.example.com",
+			wantProvider:   "registry.terraform.io/hashicorp/tls",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.key, func(t *testing.T) {
+			t.Parallel()
+			gotMirror, gotProvider := splitMirrorURL(tt.key)
+			assert.Equal(t, tt.wantMirrorBase, gotMirror)
+			assert.Equal(t, tt.wantProvider, gotProvider)
+		})
+	}
+}
+
 func Integration(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
