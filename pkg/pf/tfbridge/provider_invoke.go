@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/defaults"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
@@ -130,7 +131,15 @@ func (p *provider) processInvokeDiagnostics(ctx context.Context, ds datasourceHa
 	diags []*tfprotov6.Diagnostic,
 ) ([]plugin.CheckFailure, error) {
 	failures, rest := p.parseInvokePropertyCheckFailures(ds, diags)
-	return failures, p.processDiagnostics(ctx, rest)
+	var sc *schemaContext
+	if ds.schemaOnlyShim != nil {
+		fields := map[string]*tfbridge.SchemaInfo{}
+		if ds.pulumiDataSourceInfo != nil {
+			fields = ds.pulumiDataSourceInfo.GetFields()
+		}
+		sc = &schemaContext{schemaMap: ds.schemaOnlyShim.Schema(), schemaInfos: fields}
+	}
+	return failures, p.processDiagnosticsWithContext(ctx, rest, sc)
 }
 
 // Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an

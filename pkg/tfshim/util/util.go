@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
 var _ = (shim.Provider)((*UnimplementedProvider)(nil))
@@ -36,19 +37,19 @@ func (UnimplementedProvider) InternalValidate() error { panic("unimplemented") }
 
 func (UnimplementedProvider) Validate(
 	ctx context.Context, c shim.ResourceConfig,
-) ([]string, []error) {
+) ([]diagnostics.ValidationWarning, []error) {
 	panic("unimplemented")
 }
 
 func (UnimplementedProvider) ValidateDataSource(
 	ctx context.Context, t string, c shim.ResourceConfig,
-) ([]string, []error) {
+) ([]diagnostics.ValidationWarning, []error) {
 	panic("unimplemented")
 }
 
 func (UnimplementedProvider) ValidateResource(
 	ctx context.Context, t string, c shim.ResourceConfig,
-) ([]string, []error) {
+) ([]diagnostics.ValidationWarning, []error) {
 	panic("unimplemented")
 }
 

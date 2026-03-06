@@ -1508,6 +1508,111 @@ This will become a hard error in the future.
 `).Equal(t, logs.String())
 }
 
+func TestCheckDeprecationWarnings(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	var logs bytes.Buffer
+	ctx = logging.InitLogging(ctx, logging.LogOptions{
+		LogSink: &testWarnLogSink{&logs},
+	})
+
+	// TF provider with two deprecated fields and their replacements:
+	// 1. resource_group_name - default camelCase translation, replacement is new_field
+	// 2. custom_name_field - has SchemaInfo.Name override, replacement is replacement_field
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"example_deprecation_resource": {
+				Schema: map[string]*schemav2.Schema{
+					"resource_group_name": {
+						Type:       schemav2.TypeString,
+						Optional:   true,
+						Deprecated: "will be removed in 4.0 of the Azure Provider. Terraform recommends using new_field.",
+					},
+					"new_field": {
+						Type:     schemav2.TypeString,
+						Optional: true,
+					},
+					"custom_name_field": {
+						Type:       schemav2.TypeString,
+						Optional:   true,
+						Deprecated: "use replacement_field instead",
+					},
+					"replacement_field": {
+						Type:     schemav2.TypeString,
+						Optional: true,
+					},
+					"required_field": {
+						Type:     schemav2.TypeString,
+						Required: true,
+					},
+				},
+				CreateContext: func(ctx context.Context, d *schemav2.ResourceData, m interface{}) diag.Diagnostics {
+					return nil
+				},
+				ReadContext: func(ctx context.Context, d *schemav2.ResourceData, m interface{}) diag.Diagnostics {
+					return nil
+				},
+				DeleteContext: func(ctx context.Context, d *schemav2.ResourceData, m interface{}) diag.Diagnostics {
+					return nil
+				},
+			},
+		},
+	}
+
+	shimProvider := shimv2.NewProvider(p)
+
+	provider := &Provider{
+		tf:            shimProvider,
+		module:        "testprov",
+		config:        shimv2.NewSchemaMap(p.Schema),
+		pulumiSchema:  []byte("{}"),
+		hasTypeErrors: make(map[resource.URN]struct{}),
+		resources: map[tokens.Type]Resource{
+			"testprov:index:ExampleDeprecationResource": {
+				TF:     shimProvider.ResourcesMap().Get("example_deprecation_resource"),
+				TFName: "example_deprecation_resource",
+				Schema: &ResourceInfo{
+					Tok: "testprov:index:ExampleDeprecationResource",
+					Fields: map[string]*SchemaInfo{
+						"custom_name_field": {Name: "myCustomField"},
+					},
+				},
+			},
+		},
+	}
+
+	args, err := structpb.NewStruct(map[string]interface{}{
+		"resourceGroupName": "my-rg",
+		"myCustomField":     "some-value",
+		"requiredField":     "required",
+	})
+	require.NoError(t, err)
+
+	_, err = provider.Check(ctx, &pulumirpc.CheckRequest{
+		Urn:  "urn:pulumi:dev::teststack::testprov:index:ExampleDeprecationResource::myresource",
+		Olds: &structpb.Struct{},
+		News: args,
+	})
+	require.NoError(t, err)
+
+	output := logs.String()
+
+	// Verify deprecation warnings are present with Pulumi property names.
+
+	// 1. Default camelCase translation + CleanTerraformLanguage applied.
+	assert.Contains(t, output, `property "resourceGroupName" is deprecated`)
+	assert.Contains(t, output, "will be removed in a future version")
+	assert.Contains(t, output, "the upstream provider recommends using newField")
+	assert.NotContains(t, output, "4.0 of the Azure Provider")
+	assert.NotContains(t, output, "Terraform recommends")
+
+	// 2. Custom SchemaInfo.Name override respected.
+	assert.Contains(t, output, `property "myCustomField" is deprecated`)
+	// Replacement field name is also translated to camelCase.
+	assert.Contains(t, output, "use replacementField instead")
+}
+
 func TestSDKv2CheckConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("minimal", func(t *testing.T) {

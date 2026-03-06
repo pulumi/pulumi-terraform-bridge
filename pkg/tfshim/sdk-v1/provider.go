@@ -9,6 +9,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
 var _ = shim.Provider(v1Provider{})
@@ -77,16 +78,38 @@ func (p v1Provider) InternalValidate() error {
 	return p.tf.InternalValidate()
 }
 
-func (p v1Provider) Validate(_ context.Context, c shim.ResourceConfig) ([]string, []error) {
-	return p.tf.Validate(configFromShim(c))
+func (p v1Provider) Validate(
+	_ context.Context, c shim.ResourceConfig,
+) ([]diagnostics.ValidationWarning, []error) {
+	warns, errs := p.tf.Validate(configFromShim(c))
+	return wrapStringWarnings(warns), errs
 }
 
-func (p v1Provider) ValidateResource(_ context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
-	return p.tf.ValidateResource(t, configFromShim(c))
+func (p v1Provider) ValidateResource(
+	_ context.Context, t string, c shim.ResourceConfig,
+) ([]diagnostics.ValidationWarning, []error) {
+	warns, errs := p.tf.ValidateResource(t, configFromShim(c))
+	return wrapStringWarnings(warns), errs
 }
 
-func (p v1Provider) ValidateDataSource(_ context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
-	return p.tf.ValidateDataSource(t, configFromShim(c))
+func (p v1Provider) ValidateDataSource(
+	_ context.Context, t string, c shim.ResourceConfig,
+) ([]diagnostics.ValidationWarning, []error) {
+	warns, errs := p.tf.ValidateDataSource(t, configFromShim(c))
+	return wrapStringWarnings(warns), errs
+}
+
+// wrapStringWarnings converts SDK v1 string warnings into ValidationWarning structs.
+// SDK v1 does not provide structured attribute paths, so AttributePath is left empty.
+func wrapStringWarnings(warns []string) []diagnostics.ValidationWarning {
+	if len(warns) == 0 {
+		return nil
+	}
+	result := make([]diagnostics.ValidationWarning, len(warns))
+	for i, w := range warns {
+		result[i] = diagnostics.ValidationWarning{Summary: w}
+	}
+	return result
 }
 
 func (p v1Provider) Configure(_ context.Context, c shim.ResourceConfig) error {

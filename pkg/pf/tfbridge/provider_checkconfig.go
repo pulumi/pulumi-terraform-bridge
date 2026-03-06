@@ -223,7 +223,8 @@ func (p *provider) validateProviderConfig(
 		}
 	}
 
-	if err := p.processDiagnostics(ctx, remainingDiagnostics); err != nil {
+	sc := &schemaContext{schemaMap: schemaMap, schemaInfos: schemaInfos}
+	if err := p.processDiagnosticsWithContext(ctx, remainingDiagnostics, sc); err != nil {
 		return nil, err
 	}
 

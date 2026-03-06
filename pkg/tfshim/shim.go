@@ -9,6 +9,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
@@ -302,9 +303,9 @@ type Provider interface {
 	DataSourcesMap() ResourceMap
 
 	InternalValidate() error
-	Validate(ctx context.Context, c ResourceConfig) ([]string, []error)
-	ValidateResource(ctx context.Context, t string, c ResourceConfig) ([]string, []error)
-	ValidateDataSource(ctx context.Context, t string, c ResourceConfig) ([]string, []error)
+	Validate(ctx context.Context, c ResourceConfig) ([]diagnostics.ValidationWarning, []error)
+	ValidateResource(ctx context.Context, t string, c ResourceConfig) ([]diagnostics.ValidationWarning, []error)
+	ValidateDataSource(ctx context.Context, t string, c ResourceConfig) ([]diagnostics.ValidationWarning, []error)
 
 	Configure(ctx context.Context, c ResourceConfig) error
 

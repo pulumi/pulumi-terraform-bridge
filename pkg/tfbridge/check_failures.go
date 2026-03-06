@@ -62,6 +62,11 @@ type CheckFailurePath struct {
 	schemaInfos map[string]*SchemaInfo
 }
 
+// ValuePath returns the Pulumi property path string suitable for display to users.
+func (p CheckFailurePath) ValuePath() string {
+	return p.valuePath
+}
+
 func NewCheckFailurePath(
 	schemaMap shim.SchemaMap, schemaInfos map[string]*SchemaInfo, prop string,
 ) CheckFailurePath {

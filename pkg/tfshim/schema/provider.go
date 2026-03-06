@@ -5,6 +5,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
 type Provider struct {
@@ -53,19 +54,21 @@ func (s ProviderShim) InternalValidate() error {
 	return nil
 }
 
-func (ProviderShim) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
+func (ProviderShim) Validate(
+	ctx context.Context, c shim.ResourceConfig,
+) ([]diagnostics.ValidationWarning, []error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
 func (ProviderShim) ValidateResource(
 	ctx context.Context, t string, c shim.ResourceConfig,
-) ([]string, []error) {
+) ([]diagnostics.ValidationWarning, []error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 
 func (ProviderShim) ValidateDataSource(
 	ctx context.Context, t string, c shim.ResourceConfig,
-) ([]string, []error) {
+) ([]diagnostics.ValidationWarning, []error) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
 

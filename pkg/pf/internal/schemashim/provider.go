@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
 var _ = pf.ShimProvider(&SchemaOnlyProvider{})
@@ -97,19 +98,21 @@ func (p *SchemaOnlyProvider) InternalValidate() error {
 	return nil
 }
 
-func (p *SchemaOnlyProvider) Validate(context.Context, shim.ResourceConfig) ([]string, []error) {
+func (p *SchemaOnlyProvider) Validate(
+	context.Context, shim.ResourceConfig,
+) ([]diagnostics.ValidationWarning, []error) {
 	panic("schemaOnlyProvider does not implement runtime operation Validate")
 }
 
 func (p *SchemaOnlyProvider) ValidateResource(
 	context.Context, string, shim.ResourceConfig,
-) ([]string, []error) {
+) ([]diagnostics.ValidationWarning, []error) {
 	panic("schemaOnlyProvider does not implement runtime operation ValidateResource")
 }
 
 func (p *SchemaOnlyProvider) ValidateDataSource(
 	context.Context, string, shim.ResourceConfig,
-) ([]string, []error) {
+) ([]diagnostics.ValidationWarning, []error) {
 	panic("schemaOnlyProvider does not implement runtime operation ValidateDataSource")
 }
 

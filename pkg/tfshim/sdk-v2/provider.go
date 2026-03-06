@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 )
 
 var _ = shim.Provider(v2Provider{})
@@ -85,15 +86,21 @@ func (p v2Provider) InternalValidate() error {
 	return p.tf.InternalValidate()
 }
 
-func (p v2Provider) Validate(_ context.Context, c shim.ResourceConfig) ([]string, []error) {
+func (p v2Provider) Validate(
+	_ context.Context, c shim.ResourceConfig,
+) ([]diagnostics.ValidationWarning, []error) {
 	return warningsAndErrors(p.tf.Validate(configFromShim(c)))
 }
 
-func (p v2Provider) ValidateResource(_ context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
+func (p v2Provider) ValidateResource(
+	_ context.Context, t string, c shim.ResourceConfig,
+) ([]diagnostics.ValidationWarning, []error) {
 	return warningsAndErrors(p.tf.ValidateResource(t, configFromShim(c)))
 }
 
-func (p v2Provider) ValidateDataSource(_ context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
+func (p v2Provider) ValidateDataSource(
+	_ context.Context, t string, c shim.ResourceConfig,
+) ([]diagnostics.ValidationWarning, []error) {
 	return warningsAndErrors(p.tf.ValidateDataSource(t, configFromShim(c)))
 }
 
