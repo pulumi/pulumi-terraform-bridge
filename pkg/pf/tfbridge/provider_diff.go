@@ -18,14 +18,18 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
@@ -96,6 +100,16 @@ func (p *provider) DiffWithContext(
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
+	checkedPromotableReplacePaths, err := checkRequiresReplace(
+		priorState,
+		plannedStateValue,
+		filterAttributePaths(planResp.RequiresReplace, func(path *tftypes.AttributePath) bool {
+			return !hasElementKeyValue(path)
+		}),
+	)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
 
 	tfDiff, err := priorState.Value.Diff(plannedStateValue)
 	if err != nil {
@@ -136,7 +150,7 @@ func (p *provider) DiffWithContext(
 	if providerOpts.enableAccuratePFBridgePreview {
 		replaceOverride := len(replaceKeys) > 0
 		pluginDetailedDiff, err := calculateDetailedDiff(
-			ctx, &rh, priorState, plannedStateValue, checkedInputs, &replaceOverride)
+			ctx, &rh, priorState, plannedStateValue, checkedInputs, checkedPromotableReplacePaths, &replaceOverride)
 		if err != nil {
 			return plugin.DiffResult{}, err
 		}
@@ -149,7 +163,8 @@ func (p *provider) DiffWithContext(
 
 func calculateDetailedDiff(
 	ctx context.Context, rh *resourceHandle, priorState *upgradedResourceState,
-	plannedStateValue tftypes.Value, checkedInputs resource.PropertyMap, replaceOverride *bool,
+	plannedStateValue tftypes.Value, checkedInputs resource.PropertyMap, replacePaths []*tftypes.AttributePath,
+	replaceOverride *bool,
 ) (map[string]plugin.PropertyDiff, error) {
 	priorProps, err := convert.DecodePropertyMap(ctx, rh.decoder, priorState.Value)
 	if err != nil {
@@ -161,22 +176,138 @@ func calculateDetailedDiff(
 		return nil, err
 	}
 
-	detailedDiff := tfbridge.MakeDetailedDiffV2(
-		ctx,
-		rh.schemaOnlyShimResource.Schema(),
-		rh.pulumiResourceInfo.GetFields(),
-		priorProps,
-		props,
-		checkedInputs,
-		replaceOverride,
-	)
+	var detailedDiff map[string]*pulumirpc.PropertyDiff
+	if replaceOverride != nil && !*replaceOverride {
+		detailedDiff = tfbridge.MakeDetailedDiffV2(
+			ctx,
+			rh.schemaOnlyShimResource.Schema(),
+			rh.pulumiResourceInfo.GetFields(),
+			priorProps,
+			props,
+			checkedInputs,
+			replaceOverride,
+		)
+	} else {
+		detailedDiff = tfbridge.MakeDetailedDiffV2(
+			ctx,
+			rh.schemaOnlyShimResource.Schema(),
+			rh.pulumiResourceInfo.GetFields(),
+			priorProps,
+			props,
+			checkedInputs,
+			nil,
+		)
+	}
 
 	pluginDetailedDiff := make(map[string]plugin.PropertyDiff, len(detailedDiff))
 	for k, v := range detailedDiff {
 		pluginDetailedDiff[k] = plugin.PropertyDiff{Kind: plugin.DiffKind(v.Kind), InputDiff: v.InputDiff}
 	}
 
+	if replaceOverride != nil && *replaceOverride {
+		promoteDetailedDiffForReplacePaths(
+			pluginDetailedDiff,
+			replacePaths,
+			rh.schemaOnlyShimResource.Schema(),
+			rh.pulumiResourceInfo.GetFields(),
+		)
+		if !containsReplaceDetailedDiff(pluginDetailedDiff) {
+			pluginDetailedDiff[reservedkeys.Meta] = plugin.PropertyDiff{Kind: plugin.DiffUpdateReplace}
+		}
+	}
+
 	return pluginDetailedDiff, nil
+}
+
+func containsReplaceDetailedDiff(detailedDiff map[string]plugin.PropertyDiff) bool {
+	for _, diff := range detailedDiff {
+		if diff.Kind.IsReplace() {
+			return true
+		}
+	}
+	return false
+}
+
+func promoteDetailedDiffForReplacePaths(
+	detailedDiff map[string]plugin.PropertyDiff,
+	replacePaths []*tftypes.AttributePath,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+) {
+	replacePrefixes := make([]string, 0, len(replacePaths))
+	for _, replacePath := range replacePaths {
+		prefix, err := formatAttributePathAsDetailedDiffPath(schemaMap, schemaInfos, replacePath)
+		if err != nil || prefix == "" {
+			continue
+		}
+		replacePrefixes = append(replacePrefixes, prefix)
+	}
+
+	for key, diff := range detailedDiff {
+		if key == reservedkeys.Meta {
+			continue
+		}
+		for _, prefix := range replacePrefixes {
+			if key == prefix || strings.HasPrefix(key, prefix+".") || strings.HasPrefix(key, prefix+"[") {
+				detailedDiff[key] = diff.ToReplace()
+				break
+			}
+		}
+	}
+
+	if containsReplaceDetailedDiff(detailedDiff) {
+		delete(detailedDiff, reservedkeys.Meta)
+	}
+}
+
+func formatAttributePathAsDetailedDiffPath(
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+	attrPath *tftypes.AttributePath,
+) (string, error) {
+	steps := attrPath.Steps()
+	if len(steps) == 0 {
+		return "", fmt.Errorf("expected a path with at least 1 step")
+	}
+
+	schemaPath := walk.NewSchemaPath()
+	propertyPath := resource.PropertyPath{}
+
+	for _, step := range steps {
+		switch step := step.(type) {
+		case tftypes.AttributeName:
+			schemaPath = schemaPath.GetAttr(string(step))
+			name, err := tfbridge.TerraformToPulumiNameAtPath(schemaPath, schemaMap, schemaInfos)
+			if err != nil {
+				return "", err
+			}
+			propertyPath = append(propertyPath, name)
+		case tftypes.ElementKeyInt:
+			sch, info, err := tfbridge.LookupSchemas(schemaPath, schemaMap, schemaInfos)
+			if err != nil {
+				return "", err
+			}
+			if !tfbridge.IsMaxItemsOne(sch, info) {
+				propertyPath = append(propertyPath, int(step))
+			}
+			schemaPath = schemaPath.Element()
+		case tftypes.ElementKeyString:
+			sch, info, err := tfbridge.LookupSchemas(schemaPath, schemaMap, schemaInfos)
+			if err != nil {
+				return "", err
+			}
+			if !tfbridge.IsMaxItemsOne(sch, info) {
+				propertyPath = append(propertyPath, string(step))
+			}
+			schemaPath = schemaPath.Element()
+		case tftypes.ElementKeyValue:
+			schemaPath = schemaPath.Element()
+		default:
+			return "", fmt.Errorf("unhandled attribute path step %T", step)
+		}
+	}
+
+	return propertyPath.String(), nil
 }
 
 // For each path x.y.z extracts the next step x and converts it to a matching Pulumi key. Removes
@@ -211,6 +342,28 @@ func diffAttributePaths(tfDiff []tftypes.ValueDiff) []*tftypes.AttributePath {
 		paths = append(paths, diff.Path)
 	}
 	return paths
+}
+
+func filterAttributePaths(
+	paths []*tftypes.AttributePath,
+	predicate func(*tftypes.AttributePath) bool,
+) []*tftypes.AttributePath {
+	filtered := make([]*tftypes.AttributePath, 0, len(paths))
+	for _, path := range paths {
+		if predicate(path) {
+			filtered = append(filtered, path)
+		}
+	}
+	return filtered
+}
+
+func hasElementKeyValue(path *tftypes.AttributePath) bool {
+	for _, step := range path.Steps() {
+		if _, ok := step.(tftypes.ElementKeyValue); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func trimElementKeyValueFromTFPath(path *tftypes.AttributePath) *tftypes.AttributePath {

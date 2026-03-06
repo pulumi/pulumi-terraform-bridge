@@ -21,8 +21,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 func TestTopLevelPropertyKeySet(t *testing.T) {
@@ -129,6 +131,23 @@ func TestTrimElementKeyValueFromTFPath(t *testing.T) {
 	}
 }
 
+func TestHasElementKeyValue(t *testing.T) {
+	t.Parallel()
+
+	withSetElement := tftypes.NewAttributePathWithSteps([]tftypes.AttributePathStep{
+		tftypes.AttributeName("set"),
+		tftypes.ElementKeyValue(tftypes.NewValue(tftypes.String, "elem")),
+		tftypes.AttributeName("nested"),
+	})
+	require.True(t, hasElementKeyValue(withSetElement))
+
+	withoutSetElement := tftypes.NewAttributePath().
+		WithAttributeName("export").
+		WithAttributeName("table_configurations").
+		WithElementKeyString("COST_AND_USAGE_REPORT")
+	require.False(t, hasElementKeyValue(withoutSetElement))
+}
+
 func TestCheckRequiresReplace(t *testing.T) {
 	t.Parallel()
 
@@ -212,4 +231,48 @@ func TestCheckRequiresReplace(t *testing.T) {
 		_, err := checkRequiresReplace(priorState, plannedVal, []*tftypes.AttributePath{badPath})
 		require.Error(t, err)
 	})
+}
+
+func TestPromoteDetailedDiffForReplacePaths(t *testing.T) {
+	t.Parallel()
+
+	schemaMap := schema.SchemaMap{
+		"export": (&schema.Schema{
+			Type: shim.TypeMap,
+			Elem: (&schema.Resource{
+				Schema: schema.SchemaMap{
+					"table_configurations": (&schema.Schema{
+						Type:     shim.TypeMap,
+						ForceNew: true,
+						Elem: (&schema.Schema{
+							Type: shim.TypeMap,
+							Elem: (&schema.Schema{
+								Type: shim.TypeString,
+							}).Shim(),
+						}).Shim(),
+					}).Shim(),
+				},
+			}).Shim(),
+		}).Shim(),
+	}
+
+	detailedDiff := map[string]plugin.PropertyDiff{
+		"export.tableConfigurations.COST_AND_USAGE_REPORT.BILLING_VIEW_ARN": {Kind: plugin.DiffAdd},
+		reservedkeys.Meta: {Kind: plugin.DiffUpdateReplace},
+	}
+
+	replacePath := tftypes.NewAttributePath().
+		WithAttributeName("export").
+		WithAttributeName("table_configurations")
+
+	promoteDetailedDiffForReplacePaths(
+		detailedDiff,
+		[]*tftypes.AttributePath{replacePath},
+		schemaMap,
+		nil,
+	)
+
+	require.Equal(t, plugin.DiffAddReplace, detailedDiff["export.tableConfigurations.COST_AND_USAGE_REPORT.BILLING_VIEW_ARN"].Kind)
+	_, hasMeta := detailedDiff[reservedkeys.Meta]
+	require.False(t, hasMeta)
 }
