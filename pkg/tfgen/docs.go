@@ -2533,7 +2533,7 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			python:         match,
 			yaml:           camelCaseFormat,
 			java:           camelCaseFormat,
-			defaultDisplay: match,
+			defaultDisplay: camelCaseFormat,
 		})
 	})
 }
