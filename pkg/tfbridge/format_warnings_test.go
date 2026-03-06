@@ -448,6 +448,16 @@ func TestCleanTerraformLanguage(t *testing.T) {
 			expected: "will be removed in a future version",
 		},
 		{
+			name:     "version removal with multi-word provider name",
+			input:    "will be removed in 4.0 of the Google Cloud Provider",
+			expected: "will be removed in a future version",
+		},
+		{
+			name:     "version removal without provider name",
+			input:    "will be removed in version 3.0",
+			expected: "will be removed in a future version",
+		},
+		{
 			name:     "terraform as part of compound word is not replaced",
 			input:    "Use the TerraformCloud integration",
 			expected: "Use the TerraformCloud integration",

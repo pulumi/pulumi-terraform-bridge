@@ -155,9 +155,12 @@ func CleanTerraformLanguage(msg string) string {
 
 // Matches patterns like "will be removed in X.Y.Z of the <Name> Provider" or
 // "will be removed in a future version of the <Name> Provider" or
-// "will be removed in version X.Y of the <Name> provider".
+// "will be removed in version X.Y of the <Name> provider" or
+// "will be removed in version X.Y" (no provider name).
+// Provider names may be multi-word (e.g. "Google Cloud", "Palo Alto Networks").
 var tfVersionRemovalRegex = regexp.MustCompile(
-	`will be removed in (?:version )?[v]?[\d]+\.[\d]+(?:\.[\d]+)? of the \w+ [Pp]rovider`)
+	`will be removed in (?:version )?[v]?[\d]+\.[\d]+(?:\.[\d]+)?` +
+		`(?: of the [\w][\w ]* [Pp]rovider)?`)
 
 // Matches "Terraform" when used to refer to the provider system (not as part of a compound word).
 var terraformRefRegex = regexp.MustCompile(`(^|\W)Terraform(\W|$)`)
