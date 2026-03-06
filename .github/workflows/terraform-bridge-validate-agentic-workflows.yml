@@ -1,0 +1,53 @@
+name: Validate Agentic Workflows
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/*.md'
+      - '.github/workflows/*.lock.yml'
+      - '.github/agents/*.md'
+      - '.github/snippets/*.md'
+      - '.github/aw/actions-lock.json'
+      - '.gitattributes'
+      - 'mise.toml'
+      - '.github/workflows/terraform-bridge-validate-agentic-workflows.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/*.md'
+      - '.github/workflows/*.lock.yml'
+      - '.github/agents/*.md'
+      - '.github/snippets/*.md'
+      - '.github/aw/actions-lock.json'
+      - '.gitattributes'
+      - 'mise.toml'
+      - '.github/workflows/terraform-bridge-validate-agentic-workflows.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools via mise
+        uses: jdx/mise-action@v3
+        with:
+          install: true
+
+      - name: Show gh-aw version
+        run: |
+          set -euo pipefail
+          gh-aw version
+
+      - name: Validate and compile workflows
+        run: |
+          set -euo pipefail
+          gh-aw validate
+          gh-aw compile
+
+      - name: Verify lockfiles are up to date
+        run: |
+          set -euo pipefail
+          git diff --exit-code

@@ -1,5 +1,10 @@
 [env]
 _.vfox-pulumi = { module_path = "" } # Sets GO_VERSION_MISE and PULUMI_VERSION_MISE
+GH_AW_VERSION = "0.53.1"
+
+[tools."github:github/gh-aw"]
+version = "{{ env.GH_AW_VERSION }}"
+bin = "gh-aw"
 
 [tools]
 # Runtimes
@@ -11,3 +16,15 @@ terraform = 'latest'
 
 [plugins]
 vfox-pulumi = "https://github.com/pulumi/vfox-pulumi"
+
+[tasks.aw-version]
+description = "Show pinned gh-aw version"
+run = "gh-aw version"
+
+[tasks.aw-validate]
+description = "Validate agentic workflows without emitting lock files"
+run = "gh-aw validate"
+
+[tasks.aw-compile]
+description = "Compile all agentic workflows"
+run = "gh-aw compile"
