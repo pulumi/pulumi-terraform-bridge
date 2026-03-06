@@ -72,8 +72,16 @@ type Provider interface {
 // version is installed then the latest version can be used.
 //
 // `=`, `<=`, `>=` sigils can be used just like in TF.
+//
+// To use a network mirror, embed the mirror base URL as a prefix with more than 3
+// path segments, e.g.:
+//
+//	"tofu.example.com/providers/registry.tofu.io/hashicorp/random"
+//	 → mirror: "https://tofu.example.com/providers", provider: "registry.tofu.io/hashicorp/random"
 func NamedProvider(ctx context.Context, key, version string) (Provider, error) {
-	p, err := regaddr.ParseProviderSource(key)
+	mirrorBase, providerKey := splitMirrorURL(key)
+
+	p, err := regaddr.ParseProviderSource(providerKey)
 	if err != nil {
 		return nil, fmt.Errorf("invalid provider name: %w", err)
 	}
@@ -83,7 +91,25 @@ func NamedProvider(ctx context.Context, key, version string) (Provider, error) {
 		return nil, fmt.Errorf("could not parse version constraint %q: %w", version, err)
 	}
 
-	return getProviderServer(ctx, p, v, disco.New())
+	return getProviderServer(ctx, p, v, disco.New(), mirrorBase, key)
+}
+
+// splitMirrorURL splits a provider key that may have an embedded mirror base URL.
+// If key has more than 3 path segments, the first len(parts)-3 segments form the mirror
+// base URL and the last 3 are the provider address (hostname/namespace/type).
+// Returns ("", key) if key has 3 or fewer segments.
+func splitMirrorURL(key string) (mirrorBase, providerAddr string) {
+	parts := strings.Split(key, "/")
+	if len(parts) <= 3 {
+		return "", key
+	}
+	mirrorParts := parts[:len(parts)-3]
+	providerAddr = strings.Join(parts[len(parts)-3:], "/")
+	mirrorBase = strings.Join(mirrorParts, "/")
+	if !strings.Contains(mirrorBase, "://") {
+		mirrorBase = "https://" + mirrorBase
+	}
+	return mirrorBase, providerAddr
 }
 
 // LocalProvider runs a provider by it's path.
@@ -97,7 +123,7 @@ func LocalProvider(ctx context.Context, path string) (Provider, error) {
 		Provider:   addrs.Provider{Type: name},
 		Version:    versions.Version{},
 		PackageDir: dir,
-	})
+	}, "")
 }
 
 func cutLast(s, sep string) (string, string, bool) {
@@ -134,7 +160,7 @@ func (p provider) Close() error { return p.close() }
 
 func getProviderServer(
 	ctx context.Context, addr addrs.Provider, version getproviders.VersionConstraints,
-	registryDisco *disco.Disco,
+	registryDisco *disco.Disco, mirrorBase string, displayURL string,
 ) (Provider, error) {
 	cacheDir, err := getPluginCache()
 	if err != nil {
@@ -154,7 +180,7 @@ func getProviderServer(
 					slog.Any("addr", addr.String()),
 					slog.Any("version", p.Version.String()))
 				p := p
-				return runProvider(ctx, &p)
+				return runProvider(ctx, &p, displayURL)
 			}
 		}
 	}
@@ -162,7 +188,13 @@ func getProviderServer(
 	// We have not found a package that fits our constraints, so we need to download
 	// one.
 
-	source := getproviders.NewRegistrySource(ctx, registryDisco, nil, getproviders.LocationConfig{})
+	var source getproviders.Source
+	if mirrorBase != "" {
+		slog.InfoContext(ctx, "Using network mirror", slog.String("url", mirrorBase))
+		source = getproviders.NewNetworkMirrorSource(ctx, mirrorBase, nil)
+	} else {
+		source = getproviders.NewRegistrySource(ctx, registryDisco, nil, getproviders.LocationConfig{})
+	}
 
 	availableVersions, warnings, err := source.AvailableVersions(ctx, addr)
 	for _, w := range warnings {
@@ -191,7 +223,7 @@ func getProviderServer(
 	p := systemCache.ProviderVersion(addr, desiredVersion)
 	contract.Assertf(p != nil, "We just downloaded (%s,%s) so it should be in the cache", addr, desiredVersion)
 
-	return runProvider(ctx, p)
+	return runProvider(ctx, p, displayURL)
 }
 
 func includePanic(
@@ -216,7 +248,10 @@ func includePanic(
 // runProvider produces a provider factory that runs up the executable
 // file in the given cache package and uses go-plugin to implement
 // providers.Interface against it.
-func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provider, error) {
+//
+// displayURL, if non-empty, overrides the URL stored in the returned Provider
+// (used to preserve mirror-qualified addresses across re-parameterization).
+func runProvider(ctx context.Context, meta *providercache.CachedProvider, displayURL string) (Provider, error) {
 	execFile, err := meta.ExecutableFile()
 	if err != nil {
 		return nil, err
@@ -250,6 +285,11 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		return nil, err
 	}
 
+	providerURL := meta.Provider.String()
+	if displayURL != "" {
+		providerURL = displayURL
+	}
+
 	switch client.NegotiatedVersion() {
 	case 5:
 		p := raw.(*tfplugin.GRPCProvider)
@@ -266,14 +306,14 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		}
 		return provider{
 			v6,
-			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
+			meta.Provider.Type, meta.Version.String(), providerURL,
 			rpcClient.Close,
 		}, nil
 	case 6:
 		p := tfplugin6.NewProviderClient(rpcClient.(*plugin.GRPCClient).Conn)
 		return provider{
 			v6shim.New(p),
-			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
+			meta.Provider.Type, meta.Version.String(), providerURL,
 			rpcClient.Close,
 		}, nil
 	default:
