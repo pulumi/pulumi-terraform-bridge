@@ -1,6 +1,7 @@
 package tfbridgetests
 
 import (
+	"encoding/json"
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -9,10 +10,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
+	tfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestPFDetailedDiffMap(t *testing.T) {
@@ -192,4 +198,100 @@ func TestPFDetailedDiffMap(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPFDetailedDiffNestedBlockMapOfMapsAccuratePreviewFlag(t *testing.T) {
+	t.Parallel()
+
+	res := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"export": rschema.SingleNestedBlock{
+					Attributes: map[string]rschema.Attribute{
+						"table_configurations": rschema.MapAttribute{
+							Optional: true,
+							Computed: true,
+							ElementType: types.MapType{
+								ElemType: types.StringType,
+							},
+							PlanModifiers: []planmodifier.Map{
+								mapplanmodifier.UseStateForUnknown(),
+								mapplanmodifier.RequiresReplace(),
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	makeProgram := func(includeBillingViewArn bool) string {
+		billingViewLine := ""
+		if includeBillingViewArn {
+			billingViewLine = "                        BILLING_VIEW_ARN: arn:aws:billing::123456789012:billingview/primary\n"
+		}
+
+		return `name: project
+runtime: yaml
+resources:
+    p:
+        type: testprovider:index:Test
+        properties:
+            export:
+                tableConfigurations:
+                    COST_AND_USAGE_REPORT:
+` + billingViewLine + `                        INCLUDE_RESOURCES: "TRUE"
+                        TIME_GRANULARITY: HOURLY
+`
+	}
+
+	previewDiff := func(t *testing.T, providerInfo tfbridge.ProviderInfo) (string, crosstestsimpl.PulumiDiffResp) {
+		t.Helper()
+
+		pt1, err := pulcheck.PulCheck(t, providerInfo, makeProgram(false))
+		require.NoError(t, err)
+		pt1.Up(t)
+		state := pt1.ExportStack(t)
+
+		pt2, err := pulcheck.PulCheck(t, providerInfo, makeProgram(true))
+		require.NoError(t, err)
+		pt2.ImportStack(t, state)
+
+		previewRes := pt2.Preview(t, optpreview.Diff())
+		diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt2.GrpcLog(t).Entries)
+		return previewRes.StdOut, diffResponse
+	}
+
+	t.Run("disabled by default", func(t *testing.T) {
+		providerInfo := pb.NewProvider(pb.NewProviderArgs{
+			AllResources: []pb.Resource{res},
+		}).ToProviderInfo()
+
+		previewOut, diffResponse := previewDiff(t, providerInfo)
+		require.Contains(t, previewOut, "BILLING_VIEW_ARN")
+		require.Nil(t, diffResponse.DetailedDiff)
+	})
+
+	t.Run("enabled shows nested detailed diff", func(t *testing.T) {
+		providerInfo := pb.NewProvider(pb.NewProviderArgs{
+			AllResources: []pb.Resource{res},
+		}).ToProviderInfo()
+		providerInfo.EnableAccuratePFBridgePreview = true
+
+		previewOut, diffResponse := previewDiff(t, providerInfo)
+		require.Contains(t, previewOut, "BILLING_VIEW_ARN")
+
+		detailedDiffJSON, err := json.Marshal(diffResponse.DetailedDiff)
+		require.NoError(t, err)
+		require.Contains(t, string(detailedDiffJSON), "BILLING_VIEW_ARN")
+
+		leaf, ok := diffResponse.DetailedDiff["export.tableConfigurations.COST_AND_USAGE_REPORT.BILLING_VIEW_ARN"]
+		require.True(t, ok)
+		leafMap, ok := leaf.(map[string]interface{})
+		require.True(t, ok)
+		require.Equal(t, "ADD_REPLACE", leafMap["kind"])
+
+		_, hasMeta := diffResponse.DetailedDiff["__meta"]
+		require.False(t, hasMeta)
+	})
 }
