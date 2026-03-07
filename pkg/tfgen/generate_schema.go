@@ -105,6 +105,9 @@ func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 		p := member.dataSourcePath
 		nt.gatherFromProperties(p.Args(), member, member.name, member.args, true)
 		nt.gatherFromProperties(p.Results(), member, member.name, member.rets, false)
+	case *actionFunc:
+		p := member.actionPath
+		nt.gatherFromProperties(p.Args(), member, member.name, member.args, true)
 	case *variable:
 		contract.Assertf(member.config, `member.config`)
 		if member.typ == nil {
@@ -313,6 +316,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 				spec.Resources[string(t.info.Tok)] = g.genResourceType(mod.name, t)
 			case *resourceFunc:
 				spec.Functions[string(t.info.Tok)] = g.genDatasourceFunc(mod.name, t)
+			case *actionFunc:
+				spec.Functions[string(t.info.Tok)] = g.genActionFunc(mod.name, t)
 			case *variable:
 				contract.Assertf(mod.config(), `mod.config()`)
 				config = append(config, t)
@@ -907,6 +912,30 @@ func (g *schemaGenerator) genDatasourceFunc(mod tokens.Module, fun *resourceFunc
 			typePaths: paths.SingletonTypePathSet(fun.dataSourcePath.Results()),
 		}, false)
 		spec.Outputs = &t
+	}
+
+	return spec
+}
+
+func (g *schemaGenerator) genActionFunc(mod tokens.Module, fun *actionFunc) pschema.FunctionSpec {
+	var spec pschema.FunctionSpec
+
+	description := ""
+	if fun.doc != "" {
+		description = g.genDocComment(fun.doc)
+	}
+	if fun.info.DeprecationMessage != "" {
+		spec.DeprecationMessage = fun.info.DeprecationMessage
+	}
+	spec.Description = description
+
+	// If there are argument and/or return types, emit them.
+	if fun.argst != nil {
+		t := g.genObjectType(&schemaNestedType{
+			typ:       fun.argst,
+			typePaths: paths.SingletonTypePathSet(fun.actionPath.Args()),
+		}, false)
+		spec.Inputs = &t
 	}
 
 	return spec

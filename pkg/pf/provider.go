@@ -35,4 +35,5 @@ type ShimProvider interface {
 	Resources(context.Context) (runtypes.Resources, error)
 	DataSources(context.Context) (runtypes.DataSources, error)
 	Config(context.Context) (tftypes.Object, error)
+	Actions(context.Context) (runtypes.Actions, error)
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/hashicorp/terraform-plugin-framework/action"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -129,6 +130,10 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 			"testbridge_smac_ds": {Tok: "testbridge:index/smac:SMAC"},
 		},
 
+		Actions: map[string]*tfbridge.ActionInfo{
+			"testbridge_print": {Tok: "testbridge:index/print:Print"},
+		},
+
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
 
@@ -145,6 +150,7 @@ type resourceData struct {
 }
 
 var _ provider.Provider = (*syntheticProvider)(nil)
+var _ provider.ProviderWithActions = (*syntheticProvider)(nil)
 
 func (p *syntheticProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "testbridge"
@@ -335,5 +341,11 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 		newAutoNameRes,
 		newIntIDRes,
 		newVlanNamesRes,
+	}
+}
+
+func (p *syntheticProvider) Actions(context.Context) []func() action.Action {
+	return []func() action.Action{
+		newPrintAction,
 	}
 }
