@@ -861,12 +861,34 @@ type resourceFunc struct {
 	info           *tfbridge.DataSourceInfo
 	entityDocs     entityDocs
 	dataSourcePath *paths.DataSourcePath
+	actionPath     *paths.ActionPath
 }
 
 func (rf *resourceFunc) Name() string { return rf.name }
 func (rf *resourceFunc) Doc() string  { return rf.doc }
 
 func (rf *resourceFunc) ModuleMemberToken() tokens.ModuleMember {
+	return tokens.NewModuleMemberToken(rf.mod, tokens.ModuleMemberName(rf.name))
+}
+
+// actionFunc is a generated resource function that is exposed to interact with Pulumi objects.
+type actionFunc struct {
+	mod        tokens.Module
+	name       string
+	doc        string
+	args       []*variable
+	reqargs    map[string]bool
+	argst      *propertyType
+	schema     shim.Action
+	info       *tfbridge.ActionInfo
+	entityDocs entityDocs
+	actionPath *paths.ActionPath
+}
+
+func (rf *actionFunc) Name() string { return rf.name }
+func (rf *actionFunc) Doc() string  { return rf.doc }
+
+func (rf *actionFunc) ModuleMemberToken() tokens.ModuleMember {
 	return tokens.NewModuleMemberToken(rf.mod, tokens.ModuleMemberName(rf.name))
 }
 
@@ -1270,6 +1292,13 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 		return nil, pkgerrors.Wrapf(err, "problem gathering data sources")
 	} else if dsmods != nil {
 		pack.addModuleMap(dsmods)
+	}
+
+	actmods, err := g.gatherActions()
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "problem gathering actions")
+	} else if actmods != nil {
+		pack.addModuleMap(actmods)
 	}
 
 	// Now go ahead and merge in any overlays into the modules if there are any.
@@ -1757,6 +1786,175 @@ func (g *Generator) gatherDataSource(rawname string,
 	return fun, nil
 }
 
+func (g *Generator) gatherActions() (moduleMap, error) {
+	// If there aren't any data sources, skip this altogether.
+	sources := g.provider().ActionsMap()
+	if sources.Len() == 0 {
+		return nil, nil
+	}
+	modules := make(moduleMap)
+
+	skipFailBuildOnMissingMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
+		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
+	skipFailBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
+
+	// let's keep a list of TF mapping errors that we can present to the user
+	var dataSourceMappingErrors error
+
+	// For each data source, create its own dedicated function and module export.
+	var dserr error
+	seen := make(map[string]bool)
+	for _, ds := range stableActions(sources) {
+		dsinfo := g.info.Actions[ds]
+		if dsinfo == nil {
+			if sliceContains(g.info.IgnoreMappings, ds) {
+				g.debug("TF data source %q not found in provider map but ignored", ds)
+				continue
+			}
+
+			if !skipFailBuildOnMissingMapError {
+				dataSourceMappingErrors = multierror.Append(dataSourceMappingErrors,
+					fmt.Errorf("TF data source %q not mapped to the Pulumi provider", ds))
+			} else {
+				g.warn("TF data source %q not found in provider map", ds)
+			}
+			continue
+		}
+		seen[ds] = true
+
+		fun, err := g.gatherAction(ds, sources.Get(ds), dsinfo)
+		if err != nil {
+			// Keep track of the error, but keep going, so we can expose more at once.
+			dserr = multierror.Append(dserr, err)
+		} else {
+			// Add any members returned to the specified module.
+			modules.ensureModule(fun.mod).addMember(fun)
+		}
+	}
+	if dserr != nil {
+		return nil, dserr
+	}
+
+	// Emit a warning if there is a map but some names didn't match.
+	var names []string
+	for name := range g.info.Actions {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if !seen[name] {
+			if !skipFailBuildOnExtraMapError {
+				dataSourceMappingErrors = multierror.Append(dataSourceMappingErrors,
+					fmt.Errorf("Pulumi token %q is mapped to TF provider data source %q, but no such "+
+						"data source found. Remove the mapping and try again",
+						g.info.Actions[name].Tok, name))
+			} else {
+				g.warn("Pulumi token %q is mapped to TF provider data source %q, but no such "+
+					"data source found. The mapping will be ignored in the generated provider",
+					g.info.Actions[name].Tok, name)
+			}
+		}
+	}
+
+	// let's check the unmapped Action Errors
+	if dataSourceMappingErrors != nil {
+		return nil, dataSourceMappingErrors
+	}
+
+	return modules, nil
+}
+
+// gatherAction returns the module name and members for the given data source function.
+func (g *Generator) gatherAction(rawname string,
+	act shim.Action, info *tfbridge.ActionInfo,
+) (*actionFunc, error) {
+	// Generate the name and module for this data source.
+	name, moduleName := actionName(g.info.Name, rawname, info)
+	mod := tokens.NewModuleToken(g.pkg, moduleName)
+	actionPath := paths.NewActionPath(rawname, tokens.NewModuleMemberToken(mod, name))
+
+	// Collect documentation information for this data source.
+	source := NewGitRepoDocsSource(g)
+	entityDocs, err := getDocsForResource(g, source, ActionDocs, rawname, info)
+	if err != nil && !g.checkNoDocsError(err) {
+		return nil, err
+	}
+
+	// Build up the function information.
+	fun := &actionFunc{
+		mod:        mod,
+		name:       name.String(),
+		doc:        entityDocs.Description,
+		reqargs:    make(map[string]bool),
+		schema:     act,
+		info:       info,
+		entityDocs: entityDocs,
+		actionPath: actionPath,
+	}
+
+	// See if arguments for this function are optional, and generate detailed metadata.
+	for _, arg := range stableSchemas(act.Schema()) {
+		sch := act.Schema().Get(arg)
+		if sch.Removed() != "" {
+			continue
+		}
+		cust := info.Fields[arg]
+
+		// Remember detailed information for every input arg (we will use it below).
+		if input(sch, cust) {
+			doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, arg)
+			if foundInAttributes {
+				argumentDescriptionsFromAttributes++
+				msg := fmt.Sprintf("Argument desc taken from attributes: data source, rawname = '%s', property = '%s'",
+					rawname, arg)
+				g.debug(msg)
+			}
+
+			argvar, err := g.propertyVariable(actionPath.Args(),
+				arg, act.Schema(), info.Fields, doc, "", false /*out*/, entityDocs)
+			if err != nil {
+				return nil, err
+			}
+			if argvar != nil {
+				fun.args = append(fun.args, argvar)
+				if !argvar.optional() {
+					fun.reqargs[argvar.name] = true
+				}
+			}
+		}
+	}
+
+	// Make up a urn property
+	if urn, has := act.Schema().GetOk("urn"); has && urn.Removed() == "" {
+		return nil, fmt.Errorf("action %q must not have a 'urn' property in its schema", rawname)
+	}
+	cust := map[string]*tfbridge.SchemaInfo{"urn": {}}
+	rawdoc := "The URN to run this action against."
+	urnSchema := schema.SchemaMap(map[string]shim.Schema{
+		"urn": (&schema.Schema{Type: shim.TypeString, Required: true}).Shim(),
+	})
+	p, err := g.propertyVariable(actionPath.Args(), "urn", urnSchema, cust, "",
+		rawdoc, true /*out*/, entityDocs)
+	if err != nil {
+		return nil, err
+	}
+	if p != nil {
+		fun.args = append(fun.args, p)
+	}
+
+	// Produce the args/return types, if needed.
+	if len(fun.args) > 0 {
+		fun.argst = &propertyType{
+			kind:       kindObject,
+			name:       fmt.Sprintf("%sArgs", upperFirst(name.String())),
+			doc:        fmt.Sprintf("A collection of arguments for invoking %s.", name),
+			properties: fun.args,
+		}
+	}
+
+	return fun, nil
+}
+
 // gatherOverlays returns any overlay modules and their contents.
 func (g *Generator) gatherOverlays() (moduleMap, error) {
 	modules := make(moduleMap)
@@ -1971,6 +2169,20 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 	return nil, nil
 }
 
+// actionName translates a Terraform name into its Pulumi name equivalent.
+func actionName(provider string, rawname string,
+	info *tfbridge.ActionInfo,
+) (tokens.ModuleMemberName, tokens.ModuleName) {
+	if info == nil || info.Tok == "" {
+		// default transformations.
+		name := withoutPackageName(provider, rawname) // strip off the pkg prefix.
+		name = tfbridge.TerraformToPulumiNameV2(name, nil, nil)
+		return tokens.ModuleMemberName(name), tokens.ModuleName(name)
+	}
+	// otherwise, a custom transformation exists; use it.
+	return info.Tok.Name(), info.Tok.Module().Name()
+}
+
 // dataSourceName translates a Terraform name into its Pulumi name equivalent.
 func dataSourceName(provider string, rawname string,
 	info *tfbridge.DataSourceInfo,
@@ -2019,6 +2231,16 @@ func withoutPackageName(pkg string, rawname string) string {
 	//
 	// Therefore the code trims the prefix if it finds it, but leaves as-is otherwise.
 	return strings.TrimPrefix(rawname, pkg+"_")
+}
+
+func stableActions(actions shim.ActionMap) []string {
+	var acts []string
+	actions.Range(func(a string, _ shim.Action) bool {
+		acts = append(acts, a)
+		return true
+	})
+	sort.Strings(acts)
+	return acts
 }
 
 func stableResources(resources shim.ResourceMap) []string {
