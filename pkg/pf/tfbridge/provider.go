@@ -80,6 +80,7 @@ type provider struct {
 	info          tfbridge.ProviderInfo
 	resources     runtypes.Resources
 	datasources   runtypes.DataSources
+	listResources runtypes.ListResources
 	pulumiSchema  func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
 	encoding      convert.Encoding
 	configEncoder convert.Encoder
@@ -146,6 +147,10 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	if err != nil {
 		return nil, err
 	}
+	listResources, err := pfServer.ListResources(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	if info.MetadataInfo == nil {
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
@@ -187,6 +192,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		info:               info,
 		resources:          resources,
 		datasources:        datasources,
+		listResources:      listResources,
 		pulumiSchema:       schema,
 		encoding:           enc,
 		configEncoder:      configEncoder,

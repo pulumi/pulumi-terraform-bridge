@@ -101,6 +101,10 @@ func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 		if !member.IsProvider() {
 			nt.gatherFromProperties(p.State(), member, member.name, member.statet.properties, true)
 		}
+	case *listResourceFunc:
+		p := member.listResourcePath
+		nt.gatherFromProperties(p.Args(), member, member.name, member.args, true)
+		nt.gatherFromProperties(p.Results(), member, member.name, member.rets, false)
 	case *resourceFunc:
 		p := member.dataSourcePath
 		nt.gatherFromProperties(p.Args(), member, member.name, member.args, true)
@@ -267,6 +271,148 @@ func genPulumiSchema(
 	return pulumiPackageSpec, nil
 }
 
+func (g *schemaGenerator) genListResourceFunc(
+	_ tokens.Module,
+	fun *listResourceFunc,
+) (pschema.FunctionSpec, map[string]pschema.ObjectTypeSpec) {
+	var spec pschema.FunctionSpec
+	supportingTypes := make(map[string]pschema.ObjectTypeSpec)
+
+	description := ""
+	if fun.doc != "" {
+		description = g.genDocComment(fun.doc)
+	}
+
+	spec.Description = description
+
+	inputs := map[string]pschema.PropertySpec{}
+	inputs["limit"] = pschema.PropertySpec{
+		Description: "Maximum number of results to return.",
+		TypeSpec: pschema.TypeSpec{
+			Type: "integer",
+		},
+	}
+
+	inputs["includeResource"] = pschema.PropertySpec{
+		Description: "Whether to populate the field resource in the results.",
+		TypeSpec: pschema.TypeSpec{
+			Type: "boolean",
+		},
+	}
+
+	if fun.args != nil {
+		// generate the ConfigArgs object type.
+		configObjectTypeName := upperFirst(fun.name) + "ConfigArgs"
+		configObjectType := &schemaNestedType{
+			typePaths: paths.SingletonTypePathSet(fun.listResourcePath.Args()),
+			typ: &propertyType{
+				doc:        "Configuration for listing the resource",
+				kind:       kindObject,
+				properties: fun.args,
+				name:       configObjectTypeName,
+			},
+		}
+
+		configArgsType := g.genObjectType(configObjectType, false)
+		argTypeToken := g.genObjectTypeToken(configObjectType)
+		supportingTypes[argTypeToken] = configArgsType
+
+		inputs["config"] = pschema.PropertySpec{
+			Description: "Configuration for listing the resource",
+			TypeSpec: pschema.TypeSpec{
+				Ref: "#/types/" + argTypeToken,
+			},
+		}
+	}
+
+	spec.Inputs = &pschema.ObjectTypeSpec{
+		Type:       "object",
+		Properties: inputs,
+	}
+
+	// ListResource responses are in the shape of
+	// { results: [ { resource: <RESOURCE-TYPE>, displayName: <string> }, ... ] }
+	// generate the output type of the invoke accordingly.
+	if fun.rets != nil {
+		resourceOutputTypeName := upperFirst(fun.name) + "Resource"
+		resourceOutputType := &schemaNestedType{
+			typePaths: paths.SingletonTypePathSet(fun.listResourcePath.Results()),
+			typ: &propertyType{
+				doc:        "A resource returned by the list resource function",
+				kind:       kindObject,
+				properties: fun.rets,
+				name:       resourceOutputTypeName,
+			},
+		}
+
+		resourceType := g.genObjectType(resourceOutputType, false)
+		resourceTypeToken := g.genObjectTypeToken(resourceOutputType)
+
+		resultItemTypeName := upperFirst(fun.name) + "ResultItem"
+		resultItemTypePaths := paths.SingletonTypePathSet(fun.listResourcePath.Results())
+		mod := modulePlacementForTypeSet(g.pkg, resultItemTypePaths)
+		resultItemTypeToken := fmt.Sprintf("%s/%s:%s", mod.String(), resultItemTypeName, resultItemTypeName)
+
+		resultItemType := pschema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]pschema.PropertySpec{
+				"resource": {
+					Description: "The resource returned by the list resource function",
+					TypeSpec: pschema.TypeSpec{
+						Ref: "#/types/" + resourceTypeToken,
+					},
+				},
+				"displayName": {
+					Description: "The display name of the resource",
+					TypeSpec: pschema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		}
+
+		spec.Outputs = &pschema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]pschema.PropertySpec{
+				"results": {
+					Description: "The list of results returned by the function",
+					TypeSpec: pschema.TypeSpec{
+						Type: "array",
+						Items: &pschema.TypeSpec{
+							Ref: "#/types/" + resultItemTypeToken,
+						},
+					},
+				},
+			},
+		}
+
+		supportingTypes[resourceTypeToken] = resourceType
+		supportingTypes[resultItemTypeToken] = resultItemType
+	} else {
+		// if outputs aren't schematized, generate a the following shape:
+		// { results: [ { <string>: <any> } ] }
+		spec.Outputs = &pschema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]pschema.PropertySpec{
+				"results": {
+					Description: "The list of results returned by the function",
+					TypeSpec: pschema.TypeSpec{
+						Type: "array",
+						Items: &pschema.TypeSpec{
+							Type: "object",
+							AdditionalProperties: &pschema.TypeSpec{
+								Ref: "pulumi.json#/Any",
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	return spec, supportingTypes
+}
+
 func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.PackageSpec, error) {
 	spec := pschema.PackageSpec{
 		Name:              g.pkg.String(),
@@ -313,6 +459,14 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 				spec.Resources[string(t.info.Tok)] = g.genResourceType(mod.name, t)
 			case *resourceFunc:
 				spec.Functions[string(t.info.Tok)] = g.genDatasourceFunc(mod.name, t)
+			case *listResourceFunc:
+				funcSpec, supportingTypes := g.genListResourceFunc(mod.name, t)
+				spec.Functions[string(t.info.Tok)] = funcSpec
+				for k, v := range supportingTypes {
+					spec.Types[k] = pschema.ComplexTypeSpec{
+						ObjectTypeSpec: v,
+					}
+				}
 			case *variable:
 				contract.Assertf(mod.config(), `mod.config()`)
 				config = append(config, t)
@@ -1297,6 +1451,9 @@ func modulePlacementForType(pkg tokens.Package, path paths.TypePath) tokens.Modu
 		// Supplementary types are typically defined one level up from the module defining the data source, but
 		// may also be defined in the same module.
 		m := pp.DataSourcePath.Token().Module()
+		return parentModuleOrSelf(m)
+	case *paths.ListResourceMemberPath:
+		m := pp.ListResourcePath.Token().Module()
 		return parentModuleOrSelf(m)
 	case *paths.ConfigPath:
 		return tokens.NewModuleToken(pkg, configMod)

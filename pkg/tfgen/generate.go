@@ -870,6 +870,29 @@ func (rf *resourceFunc) ModuleMemberToken() tokens.ModuleMember {
 	return tokens.NewModuleMemberToken(rf.mod, tokens.ModuleMemberName(rf.name))
 }
 
+// listResourceFunc is a generated list resource which is exposed as a function/invoke
+type listResourceFunc struct {
+	mod              tokens.Module
+	name             string
+	doc              string
+	args             []*variable
+	rets             []*variable
+	reqargs          map[string]bool
+	argst            *propertyType
+	retst            *propertyType
+	schema           shim.Resource
+	info             *tfbridge.ListResourceInfo
+	entityDocs       entityDocs
+	listResourcePath *paths.ListResourcePath
+}
+
+func (rf *listResourceFunc) Name() string { return rf.name }
+func (rf *listResourceFunc) Doc() string  { return rf.doc }
+
+func (rf *listResourceFunc) ModuleMemberToken() tokens.ModuleMember {
+	return tokens.NewModuleMemberToken(rf.mod, tokens.ModuleMemberName(rf.name))
+}
+
 // overlayFile is a file that should be added to a module "as-is" and then exported from its index.
 type overlayFile struct {
 	name string
@@ -1272,6 +1295,14 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 		pack.addModuleMap(dsmods)
 	}
 
+	// Gather up all resource modules and merge them into the current set.
+	listResourceModules, err := g.gatherListResources()
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "problem gathering list resources")
+	} else if listResourceModules != nil {
+		pack.addModuleMap(listResourceModules)
+	}
+
 	// Now go ahead and merge in any overlays into the modules if there are any.
 	olaymods, err := g.gatherOverlays()
 	if err != nil {
@@ -1569,6 +1600,91 @@ func (g *Generator) gatherResource(rawname string,
 	return res, nil
 }
 
+func skipFailBuildOnExtraMapErrorEnv() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
+		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
+}
+
+func skipFailBuildOnMissingMapErrorEnv() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
+}
+
+func (g *Generator) gatherListResources() (moduleMap, error) {
+	listResources := g.provider().ListResourcesMap()
+	if listResources.Len() == 0 {
+		return nil, nil
+	}
+	modules := make(moduleMap)
+
+	skipFailBuildOnMissingMapError := skipFailBuildOnMissingMapErrorEnv()
+	skipFailBuildOnExtraMapError := skipFailBuildOnExtraMapErrorEnv()
+
+	// let's keep a list of TF mapping errors that we can present to the user
+	var listResourceMappingErrors error
+
+	// For each list resource, create its own dedicated function and module export.
+	var resourceError error
+	seen := make(map[string]bool)
+	for _, resource := range stableResources(listResources) {
+		resourceInfo := g.info.ListResources[resource]
+		if resourceInfo == nil {
+			if sliceContains(g.info.IgnoreMappings, resource) {
+				g.debug("TF list resource %q not found in provider map but ignored", resource)
+				continue
+			}
+
+			if !skipFailBuildOnMissingMapError {
+				listResourceMappingErrors = multierror.Append(listResourceMappingErrors,
+					fmt.Errorf("TF list resource %q not mapped to the Pulumi provider", resource))
+			} else {
+				g.warn("TF list resource %q not found in provider map", resource)
+			}
+			continue
+		}
+		seen[resource] = true
+
+		fun, err := g.gatherListResource(resource, listResources.Get(resource), resourceInfo)
+		if err != nil {
+			// Keep track of the error, but keep going, so we can expose more at once.
+			resourceError = multierror.Append(resourceError, err)
+		} else {
+			// Add any members returned to the specified module.
+			modules.ensureModule(fun.mod).addMember(fun)
+		}
+	}
+	if resourceError != nil {
+		return nil, resourceError
+	}
+
+	// Emit a warning if there is a map but some names didn't match.
+	var names []string
+	for name := range g.info.ListResources {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if !seen[name] {
+			if !skipFailBuildOnExtraMapError {
+				listResourceMappingErrors = multierror.Append(listResourceMappingErrors,
+					fmt.Errorf("pulumi token %q is mapped to TF provider list resource %q, but no such "+
+						"list resource found. Remove the mapping and try again",
+						g.info.ListResources[name].Tok, name))
+			} else {
+				g.warn("pulumi token %q is mapped to TF provider list resource %q, but no such "+
+					"list resource found. The mapping will be ignored in the generated provider",
+					g.info.ListResources[name].Tok, name)
+			}
+		}
+	}
+
+	// let's check the unmapped DataSource Errors
+	if listResourceMappingErrors != nil {
+		return nil, listResourceMappingErrors
+	}
+
+	return modules, nil
+}
+
 func (g *Generator) gatherDataSources() (moduleMap, error) {
 	// If there aren't any data sources, skip this altogether.
 	sources := g.provider().DataSourcesMap()
@@ -1577,9 +1693,8 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	}
 	modules := make(moduleMap)
 
-	skipFailBuildOnMissingMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
-		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
-	skipFailBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
+	skipFailBuildOnMissingMapError := skipFailBuildOnMissingMapErrorEnv()
+	skipFailBuildOnExtraMapError := skipFailBuildOnExtraMapErrorEnv()
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var dataSourceMappingErrors error
@@ -1645,6 +1760,91 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	}
 
 	return modules, nil
+}
+
+func (g *Generator) gatherListResource(
+	rawname string,
+	resource shim.Resource,
+	info *tfbridge.ListResourceInfo,
+) (*listResourceFunc, error) {
+	name, moduleName := listResourceName(g.info.Name, rawname, info)
+	mod := tokens.NewModuleToken(g.pkg, moduleName)
+	path := paths.NewListResourcePath(rawname, tokens.NewModuleMemberToken(mod, name))
+
+	entityDocs := entityDocs{Description: ""}
+	fun := &listResourceFunc{
+		mod:              mod,
+		name:             name.String(),
+		doc:              "",
+		reqargs:          make(map[string]bool),
+		schema:           resource,
+		info:             info,
+		entityDocs:       entityDocs,
+		listResourcePath: path,
+	}
+
+	// See if arguments for this function are optional, and generate detailed metadata.
+	for _, arg := range stableSchemas(resource.Schema()) {
+		sch := resource.Schema().Get(arg)
+		if sch.Removed() != "" {
+			continue
+		}
+		cust := info.Fields[arg]
+
+		// Remember detailed information for every input arg (we will use it below).
+		if input(sch, cust) {
+			doc, foundInAttributes := getDescriptionFromParsedDocs(entityDocs, arg)
+			if foundInAttributes {
+				argumentDescriptionsFromAttributes++
+				msg := fmt.Sprintf("Argument desc taken from attributes: data source, rawname = '%s', property = '%s'",
+					rawname, arg)
+				g.debug(msg)
+			}
+
+			argvar, err := g.propertyVariable(path.Args(),
+				arg, resource.Schema(), info.Fields, doc, "", false /*out*/, entityDocs)
+			if err != nil {
+				return nil, err
+			}
+			if argvar != nil {
+				fun.args = append(fun.args, argvar)
+				if !argvar.optional() {
+					fun.reqargs[argvar.name] = true
+				}
+			}
+		}
+
+		// Also remember properties for the resulting return data structure.
+		// Emit documentation for the property if available
+		p, err := g.propertyVariable(path.Results(), arg, resource.Schema(), info.Fields,
+			"" /*attributeDoc*/, "", true /*out*/, entityDocs)
+		if err != nil {
+			return nil, err
+		}
+		if p != nil {
+			fun.rets = append(fun.rets, p)
+		}
+	}
+
+	// Produce the args/return types, if needed.
+	if len(fun.args) > 0 {
+		fun.argst = &propertyType{
+			kind:       kindObject,
+			name:       fmt.Sprintf("%sArgs", upperFirst(name.String())),
+			doc:        fmt.Sprintf("A collection of arguments for invoking %s.", name),
+			properties: fun.args,
+		}
+	}
+	if len(fun.rets) > 0 {
+		fun.retst = &propertyType{
+			kind:       kindObject,
+			name:       fmt.Sprintf("%sResult", upperFirst(name.String())),
+			doc:        fmt.Sprintf("A collection of values returned by %s.", name),
+			properties: fun.rets,
+		}
+	}
+
+	return fun, nil
 }
 
 // gatherDataSource returns the module name and members for the given data source function.
@@ -2006,6 +2206,22 @@ func resourceName(provider string, rawname string,
 	}
 	// otherwise, a custom transformation exists; use it.
 	return info.Tok.Name(), info.Tok.Module().Name()
+}
+
+func listResourceName(provider string, rawname string,
+	info *tfbridge.ListResourceInfo,
+) (tokens.ModuleMemberName, tokens.ModuleName) {
+	if info == nil || info.Tok == "" {
+		// default transformations.
+		nameAndModule := withoutPackageName(provider, rawname) // strip off the pkg prefix.
+		pulumiName := tfbridge.TerraformToPulumiNameV2(nameAndModule, nil, nil)
+		moduleName := tokens.ModuleName(nameAndModule)
+		memberName := "list" + upperFirst(pulumiName)
+		return tokens.ModuleMemberName(memberName), moduleName
+	}
+
+	// otherwise, a custom transformation exists; use it.
+	return tokens.ModuleMemberName(info.Tok.Name()), info.Tok.Module().Name()
 }
 
 // withoutPackageName strips off the package prefix from a raw name.
