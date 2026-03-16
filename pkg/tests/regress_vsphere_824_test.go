@@ -1,0 +1,141 @@
+package tests
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+)
+
+// The test is set up to reproduce https://github.com/pulumi/pulumi-vsphere/issues/824
+func Test_RegressVSphere824(t *testing.T) {
+	t.Parallel()
+
+	subResourceSchema := map[string]*schema.Schema{
+		"label": {
+			Type:     schema.TypeString,
+			Required: true,
+		},
+		"datastore_id": {
+			Type:     schema.TypeString,
+			Optional: true,
+		},
+	}
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"disk": {
+				Type:        schema.TypeList,
+				Optional:    true,
+				Computed:    true,
+				Description: "A specification for a virtual disk device on this virtual machine.",
+				MaxItems:    60,
+				Elem:        &schema.Resource{Schema: subResourceSchema},
+			},
+		},
+	}
+
+	tfp := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{"prov_test": res},
+	}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	program1 := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      disks:
+        - label: label1
+          datastoreId: ds1
+        - label: label2
+          datastoreId: ds2
+    options:
+      ignoreChanges:
+        - "disks[*].datastoreId"
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program1)
+
+	out := pt.Up(t)
+	t.Logf("# update 1: %v", out.StdErr+out.StdOut)
+
+	d := pt.ExportStack(t)
+	text, err := json.MarshalIndent(d, "", "  ")
+	require.NoError(t, err)
+	t.Logf("STATE: %s", text)
+
+	program2 := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      disks:
+        - label: label1
+          datastoreId: ds1
+        - label: label2
+          datastoreId: ds2
+        - label: label3
+          datastoreId: ds3
+    options:
+      ignoreChanges:
+        - "disks[*].datastoreId"
+`
+
+	pp := func(j json.RawMessage) string {
+		var buf bytes.Buffer
+		err := json.Indent(&buf, j, "", "  ")
+		if err != nil {
+			return string(j)
+		}
+		return buf.String()
+	}
+
+	for _, e := range pt.GrpcLog(t).Entries {
+		t.Logf("%q:\n%s\n=> %s", e.Method, pp(e.Request), pp(e.Response))
+	}
+
+	err = os.WriteFile(filepath.Join(pt.WorkingDir(), "Pulumi.yaml"), []byte(program2), 0655)
+	require.NoError(t, err)
+
+	pt.ClearGrpcLog(t)
+
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, un-comment:
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
+
+	out2, err := pt.CurrentStack().Up(context.Background(),
+		optup.DebugLogging(debugOpts),
+	)
+
+	t.Logf("GRPC entries: %d", len(pt.GrpcLog(t).Entries))
+
+	for _, e := range pt.GrpcLog(t).Entries {
+		t.Logf("%q:\n%s\n=> %s", e.Method, pp(e.Request), pp(e.Response))
+	}
+
+	t.Logf("# update 2: %v", out2.StdErr+out2.StdOut)
+
+	t.Logf("PULUMI VERSION %v", pt.CurrentStack().Workspace().PulumiCommand().Version())
+	require.NoError(t, err)
+}
