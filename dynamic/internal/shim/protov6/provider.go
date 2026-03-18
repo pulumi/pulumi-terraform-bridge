@@ -23,6 +23,8 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/grpcutil"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/protov6/translate"
@@ -197,6 +199,12 @@ func (p shimProvider) MoveResourceState(
 		p.remote.MoveResourceState,
 		translate.MoveResourceStateRequest(req),
 		translate.MoveResourceStateResponse)
+}
+
+func (p shimProvider) GenerateResourceConfig(
+	ctx context.Context, req *tfprotov6.GenerateResourceConfigRequest,
+) (*tfprotov6.GenerateResourceConfigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateResourceConfig not implemented")
 }
 
 func (p shimProvider) ReadDataSource(
