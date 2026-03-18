@@ -71,7 +71,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("someOutput", aResource.Result)
+		ctx.Export("someOutput", pulumi.Any(aResource.Result))
 		return nil
 	})
 }
