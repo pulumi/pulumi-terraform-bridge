@@ -92,6 +92,7 @@ func TestPFTransformOutputs(t *testing.T) {
 		    "id": "0",
 		    "urn": "urn:pulumi:dev::teststack::testbridge:index/testres:Testcompres::exres",
 		    "olds": {
+                      "id": "0",
                       "ecdsacurve": "P384"
 		    },
 		    "news": {
@@ -221,6 +222,7 @@ func TestPFTransformFromState(t *testing.T) {
 		    "id": "0",
 		    "urn": "urn:pulumi:dev::teststack::assert:index/echo:Echo::exres",
 		    "olds": {
+		      "id": "0",
 		      "stringPropertyValue": "OLD"
 		    },
 		    "news": {

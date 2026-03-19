@@ -467,7 +467,7 @@ func TestPFDetailedDiffSetComputedBlock(t *testing.T) {
 								Computed: true,
 								Optional: true,
 								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.UseStateForUnknown(),
+									stringplanmodifier.UseNonNullStateForUnknown(),
 								},
 							},
 						},
@@ -510,7 +510,7 @@ func TestPFDetailedDiffSetComputedBlock(t *testing.T) {
 								Computed: true,
 								Optional: true,
 								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.UseStateForUnknown(),
+									stringplanmodifier.UseNonNullStateForUnknown(),
 								},
 							},
 						},
@@ -541,7 +541,7 @@ func TestPFDetailedDiffSetComputedBlock(t *testing.T) {
 								Computed: true,
 								Optional: true,
 								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.UseStateForUnknown(),
+									stringplanmodifier.UseNonNullStateForUnknown(),
 								},
 							},
 						},
@@ -564,7 +564,7 @@ func TestPFDetailedDiffSetComputedBlock(t *testing.T) {
 								Computed: true,
 								Optional: true,
 								PlanModifiers: []planmodifier.String{
-									stringplanmodifier.UseStateForUnknown(),
+									stringplanmodifier.UseNonNullStateForUnknown(),
 									stringplanmodifier.RequiresReplace(),
 								},
 							},

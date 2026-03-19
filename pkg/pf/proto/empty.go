@@ -161,3 +161,9 @@ func (emptyServer) ValidateEphemeralResourceConfig(
 ) (*tfprotov6.ValidateEphemeralResourceConfigResponse, error) {
 	return &tfprotov6.ValidateEphemeralResourceConfigResponse{}, nil
 }
+
+func (e emptyServer) GenerateResourceConfig(
+	context.Context, *tfprotov6.GenerateResourceConfigRequest,
+) (*tfprotov6.GenerateResourceConfigResponse, error) {
+	return &tfprotov6.GenerateResourceConfigResponse{}, nil
+}
