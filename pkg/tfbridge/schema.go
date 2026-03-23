@@ -1613,7 +1613,7 @@ func convertTfStringToFloat(stringValue string) (interface{}, error) {
 // signal that the caller should fall back to positional matching (e.g. for non-TypeSet schemas,
 // scalar set elements, or nil schemas).
 func matchSetElements(
-	oldArray, newArray []resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
+	oldArray, newArray []resource.PropertyValue, tfs shim.Schema,
 ) map[int]int {
 	if tfs == nil || tfs.Type() != shim.TypeSet {
 		return nil
@@ -1689,7 +1689,7 @@ func extractInputs(
 
 		// For TypeSet, match elements by content instead of position to handle
 		// cloud providers returning set elements in a different order.
-		indexMap := matchSetElements(oldArray, newArray, tfs, ps)
+		indexMap := matchSetElements(oldArray, newArray, tfs)
 
 		var result []resource.PropertyValue
 		for i := range oldArray {
