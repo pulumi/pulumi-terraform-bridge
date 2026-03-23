@@ -1608,11 +1608,69 @@ func convertTfStringToFloat(stringValue string) (interface{}, error) {
 	return floatVal, nil
 }
 
-func min(a int, b int) int {
-	if a < b {
-		return a
+// matchSetElements returns a mapping from old array indices to new array indices for TypeSet
+// arrays, using property-overlap scoring to find the best content-based match. Returns nil to
+// signal that the caller should fall back to positional matching (e.g. for non-TypeSet schemas,
+// scalar set elements, or nil schemas).
+func matchSetElements(
+	oldArray, newArray []resource.PropertyValue, tfs shim.Schema,
+) map[int]int {
+	if tfs == nil || tfs.Type() != shim.TypeSet {
+		return nil
 	}
-	return b
+	// Only match object elements — scalar sets have no keys to score on.
+	for _, v := range oldArray {
+		if !v.IsObject() {
+			return nil
+		}
+	}
+	for _, v := range newArray {
+		if !v.IsObject() {
+			return nil
+		}
+	}
+
+	type candidate struct {
+		oldIdx, newIdx, score int
+	}
+
+	var candidates []candidate
+	for oi, oldElem := range oldArray {
+		oldObj := oldElem.ObjectValue()
+		for ni, newElem := range newArray {
+			newObj := newElem.ObjectValue()
+			score := 0
+			for key, oldVal := range oldObj {
+				if newVal, ok := newObj[key]; ok {
+					// Key exists in both: +1 for presence, +2 more if values match.
+					score++
+					if oldVal.DeepEquals(newVal) {
+						score += 2
+					}
+				}
+			}
+			candidates = append(candidates, candidate{oi, ni, score})
+		}
+	}
+
+	// Sort by descending score for greedy matching.
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].score > candidates[j].score
+	})
+
+	result := make(map[int]int)
+	usedNew := make(map[int]bool)
+	usedOld := make(map[int]bool)
+	for _, c := range candidates {
+		if usedOld[c.oldIdx] || usedNew[c.newIdx] {
+			continue
+		}
+		result[c.oldIdx] = c.newIdx
+		usedOld[c.oldIdx] = true
+		usedNew[c.newIdx] = true
+	}
+
+	return result
 }
 
 func extractInputs(
@@ -1628,20 +1686,35 @@ func extractInputs(
 		etfs, eps := elemSchemas(tfs, ps)
 
 		oldArray, newArray := oldInput.ArrayValue(), newState.ArrayValue()
+
+		// For TypeSet, match elements by content instead of position to handle
+		// cloud providers returning set elements in a different order.
+		indexMap := matchSetElements(oldArray, newArray, tfs)
+
+		var result []resource.PropertyValue
 		for i := range oldArray {
-			if i >= len(newArray) {
+			newIdx := i // default: positional matching
+			if indexMap != nil {
+				var ok bool
+				newIdx, ok = indexMap[i]
+				if !ok {
+					// Old element has no match in new state (element was removed).
+					possibleDefault = false
+					continue
+				}
+			} else if i >= len(newArray) {
 				possibleDefault = false
 				break
 			}
 
-			var defaultElem bool
-			oldArray[i], defaultElem = extractInputs(oldArray[i], newArray[i], etfs, eps)
+			updated, defaultElem := extractInputs(oldArray[i], newArray[newIdx], etfs, eps)
 			if !defaultElem {
 				possibleDefault = false
 			}
+			result = append(result, updated)
 		}
 
-		return resource.NewArrayProperty(oldArray[:min(len(oldArray), len(newArray))]), possibleDefault
+		return resource.NewArrayProperty(result), possibleDefault
 	case oldInput.IsObject() && newState.IsObject():
 		oldMap, newMap := oldInput.ObjectValue(), newState.ObjectValue()
 
