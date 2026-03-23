@@ -1608,13 +1608,6 @@ func convertTfStringToFloat(stringValue string) (interface{}, error) {
 	return floatVal, nil
 }
 
-func min(a int, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // matchSetElements returns a mapping from old array indices to new array indices for TypeSet
 // arrays, using property-overlap scoring to find the best content-based match. Returns nil to
 // signal that the caller should fall back to positional matching (e.g. for non-TypeSet schemas,
