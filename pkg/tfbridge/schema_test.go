@@ -4387,3 +4387,286 @@ func TestGetAssetTable(t *testing.T) {
 		assert.Empty(t, assets)
 	})
 }
+
+// TestRefreshExtractInputsTypeSetReorder verifies that extractInputs correctly matches TypeSet
+// elements by content rather than position when the cloud provider returns them in a different order.
+// This is the fix for https://github.com/pulumi/pulumi-terraform-bridge/issues/3383.
+func TestRefreshExtractInputsTypeSetReorder(t *testing.T) {
+	t.Parallel()
+
+	// Schema for Cloud Run v2-style env vars: each has "name" plus either "value" or "value_source".
+	envSetSchema := func() shim.SchemaMap {
+		return schemaMap(map[string]*schema.Schema{
+			"envs": {
+				Type:     shim.TypeSet,
+				Optional: true,
+				Elem: (&schema.Resource{
+					Schema: schemaMap(map[string]*schema.Schema{
+						"name": {
+							Type: shim.TypeString,
+						},
+						"value": {
+							Type:     shim.TypeString,
+							Optional: true,
+						},
+						"value_source": {
+							Type:     shim.TypeString,
+							Optional: true,
+						},
+					}),
+				}).Shim(),
+			},
+		})
+	}
+
+	// Same schema but as TypeList (for regression test).
+	envListSchema := func() shim.SchemaMap {
+		return schemaMap(map[string]*schema.Schema{
+			"envs": {
+				Type:     shim.TypeList,
+				Optional: true,
+				Elem: (&schema.Resource{
+					Schema: schemaMap(map[string]*schema.Schema{
+						"name": {
+							Type: shim.TypeString,
+						},
+						"value": {
+							Type:     shim.TypeString,
+							Optional: true,
+						},
+						"value_source": {
+							Type:     shim.TypeString,
+							Optional: true,
+						},
+					}),
+				}).Shim(),
+			},
+		})
+	}
+
+	t.Run("cloud_run_env_var_reorder", func(t *testing.T) {
+		t.Parallel()
+
+		// User defined: ZOO_MODE (value), APP_SECRET (value_source)
+		oldInputs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":         resource.NewStringProperty("APP_SECRET"),
+					"value_source": resource.NewStringProperty("projects/p/secrets/s/versions/latest"),
+				}),
+			}),
+		}
+
+		// GCP returns alphabetically: APP_SECRET first, ZOO_MODE second.
+		// Note: GCP also adds value="" on entries with value_source (TF Default: "").
+		outs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":         resource.NewStringProperty("APP_SECRET"),
+					"value":        resource.NewStringProperty(""),
+					"value_source": resource.NewStringProperty("projects/p/secrets/s/versions/latest"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+			}),
+		}
+
+		actual, err := ExtractInputsFromOutputs(oldInputs, outs, envSetSchema(), nil, true)
+		require.NoError(t, err)
+
+		// ZOO_MODE should keep its "value" and APP_SECRET should keep its "value_source".
+		// Neither should leak fields from the other.
+		zooMode := actual["envs"].ArrayValue()[0].ObjectValue()
+		assert.Equal(t, "ZOO_MODE", zooMode["name"].StringValue())
+		assert.Equal(t, "production", zooMode["value"].StringValue())
+		_, hasValueSource := zooMode["value_source"]
+		assert.False(t, hasValueSource, "ZOO_MODE should not have value_source")
+
+		appSecret := actual["envs"].ArrayValue()[1].ObjectValue()
+		assert.Equal(t, "APP_SECRET", appSecret["name"].StringValue())
+		assert.Equal(t, "projects/p/secrets/s/versions/latest", appSecret["value_source"].StringValue())
+	})
+
+	t.Run("simple_reorder_three_elements", func(t *testing.T) {
+		t.Parallel()
+
+		oldInputs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("C_VAR"),
+					"value": resource.NewStringProperty("c_val"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("A_VAR"),
+					"value": resource.NewStringProperty("a_val"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("B_VAR"),
+					"value": resource.NewStringProperty("b_val"),
+				}),
+			}),
+		}
+
+		// Cloud returns sorted: A, B, C
+		outs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("A_VAR"),
+					"value": resource.NewStringProperty("a_val"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("B_VAR"),
+					"value": resource.NewStringProperty("b_val"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("C_VAR"),
+					"value": resource.NewStringProperty("c_val"),
+				}),
+			}),
+		}
+
+		actual, err := ExtractInputsFromOutputs(oldInputs, outs, envSetSchema(), nil, true)
+		require.NoError(t, err)
+
+		// Should preserve user's original ordering: C, A, B
+		envs := actual["envs"].ArrayValue()
+		require.Len(t, envs, 3)
+		assert.Equal(t, "C_VAR", envs[0].ObjectValue()["name"].StringValue())
+		assert.Equal(t, "A_VAR", envs[1].ObjectValue()["name"].StringValue())
+		assert.Equal(t, "B_VAR", envs[2].ObjectValue()["name"].StringValue())
+	})
+
+	t.Run("typelist_still_positional", func(t *testing.T) {
+		t.Parallel()
+
+		// With TypeList, positional matching should be used (old behavior).
+		oldInputs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":         resource.NewStringProperty("APP_SECRET"),
+					"value_source": resource.NewStringProperty("secret_ref"),
+				}),
+			}),
+		}
+
+		// State comes back in different order (positional matching pairs wrong elements).
+		outs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":         resource.NewStringProperty("APP_SECRET"),
+					"value":        resource.NewStringProperty(""),
+					"value_source": resource.NewStringProperty("secret_ref"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+			}),
+		}
+
+		actual, err := ExtractInputsFromOutputs(oldInputs, outs, envListSchema(), nil, true)
+		require.NoError(t, err)
+
+		// TypeList uses positional matching, so old[0] pairs with new[0] and old[1] with new[1].
+		// This means old[0] (ZOO_MODE) gets name=APP_SECRET from new[0], and old[1] loses value_source.
+		envs := actual["envs"].ArrayValue()
+		require.Len(t, envs, 2)
+		// Positional matching: old[0] gets updated with new[0]'s values.
+		assert.Equal(t, "APP_SECRET", envs[0].ObjectValue()["name"].StringValue())
+		// old[1] (APP_SECRET with value_source) matched with new[1] (ZOO_MODE without value_source)
+		// => value_source gets deleted by extractInputsObject
+		assert.Equal(t, "ZOO_MODE", envs[1].ObjectValue()["name"].StringValue())
+		_, hasValueSource := envs[1].ObjectValue()["value_source"]
+		assert.False(t, hasValueSource, "TypeList positional matching deletes mismatched keys")
+	})
+
+	t.Run("set_with_removed_element", func(t *testing.T) {
+		t.Parallel()
+
+		oldInputs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("A_VAR"),
+					"value": resource.NewStringProperty("a"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("B_VAR"),
+					"value": resource.NewStringProperty("b"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("C_VAR"),
+					"value": resource.NewStringProperty("c"),
+				}),
+			}),
+		}
+
+		// B_VAR removed from cloud state.
+		outs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("A_VAR"),
+					"value": resource.NewStringProperty("a"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("C_VAR"),
+					"value": resource.NewStringProperty("c"),
+				}),
+			}),
+		}
+
+		actual, err := ExtractInputsFromOutputs(oldInputs, outs, envSetSchema(), nil, true)
+		require.NoError(t, err)
+
+		// B_VAR should be dropped; A and C should survive.
+		envs := actual["envs"].ArrayValue()
+		require.Len(t, envs, 2)
+		names := []string{envs[0].ObjectValue()["name"].StringValue(), envs[1].ObjectValue()["name"].StringValue()}
+		assert.Contains(t, names, "A_VAR")
+		assert.Contains(t, names, "C_VAR")
+	})
+
+	t.Run("set_with_added_element", func(t *testing.T) {
+		t.Parallel()
+
+		oldInputs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("A_VAR"),
+					"value": resource.NewStringProperty("a"),
+				}),
+			}),
+		}
+
+		// Cloud added B_VAR.
+		outs := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("A_VAR"),
+					"value": resource.NewStringProperty("a"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("B_VAR"),
+					"value": resource.NewStringProperty("b"),
+				}),
+			}),
+		}
+
+		actual, err := ExtractInputsFromOutputs(oldInputs, outs, envSetSchema(), nil, true)
+		require.NoError(t, err)
+
+		// Refresh preserves old inputs — extra cloud element not added.
+		envs := actual["envs"].ArrayValue()
+		require.Len(t, envs, 1)
+		assert.Equal(t, "A_VAR", envs[0].ObjectValue()["name"].StringValue())
+	})
+}
