@@ -4670,3 +4670,95 @@ func TestRefreshExtractInputsTypeSetReorder(t *testing.T) {
 		assert.Equal(t, "A_VAR", envs[0].ObjectValue()["name"].StringValue())
 	})
 }
+
+// TestCheckMakeTerraformInputsTypeSetReorder verifies that makeTerraformInputs correctly matches
+// TypeSet elements by content rather than position when old state has a different order than new inputs.
+// See https://github.com/pulumi/pulumi-terraform-bridge/issues/3392.
+func TestCheckMakeTerraformInputsTypeSetReorder(t *testing.T) {
+	t.Parallel()
+
+	envSetSchema := schemaMap(map[string]*schema.Schema{
+		"envs": {
+			Type:     shim.TypeSet,
+			Optional: true,
+			Elem: (&schema.Resource{
+				Schema: schemaMap(map[string]*schema.Schema{
+					"name": {
+						Type: shim.TypeString,
+					},
+					"value": {
+						Type:     shim.TypeString,
+						Optional: true,
+					},
+					"value_source": {
+						Type:     shim.TypeString,
+						Optional: true,
+					},
+				}),
+			}).Shim(),
+		},
+	})
+
+	t.Run("cloud_run_oneof_corruption", func(t *testing.T) {
+		t.Parallel()
+
+		// Old state has GCP's alphabetical order (from a previous refresh with the old bridge).
+		// APP_SECRET has both value="" (TF default) and value_source set.
+		olds := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":         resource.NewStringProperty("APP_SECRET"),
+					"value":        resource.NewStringProperty(""),
+					"valueSource":  resource.NewStringProperty("projects/p/secrets/s/versions/latest"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("DATABASE_URL"),
+					"value": resource.NewStringProperty("postgres://localhost:5432/db"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+			}),
+		}
+
+		// User's code has a different order: ZOO_MODE, APP_SECRET (valueSource only), DATABASE_URL.
+		news := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":        resource.NewStringProperty("APP_SECRET"),
+					"valueSource": resource.NewStringProperty("projects/p/secrets/s/versions/latest"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("DATABASE_URL"),
+					"value": resource.NewStringProperty("postgres://localhost:5432/db"),
+				}),
+			}),
+		}
+
+		result, _, err := makeTerraformInputsForConfig(olds, news, envSetSchema, nil)
+		require.NoError(t, err)
+
+		// No env var should have both "value" and "value_source" set (oneof violation).
+		envs := result["envs"]
+		envsArr, ok := envs.([]interface{})
+		require.True(t, ok, "envs should be an array")
+		require.Len(t, envsArr, 3)
+
+		for _, env := range envsArr {
+			envMap, ok := env.(map[string]interface{})
+			require.True(t, ok)
+			name := envMap["name"].(string)
+			hasValue := envMap["value"] != nil && envMap["value"] != ""
+			hasValueSource := envMap["value_source"] != nil && envMap["value_source"] != ""
+			if hasValue && hasValueSource {
+				t.Errorf("env %q has both value=%q and value_source=%q — oneof violation",
+					name, envMap["value"], envMap["value_source"])
+			}
+		}
+	})
+}

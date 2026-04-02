@@ -456,21 +456,29 @@ func (ctx *conversionContext) makeTerraformInput(
 			return v.StringValue(), nil
 		}
 	case v.IsArray():
-		var oldArr []resource.PropertyValue
+		var oldElems []resource.PropertyValue
 		if old.IsArray() {
-			oldArr = old.ArrayValue()
+			oldElems = old.ArrayValue()
 		}
 
-		etfs, eps := elemSchemas(tfs, ps)
+		// For TypeSet, match elements by content rather than position to handle
+		// reordered state from cloud providers.
+		setMapping := matchSetElements(v.ArrayValue(), oldElems, tfs)
+
+		elemTFSchema, elemPulumiInfo := elemSchemas(tfs, ps)
 
 		var arr []interface{}
 		for i, elem := range v.ArrayValue() {
 			var oldElem resource.PropertyValue
-			if i < len(oldArr) {
-				oldElem = oldArr[i]
+			if setMapping != nil {
+				if matchedIdx, ok := setMapping[i]; ok {
+					oldElem = oldElems[matchedIdx]
+				}
+			} else if i < len(oldElems) {
+				oldElem = oldElems[i]
 			}
 			elemName := fmt.Sprintf("%v[%v]", name, i)
-			e, err := ctx.makeTerraformInput(elemName, oldElem, elem, etfs, eps)
+			e, err := ctx.makeTerraformInput(elemName, oldElem, elem, elemTFSchema, elemPulumiInfo)
 			if err != nil {
 				return nil, err
 			}
