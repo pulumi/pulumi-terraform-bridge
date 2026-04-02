@@ -4707,9 +4707,9 @@ func TestCheckMakeTerraformInputsTypeSetReorder(t *testing.T) {
 		olds := resource.PropertyMap{
 			"envs": resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.PropertyMap{
-					"name":         resource.NewStringProperty("APP_SECRET"),
-					"value":        resource.NewStringProperty(""),
-					"valueSource":  resource.NewStringProperty("projects/p/secrets/s/versions/latest"),
+					"name":        resource.NewStringProperty("APP_SECRET"),
+					"value":       resource.NewStringProperty(""),
+					"valueSource": resource.NewStringProperty("projects/p/secrets/s/versions/latest"),
 				}),
 				resource.NewObjectProperty(resource.PropertyMap{
 					"name":  resource.NewStringProperty("DATABASE_URL"),
