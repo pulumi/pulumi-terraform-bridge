@@ -135,7 +135,7 @@ func ComputeTokens(info *info.Provider, opts Strategy) error {
 	var errs multierror.Error
 
 	if !info.SkipDefaultFixups {
-		err := applyDefaultFixups(info)
+		err := applyDefaultFixups(info, opts.Resource)
 		if err != nil {
 			errs.Errors = append(errs.Errors, fmt.Errorf("default fixups:\n%w", err))
 		}

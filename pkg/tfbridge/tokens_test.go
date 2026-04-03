@@ -176,6 +176,29 @@ func TestComputeTokensRespectsIgnoreMappingsForProviderResource(t *testing.T) {
 	assert.Empty(t, info.Resources)
 }
 
+func TestComputeTokensRespectsStrategyIgnoreForProviderResource(t *testing.T) {
+	t.Parallel()
+
+	info := tfbridge.ProviderInfo{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_provider": (&schema.Resource{
+					Schema: schema.SchemaMap{},
+				}).Shim(),
+			},
+		}).Shim(),
+	}
+
+	err := info.ComputeTokens(tokens.SingleModule(
+		info.GetResourcePrefix(), "index", tokens.MakeStandard("test"),
+	).Ignore("provider"))
+	require.NoError(t, err)
+
+	assert.NotContains(t, info.Resources, "test_provider")
+	assert.Empty(t, info.Resources)
+}
+
 func TestTokensCornerCases(t *testing.T) {
 	t.Parallel()
 

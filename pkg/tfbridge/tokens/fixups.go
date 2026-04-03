@@ -31,15 +31,15 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func applyDefaultFixups(p *info.Provider) error {
+func applyDefaultFixups(p *info.Provider, resourceStrategy ResourceStrategy) error {
 	fixCtx := newFixCtx(p)
 	if p.Name == "" {
-		return fixMissingIDs(fixCtx, p)
+		return fixMissingIDs(fixCtx, p, resourceStrategy)
 	}
 	return errors.Join(
-		fixPropertyConflict(fixCtx, p),
-		fixMissingIDs(fixCtx, p),
-		fixProviderResource(p),
+		fixPropertyConflict(fixCtx, p, resourceStrategy),
+		fixMissingIDs(fixCtx, p, resourceStrategy),
+		fixProviderResource(fixCtx, p, resourceStrategy),
 	)
 }
 
@@ -61,7 +61,7 @@ type resourceInfo struct {
 	TFName string
 }
 
-func fixMissingIDs(fixCtx fixCtx, p *info.Provider) error {
+func fixMissingIDs(fixCtx fixCtx, p *info.Provider, resourceStrategy ResourceStrategy) error {
 	getIDType := func(r *info.Resource) ptokens.Type {
 		s := r.Fields["id"]
 		if s == nil {
@@ -69,7 +69,7 @@ func fixMissingIDs(fixCtx fixCtx, p *info.Provider) error {
 		}
 		return s.Type
 	}
-	return walkResources(fixCtx, p, func(r resourceInfo) error {
+	return walkResources(fixCtx, p, resourceStrategy, func(r resourceInfo) error {
 		id, hasID := r.TF.Schema().GetOk("id")
 		ok := hasID &&
 			(id.Type() == shim.TypeString || getIDType(r.Schema) == "string") &&
@@ -81,8 +81,8 @@ func fixMissingIDs(fixCtx fixCtx, p *info.Provider) error {
 	})
 }
 
-func fixPropertyConflict(fixCtx fixCtx, p *info.Provider) error {
-	return walkResources(fixCtx, p, func(r resourceInfo) error {
+func fixPropertyConflict(fixCtx fixCtx, p *info.Provider, resourceStrategy ResourceStrategy) error {
+	return walkResources(fixCtx, p, resourceStrategy, func(r resourceInfo) error {
 		var retError []error
 		r.TF.Schema().Range(func(key string, _ shim.Schema) bool {
 			if fix := badPropertyName(p.Name, p.GetResourcePrefix(), key); fix != nil {
@@ -206,13 +206,21 @@ func fixPulumi() fixupProperty {
 // fixProviderResource renames any resource that would otherwise be called
 // `Provider`, since that conflicts with the package's actual `Provider`
 // resource.
-func fixProviderResource(p *info.Provider) error {
+func fixProviderResource(fixCtx fixCtx, p *info.Provider, resourceStrategy ResourceStrategy) error {
 	if p.Name == "" {
 		return nil
 	}
 
 	tfToken := p.GetResourcePrefix() + "_provider"
-	if _, ok := newFixCtx(p).ignoredMappings[tfToken]; ok {
+	if _, ok := fixCtx.ignoredMappings[tfToken]; ok {
+		return nil
+	}
+
+	applies, err := resourceStrategyApplies(tfToken, resourceStrategy)
+	if err != nil {
+		return err
+	}
+	if !applies {
 		return nil
 	}
 
@@ -234,12 +242,27 @@ func fixProviderResource(p *info.Provider) error {
 		return nil
 	}
 
-	return SingleModule(
-		p.GetResourcePrefix(), "index", MakeStandard(p.Name),
-	).Resource(p.GetResourcePrefix()+"_"+p.Name+"_provider", res)
+	candidateTokens := []string{
+		p.GetResourcePrefix() + "_" + p.Name + "_provider",
+		p.GetResourcePrefix() + "_provider_resource",
+		p.GetResourcePrefix() + "_" + p.Name + "_provider_resource",
+	}
+	for _, candidate := range candidateTokens {
+		if _, exists := p.P.ResourcesMap().GetOk(candidate); exists {
+			continue
+		}
+
+		return SingleModule(
+			p.GetResourcePrefix(), "index", MakeStandard(p.Name),
+		).Resource(candidate, res)
+	}
+
+	return fmt.Errorf("no available provider resource rename, tried %#v", candidateTokens)
 }
 
-func walkResources(fixCtx fixCtx, p *info.Provider, f func(resourceInfo) error) error {
+func walkResources(
+	fixCtx fixCtx, p *info.Provider, resourceStrategy ResourceStrategy, f func(resourceInfo) error,
+) error {
 	var errs []error
 
 	for key, tf := range p.P.ResourcesMap().Range {
@@ -249,8 +272,18 @@ func walkResources(fixCtx fixCtx, p *info.Provider, f func(resourceInfo) error) 
 		if tf == nil {
 			continue
 		}
+		applies, err := resourceStrategyApplies(key, resourceStrategy)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", key, err))
+			continue
+		}
+		if !applies {
+			continue
+		}
+
 		res, isPresent := p.Resources[key]
-		if !isPresent {
+		shouldStore := !isPresent || res == nil
+		if shouldStore {
 			res = &info.Resource{}
 		}
 		if err := f(resourceInfo{
@@ -261,7 +294,7 @@ func walkResources(fixCtx fixCtx, p *info.Provider, f func(resourceInfo) error) 
 			errs = append(errs, fmt.Errorf("%s: %w", key, err))
 		}
 
-		if !isPresent && !reflect.ValueOf(*res).IsZero() {
+		if shouldStore && !reflect.ValueOf(*res).IsZero() {
 			if p.Resources == nil {
 				p.Resources = map[string]*info.Resource{}
 			}
@@ -270,6 +303,19 @@ func walkResources(fixCtx fixCtx, p *info.Provider, f func(resourceInfo) error) 
 	}
 
 	return errors.Join(errs...)
+}
+
+func resourceStrategyApplies(tfToken string, strategy ResourceStrategy) (bool, error) {
+	if strategy == nil {
+		return false, nil
+	}
+
+	scratch := &info.Resource{}
+	if err := strategy(tfToken, scratch); err != nil {
+		return false, err
+	}
+
+	return !reflect.ValueOf(*scratch).IsZero(), nil
 }
 
 func missingIDComputeID() info.ComputeID {
