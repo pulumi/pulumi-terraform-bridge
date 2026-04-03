@@ -26,8 +26,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 	"text/template"
+	"time"
 
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
