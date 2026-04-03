@@ -181,6 +181,11 @@ type Provider struct {
 
 	// Check generated schema for dangling references. Newer providers should opt into this.
 	NoDanglingReferences bool
+
+	// SkipDefaultFixups temporarily disables the default bridge fixup pass that
+	// normally runs during ComputeTokens. This is a short-term escape hatch for
+	// isolating rollout regressions and is not intended as a long-term setting.
+	SkipDefaultFixups bool
 }
 
 // HclExampler represents a supplemental HCL example for a given resource or function.
@@ -1297,6 +1302,7 @@ type MarshallableProvider struct {
 	Resources         map[string]*MarshallableResource   `json:"resources,omitempty"`
 	DataSources       map[string]*MarshallableDataSource `json:"dataSources,omitempty"`
 	TFProviderVersion string                             `json:"tfProviderVersion,omitempty"`
+	SkipDefaultFixups bool                               `json:"skipDefaultFixups,omitempty"`
 }
 
 // MarshalProvider converts a Pulumi ProviderInfo value into a MarshallableProviderInfo value.
@@ -1322,6 +1328,7 @@ func MarshalProvider(p *Provider) *MarshallableProvider {
 		Resources:         resources,
 		DataSources:       dataSources,
 		TFProviderVersion: p.TFProviderVersion,
+		SkipDefaultFixups: p.SkipDefaultFixups,
 	}
 
 	return &info
@@ -1350,6 +1357,7 @@ func (m *MarshallableProvider) Unmarshal() *Provider {
 		Resources:         resources,
 		DataSources:       dataSources,
 		TFProviderVersion: m.TFProviderVersion,
+		SkipDefaultFixups: m.SkipDefaultFixups,
 	}
 
 	return &info

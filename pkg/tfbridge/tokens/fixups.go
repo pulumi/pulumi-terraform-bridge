@@ -12,35 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// package fixup applies fixes to a [info.Provider] to ensure that it can generate a valid
-// schema and that the schema can generate valid SDKs in all all languages.
-//
-// package fixup is still in development and may expose breaking changes in minor
-// versions.
-package fixup
+package tokens
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	ptokens "github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
-	tftokens "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/internal/naming"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-// Default applies the default set of fixups to p.
-//
-// The set of fixups applied may expand over time, but it should not effect providers that
-// correctly compile in all languages.
-func Default(p *info.Provider) error {
+func applyDefaultFixups(p *info.Provider) error {
 	fixCtx := newFixCtx(p)
+	if p.Name == "" {
+		return fixMissingIDs(fixCtx, p)
+	}
 	return errors.Join(
 		fixPropertyConflict(fixCtx, p),
 		fixMissingIDs(fixCtx, p),
@@ -60,65 +55,42 @@ type fixCtx struct {
 	ignoredMappings map[string]struct{}
 }
 
-// fixProviderResource renames any resource that would otherwise be called `Provider`,
-// since that conflicts with the package's actual `Provider` resource.
-func fixProviderResource(p *info.Provider) error {
-	tfToken := p.GetResourcePrefix() + "_provider"
-	_, ok := p.P.ResourcesMap().GetOk(tfToken)
-	if !ok {
-		// No problematic Provider resource.
-		return nil
-	}
-
-	res := ensureResources(p)[tfToken]
-	if res == nil {
-		res = &info.Resource{}
-		ensureResources(p)[tfToken] = res
-	}
-	if res.Tok != "" {
-		return nil // The token has already been renamed, so we are done.
-	}
-
-	// We need to rename the token.
-	return tftokens.SingleModule(
-		p.GetResourcePrefix(), "index", tftokens.MakeStandard(p.Name),
-	).Resource(p.GetResourcePrefix()+"_"+p.Name+"_provider", res)
+type resourceInfo struct {
+	Schema *info.Resource
+	TF     shim.Resource
+	TFName string
 }
 
 func fixMissingIDs(fixCtx fixCtx, p *info.Provider) error {
-	getIDType := func(r *info.Resource) tokens.Type {
+	getIDType := func(r *info.Resource) ptokens.Type {
 		s := r.Fields["id"]
 		if s == nil {
 			return ""
 		}
 		return s.Type
 	}
-	return walkResources(fixCtx, p, func(r tfbridge.Resource) error {
+	return walkResources(fixCtx, p, func(r resourceInfo) error {
 		id, hasID := r.TF.Schema().GetOk("id")
 		ok := hasID &&
 			(id.Type() == shim.TypeString || getIDType(r.Schema) == "string") &&
 			id.Computed()
-		if !ok {
-			r.Schema.ComputeID = tfbridge.MissingIDComputeID()
+		if !ok && r.Schema.ComputeID == nil {
+			r.Schema.ComputeID = missingIDComputeID()
 		}
 		return nil
 	})
 }
 
 func fixPropertyConflict(fixCtx fixCtx, p *info.Provider) error {
-	if p.Name == "" {
-		return fmt.Errorf("must set p.Name")
-	}
-	return walkResources(fixCtx, p, func(r tfbridge.Resource) error {
+	return walkResources(fixCtx, p, func(r resourceInfo) error {
 		var retError []error
-		r.TF.Schema().Range(func(key string, value shim.Schema) bool {
+		r.TF.Schema().Range(func(key string, _ shim.Schema) bool {
 			if fix := badPropertyName(p.Name, p.GetResourcePrefix(), key); fix != nil {
 				err := fix(r)
 				if err != nil {
 					retError = append(retError, fmt.Errorf("%s: %w", key, err))
 				}
 			}
-
 			return true
 		})
 		return errors.Join(retError...)
@@ -138,7 +110,7 @@ func getField(i *map[string]*info.Schema, name string) *info.Schema {
 	return v
 }
 
-type fixupProperty = func(tfbridge.Resource) error
+type fixupProperty func(resourceInfo) error
 
 func badPropertyName(providerName, tokenPrefix, key string) fixupProperty {
 	switch key {
@@ -153,7 +125,7 @@ func badPropertyName(providerName, tokenPrefix, key string) fixupProperty {
 	}
 }
 
-func fixID(providerName string, tokenPrefix string) fixupProperty {
+func fixID(providerName, tokenPrefix string) fixupProperty {
 	getResourceName := func(tk string) string {
 		name := strings.TrimPrefix(tk, tokenPrefix)
 		if name == "" {
@@ -161,25 +133,17 @@ func fixID(providerName string, tokenPrefix string) fixupProperty {
 		}
 		return strings.TrimLeft(name, "_")
 	}
-	return func(r tfbridge.Resource) error {
+	return func(r resourceInfo) error {
 		tfSchema := r.TF.Schema()
 		tfIDProperty, ok := tfSchema.GetOk("id")
 		if !ok {
-			// could not find an ID
 			return nil
 		}
 
-		// If the user has over-written the field, don't change that.
 		if f := r.Schema.Fields["id"]; f != nil && f.Name != "" {
 			return nil
 		}
 
-		// We have an ordered list of names to attempt when we alias ID.
-		//
-		// 1. "<resource_name>_id"
-		// 2. "<provider_name>_<resource_name>_id"
-		// 4. "resource_id"
-		// 3. "<provider_name>_id"
 		candidateNames := []string{
 			getResourceName(r.TFName) + "_id",
 			strings.ReplaceAll(providerName, "-", "_") + "_" + getResourceName(r.TFName) + "_id",
@@ -192,28 +156,16 @@ func fixID(providerName string, tokenPrefix string) fixupProperty {
 				continue
 			}
 
-			// If either id.Optional or id.Required are set, then the provider allows
-			// (or requires) the user to set "id" as an input. Pulumi does not allow
-			// that, so we alias "id".
-			// Alternatively if the type of id is not string, we'll replace the property
-			// so we need to alias the original property.
 			if !tfIDProperty.Optional() && !tfIDProperty.Required() && tfIDProperty.Type() == shim.TypeString {
 				return nil
 			}
 
-			newIDField := tfbridge.TerraformToPulumiNameV2(proposedIDFieldName, tfSchema, r.Schema.Fields)
+			newIDField := naming.TerraformToPulumiNameV2(proposedIDFieldName, tfSchema, r.Schema.Fields)
 			getField(&r.Schema.Fields, "id").Name = newIDField
 
-			// We are altering the original ID because it is valid for the
-			// user to set it. As long as it will be present as an output, we
-			// should still be able to use it as the actual ID.
-			//
-			// We expect newIDField to be present in the output space when:
-			//
-			// 1. The user *must* set it.
-			// 2. The user *may* set it, but if they don't then the provider will.
-			if tfIDProperty.Required() || (tfIDProperty.Optional() && tfIDProperty.Computed()) {
-				r.Schema.ComputeID = tfbridge.DelegateIDField(resource.PropertyKey(newIDField), providerName,
+			if (tfIDProperty.Required() || (tfIDProperty.Optional() && tfIDProperty.Computed())) &&
+				r.Schema.ComputeID == nil {
+				r.Schema.ComputeID = delegateIDField(resource.PropertyKey(newIDField), providerName,
 					"https://github.com/pulumi/pulumi-terraform-provider")
 			}
 
@@ -225,52 +177,83 @@ func fixID(providerName string, tokenPrefix string) fixupProperty {
 }
 
 func fixURN(providerName string) fixupProperty {
-	return func(r tfbridge.Resource) error {
+	return func(r resourceInfo) error {
 		s := r.TF.Schema()
 		v := providerName + "_urn"
 		if _, ok := s.GetOk(v); ok {
 			return fmt.Errorf("no available new name, tried %q", v)
 		}
 		if f := getField(&r.Schema.Fields, "urn"); f.Name == "" {
-			f.Name = tfbridge.TerraformToPulumiNameV2(v, s, r.Schema.Fields)
+			f.Name = naming.TerraformToPulumiNameV2(v, s, r.Schema.Fields)
 		}
 		return nil
 	}
 }
 
 func fixPulumi() fixupProperty {
-	return func(resource tfbridge.Resource) error {
+	return func(resource resourceInfo) error {
 		schemaMap := resource.TF.Schema()
 		if _, ok := schemaMap.GetOk("pulumi_info"); ok {
 			return fmt.Errorf("no available new name for the 'pulumi' string, tried %q", "pulumi_info")
 		}
 		if schemaInfo := getField(&resource.Schema.Fields, "pulumi"); schemaInfo.Name == "" {
-			schemaInfo.Name = tfbridge.TerraformToPulumiNameV2("pulumi_info", schemaMap, resource.Schema.Fields)
+			schemaInfo.Name = naming.TerraformToPulumiNameV2("pulumi_info", schemaMap, resource.Schema.Fields)
 		}
 		return nil
 	}
 }
 
-func ensureResources(p *info.Provider) map[string]*info.Resource {
+// fixProviderResource renames any resource that would otherwise be called
+// `Provider`, since that conflicts with the package's actual `Provider`
+// resource.
+func fixProviderResource(p *info.Provider) error {
+	if p.Name == "" {
+		return nil
+	}
+
+	tfToken := p.GetResourcePrefix() + "_provider"
+	if _, ok := newFixCtx(p).ignoredMappings[tfToken]; ok {
+		return nil
+	}
+
+	_, ok := p.P.ResourcesMap().GetOk(tfToken)
+	if !ok {
+		return nil
+	}
+
 	if p.Resources == nil {
 		p.Resources = map[string]*info.Resource{}
 	}
-	return p.Resources
+
+	res := p.Resources[tfToken]
+	if res == nil {
+		res = &info.Resource{}
+		p.Resources[tfToken] = res
+	}
+	if res.Tok != "" {
+		return nil
+	}
+
+	return SingleModule(
+		p.GetResourcePrefix(), "index", MakeStandard(p.Name),
+	).Resource(p.GetResourcePrefix()+"_"+p.Name+"_provider", res)
 }
 
-func walkResources(fixCtx fixCtx, p *info.Provider, f func(tfbridge.Resource) error) error {
+func walkResources(fixCtx fixCtx, p *info.Provider, f func(resourceInfo) error) error {
 	var errs []error
 
 	for key, tf := range p.P.ResourcesMap().Range {
-		// Skip ignored resources
 		if _, ok := fixCtx.ignoredMappings[key]; ok {
+			continue
+		}
+		if tf == nil {
 			continue
 		}
 		res, isPresent := p.Resources[key]
 		if !isPresent {
 			res = &info.Resource{}
 		}
-		if err := f(tfbridge.Resource{
+		if err := f(resourceInfo{
 			Schema: res,
 			TF:     tf,
 			TFName: key,
@@ -278,17 +261,75 @@ func walkResources(fixCtx fixCtx, p *info.Provider, f func(tfbridge.Resource) er
 			errs = append(errs, fmt.Errorf("%s: %w", key, err))
 		}
 
-		// If the res wasn't already present in the map and f made some change to
-		// it, then we need to insert it back into p.Resources.
-		//
-		// If isPresent, then we don't need to make the insertion because res was
-		// already in the map.
-		//
-		// If IsZero, then inserting res doesn't have any effect, so we skip it.
 		if !isPresent && !reflect.ValueOf(*res).IsZero() {
-			ensureResources(p)[key] = res
+			if p.Resources == nil {
+				p.Resources = map[string]*info.Resource{}
+			}
+			p.Resources[key] = res
 		}
 	}
 
 	return errors.Join(errs...)
+}
+
+func missingIDComputeID() info.ComputeID {
+	return func(ctx context.Context, state resource.PropertyMap) (resource.ID, error) {
+		return resource.ID("missing ID"), nil
+	}
+}
+
+func delegateIDField(field resource.PropertyKey, providerName, repoURL string) info.ComputeID {
+	return delegateIDProperty(resource.PropertyPath{string(field)}, providerName, repoURL)
+}
+
+func delegateIDProperty(prop resource.PropertyPath, providerName, repoURL string) info.ComputeID {
+	return func(ctx context.Context, state resource.PropertyMap) (resource.ID, error) {
+		err := func(msg string, a ...any) error {
+			return delegateIDPropertyError{
+				msg:          fmt.Sprintf(msg, a...),
+				providerName: providerName,
+				repoURL:      repoURL,
+			}
+		}
+		fieldValue, ok := prop.Get(resource.NewProperty(state))
+		if !ok {
+			return "", err("Could not find required property '%s' in state", prop)
+		}
+
+		contract.Assertf(
+			!fieldValue.IsComputed() && (!fieldValue.IsOutput() || fieldValue.OutputValue().Known),
+			"ComputeID is only called during when preview=false, so we should never need to "+
+				"deal with computed properties",
+		)
+
+		if fieldValue.IsSecret() || (fieldValue.IsOutput() && fieldValue.OutputValue().Secret) {
+			msg := fmt.Sprintf("Setting non-secret resource ID as '%s' (which is secret)", prop)
+			logger := log.TryGetLogger(ctx)
+			if logger != nil {
+				logger.Warn(msg)
+			}
+			if fieldValue.IsSecret() {
+				fieldValue = fieldValue.SecretValue().Element
+			} else {
+				fieldValue = fieldValue.OutputValue().Element
+			}
+		}
+
+		if !fieldValue.IsString() {
+			return "", err("Expected '%s' property to be a string, found %s",
+				prop, fieldValue.TypeString())
+		}
+
+		return resource.ID(fieldValue.StringValue()), nil
+	}
+}
+
+type delegateIDPropertyError struct {
+	msg                   string
+	providerName, repoURL string
+}
+
+func (err delegateIDPropertyError) Error() string {
+	return fmt.Sprintf("%s. This is an error in %s resource provider, please report at %s",
+		err.msg, err.providerName, err.repoURL)
 }

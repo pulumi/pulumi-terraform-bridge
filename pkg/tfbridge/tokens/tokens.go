@@ -134,6 +134,13 @@ type Strategy = info.Strategy
 func ComputeTokens(info *info.Provider, opts Strategy) error {
 	var errs multierror.Error
 
+	if !info.SkipDefaultFixups {
+		err := applyDefaultFixups(info)
+		if err != nil {
+			errs.Errors = append(errs.Errors, fmt.Errorf("default fixups:\n%w", err))
+		}
+	}
+
 	ignored := ignoredTokens(info)
 
 	err := computeDefaultResources(info, opts.Resource, ignored)

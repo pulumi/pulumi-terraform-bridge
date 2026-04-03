@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fixup_test
+package tokens
 
 import (
-	"fmt"
+	"context"
 	"testing"
 
-	_ "github.com/hexops/autogold/v2" // autogold registers a flag for -update
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/fixup"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -47,9 +45,44 @@ func TestFixMissingID(t *testing.T) {
 		}).Shim(),
 	}
 
-	err := fixup.Default(&p)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 	assert.NotNil(t, p.Resources["test_res"].ComputeID)
+}
+
+func TestFixMissingIDPreservesExistingComputeID(t *testing.T) {
+	t.Parallel()
+
+	manualComputeID := func(ctx context.Context, state resource.PropertyMap) (resource.ID, error) {
+		return resource.ID("manual"), nil
+	}
+
+	p := info.Provider{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_res": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"some_property": (&schema.Schema{
+							Type: shim.TypeString,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+		Resources: map[string]*info.Resource{
+			"test_res": {
+				ComputeID: manualComputeID,
+			},
+		},
+	}
+
+	err := applyDefaultFixups(&p)
+	require.NoError(t, err)
+
+	got, err := p.Resources["test_res"].ComputeID(context.Background(), resource.PropertyMap{})
+	require.NoError(t, err)
+	assert.Equal(t, resource.ID("manual"), got)
 }
 
 func TestFixPropertyConflicts(t *testing.T) {
@@ -72,10 +105,8 @@ func TestFixPropertyConflicts(t *testing.T) {
 		{
 			name: "fix urn property name",
 			schema: schema.SchemaMap{
-				"urn": (&schema.Schema{
-					Type: shim.TypeString,
-				}).Shim(),
-				"id": simpleID,
+				"urn": (&schema.Schema{Type: shim.TypeString}).Shim(),
+				"id":  simpleID,
 			},
 			expected: map[string]*info.Schema{
 				"urn": {Name: "testUrn"},
@@ -84,10 +115,8 @@ func TestFixPropertyConflicts(t *testing.T) {
 		{
 			name: "ignore overridden urn property name",
 			schema: schema.SchemaMap{
-				"urn": (&schema.Schema{
-					Type: shim.TypeString,
-				}).Shim(),
-				"id": simpleID,
+				"urn": (&schema.Schema{Type: shim.TypeString}).Shim(),
+				"id":  simpleID,
 			},
 			info: map[string]*info.Schema{
 				"urn": {Name: "overridden"},
@@ -123,7 +152,6 @@ func TestFixPropertyConflicts(t *testing.T) {
 			},
 			expectComputeIDSet: true,
 		},
-
 		{
 			name: "ignore output ID property name (computed)",
 			schema: schema.SchemaMap{
@@ -150,9 +178,6 @@ func TestFixPropertyConflicts(t *testing.T) {
 				"id": {Name: "overridden"},
 			},
 		},
-
-		// Test ID fallbacks
-
 		{
 			name: "fallback to resource and provider ID for property name",
 			schema: schema.SchemaMap{
@@ -160,9 +185,7 @@ func TestFixPropertyConflicts(t *testing.T) {
 					Type:     shim.TypeString,
 					Required: true,
 				}).Shim(),
-				"res_id": (&schema.Schema{
-					Type: shim.TypeString,
-				}).Shim(),
+				"res_id": (&schema.Schema{Type: shim.TypeString}).Shim(),
 			},
 			expected: map[string]*info.Schema{
 				"id": {Name: "testResId"},
@@ -176,12 +199,8 @@ func TestFixPropertyConflicts(t *testing.T) {
 					Type:     shim.TypeString,
 					Required: true,
 				}).Shim(),
-				"res_id": (&schema.Schema{
-					Type: shim.TypeString,
-				}).Shim(),
-				"test_res_id": (&schema.Schema{
-					Type: shim.TypeString,
-				}).Shim(),
+				"res_id":      (&schema.Schema{Type: shim.TypeString}).Shim(),
+				"test_res_id": (&schema.Schema{Type: shim.TypeString}).Shim(),
 			},
 			expected: map[string]*info.Schema{
 				"id": {Name: "resourceId"},
@@ -195,15 +214,9 @@ func TestFixPropertyConflicts(t *testing.T) {
 					Type:     shim.TypeString,
 					Required: true,
 				}).Shim(),
-				"res_id": (&schema.Schema{
-					Type: shim.TypeString,
-				}).Shim(),
-				"test_res_id": (&schema.Schema{
-					Type: shim.TypeString,
-				}).Shim(),
-				"resource_id": (&schema.Schema{
-					Type: shim.TypeString,
-				}).Shim(),
+				"res_id":      (&schema.Schema{Type: shim.TypeString}).Shim(),
+				"test_res_id": (&schema.Schema{Type: shim.TypeString}).Shim(),
+				"resource_id": (&schema.Schema{Type: shim.TypeString}).Shim(),
 			},
 			expected: map[string]*info.Schema{
 				"id": {Name: "testId"},
@@ -231,7 +244,7 @@ func TestFixPropertyConflicts(t *testing.T) {
 					},
 				},
 			}
-			err := fixup.Default(&p)
+			err := applyDefaultFixups(&p)
 			require.NoError(t, err)
 
 			r := p.Resources["test_res"]
@@ -246,9 +259,6 @@ func TestFixPropertyConflicts(t *testing.T) {
 	}
 }
 
-// TestFixIDKebabCaseProvider validates that providers with kebab-case names that have ID
-// fields that need fixups still result in good (camelCase) property names for Pulumi
-// schemas.
 func TestFixIDKebabCaseProvider(t *testing.T) {
 	t.Parallel()
 
@@ -262,22 +272,13 @@ func TestFixIDKebabCaseProvider(t *testing.T) {
 							Type:     shim.TypeString,
 							Required: true,
 						}).Shim(),
-
-						// The provider name is the 3rd try for
-						// naming this field. We first try
-						// resource_id, then res_id
-						// ("<resource_name>_id"), so these fields
-						// must be present to test the provider
-						// behavior.
-						"res_id": (&schema.Schema{
-							Type: shim.TypeString,
-						}).Shim(),
+						"res_id": (&schema.Schema{Type: shim.TypeString}).Shim(),
 					},
 				}).Shim(),
 			},
 		}).Shim(),
 	}
-	err := fixup.Default(&p)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 
 	r := p.Resources["test-provider_res"]
@@ -287,27 +288,42 @@ func TestFixIDKebabCaseProvider(t *testing.T) {
 	assert.NotNil(t, r.ComputeID)
 }
 
-func TestFixProviderResourceName(t *testing.T) {
+func TestFixIDPreservesExistingComputeID(t *testing.T) {
 	t.Parallel()
+
+	manualComputeID := func(ctx context.Context, state resource.PropertyMap) (resource.ID, error) {
+		return resource.ID("manual"), nil
+	}
+
 	p := info.Provider{
 		Name: "test",
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
-				"test_provider": (&schema.Resource{
+				"test_res": (&schema.Resource{
 					Schema: schema.SchemaMap{
 						"id": (&schema.Schema{
 							Type:     shim.TypeString,
-							Computed: true,
+							Required: true,
 						}).Shim(),
 					},
 				}).Shim(),
 			},
 		}).Shim(),
+		Resources: map[string]*info.Resource{
+			"test_res": {
+				ComputeID: manualComputeID,
+			},
+		},
 	}
 
-	err := fixup.Default(&p)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
-	assert.Equal(t, tokens.Type("test:index/testProvider:TestProvider"), p.Resources["test_provider"].Tok)
+
+	r := p.Resources["test_res"]
+	assert.Equal(t, "resId", r.Fields["id"].Name)
+	got, err := r.ComputeID(context.Background(), resource.PropertyMap{})
+	require.NoError(t, err)
+	assert.Equal(t, resource.ID("manual"), got)
 }
 
 func TestFixPropertyNamedPulumiRenamedPulumiInfo(t *testing.T) {
@@ -319,18 +335,15 @@ func TestFixPropertyNamedPulumiRenamedPulumiInfo(t *testing.T) {
 			ResourcesMap: schema.ResourceMap{
 				"test_res": (&schema.Resource{
 					Schema: schema.SchemaMap{
-						"pulumi": (&schema.Schema{
-							Type: shim.TypeString,
-						}).Shim(),
+						"pulumi": (&schema.Schema{Type: shim.TypeString}).Shim(),
 					},
 				}).Shim(),
 			},
 		}).Shim(),
 	}
 
-	err := fixup.Default(&p)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
-	fmt.Println(p.Resources["test_res"].Fields["pulumi"].Name)
 	assert.NotNil(t, p.Resources["test_res"])
 	assert.Equal(t, "pulumiInfo", p.Resources["test_res"].Fields["pulumi"].Name)
 }
@@ -344,9 +357,7 @@ func TestFixPropertyConflictWithIgnoredMappings(t *testing.T) {
 			ResourcesMap: schema.ResourceMap{
 				"test_ignored": (&schema.Resource{
 					Schema: schema.SchemaMap{
-						"urn": (&schema.Schema{
-							Type: shim.TypeString,
-						}).Shim(),
+						"urn": (&schema.Schema{Type: shim.TypeString}).Shim(),
 						"id": (&schema.Schema{
 							Type:     shim.TypeString,
 							Computed: true,
@@ -355,9 +366,7 @@ func TestFixPropertyConflictWithIgnoredMappings(t *testing.T) {
 				}).Shim(),
 				"test_processed": (&schema.Resource{
 					Schema: schema.SchemaMap{
-						"urn": (&schema.Schema{
-							Type: shim.TypeString,
-						}).Shim(),
+						"urn": (&schema.Schema{Type: shim.TypeString}).Shim(),
 						"id": (&schema.Schema{
 							Type:     shim.TypeString,
 							Computed: true,
@@ -369,17 +378,12 @@ func TestFixPropertyConflictWithIgnoredMappings(t *testing.T) {
 		IgnoreMappings: []string{"test_ignored"},
 	}
 
-	err := fixup.Default(&p)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 
-	// Ignored resource should not be processed or added to Resources map
 	assert.NotContains(t, p.Resources, "test_ignored")
-
-	// Non-ignored resource should be processed and have property conflicts fixed
 	assert.Contains(t, p.Resources, "test_processed")
-	processedRes := p.Resources["test_processed"]
-	assert.NotNil(t, processedRes.Fields)
-	assert.Equal(t, "testUrn", processedRes.Fields["urn"].Name)
+	assert.Equal(t, "testUrn", p.Resources["test_processed"].Fields["urn"].Name)
 }
 
 func TestFixMissingIDsWithIgnoredMappings(t *testing.T) {
@@ -391,16 +395,12 @@ func TestFixMissingIDsWithIgnoredMappings(t *testing.T) {
 			ResourcesMap: schema.ResourceMap{
 				"test_ignored": (&schema.Resource{
 					Schema: schema.SchemaMap{
-						"some_property": (&schema.Schema{
-							Type: shim.TypeString,
-						}).Shim(),
+						"some_property": (&schema.Schema{Type: shim.TypeString}).Shim(),
 					},
 				}).Shim(),
 				"test_processed": (&schema.Resource{
 					Schema: schema.SchemaMap{
-						"some_property": (&schema.Schema{
-							Type: shim.TypeString,
-						}).Shim(),
+						"some_property": (&schema.Schema{Type: shim.TypeString}).Shim(),
 					},
 				}).Shim(),
 			},
@@ -408,14 +408,10 @@ func TestFixMissingIDsWithIgnoredMappings(t *testing.T) {
 		IgnoreMappings: []string{"test_ignored"},
 	}
 
-	err := fixup.Default(&p)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 
-	// Ignored resource should not be processed or added to Resources map
 	assert.NotContains(t, p.Resources, "test_ignored")
-
-	// Non-ignored resource should be processed and have ComputeID set for missing ID
 	assert.Contains(t, p.Resources, "test_processed")
-	processedRes := p.Resources["test_processed"]
-	assert.NotNil(t, processedRes.ComputeID, "expected ComputeID to be set for missing ID")
+	assert.NotNil(t, p.Resources["test_processed"].ComputeID)
 }
