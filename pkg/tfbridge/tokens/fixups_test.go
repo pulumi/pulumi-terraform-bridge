@@ -28,11 +28,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
-func testResourceStrategy(_ string, res *info.Resource) error {
-	res.Tok = "test:index:Placeholder"
-	return nil
-}
-
 func TestFixMissingID(t *testing.T) {
 	t.Parallel()
 
@@ -51,7 +46,7 @@ func TestFixMissingID(t *testing.T) {
 		}).Shim(),
 	}
 
-	err := applyDefaultFixups(&p, testResourceStrategy)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 	assert.NotNil(t, p.Resources["test_res"].ComputeID)
 }
@@ -83,7 +78,7 @@ func TestFixMissingIDPreservesExistingComputeID(t *testing.T) {
 		},
 	}
 
-	err := applyDefaultFixups(&p, testResourceStrategy)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 
 	got, err := p.Resources["test_res"].ComputeID(context.Background(), resource.PropertyMap{})
@@ -250,7 +245,7 @@ func TestFixPropertyConflicts(t *testing.T) {
 					},
 				},
 			}
-			err := applyDefaultFixups(&p, testResourceStrategy)
+			err := applyDefaultFixups(&p)
 			require.NoError(t, err)
 
 			r := p.Resources["test_res"]
@@ -284,7 +279,7 @@ func TestFixIDKebabCaseProvider(t *testing.T) {
 			},
 		}).Shim(),
 	}
-	err := applyDefaultFixups(&p, testResourceStrategy)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 
 	r := p.Resources["test-provider_res"]
@@ -322,7 +317,7 @@ func TestFixIDPreservesExistingComputeID(t *testing.T) {
 		},
 	}
 
-	err := applyDefaultFixups(&p, testResourceStrategy)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 
 	r := p.Resources["test_res"]
@@ -346,16 +341,18 @@ func TestFixProviderResourceRenames(t *testing.T) {
 		}).Shim(),
 	}
 
-	err := applyDefaultFixups(&p, SingleModule(
-		p.GetResourcePrefix(), "index", MakeStandard(p.Name),
-	).Resource)
+	p.Resources = map[string]*info.Resource{
+		"test_provider": {Tok: "test:index/provider:Provider"},
+	}
+
+	err := fixProviderResource(&p, false)
 	require.NoError(t, err)
 
 	require.Contains(t, p.Resources, "test_provider")
 	assert.Equal(t, ptokens.Type("test:index/testProvider:TestProvider"), p.Resources["test_provider"].Tok)
 }
 
-func TestFixProviderResourceSkipsStrategyIgnoredTokens(t *testing.T) {
+func TestFixProviderResourceSkipsExistingTokens(t *testing.T) {
 	t.Parallel()
 
 	p := info.Provider{
@@ -369,12 +366,14 @@ func TestFixProviderResourceSkipsStrategyIgnoredTokens(t *testing.T) {
 		}).Shim(),
 	}
 
-	err := applyDefaultFixups(&p, SingleModule(
-		p.GetResourcePrefix(), "index", MakeStandard(p.Name),
-	).Ignore("provider").Resource)
+	p.Resources = map[string]*info.Resource{
+		"test_provider": {Tok: "test:index/provider:Provider"},
+	}
+
+	err := fixProviderResource(&p, true)
 	require.NoError(t, err)
 
-	assert.Nil(t, p.Resources)
+	assert.Equal(t, ptokens.Type("test:index/provider:Provider"), p.Resources["test_provider"].Tok)
 }
 
 func TestFixMissingIDStoresPresentNilResourceEntry(t *testing.T) {
@@ -398,7 +397,7 @@ func TestFixMissingIDStoresPresentNilResourceEntry(t *testing.T) {
 		},
 	}
 
-	err := applyDefaultFixups(&p, testResourceStrategy)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 	require.NotNil(t, p.Resources["test_res"])
 	assert.NotNil(t, p.Resources["test_res"].ComputeID)
@@ -420,7 +419,7 @@ func TestFixPropertyNamedPulumiRenamedPulumiInfo(t *testing.T) {
 		}).Shim(),
 	}
 
-	err := applyDefaultFixups(&p, testResourceStrategy)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 	assert.NotNil(t, p.Resources["test_res"])
 	assert.Equal(t, "pulumiInfo", p.Resources["test_res"].Fields["pulumi"].Name)
@@ -456,7 +455,7 @@ func TestFixPropertyConflictWithIgnoredMappings(t *testing.T) {
 		IgnoreMappings: []string{"test_ignored"},
 	}
 
-	err := applyDefaultFixups(&p, testResourceStrategy)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 
 	assert.NotContains(t, p.Resources, "test_ignored")
@@ -486,7 +485,7 @@ func TestFixMissingIDsWithIgnoredMappings(t *testing.T) {
 		IgnoreMappings: []string{"test_ignored"},
 	}
 
-	err := applyDefaultFixups(&p, testResourceStrategy)
+	err := applyDefaultFixups(&p)
 	require.NoError(t, err)
 
 	assert.NotContains(t, p.Resources, "test_ignored")

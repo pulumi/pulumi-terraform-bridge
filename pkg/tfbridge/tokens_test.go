@@ -195,8 +195,8 @@ func TestComputeTokensRespectsStrategyIgnoreForProviderResource(t *testing.T) {
 	).Ignore("provider"))
 	require.NoError(t, err)
 
-	assert.NotContains(t, info.Resources, "test_provider")
-	assert.Empty(t, info.Resources)
+	require.Contains(t, info.Resources, "test_provider")
+	assert.Empty(t, info.Resources["test_provider"].Tok)
 }
 
 func TestTokensCornerCases(t *testing.T) {
