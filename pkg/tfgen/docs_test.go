@@ -2012,7 +2012,12 @@ func TestParseImports_AdvancesPastNonHoistableCommentLines(t *testing.T) {
 	}()
 	select {
 	case actual := <-done:
-		assert.NotEmpty(t, actual)
+		expectedFile := "test_data/parse-imports/commented-import-expected.md"
+		if accept {
+			writefile(t, expectedFile, []byte(actual))
+		}
+		expected := readfile(t, expectedFile)
+		assert.Equal(t, expected, actual)
 	case <-time.After(5 * time.Second):
 		t.Fatal("parseImports appears stuck in an infinite loop " +
 			"(commented-out 'terraform import' inside a code fence with hoistable comments)")
