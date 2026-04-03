@@ -3226,6 +3226,10 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 	}
 
 	t.Run("CheckMissingRequiredPropErrors", func(t *testing.T) {
+		// pulumi/pulumi-terraform-bridge#1546 and PR #1583:
+		// validate before applying TF defaults so RequiredWith behaves like
+		// Terraform. The current #2618 behavior change intentionally also stops
+		// returning omitted empty-string defaults in Check inputs.
 		//nolint:lll
 		testutils.Replay(t, provider, `
 		{
@@ -3238,20 +3242,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 			},
 			"response": {
 				"inputs": {
-					"__defaults": [
-						"requiredWithNonrequiredProperty",
-						"requiredWithProperty",
-						"requiredWithProperty2",
-						"requiredWithRequiredProperty",
-						"requiredWithRequiredProperty2",
-						"requiredWithRequiredProperty3"
-					],
-					"requiredWithNonrequiredProperty": "",
-					"requiredWithProperty": "",
-					"requiredWithProperty2": "",
-					"requiredWithRequiredProperty": "",
-					"requiredWithRequiredProperty2": "",
-					"requiredWithRequiredProperty3": ""
+					"__defaults": []
 				},
 				"failures": [
 					{"reason": "Missing required argument. The argument \"required_with_required_property\" is required, but no definition was found.. Examine values at 'exres.requiredWithRequiredProperty'."},
@@ -3310,17 +3301,10 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 				},
 				"response": {
 					"inputs": {
-						"__defaults": [
-							"requiredWithNonrequiredProperty",
-							"requiredWithProperty2",
-							"requiredWithRequiredProperty3"
-						],
-						"requiredWithNonrequiredProperty": "",
+						"__defaults": [],
 						"requiredWithProperty": "foo",
-						"requiredWithProperty2": "",
 						"requiredWithRequiredProperty": "foo",
-						"requiredWithRequiredProperty2": "foo",
-						"requiredWithRequiredProperty3": ""
+						"requiredWithRequiredProperty2": "foo"
 					},
 					"failures": [
 						{"reason": "Missing required argument. \"required_with_property\": all of $required_with_property,required_with_property2$ must be specified. Examine values at 'exres.requiredWithProperty'."},
@@ -4252,6 +4236,301 @@ func TestMaxItemsOnePropCheckResponseNoNulls(t *testing.T) {
 			}
 		}`)
 	})
+}
+
+func TestCheckSuppressesOmittedFalsyTFDefaults(t *testing.T) {
+	t.Parallel()
+
+	newProvider := func(schema map[string]*schemav2.Schema) *Provider {
+		p := &schemav2.Provider{
+			Schema:       map[string]*schemav2.Schema{},
+			ResourcesMap: map[string]*schemav2.Resource{"res": {Schema: schema}},
+		}
+		shimProv := shimv2.NewProvider(p)
+		return &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info:   ProviderInfo{P: shimProv},
+			resources: map[tokens.Type]Resource{
+				"Res": {
+					TF:     shimProv.ResourcesMap().Get("res"),
+					TFName: "res",
+					Schema: &ResourceInfo{},
+				},
+			},
+		}
+	}
+
+	checkInputs := func(t *testing.T, provider *Provider, news resource.PropertyMap) resource.PropertyMap {
+		t.Helper()
+
+		mnews, err := plugin.MarshalProperties(news, plugin.MarshalOptions{
+			Label:         "news",
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			SkipNulls:     true,
+			KeepResources: true,
+		})
+		require.NoError(t, err)
+
+		resp, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
+			Urn:  "urn:pulumi:dev::teststack::Res::exres",
+			News: mnews,
+		})
+		require.NoError(t, err)
+		require.Empty(t, resp.Failures)
+
+		inputs, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
+		require.NoError(t, err)
+		return inputs
+	}
+
+	t.Run("omitted top-level falsy defaults are suppressed", func(t *testing.T) {
+		t.Parallel()
+
+		provider := newProvider(map[string]*schemav2.Schema{
+			"bool_default": {
+				Type:     schemav2.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+			"int_default": {
+				Type:     schemav2.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
+		})
+
+		inputs := checkInputs(t, provider, resource.PropertyMap{})
+		assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"__defaults": []interface{}{},
+		}), inputs)
+	})
+
+	t.Run("explicit authored falsy defaults are preserved", func(t *testing.T) {
+		t.Parallel()
+
+		provider := newProvider(map[string]*schemav2.Schema{
+			"bool_default": {
+				Type:     schemav2.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+			"int_default": {
+				Type:     schemav2.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
+		})
+
+		inputs := checkInputs(t, provider, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"boolDefault": false,
+			"intDefault":  0,
+		}))
+		assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"__defaults":  []interface{}{},
+			"boolDefault": false,
+			"intDefault":  0,
+		}), inputs)
+	})
+
+	t.Run("azuredevops issue 514 shape", func(t *testing.T) {
+		t.Parallel()
+
+		provider := newProvider(map[string]*schemav2.Schema{
+			"variables": {
+				Type:     schemav2.TypeSet,
+				Required: true,
+				MinItems: 1,
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
+						"name": {
+							Type:     schemav2.TypeString,
+							Required: true,
+						},
+						"value": {
+							Type:     schemav2.TypeString,
+							Optional: true,
+							Default:  "",
+						},
+						"secret_value": {
+							Type:     schemav2.TypeString,
+							Optional: true,
+							Default:  "",
+						},
+						"is_secret": {
+							Type:     schemav2.TypeBool,
+							Optional: true,
+							Default:  false,
+						},
+					},
+				},
+			},
+		})
+
+		inputs := checkInputs(t, provider, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"variables": []interface{}{
+				map[string]interface{}{
+					"name":  "key1",
+					"value": "val1",
+				},
+			},
+		}))
+
+		variables := inputs["variables"].ArrayValue()
+		require.Len(t, variables, 1)
+		variable := variables[0].ObjectValue()
+		assert.Equal(t, "key1", variable["name"].StringValue())
+		assert.Equal(t, "val1", variable["value"].StringValue())
+		assert.NotContains(t, variable, "secretValue")
+		assert.NotContains(t, variable, "isSecret")
+	})
+
+	t.Run("docker issue 401 shape", func(t *testing.T) {
+		t.Parallel()
+
+		provider := newProvider(map[string]*schemav2.Schema{
+			"mode": {
+				Type:     schemav2.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
+						"global": {
+							Type:          schemav2.TypeBool,
+							Optional:      true,
+							Default:       false,
+							ConflictsWith: []string{"mode.0.replicated"},
+						},
+						"replicated": {
+							Type:          schemav2.TypeList,
+							Optional:      true,
+							MaxItems:      1,
+							ConflictsWith: []string{"mode.0.global"},
+							Elem: &schemav2.Resource{
+								Schema: map[string]*schemav2.Schema{
+									"replicas": {
+										Type:     schemav2.TypeInt,
+										Required: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+
+		inputs := checkInputs(t, provider, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"mode": map[string]interface{}{
+				"replicated": map[string]interface{}{
+					"replicas": 1,
+				},
+			},
+		}))
+
+		mode := inputs["mode"].ObjectValue()
+		assert.NotContains(t, mode, resource.PropertyKey("global"))
+		require.Contains(t, mode, resource.PropertyKey("replicated"))
+	})
+}
+
+func TestUpdatePreservesOmittedFalsyTFDefaults(t *testing.T) {
+	t.Parallel()
+
+	var updateData *schemav2.ResourceData
+
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"name": {
+						Type:     schemav2.TypeString,
+						Required: true,
+					},
+					"is_signup_enabled": {
+						Type:     schemav2.TypeBool,
+						Optional: true,
+						Default:  false,
+					},
+				},
+				CreateContext: func(_ context.Context, rd *schemav2.ResourceData, _ interface{}) diag.Diagnostics {
+					rd.SetId("someid")
+					return nil
+				},
+				UpdateContext: func(_ context.Context, rd *schemav2.ResourceData, _ interface{}) diag.Diagnostics {
+					// pulumi/pulumi-terraform-bridge#2618:
+					// Update must keep omitted falsy defaults omitted too, otherwise
+					// the fix would only cover create-time RawConfig.
+					updateData = rd
+					return nil
+				},
+			},
+		},
+	}
+
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info:   ProviderInfo{P: shimProv},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimProv.ResourcesMap().Get("res"),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	urn := "urn:pulumi:dev::teststack::Res::exres"
+	marshal := func(props resource.PropertyMap) *structpb.Struct {
+		t.Helper()
+		m, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
+			Label:         "props",
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			SkipNulls:     true,
+			KeepResources: true,
+		})
+		require.NoError(t, err)
+		return m
+	}
+
+	initialCheck, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  urn,
+		News: marshal(resource.NewPropertyMapFromMap(map[string]interface{}{"name": "before"})),
+	})
+	require.NoError(t, err)
+	require.Empty(t, initialCheck.Failures)
+
+	createResp, err := provider.Create(context.Background(), &pulumirpc.CreateRequest{
+		Urn:        urn,
+		Properties: initialCheck.GetInputs(),
+	})
+	require.NoError(t, err)
+
+	updateCheck, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  urn,
+		Olds: createResp.GetProperties(),
+		News: marshal(resource.NewPropertyMapFromMap(map[string]interface{}{"name": "after"})),
+	})
+	require.NoError(t, err)
+	require.Empty(t, updateCheck.Failures)
+
+	_, err = provider.Update(context.Background(), &pulumirpc.UpdateRequest{
+		Id:   "someid",
+		Urn:  urn,
+		Olds: createResp.GetProperties(),
+		News: updateCheck.GetInputs(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, updateData)
+
+	rawConfig := updateData.GetRawConfig()
+	assert.True(t, rawConfig.GetAttr("is_signup_enabled").IsNull())
+	assert.Equal(t, "after", updateData.Get("name"))
 }
 
 // TODO[pulumi/pulumi#15636] if/when Pulumi supports customizing Read timeouts these could be added here.
