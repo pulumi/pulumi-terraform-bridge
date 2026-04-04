@@ -107,3 +107,17 @@ func TestMarshallableProviderSensitiveProperties(t *testing.T) {
 		autogold.Expect(false).Equal(t, publicKeySchema.Sensitive())
 	})
 }
+
+func TestMarshallableProviderPreservesSkipDefaultFixups(t *testing.T) {
+	t.Parallel()
+
+	provider := &Provider{
+		Name:              "test",
+		SkipDefaultFixups: true,
+	}
+
+	marshalled := MarshalProvider(provider)
+	unmarshalled := marshalled.Unmarshal()
+
+	autogold.Expect(true).Equal(t, unmarshalled.SkipDefaultFixups)
+}

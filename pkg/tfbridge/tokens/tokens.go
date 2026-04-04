@@ -133,12 +133,32 @@ type Strategy = info.Strategy
 // any token in [ProviderInfo.IgnoreMappings].
 func ComputeTokens(info *info.Provider, opts Strategy) error {
 	var errs multierror.Error
+	providerResource := info.GetResourcePrefix() + "_provider"
+	providerResourceHadToken := false
+	if info.Resources != nil {
+		if res := info.Resources[providerResource]; res != nil && res.Tok != "" {
+			providerResourceHadToken = true
+		}
+	}
+
+	if !info.SkipDefaultFixups {
+		err := applyDefaultFixups(info)
+		if err != nil {
+			errs.Errors = append(errs.Errors, fmt.Errorf("default fixups:\n%w", err))
+		}
+	}
 
 	ignored := ignoredTokens(info)
 
 	err := computeDefaultResources(info, opts.Resource, ignored)
 	if err != nil {
 		errs.Errors = append(errs.Errors, fmt.Errorf("resources:\n%w", err))
+	}
+	if !info.SkipDefaultFixups && !ignored[providerResource] {
+		// If the standard strategy emitted the reserved Provider token, rewrite it now.
+		if err := fixProviderResource(info, providerResourceHadToken); err != nil {
+			errs.Errors = append(errs.Errors, fmt.Errorf("provider resource fixup:\n%w", err))
+		}
 	}
 	err = computeDefaultDataSources(info, opts.DataSource, ignored)
 	if err != nil {

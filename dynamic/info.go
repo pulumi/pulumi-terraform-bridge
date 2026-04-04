@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/fixup"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/run"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/version"
@@ -128,10 +127,6 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		}
 
 		prov.IgnoreMappings = ignoreMappings
-	}
-
-	if err := fixup.Default(&prov); err != nil {
-		return prov, err
 	}
 
 	makeStandard := tokens.MakeStandard(providerName)
