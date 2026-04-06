@@ -1447,6 +1447,7 @@ func rewriteImportFenceWithHoistedComments(lines []string, indent, typeToken str
 			remaining = remaining[1:]
 		}
 		if len(chunk) == 0 {
+			remaining = remaining[1:]
 			continue
 		}
 		if allBlank(chunk) {

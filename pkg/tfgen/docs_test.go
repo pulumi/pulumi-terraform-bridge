@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -1997,6 +1998,30 @@ func TestParseImports_ImportOnlyFence(t *testing.T) {
 	expected := readfile(t, "test_data/parse-imports/import-only-expected.md")
 	actual := parseImportsNoOverrides(t, input, "pkg:mod/name:Type")
 	assert.Equal(t, expected, actual)
+}
+
+func TestParseImports_AdvancesPastNonHoistableCommentLines(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skippping on windows - tests cases need to be made robust to newline handling")
+	}
+	t.Parallel()
+	input := readfile(t, "test_data/parse-imports/commented-import.md")
+	done := make(chan string, 1)
+	go func() {
+		done <- parseImportsNoOverrides(t, input, "pkg:mod/name:Type")
+	}()
+	select {
+	case actual := <-done:
+		expectedFile := "test_data/parse-imports/commented-import-expected.md"
+		if accept {
+			writefile(t, expectedFile, []byte(actual))
+		}
+		expected := readfile(t, expectedFile)
+		assert.Equal(t, expected, actual)
+	case <-time.After(5 * time.Second):
+		t.Fatal("parseImports appears stuck in an infinite loop " +
+			"(commented-out 'terraform import' inside a code fence with hoistable comments)")
+	}
 }
 
 func TestParseImports_WithOverride(t *testing.T) {
