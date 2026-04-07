@@ -33,7 +33,7 @@ const volume01 = new outscale.index.Outscale_volume("volume01", {
 import pulumi
 import pulumi_outscale as outscale
 
-volume01 = outscale.index.Outscale_volume("volume01",
+volume01 = outscale.Outscale_volume("volume01",
     subregion_name=f{var.region}a,
     size=10,
     iops=100,
@@ -142,7 +142,7 @@ const volume01 = new outscale.index.Outscale_volume("volume01", {
 import pulumi
 import pulumi_outscale as outscale
 
-volume01 = outscale.index.Outscale_volume("volume01",
+volume01 = outscale.Outscale_volume("volume01",
     termination_snapshot_name=deleting_volume_snap,
     subregion_name=f{var.region}a,
     size=40)

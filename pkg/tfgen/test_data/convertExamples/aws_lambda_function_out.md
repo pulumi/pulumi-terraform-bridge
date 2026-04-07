@@ -116,7 +116,7 @@ return await Deployment.RunAsync(() =>
         AssumeRolePolicy = assumeRole.Apply(getPolicyDocumentResult => getPolicyDocumentResult.Json),
     });
 
-    var lambda = Archive.GetFile.Invoke(new()
+    var lambda = Archive.Index.GetFile.Invoke(new()
     {
         Type = "zip",
         SourceFile = "lambda.js",
@@ -145,8 +145,8 @@ package main
 
 import (
 	"github.com/pulumi/pulumi-archive/sdk/go/archive"
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/iam"
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/lambda"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/iam"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/lambda"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -179,7 +179,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = archive.LookupFile(ctx, &archive.LookupFileArgs{
+		_, err = archive.GetFile(ctx, &archive.LookupFileArgs{
 			Type:       "zip",
 			SourceFile: pulumi.StringRef("lambda.js"),
 			OutputPath: "lambda_function_payload.zip",
@@ -354,7 +354,7 @@ return await Deployment.RunAsync(() =>
 package main
 
 import (
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/lambda"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/lambda"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -530,8 +530,8 @@ return await Deployment.RunAsync(() =>
 package main
 
 import (
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/iam"
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/lambda"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/iam"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/lambda"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -841,8 +841,8 @@ return await Deployment.RunAsync(() =>
 package main
 
 import (
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/efs"
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/lambda"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/efs"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/lambda"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -1194,9 +1194,9 @@ return await Deployment.RunAsync(() =>
 package main
 
 import (
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/cloudwatch"
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/iam"
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/lambda"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/cloudwatch"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/iam"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/lambda"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )

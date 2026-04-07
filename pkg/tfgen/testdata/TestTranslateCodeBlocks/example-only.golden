@@ -22,7 +22,7 @@ import pulumi
 import pulumi_simple as simple
 
 ## Define a resource
-a_resource = simple.index.Resource("a_resource",
+a_resource = simple.Resource("a_resource",
     renamed_input1=hello,
     input_two=True)
 pulumi.export("someOutput", a_resource["result"])

@@ -263,7 +263,7 @@ using Wavefront = Pulumi.Wavefront;
 
 return await Deployment.RunAsync(() => 
 {
-    var testDashboardJson = new Wavefront.DashboardJson("testDashboardJson", new()
+    var testDashboardJson = new Wavefront.Index.DashboardJson("testDashboardJson", new()
     {
         JSON = @"  {
     ""acl"": {

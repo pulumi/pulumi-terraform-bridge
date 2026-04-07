@@ -95,7 +95,7 @@ return await Deployment.RunAsync(() =>
 package main
 
 import (
-	"github.com/pulumi/pulumi-gcp/sdk/v8/go/gcp/serviceaccount"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/serviceaccount"
 	"github.com/pulumi/pulumi-google/sdk/go/google"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -259,7 +259,7 @@ return await Deployment.RunAsync(() =>
         TargetAudience = "https://your.cloud.run.app/",
     });
 
-    var cloudrun = Http.GetHttp.Invoke(new()
+    var cloudrun = Http.Index.GetHttp.Invoke(new()
     {
         Url = "https://your.cloud.run.app/",
         RequestHeaders = 
@@ -280,7 +280,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi-gcp/sdk/v8/go/gcp/serviceaccount"
+	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/serviceaccount"
 	"github.com/pulumi/pulumi-http/sdk/go/http"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
