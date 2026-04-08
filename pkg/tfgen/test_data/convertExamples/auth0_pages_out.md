@@ -58,7 +58,7 @@ using Auth0 = Pulumi.Auth0;
 
 return await Deployment.RunAsync(() => 
 {
-    var myPages = new Auth0.Pages("myPages", new()
+    var myPages = new Auth0.Index.Pages("myPages", new()
     {
         ChangePassword = new Auth0.Inputs.PagesChangePasswordArgs
         {

@@ -99,7 +99,7 @@ using Random = Pulumi.Random;
 
 return await Deployment.RunAsync(() =>
 {
-    var server = new Random.Id("server", new()
+    var server = new Random.Index.Id("server", new()
     {
         Keepers =
         {

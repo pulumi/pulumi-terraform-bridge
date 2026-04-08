@@ -44,7 +44,7 @@ output funcLength3 {
   value = length("hello")
 }
 output funcLength4 {
-  value = length("👾🕹️")
+  value = length("\U0001f47e\U0001f579️")
 }
 # Examples for lookup
 output funcLookup0 {

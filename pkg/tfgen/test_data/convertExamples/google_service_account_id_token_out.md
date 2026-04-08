@@ -259,7 +259,7 @@ return await Deployment.RunAsync(() =>
         TargetAudience = "https://your.cloud.run.app/",
     });
 
-    var cloudrun = Http.GetHttp.Invoke(new()
+    var cloudrun = Http.Index.GetHttp.Invoke(new()
     {
         Url = "https://your.cloud.run.app/",
         RequestHeaders = 

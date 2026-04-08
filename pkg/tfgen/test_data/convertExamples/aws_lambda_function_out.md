@@ -116,7 +116,7 @@ return await Deployment.RunAsync(() =>
         AssumeRolePolicy = assumeRole.Apply(getPolicyDocumentResult => getPolicyDocumentResult.Json),
     });
 
-    var lambda = Archive.GetFile.Invoke(new()
+    var lambda = Archive.Index.GetFile.Invoke(new()
     {
         Type = "zip",
         SourceFile = "lambda.js",
@@ -179,7 +179,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = archive.LookupFile(ctx, &archive.LookupFileArgs{
+		_, err = archive.GetFile(ctx, &archive.LookupFileArgs{
 			Type:       "zip",
 			SourceFile: pulumi.StringRef("lambda.js"),
 			OutputPath: "lambda_function_payload.zip",
