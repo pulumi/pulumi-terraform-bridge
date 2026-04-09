@@ -18,7 +18,13 @@ test:
 	cd internal/shim && go test -v ./...
 	go test -v ./...
 
+# For re-recording golden files, we use a local, test-specific plugin
+# cache to ensure parity with CI.
+TEST_PULUMI_HOME := $(abspath ../.pulumi-test)
 test_accept:
-	go test -v ./... -update
+	rm -rf $(TEST_PULUMI_HOME)
+	PULUMI_HOME=$(TEST_PULUMI_HOME) $(MAKE) -C .. install_plugins
+	PULUMI_HOME=$(TEST_PULUMI_HOME) PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true \
+		go test -v . ./parameterize -update
 
 .PHONY: bin/pulumi-resource-terraform-provider install build test_unit test test_acccept
