@@ -22,4 +22,5 @@ pulumi-hcl-lint
 dynamic/indexfileonly
 dynamic/localdir
 .pulumi
+.pulumi-test
 __pycache__

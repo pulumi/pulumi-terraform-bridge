@@ -41,8 +41,14 @@ test:: install_plugins
 # Run tests while accepting current output as expected output "golden"
 # tests. In case where system behavior changes intentionally this can
 # be useful to run to review the differences with git diff.
+#
+# For re-recording golden files, we use a local, test-specific plugin
+# cache to ensure parity with CI.
+TEST_PULUMI_HOME := $(PROJECT_DIR)/.pulumi-test
 test_accept::
-	PULUMI_ACCEPT=1 go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
+	rm -rf $(TEST_PULUMI_HOME)
+	PULUMI_HOME=$(TEST_PULUMI_HOME) $(MAKE) install_plugins
+	PULUMI_HOME=$(TEST_PULUMI_HOME) PULUMI_ACCEPT=1 go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
 
 generate_builtins_test::
 	if [ ! -d ./scripts/venv ]; then python -m venv ./scripts/venv; fi
