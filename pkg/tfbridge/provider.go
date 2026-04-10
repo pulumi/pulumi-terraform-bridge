@@ -47,6 +47,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/providerserver"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/typechecker"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -1153,6 +1154,15 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
+	// Strip values from news that were provider defaults in a previous schema version
+	// but are no longer defaults in the current schema. This prevents stale defaults
+	// (carried in __defaults) from being sent as config to PlanResourceChange, where
+	// they can trigger validation errors during provider upgrades.
+	//
+	// This only affects the Diff path. Check is not affected because it receives fresh
+	// program inputs (not stored inputs with stale __defaults).
+	news = stripStaleDefaults(ctx, news, olds, schema, fields)
+
 	config, assets, err := MakeTerraformConfig(ctx, p, olds, news, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
@@ -2087,4 +2097,71 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 		timeoutOverrides[key] = time.Duration(maybeTimeoutSeconds * float64(time.Second))
 	}
 	return timeoutOverrides
+}
+
+// stripStaleDefaults removes properties from the property map that were set as provider
+// defaults (listed in __defaults) but whose corresponding TF schema field no longer has
+// a default value. This handles the case where a provider upgrade removes a default:
+// the old default value persists in stored inputs via __defaults, and without stripping
+// it, the value gets sent as config to PlanResourceChange where it can fail validation.
+//
+// Fields with bridge-level defaults (e.g. auto-naming via SchemaInfo.Default) are
+// preserved since those defaults are still active and managed by the bridge.
+//
+// Note: when tfSchema is nil (field completely removed from schema), the field is kept
+// in news. This is safe because MakeTerraformConfig -> makeTerraformInputsWithOptions
+// drops fields with no corresponding TF schema entry during Pulumi-to-TF conversion,
+// so removed fields never reach PlanResourceChange regardless.
+func stripStaleDefaults(
+	ctx context.Context,
+	m resource.PropertyMap,
+	_ resource.PropertyMap, // olds, reserved for future use
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+) resource.PropertyMap {
+	defaults, hasDefaults := m[reservedkeys.Defaults]
+	if !hasDefaults || !defaults.IsArray() {
+		return m
+	}
+
+	var staleKeys []resource.PropertyKey
+	var keptDefaults []resource.PropertyValue
+	for _, key := range defaults.ArrayValue() {
+		if !key.IsString() {
+			keptDefaults = append(keptDefaults, key)
+			continue
+		}
+		pulumiName := resource.PropertyKey(key.StringValue())
+		_, tfSchema, psi := getInfoFromPulumiName(pulumiName, tfs, ps)
+		hasTFDefault := tfSchema != nil && (tfSchema.Default() != nil || tfSchema.DefaultFunc() != nil)
+		hasBridgeDefault := psi != nil && psi.HasDefault()
+		if tfSchema != nil && !hasTFDefault && !hasBridgeDefault {
+			// This field was defaulted by the old TF provider but no longer has a
+			// default in either the TF schema or the bridge SchemaInfo.
+			staleKeys = append(staleKeys, pulumiName)
+		} else {
+			keptDefaults = append(keptDefaults, key)
+		}
+	}
+
+	if len(staleKeys) == 0 {
+		return m
+	}
+
+	log.Printf("[DEBUG] stripStaleDefaults: removing stale provider defaults from inputs: %v", staleKeys)
+
+	// Make a shallow copy to avoid mutating the original.
+	result := make(resource.PropertyMap, len(m))
+	for k, v := range m {
+		result[k] = v
+	}
+	for _, k := range staleKeys {
+		delete(result, k)
+	}
+	if len(keptDefaults) > 0 {
+		result[reservedkeys.Defaults] = resource.NewArrayProperty(keptDefaults)
+	} else {
+		delete(result, reservedkeys.Defaults)
+	}
+	return result
 }
