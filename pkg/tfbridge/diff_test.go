@@ -94,7 +94,7 @@ func TestCustomizeDiff(t *testing.T) {
 			makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 		assert.NoError(t, err)
 
-		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
+		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, nil, inputsMap, sch, info)
 		assert.NoError(t, err)
 
 		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
@@ -138,7 +138,7 @@ func TestCustomizeDiff(t *testing.T) {
 			makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 		assert.NoError(t, err)
 
-		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
+		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, nil, inputsMap, sch, info)
 		assert.NoError(t, err)
 
 		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
@@ -193,7 +193,7 @@ func TestCustomizeDiff(t *testing.T) {
 					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 				assert.NoError(t, err)
 
-				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
+				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, nil, inputsMap, sch, info)
 				assert.NoError(t, err)
 
 				// Calling Diff with the given CustomizeDiff used to panic, no more asserts needed.
@@ -300,7 +300,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 				assert.NoError(t, err)
 
-				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
+				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, nil, inputsMap, sch, info)
 				assert.NoError(t, err)
 				tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
 					IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
@@ -330,7 +330,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 				assert.NoError(t, err)
 
-				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
+				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, nil, inputsMap, sch, info)
 				assert.NoError(t, err)
 
 				for k := range expected {

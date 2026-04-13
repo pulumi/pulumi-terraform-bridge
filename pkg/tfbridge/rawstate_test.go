@@ -1133,7 +1133,7 @@ func Test_rawstate_against_MakeTerraformOutputs(t *testing.T) {
 			tfs := sdkv2.NewSchemaMap(tc.tfs)
 			prov := &Provider{tf: p}
 
-			resourceConfig, assets, err := MakeTerraformConfig(ctx, prov, tc.inputs, tfs, tc.ps)
+			resourceConfig, assets, err := MakeTerraformConfig(ctx, prov, nil, tc.inputs, tfs, tc.ps)
 			require.NoError(t, err)
 
 			instanceDiff, err := p.Diff(ctx, tok, nil /*state*/, resourceConfig, shim.DiffOptions{})
