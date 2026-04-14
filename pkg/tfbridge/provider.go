@@ -563,10 +563,11 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		return check, nil
 	}
 
-	checkFailures := validateProviderConfig(ctx, urn, p, config)
+	checkFailures, configWarnings := validateProviderConfig(ctx, urn, p, config)
 	if len(checkFailures) > 0 {
 		return &pulumirpc.CheckResponse{
 			Failures: checkFailures,
+			Warnings: configWarnings,
 		}, nil
 	}
 
@@ -580,7 +581,8 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	}
 
 	return &pulumirpc.CheckResponse{
-		Inputs: newsStruct,
+		Inputs:   newsStruct,
+		Warnings: configWarnings,
 	}, nil
 }
 
@@ -722,7 +724,7 @@ func validateProviderConfig(
 	urn resource.URN,
 	p *Provider,
 	config shim.ResourceConfig,
-) []*pulumirpc.CheckFailure {
+) ([]*pulumirpc.CheckFailure, []string) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "sdkv2.ValidateProviderConfig")
 	defer span.Finish()
 
@@ -745,11 +747,12 @@ func validateProviderConfig(
 	})
 
 	if len(missingKeys) > 0 {
-		return missingKeys
+		return missingKeys, nil
 	}
 
 	// Perform validation of the config state so we can offer nice errors.
 	warns, errs := p.tf.Validate(ctx, config)
+	var warningMessages []string
 	for _, warn := range warns {
 		msg := formatValidationWarning(warn, p.config, p.info.GetConfig())
 		logErr := p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", msg))
@@ -757,9 +760,10 @@ func validateProviderConfig(
 			glog.V(9).Infof("Failed to log to the engine: %v", logErr)
 			continue
 		}
+		warningMessages = append(warningMessages, msg)
 	}
 
-	return p.adaptCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), errs)
+	return p.adaptCheckFailures(ctx, urn, true /*isProvider*/, p.config, p.info.GetConfig(), errs), warningMessages
 }
 
 // A DiffConfig implementation enables the Pulumi provider to detect when provider configuration is
@@ -1031,9 +1035,11 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	// Now check with the resource provider to see if the values pass muster.
 	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
 	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
+	var warningMessages []string
 	for _, warn := range warns {
 		msg := formatValidationWarning(warn, schemaMap, schemaInfos)
 		logger.Warn(fmt.Sprintf("%v verification warning: %v", urn, msg))
+		warningMessages = append(warningMessages, msg)
 	}
 
 	// Now produce CheckFalures for any properties that failed verification.
@@ -1063,7 +1069,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		return nil, err
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: minputs, Failures: failures}, nil
+	return &pulumirpc.CheckResponse{Inputs: minputs, Failures: failures, Warnings: warningMessages}, nil
 }
 
 // For properties with MaxItemsOne, where the state is still an array

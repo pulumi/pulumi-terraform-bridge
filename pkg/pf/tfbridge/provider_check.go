@@ -39,19 +39,19 @@ func (p *provider) CheckWithContext(
 	allowUnknowns bool,
 	randomSeed []byte,
 	autonaming *info.ComputeDefaultAutonamingOptions,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+) (resource.PropertyMap, []plugin.CheckFailure, []string, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	checkedInputs := inputs.Copy()
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {
-		return checkedInputs, []plugin.CheckFailure{}, err
+		return checkedInputs, []plugin.CheckFailure{}, nil, err
 	}
 
 	priorState, err = transformFromState(ctx, rh, priorState)
 	if err != nil {
-		return checkedInputs, []plugin.CheckFailure{}, err
+		return checkedInputs, []plugin.CheckFailure{}, nil, err
 	}
 
 	if info := rh.pulumiResourceInfo; info != nil {
@@ -59,7 +59,7 @@ func (p *provider) CheckWithContext(
 			var err error
 			checkedInputs, err = check(ctx, checkedInputs, p.lastKnownProviderConfig.Copy())
 			if err != nil {
-				return checkedInputs, []plugin.CheckFailure{}, err
+				return checkedInputs, []plugin.CheckFailure{}, nil, err
 			}
 		}
 	}
@@ -79,17 +79,17 @@ func (p *provider) CheckWithContext(
 		ProviderConfig: p.lastKnownProviderConfig,
 	})
 
-	checkFailures, err := p.validateResourceConfig(ctx, urn, rh, news)
+	checkFailures, warnings, err := p.validateResourceConfig(ctx, urn, rh, news)
 
 	schemaMap := rh.schemaOnlyShimResource.Schema()
 	schemaInfos := rh.pulumiResourceInfo.GetFields()
 	news = tfbridge.MarkSchemaSecrets(ctx, schemaMap, schemaInfos, resource.NewObjectProperty(news)).ObjectValue()
 
 	if err != nil {
-		return news, checkFailures, err
+		return news, checkFailures, nil, err
 	}
 
-	return news, checkFailures, nil
+	return news, checkFailures, warnings, nil
 }
 
 func (p *provider) validateResourceConfig(
@@ -97,12 +97,12 @@ func (p *provider) validateResourceConfig(
 	urn resource.URN,
 	rh resourceHandle,
 	inputs resource.PropertyMap,
-) ([]plugin.CheckFailure, error) {
+) ([]plugin.CheckFailure, []string, error) {
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	encodedInputs, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, inputs)
 	if err != nil {
-		return nil, fmt.Errorf("cannot encode resource inputs to call ValidateResourceConfig: %w", err)
+		return nil, nil, fmt.Errorf("cannot encode resource inputs to call ValidateResourceConfig: %w", err)
 	}
 
 	req := tfprotov6.ValidateResourceConfigRequest{
@@ -115,7 +115,7 @@ func (p *provider) validateResourceConfig(
 
 	resp, err := p.tfServer.ValidateResourceConfig(ctx, &req)
 	if err != nil {
-		return nil, fmt.Errorf("error calling ValidateResourceConfig: %w", err)
+		return nil, nil, fmt.Errorf("error calling ValidateResourceConfig: %w", err)
 	}
 
 	schemaMap := rh.schemaOnlyShimResource.Schema()
@@ -132,9 +132,10 @@ func (p *provider) validateResourceConfig(
 	}
 
 	sc := &schemaContext{schemaMap: schemaMap, schemaInfos: schemaInfos}
-	if err := p.processDiagnosticsWithContext(ctx, remainingDiagnostics, sc); err != nil {
-		return nil, err
+	warnings, err := p.processDiagnosticsWithContext(ctx, remainingDiagnostics, sc)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return checkFailures, nil
+	return checkFailures, warnings, nil
 }

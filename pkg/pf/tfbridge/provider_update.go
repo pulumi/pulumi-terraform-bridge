@@ -36,46 +36,46 @@ func (p *provider) UpdateWithContext(
 	timeout float64,
 	ignoreChanges []string,
 	preview bool,
-) (resource.PropertyMap, resource.Status, error) {
+) (resource.PropertyMap, resource.Status, []string, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	rh, err := p.resourceHandle(ctx, urn)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
 	priorStateMap, err = transformFromState(ctx, rh, priorStateMap)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
 	checkedInputs, err = propertyvalue.ApplyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to apply ignore changes: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to apply ignore changes: %w", err)
 	}
 
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	priorState, err := p.parseAndUpgradeResourceState(ctx, &rh, priorStateMap)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
 	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
 	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
 	if preview {
 		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(ctx,
 			rh.decoder, tfType, planResp.PlannedState)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, nil, err
 		}
 
 		if rh.pulumiResourceInfo.TransformOutputs != nil {
@@ -83,16 +83,16 @@ func (p *provider) UpdateWithContext(
 			plannedStatePropertyMap, err = rh.pulumiResourceInfo.TransformOutputs(ctx,
 				plannedStatePropertyMap)
 			if err != nil {
-				return nil, 0, err
+				return nil, 0, nil, err
 			}
 		}
 
-		return plannedStatePropertyMap, resource.StatusOK, nil
+		return plannedStatePropertyMap, resource.StatusOK, nil, nil
 	}
 
 	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.Value, checkedInputsValue)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
 	req := tfprotov6.ApplyResourceChangeRequest{
@@ -105,34 +105,35 @@ func (p *provider) UpdateWithContext(
 
 	resp, err := p.tfServer.ApplyResourceChange(ctx, &req)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
-	if err := p.processDiagnostics(ctx, resp.Diagnostics); err != nil {
-		return nil, 0, err
+	warnings, err := p.processDiagnostics(ctx, resp.Diagnostics)
+	if err != nil {
+		return nil, 0, nil, err
 	}
 
 	updatedState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState, resp.Private)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
 	updatedStateMap, err := updatedState.ToPropertyMap(ctx, &rh)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
 	if rh.pulumiResourceInfo.TransformOutputs != nil {
 		var err error
 		updatedStateMap, err = rh.pulumiResourceInfo.TransformOutputs(ctx, updatedStateMap)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, nil, err
 		}
 	}
 
 	if err := insertRawStateDelta(ctx, &rh, updatedStateMap, updatedState.Value); err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 
-	return updatedStateMap, resource.StatusOK, nil
+	return updatedStateMap, resource.StatusOK, warnings, nil
 }

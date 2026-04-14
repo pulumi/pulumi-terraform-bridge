@@ -504,7 +504,7 @@ func TestProcessDiagnosticsWithContextReturnsError(t *testing.T) {
 		},
 	}
 
-	err := p.processDiagnosticsWithContext(ctx, diags, nil)
+	_, err := p.processDiagnosticsWithContext(ctx, diags, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid configuration")
 	assert.Contains(t, err.Error(), "field must be set")
@@ -529,7 +529,7 @@ func TestProcessDiagnosticsWithContextWarningsReturnNil(t *testing.T) {
 		},
 	}
 
-	err := p.processDiagnosticsWithContext(ctx, diags, nil)
+	_, err := p.processDiagnosticsWithContext(ctx, diags, nil)
 	assert.NoError(t, err)
 }
 
@@ -539,7 +539,7 @@ func TestProcessDiagnosticsWithContextEmpty(t *testing.T) {
 	p := &provider{}
 	ctx := context.Background()
 
-	err := p.processDiagnosticsWithContext(ctx, nil, nil)
+	_, err := p.processDiagnosticsWithContext(ctx, nil, nil)
 	assert.NoError(t, err)
 }
 
@@ -559,7 +559,7 @@ func TestProcessDiagnosticsWithContextErrorWithAttribute(t *testing.T) {
 		},
 	}
 
-	err := p.processDiagnosticsWithContext(ctx, diags, nil)
+	_, err := p.processDiagnosticsWithContext(ctx, diags, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "some_field")
 	assert.Contains(t, err.Error(), "Invalid value")
@@ -590,7 +590,7 @@ func TestProcessDiagnosticsWithContextErrorTranslatedPath(t *testing.T) {
 		},
 	}
 
-	err := p.processDiagnosticsWithContext(ctx, diags, sc)
+	_, err := p.processDiagnosticsWithContext(ctx, diags, sc)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "someField")
 	assert.NotContains(t, err.Error(), "some_field")
@@ -613,7 +613,7 @@ func TestProcessDiagnosticsWithContextErrorSameSummaryDetail(t *testing.T) {
 		},
 	}
 
-	err := p.processDiagnosticsWithContext(ctx, diags, nil)
+	_, err := p.processDiagnosticsWithContext(ctx, diags, nil)
 	require.Error(t, err)
 	assert.Equal(t, "configuration is invalid", err.Error())
 }
@@ -698,7 +698,7 @@ func TestProcessDiagnosticsWithContextWarningsLogged(t *testing.T) {
 		},
 	}
 
-	err := p.processDiagnosticsWithContext(ctx, diags, sc)
+	_, err := p.processDiagnosticsWithContext(ctx, diags, sc)
 	assert.NoError(t, err)
 	assert.Contains(t, logs.String(), `property "oldField" is deprecated`)
 	assert.Contains(t, logs.String(), "use new_field")
@@ -725,10 +725,108 @@ func TestProcessDiagnosticsWithContextMixedDiagnostics(t *testing.T) {
 		},
 	}
 
-	err := p.processDiagnosticsWithContext(ctx, diags, nil)
+	_, err := p.processDiagnosticsWithContext(ctx, diags, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Invalid config")
 
 	// Warning should still have been logged before the error was returned.
 	assert.Contains(t, logs.String(), "use replacement")
+}
+
+// TestProcessDiagnosticsWithContextReturnsWarnings verifies that warning-severity
+// diagnostics are returned as a []string slice alongside a nil error.
+func TestProcessDiagnosticsWithContextReturnsWarnings(t *testing.T) {
+	t.Parallel()
+	p := &provider{}
+	ctx := context.Background()
+
+	diags := []*tfprotov6.Diagnostic{
+		{
+			Severity: tfprotov6.DiagnosticSeverityWarning,
+			Summary:  "First warning",
+			Detail:   "first detail",
+		},
+		{
+			Severity: tfprotov6.DiagnosticSeverityWarning,
+			Summary:  "Second warning",
+			Detail:   "second detail",
+		},
+	}
+
+	warnings, err := p.processDiagnosticsWithContext(ctx, diags, nil)
+	require.NoError(t, err)
+	require.Len(t, warnings, 2)
+	assert.Contains(t, warnings[0], "first detail")
+	assert.Contains(t, warnings[1], "second detail")
+}
+
+// TestProcessDiagnosticsWithContextNoWarningsOnError verifies that when an error is
+// returned, the warnings slice is nil (not partially collected).
+func TestProcessDiagnosticsWithContextNoWarningsOnError(t *testing.T) {
+	t.Parallel()
+	p := &provider{}
+	ctx := context.Background()
+
+	diags := []*tfprotov6.Diagnostic{
+		{
+			Severity: tfprotov6.DiagnosticSeverityWarning,
+			Summary:  "A warning",
+			Detail:   "warning detail",
+		},
+		{
+			Severity: tfprotov6.DiagnosticSeverityError,
+			Summary:  "An error",
+			Detail:   "error detail",
+		},
+	}
+
+	warnings, err := p.processDiagnosticsWithContext(ctx, diags, nil)
+	require.Error(t, err)
+	assert.Nil(t, warnings)
+}
+
+// TestProcessDiagnosticsWithContextEmptyReturnsNilWarnings verifies that an empty
+// diagnostic list returns nil warnings and nil error.
+func TestProcessDiagnosticsWithContextEmptyReturnsNilWarnings(t *testing.T) {
+	t.Parallel()
+	p := &provider{}
+	ctx := context.Background()
+
+	warnings, err := p.processDiagnosticsWithContext(ctx, nil, nil)
+	require.NoError(t, err)
+	assert.Nil(t, warnings)
+}
+
+// TestProcessDiagnosticsWithContextWarningsWithSchemaContext verifies that warnings
+// returned include the translated Pulumi property path when schema context is present.
+func TestProcessDiagnosticsWithContextWarningsWithSchemaContext(t *testing.T) {
+	t.Parallel()
+	p := &provider{}
+	ctx := context.Background()
+
+	sc := &schemaContext{
+		schemaMap: shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"deprecated_field": {
+				Type:       schemav2.TypeString,
+				Optional:   true,
+				Deprecated: "use new_field instead",
+			},
+		}),
+		schemaInfos: map[string]*tfbridge.SchemaInfo{},
+	}
+
+	diags := []*tfprotov6.Diagnostic{
+		{
+			Severity:  tfprotov6.DiagnosticSeverityWarning,
+			Summary:   "Argument deprecated",
+			Detail:    "use new_field instead",
+			Attribute: tftypes.NewAttributePath().WithAttributeName("deprecated_field"),
+		},
+	}
+
+	warnings, err := p.processDiagnosticsWithContext(ctx, diags, sc)
+	require.NoError(t, err)
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "deprecatedField")
+	assert.Contains(t, warnings[0], "deprecated")
 }

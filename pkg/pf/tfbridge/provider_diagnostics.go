@@ -125,7 +125,7 @@ type schemaContext struct {
 	schemaInfos map[string]*tfbridge.SchemaInfo
 }
 
-func (p *provider) processDiagnostics(ctx context.Context, diagnostics []*tfprotov6.Diagnostic) error {
+func (p *provider) processDiagnostics(ctx context.Context, diagnostics []*tfprotov6.Diagnostic) ([]string, error) {
 	return p.processDiagnosticsWithContext(ctx, diagnostics, nil)
 }
 
@@ -133,10 +133,15 @@ func (p *provider) processDiagnosticsWithContext(
 	ctx context.Context,
 	diagnostics []*tfprotov6.Diagnostic,
 	sc *schemaContext,
-) error {
-	// Format and log diagnostics via context-based logging.
+) ([]string, error) {
+	var warnings []string
+
+	// Format and log diagnostics via context-based logging; collect warning messages.
 	for _, d := range diagnostics {
 		p.logDiagnostic(ctx, d, sc)
+		if d.Severity == tfprotov6.DiagnosticSeverityWarning {
+			warnings = append(warnings, p.formatDiagnosticMessage(d, sc))
+		}
 	}
 
 	// Check for errors and return non-nil if there is an error.
@@ -157,13 +162,13 @@ func (p *provider) processDiagnosticsWithContext(
 				}
 			}
 			if d.Summary == d.Detail {
-				return fmt.Errorf("%s%s", prefix, d.Summary)
+				return nil, fmt.Errorf("%s%s", prefix, d.Summary)
 			}
-			return fmt.Errorf("%s%s: %s", prefix, d.Summary, d.Detail)
+			return nil, fmt.Errorf("%s%s: %s", prefix, d.Summary, d.Detail)
 		}
 	}
 
-	return nil
+	return warnings, nil
 }
 
 func (p *provider) logDiagnostic(ctx context.Context, d *tfprotov6.Diagnostic, sc *schemaContext) {

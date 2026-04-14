@@ -139,7 +139,8 @@ func (p *provider) processInvokeDiagnostics(ctx context.Context, ds datasourceHa
 		}
 		sc = &schemaContext{schemaMap: ds.schemaOnlyShim.Schema(), schemaInfos: fields}
 	}
-	return failures, p.processDiagnosticsWithContext(ctx, rest, sc)
+	_, err := p.processDiagnosticsWithContext(ctx, rest, sc)
+	return failures, err
 }
 
 // Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an

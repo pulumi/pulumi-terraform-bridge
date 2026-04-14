@@ -45,20 +45,20 @@ type ProviderWithContext interface {
 
 	CheckWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool, randomSeed []byte, autonaming *info.ComputeDefaultAutonamingOptions,
-	) (resource.PropertyMap, []plugin.CheckFailure, error)
+	) (resource.PropertyMap, []plugin.CheckFailure, []string, error)
 
 	DiffWithContext(ctx context.Context, urn resource.URN, id resource.ID, olds resource.PropertyMap,
 		news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error)
 
 	CreateWithContext(ctx context.Context, urn resource.URN, news resource.PropertyMap, timeout float64,
-		preview bool) (resource.ID, resource.PropertyMap, resource.Status, error)
+		preview bool) (resource.ID, resource.PropertyMap, resource.Status, []string, error)
 
 	ReadWithContext(ctx context.Context, urn resource.URN, id resource.ID,
-		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
+		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, []string, error)
 
 	UpdateWithContext(ctx context.Context, urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
+		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, []string, error)
 
 	DeleteWithContext(ctx context.Context, urn resource.URN, id resource.ID,
 		inputs, outputs resource.PropertyMap, timeout float64) (resource.Status, error)
@@ -150,9 +150,9 @@ func (prov *provider) Check(
 			Mode:         info.ComputeDefaultAutonamingOptionsMode(req.Autonaming.Mode),
 		}
 	}
-	c, f, err := prov.CheckWithContext(
+	c, f, warnings, err := prov.CheckWithContext(
 		ctx, req.URN, req.Olds, req.News, req.AllowUnknowns, req.RandomSeed, autonaming)
-	return plugin.CheckResponse{Properties: c, Failures: f}, err
+	return plugin.CheckResponse{Properties: c, Failures: f, Warnings: warnings}, err
 }
 
 func (prov *provider) Diff(
@@ -165,24 +165,24 @@ func (prov *provider) Diff(
 func (prov *provider) Create(
 	ctx context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	id, p, s, err := prov.CreateWithContext(ctx,
+	id, p, s, warnings, err := prov.CreateWithContext(ctx,
 		req.URN, req.Properties, req.Timeout, req.Preview)
-	return plugin.CreateResponse{ID: id, Properties: p, Status: s}, err
+	return plugin.CreateResponse{ID: id, Properties: p, Status: s, Warnings: warnings}, err
 }
 
 func (prov *provider) Read(
 	ctx context.Context, req plugin.ReadRequest,
 ) (plugin.ReadResponse, error) {
-	r, s, err := prov.ReadWithContext(ctx, req.URN, req.ID, req.Inputs, req.State)
-	return plugin.ReadResponse{ReadResult: r, Status: s}, err
+	r, s, warnings, err := prov.ReadWithContext(ctx, req.URN, req.ID, req.Inputs, req.State)
+	return plugin.ReadResponse{ReadResult: r, Status: s, Warnings: warnings}, err
 }
 
 func (prov *provider) Update(
 	ctx context.Context, req plugin.UpdateRequest,
 ) (plugin.UpdateResponse, error) {
-	p, s, err := prov.UpdateWithContext(ctx,
+	p, s, warnings, err := prov.UpdateWithContext(ctx,
 		req.URN, req.ID, req.OldOutputs, req.NewInputs, req.Timeout, req.IgnoreChanges, req.Preview)
-	return plugin.UpdateResponse{Properties: p, Status: s}, err
+	return plugin.UpdateResponse{Properties: p, Status: s, Warnings: warnings}, err
 }
 
 func (prov *provider) Delete(

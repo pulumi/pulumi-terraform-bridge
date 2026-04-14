@@ -363,7 +363,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		}
 	}
 
-	newInputs, failures, err := p.provider.CheckWithContext(ctx, urn, state, inputs, true, req.RandomSeed, autonaming)
+	newInputs, failures, _, err := p.provider.CheckWithContext(ctx, urn, state, inputs, true, req.RandomSeed, autonaming)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +409,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	id, state, _, err := p.provider.CreateWithContext(ctx, urn, inputs, req.GetTimeout(), req.GetPreview())
+	id, state, _, _, err := p.provider.CreateWithContext(ctx, urn, inputs, req.GetTimeout(), req.GetPreview())
 	if err != nil {
 		return nil, err
 	}
@@ -438,7 +438,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	result, _, err := p.provider.ReadWithContext(ctx, urn, requestID, inputs, state)
+	result, _, _, err := p.provider.ReadWithContext(ctx, urn, requestID, inputs, state)
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +473,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	newState, _, err := p.provider.UpdateWithContext(ctx, urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(),
+	newState, _, _, err := p.provider.UpdateWithContext(ctx, urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(),
 		req.GetPreview())
 	if err != nil {
 		return nil, err
