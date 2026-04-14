@@ -363,7 +363,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		}
 	}
 
-	newInputs, failures, _, err := p.provider.CheckWithContext(ctx, urn, state, inputs, true, req.RandomSeed, autonaming)
+	newInputs, failures, warnings, err := p.provider.CheckWithContext(ctx, urn, state, inputs, true, req.RandomSeed, autonaming)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +378,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures, Warnings: warnings}, nil
 }
 
 func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
@@ -398,7 +398,12 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return p.marshalDiff(diff)
+	resp, err := p.marshalDiff(diff)
+	if err != nil {
+		return nil, err
+	}
+	resp.Warnings = diff.Warnings
+	return resp, nil
 }
 
 func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
@@ -409,7 +414,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	id, state, _, _, err := p.provider.CreateWithContext(ctx, urn, inputs, req.GetTimeout(), req.GetPreview())
+	id, state, _, warnings, err := p.provider.CreateWithContext(ctx, urn, inputs, req.GetTimeout(), req.GetPreview())
 	if err != nil {
 		return nil, err
 	}
@@ -422,6 +427,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	return &pulumirpc.CreateResponse{
 		Id:         string(id),
 		Properties: rpcState,
+		Warnings:   warnings,
 	}, nil
 }
 
@@ -438,7 +444,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	result, _, _, err := p.provider.ReadWithContext(ctx, urn, requestID, inputs, state)
+	result, _, warnings, err := p.provider.ReadWithContext(ctx, urn, requestID, inputs, state)
 	if err != nil {
 		return nil, err
 	}
@@ -457,6 +463,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		Id:         string(result.ID),
 		Properties: rpcState,
 		Inputs:     rpcInputs,
+		Warnings:   warnings,
 	}, nil
 }
 
@@ -473,7 +480,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	newState, _, _, err := p.provider.UpdateWithContext(ctx, urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(),
+	newState, _, warnings, err := p.provider.UpdateWithContext(ctx, urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(),
 		req.GetPreview())
 	if err != nil {
 		return nil, err
@@ -484,7 +491,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	return &pulumirpc.UpdateResponse{Properties: rpcState}, nil
+	return &pulumirpc.UpdateResponse{Properties: rpcState, Warnings: warnings}, nil
 }
 
 func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*pbempty.Empty, error) {
