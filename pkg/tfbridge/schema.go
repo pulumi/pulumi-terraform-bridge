@@ -945,12 +945,10 @@ func (ctx *conversionContext) applyDefaults(
 				}
 
 				// pulumi/pulumi-terraform-bridge#2618:
-				// preserve Terraform raw-config semantics for omitted falsy TF defaults.
-				// Terraform providers can distinguish omitted from explicitly configured
-				// values through GetRawConfig/RawConfig, and materializing false/0/""
-				// here makes later Create/Update/Configure/Invoke calls observe an
-				// authored value that Terraform itself would keep omitted.
-				if shouldSuppressTFSchemaDefaultValue(dv) {
+				// preserve Terraform raw-config semantics for freshly synthesized falsy
+				// TF schema defaults. Replayed defaults from prior state still need to
+				// round-trip through unchanged updates for legacy stacks.
+				if source == "Terraform schema" && shouldSuppressTFSchemaDefaultValue(dv) {
 					return true
 				}
 

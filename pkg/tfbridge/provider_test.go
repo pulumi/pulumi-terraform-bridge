@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-cty/cty"
+	schemav1 "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
@@ -2418,6 +2419,96 @@ func TestSDKv2PreConfigureCallback(t *testing.T) {
 	})
 }
 
+func TestSDKv1CheckConfigSuppressesOmittedFalsyTFDefaults(t *testing.T) {
+	t.Parallel()
+
+	newProvider := func(t *testing.T, expectSet bool, expectVar bool) *Provider {
+		t.Helper()
+
+		tfp := &schemav1.Provider{
+			Schema: map[string]*schemav1.Schema{
+				"config_value": {
+					Type:     schemav1.TypeBool,
+					Optional: true,
+					Default:  false,
+				},
+			},
+		}
+
+		return &Provider{
+			tf:     shimv1.NewProvider(tfp),
+			config: shimv1.NewSchemaMap(tfp.Schema),
+			info: ProviderInfo{
+				PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+					require.Equal(t, expectSet, config.IsSet("config_value"))
+					_, hasVar := vars["config_value"]
+					require.Equal(t, expectVar, hasVar)
+					if expectVar {
+						require.False(t, vars["config_value"].BoolValue())
+					}
+					return nil
+				},
+			},
+		}
+	}
+
+	marshal := func(t *testing.T, props resource.PropertyMap) *structpb.Struct {
+		t.Helper()
+		m, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
+			Label:         "props",
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			SkipNulls:     true,
+			KeepResources: true,
+		})
+		require.NoError(t, err)
+		return m
+	}
+
+	unmarshal := func(t *testing.T, m *structpb.Struct) resource.PropertyMap {
+		t.Helper()
+		pm, err := plugin.UnmarshalProperties(m, plugin.MarshalOptions{})
+		require.NoError(t, err)
+		return pm
+	}
+
+	t.Run("omitted default false remains unset", func(t *testing.T) {
+		t.Parallel()
+
+		provider := newProvider(t, false, false)
+		resp, err := provider.CheckConfig(context.Background(), &pulumirpc.CheckRequest{
+			Urn: "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+			News: marshal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+				"version": "6.54.0",
+			})),
+		})
+		require.NoError(t, err)
+		require.Empty(t, resp.Failures)
+		assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"version": "6.54.0",
+		}), unmarshal(t, resp.GetInputs()))
+	})
+
+	t.Run("explicit authored false stays set", func(t *testing.T) {
+		t.Parallel()
+
+		provider := newProvider(t, true, true)
+		resp, err := provider.CheckConfig(context.Background(), &pulumirpc.CheckRequest{
+			Urn: "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+			News: marshal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+				"config_value": false,
+				"version":      "6.54.0",
+			})),
+		})
+		require.NoError(t, err)
+		require.Empty(t, resp.Failures)
+		assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"config_value": false,
+			"version":      "6.54.0",
+		}), unmarshal(t, resp.GetInputs()))
+	})
+}
+
 func TestInvoke(t *testing.T) {
 	t.Parallel()
 	t.Run("preserve_program_secrets", func(t *testing.T) {
@@ -4513,7 +4604,7 @@ func TestUpdatePreservesOmittedFalsyTFDefaults(t *testing.T) {
 
 	updateCheck, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
 		Urn:  urn,
-		Olds: createResp.GetProperties(),
+		Olds: initialCheck.GetInputs(),
 		News: marshal(resource.NewPropertyMapFromMap(map[string]interface{}{"name": "after"})),
 	})
 	require.NoError(t, err)
@@ -4530,6 +4621,98 @@ func TestUpdatePreservesOmittedFalsyTFDefaults(t *testing.T) {
 
 	rawConfig := updateData.GetRawConfig()
 	assert.True(t, rawConfig.GetAttr("is_signup_enabled").IsNull())
+	assert.Equal(t, "after", updateData.Get("name"))
+}
+
+func TestUpdatePreservesLegacyFalsyTFDefaults(t *testing.T) {
+	t.Parallel()
+
+	var updateData *schemav2.ResourceData
+
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"name": {
+						Type:     schemav2.TypeString,
+						Required: true,
+					},
+					"is_signup_enabled": {
+						Type:     schemav2.TypeBool,
+						Optional: true,
+						Default:  false,
+					},
+				},
+				UpdateContext: func(_ context.Context, rd *schemav2.ResourceData, _ interface{}) diag.Diagnostics {
+					updateData = rd
+					return nil
+				},
+			},
+		},
+	}
+
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info:   ProviderInfo{P: shimProv},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimProv.ResourcesMap().Get("res"),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	urn := "urn:pulumi:dev::teststack::Res::exres"
+	marshal := func(props resource.PropertyMap) *structpb.Struct {
+		t.Helper()
+		m, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
+			Label:         "props",
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			SkipNulls:     true,
+			KeepResources: true,
+		})
+		require.NoError(t, err)
+		return m
+	}
+
+	legacyOlds := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"__defaults":      []interface{}{"isSignupEnabled"},
+		"isSignupEnabled": false,
+		"name":            "before",
+	})
+
+	updateCheck, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  urn,
+		Olds: marshal(legacyOlds),
+		News: marshal(resource.NewPropertyMapFromMap(map[string]interface{}{"name": "after"})),
+	})
+	require.NoError(t, err)
+	require.Empty(t, updateCheck.Failures)
+
+	inputs, err := plugin.UnmarshalProperties(updateCheck.GetInputs(), plugin.MarshalOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"__defaults":      []interface{}{"isSignupEnabled"},
+		"isSignupEnabled": false,
+		"name":            "after",
+	}), inputs)
+
+	_, err = provider.Update(context.Background(), &pulumirpc.UpdateRequest{
+		Id:   "someid",
+		Urn:  urn,
+		Olds: marshal(legacyOlds),
+		News: updateCheck.GetInputs(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, updateData)
+
+	rawConfig := updateData.GetRawConfig()
+	assert.Equal(t, cty.False, rawConfig.GetAttr("is_signup_enabled"))
 	assert.Equal(t, "after", updateData.Get("name"))
 }
 
