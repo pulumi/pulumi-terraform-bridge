@@ -168,12 +168,6 @@ func (p *providerServer) Handshake(ctx context.Context,
 	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
 }
 
-func (p *providerServer) List(
-	req *pulumirpc.ListRequest, stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
-) error {
-	return status.Error(codes.Unimplemented, "List is not yet implemented")
-}
-
 func (p *providerServer) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
@@ -736,4 +730,11 @@ func (p *providerServer) GetMappings(ctx context.Context,
 		return nil, err
 	}
 	return &pulumirpc.GetMappingsResponse{Providers: providers}, nil
+}
+
+func (p *providerServer) List(
+	req *pulumirpc.ListRequest,
+	stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
+) error {
+	return p.provider.ListWithContext(stream.Context(), req, stream)
 }

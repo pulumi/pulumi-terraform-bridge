@@ -21,6 +21,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -82,6 +84,12 @@ type ProviderWithContext interface {
 	GetMappingsWithContext(ctx context.Context, key string) ([]string, error)
 
 	ParameterizeWithContext(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
+
+	ListWithContext(
+		ctx context.Context,
+		req *pulumirpc.ListRequest,
+		stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
+	) error
 }
 
 func NewProvider(p ProviderWithContext) plugin.Provider {
