@@ -23,12 +23,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	property "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -41,6 +43,7 @@ type idSchema struct {
 	computed bool
 	required bool
 	optional bool
+	typ      shim.ValueType
 }
 type mockSchema struct {
 	shim.Schema
@@ -140,6 +143,111 @@ func TestSensitiveID(t *testing.T) {
 	//nolint:lll
 	assert.Equal(t, "error: Resource test_res has a problem: \"id\" attribute is sensitive, but cannot be kept secret. To accept exposing ID, set `ProviderInfo.Resources[\"test_res\"].Fields[\"id\"].Secret = tfbridge.True()`\n", stderr)
 	assert.ErrorContains(t, err, "There were 1 unresolved ID mapping errors")
+}
+
+func TestComputedMistypedIDUsesTypeFixupInsteadOfRename(t *testing.T) {
+	t.Parallel()
+	info := tfbridge.ProviderInfo{
+		Name: "test",
+		P: pfbridge.ShimProvider(testProvider{withID: &idSchema{
+			computed: true,
+			typ:      shim.TypeInt,
+		}}),
+	}
+	info.MustComputeTokens(tokens.SingleModule(info.GetResourcePrefix(),
+		"index", tokens.MakeStandard(info.GetResourcePrefix())))
+
+	require.Contains(t, info.Resources, "test_res")
+	require.Contains(t, info.Resources["test_res"].Fields, "id")
+	assert.Equal(t, "string", string(info.Resources["test_res"].Fields["id"].Type))
+	assert.Empty(t, info.Resources["test_res"].Fields["id"].Name)
+	assert.Nil(t, info.Resources["test_res"].ComputeID)
+
+	stderr, err := validateProvider(t, info)
+
+	assert.Empty(t, stderr)
+	assert.NoError(t, err)
+}
+
+func TestComputedCompoundIDStillFailsValidation(t *testing.T) {
+	t.Parallel()
+	stderr, err := test(t, tfbridge.ProviderInfo{
+		P: pfbridge.ShimProvider(testProvider{withID: &idSchema{
+			computed: true,
+			typ:      shim.TypeList,
+		}}),
+	})
+
+	assert.Error(t, err)
+	autogold.Expect(
+		"error: Resource test_res has a problem: \"id\" attribute is of type \"List\", expected type "+
+			"\"string\". To map this resource consider overriding the SchemaInfo.Type field or "+
+			"specifying ResourceInfo.ComputeID\n",
+	).Equal(t, stderr)
+}
+
+func TestComputedMistypedIDWithComputeIDStillPasses(t *testing.T) {
+	t.Parallel()
+	stderr, err := test(t, tfbridge.ProviderInfo{
+		P: pfbridge.ShimProvider(testProvider{withID: &idSchema{
+			computed: true,
+			typ:      shim.TypeInt,
+		}}),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"test_res": {ComputeID: func(context.Context, property.PropertyMap) (property.ID, error) {
+				panic("ComputeID")
+			}},
+		},
+	})
+
+	assert.Empty(t, stderr)
+	assert.NoError(t, err)
+}
+
+func TestInputMistypedIDStillUsesRenameAndComputeID(t *testing.T) {
+	t.Parallel()
+	info := tfbridge.ProviderInfo{
+		Name: "test",
+		P: pfbridge.ShimProvider(testProvider{withID: &idSchema{
+			computed: true,
+			optional: true,
+			typ:      shim.TypeInt,
+		}}),
+	}
+	info.MustComputeTokens(tokens.SingleModule(info.GetResourcePrefix(),
+		"index", tokens.MakeStandard(info.GetResourcePrefix())))
+
+	require.Contains(t, info.Resources, "test_res")
+	require.Contains(t, info.Resources["test_res"].Fields, "id")
+	assert.Equal(t, "resId", info.Resources["test_res"].Fields["id"].Name)
+	assert.NotNil(t, info.Resources["test_res"].ComputeID)
+	assert.Empty(t, info.Resources["test_res"].Fields["id"].Type)
+
+	stderr, err := validateProvider(t, info)
+	assert.Error(t, err)
+	autogold.Expect(
+		"error: Resource test_res has a problem: \"id\" attribute is of type \"Int\", expected type "+
+			"\"string\". To map this resource consider overriding the SchemaInfo.Type field or "+
+			"specifying ResourceInfo.ComputeID\n",
+	).Equal(t, stderr)
+}
+
+func TestComputedMistypedIDWithManualTypeOverrideDoesNotRequireComputeID(t *testing.T) {
+	t.Parallel()
+	stderr, err := test(t, tfbridge.ProviderInfo{
+		P: pfbridge.ShimProvider(testProvider{withID: &idSchema{
+			computed: true,
+			typ:      shim.TypeInt,
+		}}),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+				"id": {Type: "string"},
+			}},
+		},
+	})
+
+	assert.Empty(t, stderr)
+	assert.NoError(t, err)
 }
 
 func TestSensitiveIDWithOverride(t *testing.T) {
@@ -286,13 +394,17 @@ func TestMuxedProvider(t *testing.T) {
 }
 
 func test(t *testing.T, info tfbridge.ProviderInfo) (string, error) {
+	info.MustComputeTokens(tokens.SingleModule(info.GetResourcePrefix(),
+		"index", tokens.MakeStandard(info.GetResourcePrefix())))
+
+	return validateProvider(t, info)
+}
+
+func validateProvider(t *testing.T, info tfbridge.ProviderInfo) (string, error) {
 	var stdout, stderr bytes.Buffer
 	sink := diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{
 		Color: colors.Never,
 	})
-
-	info.MustComputeTokens(tokens.SingleModule(info.GetResourcePrefix(),
-		"index", tokens.MakeStandard(info.GetResourcePrefix())))
 
 	err := Provider(sink, info)
 
@@ -373,14 +485,38 @@ func (testSensitiveIDResource) Metadata(
 }
 
 func (i testIDResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed: i.computed,
-				Required: i.required,
-				Optional: i.optional,
+	switch i.typ {
+	case shim.TypeInt:
+		resp.Schema = schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"id": schema.Int64Attribute{
+					Computed: i.computed,
+					Required: i.required,
+					Optional: i.optional,
+				},
 			},
-		},
+		}
+	case shim.TypeList:
+		resp.Schema = schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"id": schema.ListAttribute{
+					Computed:    i.computed,
+					Required:    i.required,
+					Optional:    i.optional,
+					ElementType: types.StringType,
+				},
+			},
+		}
+	default:
+		resp.Schema = schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"id": schema.StringAttribute{
+					Computed: i.computed,
+					Required: i.required,
+					Optional: i.optional,
+				},
+			},
+		}
 	}
 }
 

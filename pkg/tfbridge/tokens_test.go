@@ -121,6 +121,164 @@ func TestComputeTokensAppliesDefaultFixups(t *testing.T) {
 	assert.NotNil(t, info.Resources["test_res"].ComputeID)
 }
 
+func TestComputeTokensDoesNotRenameComputedID(t *testing.T) {
+	t.Parallel()
+
+	info := tfbridge.ProviderInfo{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_res": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"id": (&schema.Schema{
+							Type:     shim.TypeString,
+							Computed: true,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+	}
+
+	err := info.ComputeTokens(tokens.SingleModule(
+		info.GetResourcePrefix(), "index", tokens.MakeStandard("test"),
+	))
+	require.NoError(t, err)
+
+	assert.Equal(t, "test:index/res:Res", string(info.Resources["test_res"].Tok))
+	assert.Nil(t, info.Resources["test_res"].Fields)
+	assert.Nil(t, info.Resources["test_res"].ComputeID)
+}
+
+func TestComputeTokensCoercesComputedNonStringIDWithoutRename(t *testing.T) {
+	t.Parallel()
+
+	info := tfbridge.ProviderInfo{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_res": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"id": (&schema.Schema{
+							Type:     shim.TypeInt,
+							Computed: true,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+	}
+
+	err := info.ComputeTokens(tokens.SingleModule(
+		info.GetResourcePrefix(), "index", tokens.MakeStandard("test"),
+	))
+	require.NoError(t, err)
+
+	assert.Equal(t, "test:index/res:Res", string(info.Resources["test_res"].Tok))
+	require.Contains(t, info.Resources["test_res"].Fields, "id")
+	assert.Equal(t, ptokens.Type("string"), info.Resources["test_res"].Fields["id"].Type)
+	assert.Empty(t, info.Resources["test_res"].Fields["id"].Name)
+	assert.Nil(t, info.Resources["test_res"].ComputeID)
+}
+
+func TestComputeTokensDoesNotCoerceComputedCompoundID(t *testing.T) {
+	t.Parallel()
+
+	info := tfbridge.ProviderInfo{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_res": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"id": (&schema.Schema{
+							Type:     shim.TypeList,
+							Computed: true,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+	}
+
+	err := info.ComputeTokens(tokens.SingleModule(
+		info.GetResourcePrefix(), "index", tokens.MakeStandard("test"),
+	))
+	require.NoError(t, err)
+
+	assert.Equal(t, "test:index/res:Res", string(info.Resources["test_res"].Tok))
+	assert.Nil(t, info.Resources["test_res"].Fields)
+	assert.Nil(t, info.Resources["test_res"].ComputeID)
+}
+
+func TestComputeTokensPreservesExistingComputedIDTypeOverride(t *testing.T) {
+	t.Parallel()
+
+	info := tfbridge.ProviderInfo{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_res": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"id": (&schema.Schema{
+							Type:     shim.TypeInt,
+							Computed: true,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"test_res": {
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"id": {Type: "string"},
+				},
+			},
+		},
+	}
+
+	err := info.ComputeTokens(tokens.SingleModule(
+		info.GetResourcePrefix(), "index", tokens.MakeStandard("test"),
+	))
+	require.NoError(t, err)
+
+	assert.Equal(t, "test:index/res:Res", string(info.Resources["test_res"].Tok))
+	require.Contains(t, info.Resources["test_res"].Fields, "id")
+	assert.Equal(t, ptokens.Type("string"), info.Resources["test_res"].Fields["id"].Type)
+	assert.Empty(t, info.Resources["test_res"].Fields["id"].Name)
+	assert.Nil(t, info.Resources["test_res"].ComputeID)
+}
+
+func TestComputeTokensRenamesInputNonStringID(t *testing.T) {
+	t.Parallel()
+
+	info := tfbridge.ProviderInfo{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_res": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"id": (&schema.Schema{
+							Type:     shim.TypeInt,
+							Optional: true,
+							Computed: true,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+	}
+
+	err := info.ComputeTokens(tokens.SingleModule(
+		info.GetResourcePrefix(), "index", tokens.MakeStandard("test"),
+	))
+	require.NoError(t, err)
+
+	assert.Equal(t, "test:index/res:Res", string(info.Resources["test_res"].Tok))
+	require.Contains(t, info.Resources["test_res"].Fields, "id")
+	assert.Equal(t, "resId", info.Resources["test_res"].Fields["id"].Name)
+	assert.NotNil(t, info.Resources["test_res"].ComputeID)
+}
+
 func TestComputeTokensCanSkipDefaultFixups(t *testing.T) {
 	t.Parallel()
 

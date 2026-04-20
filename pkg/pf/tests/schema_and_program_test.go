@@ -223,6 +223,11 @@ func TestIDAttribute(t *testing.T) {
 		expectedIDOutput         string
 	}{
 		{
+			name:             "Valid - Computed Int ID auto-coerces to Pulumi string ID",
+			attribute:        rschema.Int64Attribute{Computed: true},
+			expectedIDOutput: "42",
+		},
+		{
 			name:             "Valid - Optional + Computed",
 			attribute:        rschema.StringAttribute{Optional: true, Computed: true},
 			computeIDField:   "otherId",
@@ -307,30 +312,35 @@ func TestIDAttribute(t *testing.T) {
 						},
 						CreateFunc: func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 							resp.State = tfsdk.State(req.Config)
-							resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+							switch tc.attribute.(type) {
+							case rschema.Int64Attribute:
+								resp.State.SetAttribute(ctx, path.Root("id"), int64(42))
+							default:
+								resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+							}
 							resp.State.SetAttribute(ctx, path.Root("x"), "x-id")
 						},
 					}),
 				},
 			}
 
-			var computeIDField tfbridge.ComputeID
-			var idSchema info.Schema
-			if tc.schemaName != "" {
-				idSchema = info.Schema{Name: tc.schemaName}
+			prov := provBuilder.ToProviderInfo()
+			res := prov.Resources["prov_test"]
+			require.NotNil(t, res)
+			if tc.schemaName != "" && tc.computeIDField == "" {
+				res.ComputeID = nil
 			}
 			if tc.computeIDField != "" {
-				computeIDField = tfbridge.DelegateIDField(presource.PropertyKey(tc.computeIDField), "prov", "")
+				res.ComputeID = tfbridge.DelegateIDField(presource.PropertyKey(tc.computeIDField), "prov", "")
 			}
-			prov := provBuilder.ToProviderInfo()
-			prov.Resources = map[string]*info.Resource{
-				"prov_test": {
-					Tok:       "prov:index/test:Test",
-					ComputeID: computeIDField,
-					Fields: map[string]*info.Schema{
-						"id": &idSchema,
-					},
-				},
+			if tc.schemaName != "" {
+				if res.Fields == nil {
+					res.Fields = map[string]*info.Schema{}
+				}
+				if res.Fields["id"] == nil {
+					res.Fields["id"] = &info.Schema{}
+				}
+				res.Fields["id"].Name = tc.schemaName
 			}
 
 			program := `
