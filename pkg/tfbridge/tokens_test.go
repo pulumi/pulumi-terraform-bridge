@@ -15,11 +15,13 @@
 package tfbridge_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
 
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptokens "github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,7 +152,7 @@ func TestComputeTokensDoesNotRenameComputedID(t *testing.T) {
 	assert.Nil(t, info.Resources["test_res"].ComputeID)
 }
 
-func TestComputeTokensCoercesComputedNonStringIDWithoutRename(t *testing.T) {
+func TestComputeTokensRenamesComputedNonStringIDWithoutOverrides(t *testing.T) {
 	t.Parallel()
 
 	info := tfbridge.ProviderInfo{
@@ -176,12 +178,12 @@ func TestComputeTokensCoercesComputedNonStringIDWithoutRename(t *testing.T) {
 
 	assert.Equal(t, "test:index/res:Res", string(info.Resources["test_res"].Tok))
 	require.Contains(t, info.Resources["test_res"].Fields, "id")
-	assert.Equal(t, ptokens.Type("string"), info.Resources["test_res"].Fields["id"].Type)
-	assert.Empty(t, info.Resources["test_res"].Fields["id"].Name)
-	assert.Nil(t, info.Resources["test_res"].ComputeID)
+	assert.Equal(t, "resId", info.Resources["test_res"].Fields["id"].Name)
+	assert.Empty(t, info.Resources["test_res"].Fields["id"].Type)
+	assert.NotNil(t, info.Resources["test_res"].ComputeID)
 }
 
-func TestComputeTokensDoesNotCoerceComputedCompoundID(t *testing.T) {
+func TestComputeTokensPreservesComputedIDWithExistingComputeID(t *testing.T) {
 	t.Parallel()
 
 	info := tfbridge.ProviderInfo{
@@ -191,13 +193,20 @@ func TestComputeTokensDoesNotCoerceComputedCompoundID(t *testing.T) {
 				"test_res": (&schema.Resource{
 					Schema: schema.SchemaMap{
 						"id": (&schema.Schema{
-							Type:     shim.TypeList,
+							Type:     shim.TypeInt,
 							Computed: true,
 						}).Shim(),
 					},
 				}).Shim(),
 			},
 		}).Shim(),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"test_res": {
+				ComputeID: func(context.Context, resource.PropertyMap) (resource.ID, error) {
+					return "test-id", nil
+				},
+			},
+		},
 	}
 
 	err := info.ComputeTokens(tokens.SingleModule(
@@ -206,8 +215,10 @@ func TestComputeTokensDoesNotCoerceComputedCompoundID(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "test:index/res:Res", string(info.Resources["test_res"].Tok))
-	assert.Nil(t, info.Resources["test_res"].Fields)
-	assert.Nil(t, info.Resources["test_res"].ComputeID)
+	require.Contains(t, info.Resources["test_res"].Fields, "id")
+	assert.Equal(t, ptokens.Type("string"), info.Resources["test_res"].Fields["id"].Type)
+	assert.Empty(t, info.Resources["test_res"].Fields["id"].Name)
+	assert.NotNil(t, info.Resources["test_res"].ComputeID)
 }
 
 func TestComputeTokensPreservesExistingComputedIDTypeOverride(t *testing.T) {

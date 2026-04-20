@@ -77,12 +77,6 @@ func fixMissingIDs(fixCtx fixCtx, p *info.Provider) error {
 			return nil
 		}
 
-		if id.Computed() && !id.Optional() && !id.Required() {
-			// A computed-only top-level ID is either valid as-is, auto-coerced by
-			// fixID above, or should fail validation if its shape is unsupported.
-			return nil
-		}
-
 		ok := (id.Type() == shim.TypeString || getIDType(r.Schema) == "string") && id.Computed()
 		if !ok && r.Schema.ComputeID == nil {
 			r.Schema.ComputeID = missingIDComputeID()
@@ -154,15 +148,22 @@ func fixID(providerName, tokenPrefix string) fixupProperty {
 			return nil
 		}
 
-		// A computed-only top-level "id" is already the Pulumi resource ID slot.
-		// For these resources, fixups should not expose a second renamed output
-		// property. If the upstream type is non-string, teach the schema to treat
-		// it as a string instead so validation matches runtime extraction.
 		if tfIDProperty.Computed() && !tfIDProperty.Optional() && !tfIDProperty.Required() {
-			if computedIDTypeIsCoercibleToString(tfIDProperty.Type()) {
-				getField(&r.Schema.Fields, "id").Type = "string"
+			// A computed-only string "id" already occupies Pulumi's resource ID slot.
+			if tfIDProperty.Type() == shim.TypeString {
+				return nil
 			}
-			return nil
+
+			// Preserve explicit provider decisions for computed-only IDs.
+			// Providers that already overrode the Pulumi view of "id" should not
+			// get a second renamed output property synthesized on top.
+			if f := r.Schema.Fields["id"]; f != nil && f.Type == "string" {
+				return nil
+			}
+			if r.Schema.ComputeID != nil && computedIDTypeIsCoercibleToString(tfIDProperty.Type()) {
+				getField(&r.Schema.Fields, "id").Type = "string"
+				return nil
+			}
 		}
 
 		candidateNames := []string{

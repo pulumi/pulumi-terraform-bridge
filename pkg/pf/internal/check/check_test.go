@@ -145,7 +145,7 @@ func TestSensitiveID(t *testing.T) {
 	assert.ErrorContains(t, err, "There were 1 unresolved ID mapping errors")
 }
 
-func TestComputedMistypedIDUsesTypeFixupInsteadOfRename(t *testing.T) {
+func TestComputedMistypedIDWithoutOverridesStillFailsValidation(t *testing.T) {
 	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		Name: "test",
@@ -159,24 +159,38 @@ func TestComputedMistypedIDUsesTypeFixupInsteadOfRename(t *testing.T) {
 
 	require.Contains(t, info.Resources, "test_res")
 	require.Contains(t, info.Resources["test_res"].Fields, "id")
-	assert.Equal(t, "string", string(info.Resources["test_res"].Fields["id"].Type))
-	assert.Empty(t, info.Resources["test_res"].Fields["id"].Name)
-	assert.Nil(t, info.Resources["test_res"].ComputeID)
+	assert.Equal(t, "resId", info.Resources["test_res"].Fields["id"].Name)
+	assert.Empty(t, info.Resources["test_res"].Fields["id"].Type)
+	assert.NotNil(t, info.Resources["test_res"].ComputeID)
 
 	stderr, err := validateProvider(t, info)
 
-	assert.Empty(t, stderr)
-	assert.NoError(t, err)
+	assert.Error(t, err)
+	autogold.Expect(
+		"error: Resource test_res has a problem: \"id\" attribute is of type \"Int\", expected type "+
+			"\"string\". To map this resource consider overriding the SchemaInfo.Type field or "+
+			"specifying ResourceInfo.ComputeID\n",
+	).Equal(t, stderr)
 }
 
 func TestComputedCompoundIDStillFailsValidation(t *testing.T) {
 	t.Parallel()
-	stderr, err := test(t, tfbridge.ProviderInfo{
+	info := tfbridge.ProviderInfo{
+		Name: "test",
 		P: pfbridge.ShimProvider(testProvider{withID: &idSchema{
 			computed: true,
 			typ:      shim.TypeList,
 		}}),
-	})
+	}
+	info.MustComputeTokens(tokens.SingleModule(info.GetResourcePrefix(),
+		"index", tokens.MakeStandard(info.GetResourcePrefix())))
+
+	require.Contains(t, info.Resources, "test_res")
+	require.Contains(t, info.Resources["test_res"].Fields, "id")
+	assert.Equal(t, "resId", info.Resources["test_res"].Fields["id"].Name)
+	assert.NotNil(t, info.Resources["test_res"].ComputeID)
+
+	stderr, err := validateProvider(t, info)
 
 	assert.Error(t, err)
 	autogold.Expect(
@@ -186,9 +200,10 @@ func TestComputedCompoundIDStillFailsValidation(t *testing.T) {
 	).Equal(t, stderr)
 }
 
-func TestComputedMistypedIDWithComputeIDStillPasses(t *testing.T) {
+func TestComputedMistypedIDWithComputeIDUsesTypeFixupWithoutRename(t *testing.T) {
 	t.Parallel()
-	stderr, err := test(t, tfbridge.ProviderInfo{
+	info := tfbridge.ProviderInfo{
+		Name: "test",
 		P: pfbridge.ShimProvider(testProvider{withID: &idSchema{
 			computed: true,
 			typ:      shim.TypeInt,
@@ -198,7 +213,17 @@ func TestComputedMistypedIDWithComputeIDStillPasses(t *testing.T) {
 				panic("ComputeID")
 			}},
 		},
-	})
+	}
+	info.MustComputeTokens(tokens.SingleModule(info.GetResourcePrefix(),
+		"index", tokens.MakeStandard(info.GetResourcePrefix())))
+
+	require.Contains(t, info.Resources, "test_res")
+	require.Contains(t, info.Resources["test_res"].Fields, "id")
+	assert.Equal(t, "string", string(info.Resources["test_res"].Fields["id"].Type))
+	assert.Empty(t, info.Resources["test_res"].Fields["id"].Name)
+	assert.NotNil(t, info.Resources["test_res"].ComputeID)
+
+	stderr, err := validateProvider(t, info)
 
 	assert.Empty(t, stderr)
 	assert.NoError(t, err)
@@ -234,7 +259,8 @@ func TestInputMistypedIDStillUsesRenameAndComputeID(t *testing.T) {
 
 func TestComputedMistypedIDWithManualTypeOverrideDoesNotRequireComputeID(t *testing.T) {
 	t.Parallel()
-	stderr, err := test(t, tfbridge.ProviderInfo{
+	info := tfbridge.ProviderInfo{
+		Name: "test",
 		P: pfbridge.ShimProvider(testProvider{withID: &idSchema{
 			computed: true,
 			typ:      shim.TypeInt,
@@ -244,7 +270,17 @@ func TestComputedMistypedIDWithManualTypeOverrideDoesNotRequireComputeID(t *test
 				"id": {Type: "string"},
 			}},
 		},
-	})
+	}
+	info.MustComputeTokens(tokens.SingleModule(info.GetResourcePrefix(),
+		"index", tokens.MakeStandard(info.GetResourcePrefix())))
+
+	require.Contains(t, info.Resources, "test_res")
+	require.Contains(t, info.Resources["test_res"].Fields, "id")
+	assert.Equal(t, "string", string(info.Resources["test_res"].Fields["id"].Type))
+	assert.Empty(t, info.Resources["test_res"].Fields["id"].Name)
+	assert.Nil(t, info.Resources["test_res"].ComputeID)
+
+	stderr, err := validateProvider(t, info)
 
 	assert.Empty(t, stderr)
 	assert.NoError(t, err)

@@ -290,6 +290,10 @@
     "resources": {
         "bunnynet:index/computeScript:ComputeScript": {
             "properties": {
+                "computeScriptId": {
+                    "type": "number",
+                    "description": "The ID of the script."
+                },
                 "content": {
                     "type": "string",
                     "description": "The code of the script."
@@ -305,6 +309,7 @@
             },
             "required": [
                 "content",
+                "computeScriptId",
                 "name",
                 "type"
             ],
@@ -329,6 +334,10 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering ComputeScript resources.\n",
                 "properties": {
+                    "computeScriptId": {
+                        "type": "number",
+                        "description": "The ID of the script."
+                    },
                     "content": {
                         "type": "string",
                         "description": "The code of the script."
@@ -347,6 +356,10 @@
         },
         "bunnynet:index/computeScriptVariable:ComputeScriptVariable": {
             "properties": {
+                "computeScriptVariableId": {
+                    "type": "number",
+                    "description": "The ID of the environment variable."
+                },
                 "defaultValue": {
                     "type": "string",
                     "description": "The default value of the environment variable."
@@ -366,6 +379,7 @@
             },
             "required": [
                 "defaultValue",
+                "computeScriptVariableId",
                 "name",
                 "required",
                 "script"
@@ -396,6 +410,10 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering ComputeScriptVariable resources.\n",
                 "properties": {
+                    "computeScriptVariableId": {
+                        "type": "number",
+                        "description": "The ID of the environment variable."
+                    },
                     "defaultValue": {
                         "type": "string",
                         "description": "The default value of the environment variable."
@@ -429,6 +447,10 @@
                 "comment": {
                     "type": "string",
                     "description": "This property allows users to add descriptive notes for documentation and management purposes."
+                },
+                "dnsRecordId": {
+                    "type": "number",
+                    "description": "The unique identifier for the DNS record."
                 },
                 "enabled": {
                     "type": "boolean",
@@ -507,6 +529,7 @@
                 "flags",
                 "geolocationLat",
                 "geolocationLong",
+                "dnsRecordId",
                 "latencyZone",
                 "linkName",
                 "monitorType",
@@ -619,6 +642,10 @@
                         "type": "string",
                         "description": "This property allows users to add descriptive notes for documentation and management purposes."
                     },
+                    "dnsRecordId": {
+                        "type": "number",
+                        "description": "The unique identifier for the DNS record."
+                    },
                     "enabled": {
                         "type": "boolean",
                         "description": "Indicates whether the DNS record is enabled."
@@ -693,6 +720,10 @@
         },
         "bunnynet:index/dnsZone:DnsZone": {
             "properties": {
+                "dnsZoneId": {
+                    "type": "number",
+                    "description": "The unique identifier for the DNS zone."
+                },
                 "domain": {
                     "type": "string",
                     "description": "The domain name for the DNS zone."
@@ -728,6 +759,7 @@
             },
             "required": [
                 "domain",
+                "dnsZoneId",
                 "logAnonymized",
                 "logAnonymizedStyle",
                 "logEnabled",
@@ -776,6 +808,10 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering DnsZone resources.\n",
                 "properties": {
+                    "dnsZoneId": {
+                        "type": "number",
+                        "description": "The unique identifier for the DNS zone."
+                    },
                     "domain": {
                         "type": "string",
                         "description": "The domain name for the DNS zone."
@@ -1105,6 +1141,10 @@
                     "type": "number",
                     "description": "The storage zone ID for Perma-Cache."
                 },
+                "pullzoneId": {
+                    "type": "number",
+                    "description": "The unique ID of the pull zone."
+                },
                 "requestCoalescingEnabled": {
                     "type": "boolean",
                     "description": "Indicates whether request coalescing is enabled."
@@ -1217,6 +1257,7 @@
                 "errorpageStatuspageCode",
                 "errorpageStatuspageEnabled",
                 "errorpageWhitelabel",
+                "pullzoneId",
                 "limitAfter",
                 "limitBandwidth",
                 "limitBurst",
@@ -1941,6 +1982,10 @@
                         "type": "number",
                         "description": "The storage zone ID for Perma-Cache."
                     },
+                    "pullzoneId": {
+                        "type": "number",
+                        "description": "The unique ID of the pull zone."
+                    },
                     "requestCoalescingEnabled": {
                         "type": "boolean",
                         "description": "Indicates whether request coalescing is enabled."
@@ -2204,6 +2249,10 @@
                     "type": "number",
                     "description": "The ID of the linked pull zone."
                 },
+                "pullzoneHostnameId": {
+                    "type": "number",
+                    "description": "The unique ID of the hostname."
+                },
                 "tlsEnabled": {
                     "type": "boolean",
                     "description": "Indicates whether the hostname should support HTTPS. If a custom certificate is not provided via the \u003ccode\u003ecertificate\u003c/code\u003e attribute, a Domain-validated TLS certificate will be automatically obtained and managed by Bunny. ***Important***: it is not possible to tell managed and custom certificates apart for imported resources."
@@ -2213,6 +2262,7 @@
                 "certificate",
                 "certificateKey",
                 "forceSsl",
+                "pullzoneHostnameId",
                 "isInternal",
                 "name",
                 "pullzone",
@@ -2273,6 +2323,10 @@
                     "pullzone": {
                         "type": "number",
                         "description": "The ID of the linked pull zone."
+                    },
+                    "pullzoneHostnameId": {
+                        "type": "number",
+                        "description": "The unique ID of the hostname."
                     },
                     "tlsEnabled": {
                         "type": "boolean",
@@ -2677,6 +2731,10 @@
                     "type": "boolean",
                     "description": "Indicates whether to rewrite 404 errors to 200 status."
                 },
+                "storageZoneId": {
+                    "type": "number",
+                    "description": "The ID of the storage zone."
+                },
                 "zoneTier": {
                     "type": "string",
                     "description": "Options: `Edge`, `Standard`"
@@ -2685,6 +2743,7 @@
             "required": [
                 "dateModified",
                 "hostname",
+                "storageZoneId",
                 "name",
                 "password",
                 "passwordReadonly",
@@ -2768,6 +2827,10 @@
                     "rewrite404To200": {
                         "type": "boolean",
                         "description": "Indicates whether to rewrite 404 errors to 200 status."
+                    },
+                    "storageZoneId": {
+                        "type": "number",
+                        "description": "The ID of the storage zone."
                     },
                     "zoneTier": {
                         "type": "string",
@@ -2962,6 +3025,9 @@
                     "type": "number",
                     "description": "The ID of the linked storage zone."
                 },
+                "streamLibraryId": {
+                    "type": "number"
+                },
                 "transcribingEnabled": {
                     "type": "boolean",
                     "description": "Indicates whether the automatic audio transcribing is currently enabled for this zone."
@@ -3025,6 +3091,7 @@
                 "directUrlFileAccessBlocked",
                 "drmMediacageBasicEnabled",
                 "earlyPlayEnabled",
+                "streamLibraryId",
                 "mp4FallbackEnabled",
                 "multiAudioTrackSupportEnabled",
                 "name",
@@ -3374,6 +3441,9 @@
                     "storageZone": {
                         "type": "number",
                         "description": "The ID of the linked storage zone."
+                    },
+                    "streamLibraryId": {
+                        "type": "number"
                     },
                     "transcribingEnabled": {
                         "type": "boolean",
