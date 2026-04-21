@@ -952,6 +952,14 @@ func (ctx *conversionContext) applyDefaults(
 					source = "Terraform schema"
 				}
 
+				// pulumi/pulumi-terraform-bridge#2618:
+				// preserve Terraform raw-config semantics for freshly synthesized falsy
+				// TF schema defaults. Replayed defaults from prior state still need to
+				// round-trip through unchanged updates for legacy stacks.
+				if source == "Terraform schema" && shouldSuppressTFSchemaDefaultValue(dv) {
+					return true
+				}
+
 				if dv != nil {
 					glog.V(9).Infof("Created Terraform input: %v = %v (from %s)", name, dv, source)
 					result[name] = dv
@@ -972,6 +980,23 @@ func (ctx *conversionContext) applyDefaults(
 	result[reservedkeys.Defaults] = newDefaults
 
 	return nil
+}
+
+func shouldSuppressTFSchemaDefaultValue(defaultValue interface{}) bool {
+	// pulumi/pulumi-terraform-bridge#2618:
+	// narrow bridge-side suppression to falsy TF schema defaults only. This
+	// keeps omission visible to Terraform while leaving non-falsy defaults on
+	// the existing path until we have broader parity evidence for them.
+	switch normalized := normalizeTFDefaultValue(defaultValue).(type) {
+	case bool:
+		return !normalized
+	case float64:
+		return normalized == 0
+	case string:
+		return normalized == ""
+	default:
+		return false
+	}
 }
 
 // makeTerraformUnknownElement creates an unknown value to be used as an element of a list or set using the given

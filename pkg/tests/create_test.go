@@ -359,6 +359,124 @@ func TestExplicitNilList(t *testing.T) {
 	)
 }
 
+// Regression tests for pulumi/pulumi-terraform-bridge#2618.
+func TestCreateFalsyTFDefaultParity(t *testing.T) {
+	t.Parallel()
+
+	t.Run("top-level scalar defaults", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("string_default_empty", func(t *testing.T) {
+			t.Parallel()
+
+			// Terraform keeps omitted falsy defaults out of RawConfig on Create.
+			// Pulumi used to replay "" here as if the user had explicitly set it.
+			crosstests.Create(t,
+				map[string]*schema.Schema{
+					"default_location": {
+						Type:     schema.TypeString,
+						Optional: true,
+						Default:  "",
+					},
+				},
+				cty.ObjectVal(map[string]cty.Value{}),
+			)
+		})
+
+		t.Run("auth0_style_bool_default_false", func(t *testing.T) {
+			t.Parallel()
+
+			// pulumi/pulumi-auth0#657:
+			// omitted false was being replayed as an explicit value, which changed
+			// provider behavior for APIs that treat "present false" differently from
+			// "field omitted".
+			crosstests.Create(t,
+				map[string]*schema.Schema{
+					"is_signup_enabled": {
+						Type:     schema.TypeBool,
+						Optional: true,
+						Default:  false,
+					},
+				},
+				cty.ObjectVal(map[string]cty.Value{}),
+			)
+		})
+
+		t.Run("int zero default", func(t *testing.T) {
+			t.Parallel()
+
+			// Zero behaves like the other falsy scalar defaults for RawConfig parity.
+			crosstests.Create(t,
+				map[string]*schema.Schema{
+					"max_groups_to_retrieve": {
+						Type:     schema.TypeInt,
+						Optional: true,
+						Default:  0,
+					},
+				},
+				cty.ObjectVal(map[string]cty.Value{}),
+			)
+		})
+	})
+
+	t.Run("azuredevops_style_nested_set_element_defaults_stay_omitted", func(t *testing.T) {
+		t.Parallel()
+
+		// pulumi/pulumi-azuredevops#514:
+		// nested falsy defaults used to get materialized into set elements, which
+		// changed the element shape/hash and made GetRawConfig observe authored
+		// secret flags/values that Terraform kept omitted.
+		crosstests.Create(t,
+			map[string]*schema.Schema{
+				"variables": {
+					Type:     schema.TypeSet,
+					Required: true,
+					MinItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"name": {
+								Type:     schema.TypeString,
+								Required: true,
+							},
+							"value": {
+								Type:     schema.TypeString,
+								Optional: true,
+								Default:  "",
+							},
+							"secret_value": {
+								Type:     schema.TypeString,
+								Optional: true,
+								Default:  "",
+							},
+							"is_secret": {
+								Type:     schema.TypeBool,
+								Optional: true,
+								Default:  false,
+							},
+						},
+					},
+				},
+			},
+			cty.ObjectVal(map[string]cty.Value{
+				"variables": cty.SetVal([]cty.Value{
+					cty.ObjectVal(map[string]cty.Value{
+						"name":  cty.StringVal("key1"),
+						"value": cty.StringVal("val1"),
+					}),
+				}),
+			}),
+			crosstests.CreatePulumiConfig(resource.NewPropertyMapFromMap(map[string]interface{}{
+				"variables": []interface{}{
+					map[string]interface{}{
+						"name":  "key1",
+						"value": "val1",
+					},
+				},
+			})),
+		)
+	})
+}
+
 func TestInputsEmptyCollections(t *testing.T) {
 	t.Parallel()
 

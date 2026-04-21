@@ -127,6 +127,8 @@ func TestConfigureCrossTest(t *testing.T) {
 		pt := pulcheck.PulCheck(t, bridgedProvider, pulumiProgram)
 		pt.Preview(t)
 		require.NotNil(t, puRd)
+		// Provider Configure can also observe RawConfig, so this is the
+		// provider-config analogue of the resource Create/Update parity checks.
 		require.Equal(t, tfRd.GetRawConfig(), puRd.GetRawConfig())
 	}
 
@@ -155,6 +157,71 @@ resources:
 			`
 provider "prov" {
 	config = "val"
+}
+
+resource "prov_test" "test" {
+	test = "val"
+}`)
+	})
+
+	t.Run("omitted bool default false", func(t *testing.T) {
+		// Keep provider config aligned with Terraform when an optional bool default
+		// is omitted. This exercises the broader applyDefaults seam, not just
+		// resource Check/Create.
+		runTest(t,
+			map[string]*schema.Schema{
+				"config": {
+					Type:     schema.TypeBool,
+					Optional: true,
+					Default:  false,
+				},
+			},
+			`
+name: test
+runtime: yaml
+resources:
+	prov:
+		type: pulumi:providers:prov
+		defaultProvider: true
+	mainRes:
+		type: prov:index:Test
+		properties:
+			test: "val"
+`,
+			`
+provider "prov" {
+}
+
+resource "prov_test" "test" {
+	test = "val"
+}`)
+	})
+
+	t.Run("omitted string default empty", func(t *testing.T) {
+		// Top-level empty-string defaults are the same RawConfig parity problem as
+		// false/0; Terraform keeps the field omitted here.
+		runTest(t,
+			map[string]*schema.Schema{
+				"config": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Default:  "",
+				},
+			},
+			`
+name: test
+runtime: yaml
+resources:
+	prov:
+		type: pulumi:providers:prov
+		defaultProvider: true
+	mainRes:
+		type: prov:index:Test
+		properties:
+			test: "val"
+`,
+			`
+provider "prov" {
 }
 
 resource "prov_test" "test" {
