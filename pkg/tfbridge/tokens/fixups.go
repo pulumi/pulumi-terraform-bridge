@@ -70,9 +70,14 @@ func fixMissingIDs(fixCtx fixCtx, p *info.Provider) error {
 	}
 	return walkResources(fixCtx, p, func(r resourceInfo) error {
 		id, hasID := r.TF.Schema().GetOk("id")
-		ok := hasID &&
-			(id.Type() == shim.TypeString || getIDType(r.Schema) == "string") &&
-			id.Computed()
+		if !hasID {
+			if r.Schema.ComputeID == nil {
+				r.Schema.ComputeID = missingIDComputeID()
+			}
+			return nil
+		}
+
+		ok := (id.Type() == shim.TypeString || getIDType(r.Schema) == "string") && id.Computed()
 		if !ok && r.Schema.ComputeID == nil {
 			r.Schema.ComputeID = missingIDComputeID()
 		}
@@ -143,6 +148,24 @@ func fixID(providerName, tokenPrefix string) fixupProperty {
 			return nil
 		}
 
+		if tfIDProperty.Computed() && !tfIDProperty.Optional() && !tfIDProperty.Required() {
+			// A computed-only string "id" already occupies Pulumi's resource ID slot.
+			if tfIDProperty.Type() == shim.TypeString {
+				return nil
+			}
+
+			// Preserve explicit provider decisions for computed-only IDs.
+			// Providers that already overrode the Pulumi view of "id" should not
+			// get a second renamed output property synthesized on top.
+			if f := r.Schema.Fields["id"]; f != nil && f.Type == "string" {
+				return nil
+			}
+			if r.Schema.ComputeID != nil && computedIDTypeIsCoercibleToString(tfIDProperty.Type()) {
+				getField(&r.Schema.Fields, "id").Type = "string"
+				return nil
+			}
+		}
+
 		candidateNames := []string{
 			getResourceName(r.TFName) + "_id",
 			strings.ReplaceAll(providerName, "-", "_") + "_" + getResourceName(r.TFName) + "_id",
@@ -153,10 +176,6 @@ func fixID(providerName, tokenPrefix string) fixupProperty {
 		for _, proposedIDFieldName := range candidateNames {
 			if _, ok := tfSchema.GetOk(proposedIDFieldName); ok {
 				continue
-			}
-
-			if !tfIDProperty.Optional() && !tfIDProperty.Required() && tfIDProperty.Type() == shim.TypeString {
-				return nil
 			}
 
 			newIDField := naming.TerraformToPulumiNameV2(proposedIDFieldName, tfSchema, r.Schema.Fields)
@@ -172,6 +191,15 @@ func fixID(providerName, tokenPrefix string) fixupProperty {
 		}
 
 		return fmt.Errorf("no available new name, tried %#v", candidateNames)
+	}
+}
+
+func computedIDTypeIsCoercibleToString(t shim.ValueType) bool {
+	switch t {
+	case shim.TypeBool, shim.TypeInt, shim.TypeFloat:
+		return true
+	default:
+		return false
 	}
 }
 
