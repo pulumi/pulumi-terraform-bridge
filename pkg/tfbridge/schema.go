@@ -956,7 +956,9 @@ func (ctx *conversionContext) applyDefaults(
 				// preserve Terraform raw-config semantics for freshly synthesized falsy
 				// TF schema defaults. Replayed defaults from prior state still need to
 				// round-trip through unchanged updates for legacy stacks.
-				if source == "Terraform schema" && shouldSuppressTFSchemaDefaultValue(dv) {
+				if source == "Terraform schema" &&
+					(!sch.Required() || sch.DefaultFunc() == nil) &&
+					shouldSuppressTFSchemaDefaultValue(dv) {
 					return true
 				}
 

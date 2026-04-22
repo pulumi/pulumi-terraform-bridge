@@ -4220,7 +4220,6 @@ func TestProviderConfigMinMaxItemsOne(t *testing.T) {
 }
 
 func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
-	t.Setenv("REQUIRED_CONFIG", "required")
 	// Note that this config should be invalid.
 	//
 	// From the Required docs: Required cannot be used with Computed Default, DefaultFunc
@@ -4229,30 +4228,58 @@ func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
 	// From the DefaultFunc docs: For legacy reasons, DefaultFunc can be used with Required
 	//
 	// This is needed right now since some providers (e.g. Azure) depend on this.
-	p := &schemav2.Provider{
-		Schema: map[string]*schemav2.Schema{
-			"required_env": {
-				Type:        schemav2.TypeString,
-				Required:    true,
-				DefaultFunc: schemav2.EnvDefaultFunc("REQUIRED_CONFIG", nil),
+	newProvider := func(t *testing.T, envKey string, defaultValue interface{}) *Provider {
+		t.Helper()
+
+		p := &schemav2.Provider{
+			Schema: map[string]*schemav2.Schema{
+				"required_env": {
+					Type:        schemav2.TypeString,
+					Required:    true,
+					DefaultFunc: schemav2.EnvDefaultFunc(envKey, defaultValue),
+				},
+				// This is actually invalid!
+				// "required": {
+				// 	Type:     schemav2.TypeString,
+				// 	Required: true,
+				// 	Default:  "default",
+				// },
 			},
-			// This is actually invalid!
-			// "required": {
-			// 	Type:     schemav2.TypeString,
-			// 	Required: true,
-			// 	Default:  "default",
-			// },
-		},
-	}
-	shimProv := shimv2.NewProvider(p)
-	provider := &Provider{
-		tf:        shimProv,
-		config:    shimv2.NewSchemaMap(p.Schema),
-		info:      ProviderInfo{P: shimProv},
-		resources: map[tokens.Type]Resource{},
+		}
+		shimProv := shimv2.NewProvider(p)
+		return &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P: shimProv,
+				Config: map[string]*SchemaInfo{
+					"required_env": {MarkAsOptional: True()},
+				},
+			},
+			resources: map[tokens.Type]Resource{},
+		}
 	}
 
 	t.Run("No error with env config", func(t *testing.T) {
+		t.Setenv("REQUIRED_CONFIG", "required")
+		provider := newProvider(t, "REQUIRED_CONFIG", nil)
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {}
+		  },
+		  "response": {
+		    "inputs": {}
+		  }
+		}`)
+	})
+
+	t.Run("No error with empty env default config", func(t *testing.T) {
+		t.Setenv("REQUIRED_EMPTY_CONFIG", "")
+		provider := newProvider(t, "REQUIRED_EMPTY_CONFIG", "")
 		testutils.Replay(t, provider, `
 		{
 		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
