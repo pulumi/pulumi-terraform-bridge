@@ -35,6 +35,9 @@ type DocsSource interface {
 	// Get the bytes for a datasource with TF token rawname.
 	getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error)
 
+	// Get the bytes for an action with TF token rawname.
+	getAction(rawname string, info *tfbridge.DocInfo) (*DocFile, error)
+
 	// Get the bytes for the provider installation doc.
 	getInstallation(info *tfbridge.DocInfo) (*DocFile, error)
 }
@@ -74,6 +77,10 @@ func (gh *gitRepoSource) getDatasource(rawname string, info *tfbridge.DocInfo) (
 	return gh.getFile(rawname, info, DataSourceDocs)
 }
 
+func (gh *gitRepoSource) getAction(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
+	return gh.getFile(rawname, info, ActionDocs)
+}
+
 func (gh *gitRepoSource) getInstallation(info *tfbridge.DocInfo) (*DocFile, error) {
 	// The installation docs do not have a rawname.
 	return gh.getFile("", info, InstallationDocs)
@@ -99,7 +106,7 @@ func (gh *gitRepoSource) getFile(
 	switch kind {
 	case InstallationDocs:
 		possibleMarkdownNames = append(possibleMarkdownNames, "index.md", "index.html.markdown")
-	case ResourceDocs, DataSourceDocs:
+	case ResourceDocs, DataSourceDocs, ActionDocs:
 		possibleMarkdownNames = getMarkdownNames(gh.resourcePrefix, rawname, gh.docRules)
 		if info != nil && info.Source != "" {
 			possibleMarkdownNames = append(possibleMarkdownNames, info.Source)

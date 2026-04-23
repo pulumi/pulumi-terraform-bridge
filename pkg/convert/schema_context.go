@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
@@ -69,6 +69,21 @@ func newDataSourceSchemaMapContext(
 	var fields map[string]*tfbridge.SchemaInfo
 	if providerInfo != nil {
 		fields = providerInfo.DataSources[dataSource].GetFields()
+	}
+	return newSchemaMapContext(sm, fields)
+}
+
+func newActionSchemaMapContext(
+	action string,
+	schemaOnlyProvider shim.Provider,
+	providerInfo *tfbridge.ProviderInfo,
+) *schemaMapContext {
+	r := schemaOnlyProvider.ActionsMap().Get(action)
+	contract.Assertf(r != nil, "no action %q found in ActionsMap", action)
+	sm := r.Schema()
+	var fields map[string]*tfbridge.SchemaInfo
+	if providerInfo != nil {
+		fields = providerInfo.Actions[action].GetFields()
 	}
 	return newSchemaMapContext(sm, fields)
 }

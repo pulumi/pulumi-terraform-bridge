@@ -32,6 +32,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
@@ -80,6 +82,7 @@ type provider struct {
 	info          tfbridge.ProviderInfo
 	resources     runtypes.Resources
 	datasources   runtypes.DataSources
+	actions       runtypes.Actions
 	pulumiSchema  func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
 	encoding      convert.Encoding
 	configEncoder convert.Encoder
@@ -95,6 +98,8 @@ type provider struct {
 
 	schemaOnlyProvider shim.Provider
 	providerOpts       []providerOption
+
+	invokeWithPreview bool
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -146,6 +151,10 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	if err != nil {
 		return nil, err
 	}
+	actions, err := pfServer.Actions(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	if info.MetadataInfo == nil {
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
@@ -187,6 +196,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		info:               info,
 		resources:          resources,
 		datasources:        datasources,
+		actions:            actions,
 		pulumiSchema:       schema,
 		encoding:           enc,
 		configEncoder:      configEncoder,
@@ -249,6 +259,14 @@ func XParameterizeResetProvider(ctx context.Context, info tfbridge.ProviderInfo,
 	return ctx.Value(xResetProviderKey{}).(xParameterizeResetProviderFunc)(ctx, info, meta)
 }
 
+func (p *provider) HandshakeWithContext(ctx context.Context, req plugin.ProviderHandshakeRequest,
+) (*plugin.ProviderHandshakeResponse, error) {
+	p.invokeWithPreview = req.InvokeWithPreview
+	// We look at the request sent to handshake so we can error if actions are run against old CLI versions, but we tell
+	// the CLI this is unimplemented so it continues to call our current Configure logic.
+	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+}
+
 func (p *provider) ParameterizeWithContext(
 	ctx context.Context, req plugin.ParameterizeRequest,
 ) (plugin.ParameterizeResponse, error) {
@@ -305,13 +323,22 @@ func (p *provider) terraformResourceNameOrRenamedEntity(resourceToken tokens.Typ
 	return "", fmt.Errorf("[pf/tfbridge] unknown resource token: %v", resourceToken)
 }
 
-func (p *provider) terraformDatasourceNameOrRenamedEntity(functionToken tokens.ModuleMember) (string, error) {
-	for tfname, v := range p.info.DataSources {
+func (p *provider) terraformActionNameOrRenamedEntity(functionToken tokens.ModuleMember) (string, bool) {
+	for tfname, v := range p.info.Actions {
 		if v.Tok == functionToken {
-			return tfname, nil
+			return tfname, true
 		}
 	}
-	return "", fmt.Errorf("[pf/tfbridge] unknown datasource token: %v", functionToken)
+	return "", false
+}
+
+func (p *provider) terraformDatasourceNameOrRenamedEntity(functionToken tokens.ModuleMember) (string, bool) {
+	for tfname, v := range p.info.DataSources {
+		if v.Tok == functionToken {
+			return tfname, true
+		}
+	}
+	return "", false
 }
 
 func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {

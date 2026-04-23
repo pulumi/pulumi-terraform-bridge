@@ -23,6 +23,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pl "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -164,7 +165,19 @@ func (p *providerServer) Parameterize(
 func (p *providerServer) Handshake(ctx context.Context,
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+	mreq := plugin.ProviderHandshakeRequest{
+		InvokeWithPreview: req.GetInvokeWithPreview(),
+	}
+	resp, err := p.provider.HandshakeWithContext(ctx, mreq)
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.ProviderHandshakeResponse{
+		AcceptSecrets:                   resp.AcceptSecrets,
+		AcceptResources:                 resp.AcceptResources,
+		AcceptOutputs:                   resp.AcceptOutputs,
+		SupportsAutonamingConfiguration: resp.SupportsAutonamingConfiguration,
+	}, nil
 }
 
 func (p *providerServer) GetSchema(ctx context.Context,
@@ -620,7 +633,7 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 		return nil, err
 	}
 
-	result, failures, err := p.provider.InvokeWithContext(ctx, tokens.ModuleMember(req.GetTok()), args)
+	result, failures, err := p.provider.InvokeWithContext(ctx, tokens.ModuleMember(req.GetTok()), args, req.Preview)
 	if err != nil {
 		return nil, err
 	}

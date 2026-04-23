@@ -1100,6 +1100,28 @@
                 "type": "object"
             }
         },
+        "testbridge:index/print:Print": {
+            "inputs": {
+                "description": "A collection of arguments for invoking Print.\n",
+                "properties": {
+                    "count": {
+                        "type": "number"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "urn": {
+                        "type": "string",
+                        "description": "The URN to run this action against."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text",
+                    "urn"
+                ]
+            }
+        },
         "testbridge:index/smac:SMAC": {
             "outputs": {
                 "description": "A collection of values returned by SMAC.\n",
