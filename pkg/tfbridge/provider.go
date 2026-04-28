@@ -1154,16 +1154,17 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	// Strip values from news that were provider defaults in a previous schema version
-	// but are no longer defaults in the current schema. This prevents stale defaults
-	// (carried in __defaults) from being sent as config to PlanResourceChange, where
-	// they can trigger validation errors during provider upgrades.
+	// Drop values that were provider-defaulted (recorded in __defaults) but are no longer
+	// bridge-managed, so PlanResourceChange does not see stale defaults from a prior
+	// schema version. See the function doc for the full rationale.
 	//
-	// This only affects the Diff path. Check is not affected because it receives fresh
-	// program inputs (not stored inputs with stale __defaults).
-	news = stripStaleDefaults(ctx, news, olds, schema, fields)
+	// Use the stripped map only for the TF-facing config; preserve the original `news`
+	// for shim.DiffOptions.NewInputs. NewInputs is consumed by PlanStateEdit hooks
+	// (WithPlanStateEdit) as the post-Check user input from Pulumi, so it must reflect
+	// what Check produced rather than the bridge's internal sanitization.
+	configNews, _ := stripStaleDefaults(ctx, news, schema, fields)
 
-	config, assets, err := MakeTerraformConfig(ctx, p, olds, news, schema, fields)
+	config, assets, err := MakeTerraformConfig(ctx, p, olds, configNews, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -2099,56 +2100,102 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 	return timeoutOverrides
 }
 
-// stripStaleDefaults removes properties from the property map that were set as provider
-// defaults (listed in __defaults) but whose corresponding TF schema field no longer has
-// a default value. This handles the case where a provider upgrade removes a default:
-// the old default value persists in stored inputs via __defaults, and without stripping
-// it, the value gets sent as config to PlanResourceChange where it can fail validation.
+// stripStaleDefaults removes properties from the property map that were recorded as
+// provider defaults (listed in __defaults) but for which the current schema offers
+// no mechanism to re-derive the value. Forwarding a stale stored value to
+// PlanResourceChange can trigger validation errors or attribute-not-found errors;
+// stripping it lets the provider's plan re-derive (or omit) the field cleanly.
 //
-// Fields with bridge-level defaults (e.g. auto-naming via SchemaInfo.Default) are
-// preserved since those defaults are still active and managed by the bridge.
+// Each entry in __defaults is classified by classifyStaleDefault — see that
+// function's doc for the precedence rules and rationale for each branch. The
+// short version: strip if no mechanism (bridge default, current TF Default,
+// current TF DefaultFunc) can re-derive the value, or if the field is marked
+// Removed/Deprecated such that the stored value should not be forwarded.
 //
-// Note: when tfSchema is nil (field completely removed from schema), the field is kept
-// in news. This is safe because MakeTerraformConfig -> makeTerraformInputsWithOptions
-// drops fields with no corresponding TF schema entry during Pulumi-to-TF conversion,
-// so removed fields never reach PlanResourceChange regardless.
+// This function recurses into nested objects and array elements, since each nested
+// block can carry its own __defaults with independently-stale entries. TypeSet
+// fields are skipped during recursion entirely — set membership is hash-based on
+// all element fields, and stripping a nested field would change element hashes and
+// produce spurious set rearrangement diffs.
+//
+// Known limitations:
+//
+//   - Changed TF schema default (v1 → v2): the field is preserved with its stale
+//     v1 value because the schema still declares a Default. Users silently keep the
+//     old default until they explicitly set the new value in their program. The
+//     architectural follow-up below resolves this case fully.
+//   - Stale defaults inside TypeSet element schemas: because the recursion skips
+//     TypeSet, a removed nested default inside a set element will still reach TF
+//     raw config. Providers that run CustomizeDiff validation on a removed-default
+//     field nested inside a TypeSet block will continue to fail in that case until
+//     the architectural cleanup lands.
+//
+// Running state upgraders on inputs is not viable: upgraders expect the full output
+// shape (computed fields, IDs) and would corrupt the input subset.
+//
+// TODO[pulumi/pulumi-terraform-bridge#3434]: the architectural fix is for applyDefaults to
+// stop tracking TF schema defaults in __defaults at all (only bridge defaults like
+// auto-naming, EnvVars, From should be tracked). Then Check re-derives TF defaults
+// from the current schema each call, the "old default" reuse path only fires for
+// bridge defaults, and the changed-default phantom diff disappears because Check
+// produces the new default in news rather than reusing the old. PR #3398 took the
+// first step (suppressing fresh falsy TF defaults from being materialized) but
+// explicitly held off on the broader change pending evidence that it is safe across
+// the full SDKv2 lifecycle (validation interactions, GetRawConfig semantics, provider
+// Configure with Required+DefaultFunc, data source Invoke). Worth a dedicated PR.
 func stripStaleDefaults(
 	ctx context.Context,
 	m resource.PropertyMap,
-	_ resource.PropertyMap, // olds, reserved for future use
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
-) resource.PropertyMap {
-	defaults, hasDefaults := m[reservedkeys.Defaults]
-	if !hasDefaults || !defaults.IsArray() {
-		return m
-	}
-
+) (resource.PropertyMap, bool) {
 	var staleKeys []resource.PropertyKey
 	var keptDefaults []resource.PropertyValue
-	for _, key := range defaults.ArrayValue() {
-		if !key.IsString() {
-			keptDefaults = append(keptDefaults, key)
+
+	if defaults, hasDefaults := m[reservedkeys.Defaults]; hasDefaults && defaults.IsArray() {
+		for _, key := range defaults.ArrayValue() {
+			if !key.IsString() {
+				// Non-string entries shouldn't appear in __defaults but if they do,
+				// preserve verbatim — we have nothing to look up against the schema.
+				keptDefaults = append(keptDefaults, key)
+				continue
+			}
+			pulumiName := resource.PropertyKey(key.StringValue())
+			if classifyStaleDefault(pulumiName, tfs, ps) == staleDefaultStrip {
+				staleKeys = append(staleKeys, pulumiName)
+			} else {
+				keptDefaults = append(keptDefaults, key)
+			}
+		}
+	}
+
+	// Recurse into non-stale keys to strip nested __defaults. Stale keys are skipped
+	// here — they're deleted below, and recursing into them would accidentally re-insert
+	// them via nestedChanges.
+	staleSet := make(map[resource.PropertyKey]bool, len(staleKeys))
+	for _, k := range staleKeys {
+		staleSet[k] = true
+	}
+	var nestedChanges map[resource.PropertyKey]resource.PropertyValue
+	for k, v := range m {
+		if k == reservedkeys.Defaults || staleSet[k] {
 			continue
 		}
-		pulumiName := resource.PropertyKey(key.StringValue())
-		_, tfSchema, psi := getInfoFromPulumiName(pulumiName, tfs, ps)
-		hasTFDefault := tfSchema != nil && (tfSchema.Default() != nil || tfSchema.DefaultFunc() != nil)
-		hasBridgeDefault := psi != nil && psi.HasDefault()
-		if tfSchema != nil && !hasTFDefault && !hasBridgeDefault {
-			// This field was defaulted by the old TF provider but no longer has a
-			// default in either the TF schema or the bridge SchemaInfo.
-			staleKeys = append(staleKeys, pulumiName)
-		} else {
-			keptDefaults = append(keptDefaults, key)
+		if stripped, changed := stripStaleDefaultsValue(ctx, v, k, tfs, ps); changed {
+			if nestedChanges == nil {
+				nestedChanges = make(map[resource.PropertyKey]resource.PropertyValue)
+			}
+			nestedChanges[k] = stripped
 		}
 	}
 
-	if len(staleKeys) == 0 {
-		return m
+	if len(staleKeys) == 0 && len(nestedChanges) == 0 {
+		return m, false
 	}
 
-	log.Printf("[DEBUG] stripStaleDefaults: removing stale provider defaults from inputs: %v", staleKeys)
+	if len(staleKeys) > 0 {
+		pulumilog.V(9).Infof("stripStaleDefaults: removing stale provider defaults from inputs: %v", staleKeys)
+	}
 
 	// Make a shallow copy to avoid mutating the original.
 	result := make(resource.PropertyMap, len(m))
@@ -2158,10 +2205,194 @@ func stripStaleDefaults(
 	for _, k := range staleKeys {
 		delete(result, k)
 	}
+	for k, v := range nestedChanges {
+		result[k] = v
+	}
 	if len(keptDefaults) > 0 {
 		result[reservedkeys.Defaults] = resource.NewArrayProperty(keptDefaults)
 	} else {
 		delete(result, reservedkeys.Defaults)
 	}
-	return result
+	return result, true
+}
+
+// staleDefaultDisposition classifies what stripStaleDefaults should do with a
+// __defaults entry: strip the corresponding value or preserve it.
+type staleDefaultDisposition int
+
+const (
+	staleDefaultStrip staleDefaultDisposition = iota
+	staleDefaultPreserve
+)
+
+// classifyStaleDefault decides whether a __defaults entry should be stripped
+// from news or preserved. The rules are ordered by precedence; each branch
+// mirrors the eligibility gate that applyDefaults applies in schema.go's
+// makeObjectTerraformInputs. Keep this in sync with applyDefaults — the strip
+// is correct only when the same field would be excluded from default
+// application by Check.
+//
+// Precedence (first match wins):
+//
+//  1. Bridge SchemaInfo.Removed → strip. Mirrors applyDefaults' overlay-branch
+//     skip; signals an overlay-level removal/rename.
+//  2. Bridge SchemaInfo with a managed Default → preserve. These are
+//     non-deterministic (auto-naming, EnvVars, From callbacks); stripping
+//     would force re-derivation and break ID stability.
+//  3. TF schema Removed → strip. Field is no longer accepted by the provider;
+//     forwarding the stale value risks validation failure.
+//  4. TF schema Deprecated && !Required → strip. applyDefaults skips this case;
+//     deprecated-and-required is left to the Default-preservation branch below
+//     (a required field can't be stripped without breaking validation).
+//  5. TF schema declares Default or DefaultFunc → preserve. Avoids the
+//     changed-default phantom diff and preserves the legacy-stack falsy
+//     round-trip from PR #3420. Note: structural check (Default/DefaultFunc),
+//     not DefaultValue() — the latter invokes DefaultFunc, which can return
+//     nil at Diff time (e.g. unset env var) and that runtime-nil result must
+//     not be misclassified as "no default."
+//  6. Default → strip. No mechanism in the current bridge or schema can
+//     re-derive the value, so the stored entry is genuinely stale.
+func classifyStaleDefault(
+	pulumiName resource.PropertyKey,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+) staleDefaultDisposition {
+	_, tfSchema, psi := getInfoFromPulumiName(pulumiName, tfs, ps)
+	switch {
+	case psi != nil && psi.Removed:
+		return staleDefaultStrip
+	case psi != nil && psi.HasDefault():
+		return staleDefaultPreserve
+	case tfSchema != nil && tfSchema.Removed() != "":
+		return staleDefaultStrip
+	case tfSchema != nil && tfSchema.Deprecated() != "" && !tfSchema.Required():
+		return staleDefaultStrip
+	case tfSchema != nil && (tfSchema.Default() != nil || tfSchema.DefaultFunc() != nil):
+		return staleDefaultPreserve
+	default:
+		return staleDefaultStrip
+	}
+}
+
+// unwrapSecret returns the inner value and true if v is a secret, or v itself and false otherwise.
+func unwrapSecret(v resource.PropertyValue) (resource.PropertyValue, bool) {
+	if v.IsSecret() {
+		return v.SecretValue().Element, true
+	}
+	return v, false
+}
+
+// rewrapSecret wraps v in a secret if isSecret is true.
+func rewrapSecret(v resource.PropertyValue, isSecret bool) resource.PropertyValue {
+	if isSecret {
+		return resource.MakeSecret(v)
+	}
+	return v
+}
+
+// stripStaleDefaultsValue strips stale __defaults from a single PropertyValue that may
+// contain nested blocks (object, array-of-objects, or map-of-objects). Use this when
+// recursing through a value of unknown shape; use stripStaleDefaults directly when you
+// already have a PropertyMap. Returns the (possibly updated) value and whether it changed.
+func stripStaleDefaultsValue(
+	ctx context.Context,
+	v resource.PropertyValue,
+	key resource.PropertyKey,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+) (resource.PropertyValue, bool) {
+	// Unwrap secrets transparently — recurse on the inner value, re-wrap if changed.
+	if v.IsSecret() {
+		inner, changed := stripStaleDefaultsValue(ctx, v.SecretValue().Element, key, tfs, ps)
+		if !changed {
+			return v, false
+		}
+		return resource.MakeSecret(inner), true
+	}
+
+	// Only objects and arrays can contain nested __defaults.
+	if !v.IsObject() && !v.IsArray() {
+		return v, false
+	}
+
+	if tfs == nil {
+		return v, false
+	}
+
+	// Look up the TF schema and bridge SchemaInfo for this field in the parent schema.
+	_, tfSchema, psi := getInfoFromPulumiName(key, tfs, ps)
+
+	// Get the nested SchemaMap and Fields from the element schema.
+	var nestedTFS shim.SchemaMap
+	var nestedPS map[string]*SchemaInfo
+	if tfSchema != nil {
+		if res, ok := tfSchema.Elem().(shim.Resource); ok {
+			nestedTFS = res.Schema()
+		}
+	}
+	if psi != nil {
+		nestedPS = psi.Fields
+	}
+	// nestedTFS is nil for scalar fields, unknown fields, or fields whose Elem is not a
+	// Resource — none of those carry nested __defaults.
+	if nestedTFS == nil {
+		return v, false
+	}
+
+	// Skip TypeSet entirely: set membership is hash-based on all element fields, so
+	// stripping a field from a nested element changes its hash and makes TF see set
+	// reorder/add/remove diffs instead of in-place updates. This applies whether the
+	// set is flattened to an object (MaxItemsOne) or kept as an array.
+	if tfSchema.Type() == shim.TypeSet {
+		return v, false
+	}
+
+	if v.IsObject() {
+		// Block-as-object: TypeList with MaxItemsOne flattened to a single object,
+		// or (in PF, where the strip does not currently apply) a TypeMap with
+		// Resource element. SDKv2 reinterprets TypeMap+Elem=Resource as a
+		// string-string map (see shim.go's Schema.Elem doc), so for the SDKv2 path
+		// the values would be scalars and stripStaleDefaults would no-op anyway.
+		stripped, changed := stripStaleDefaults(ctx, v.ObjectValue(), nestedTFS, nestedPS)
+		if !changed {
+			return v, false
+		}
+		return resource.NewObjectProperty(stripped), true
+	}
+
+	// v.IsArray() — TypeList of blocks. (TypeSet was rejected above; TypeList elements
+	// have positional identity, so stripping nested fields is safe.)
+	return stripArrayOfBlocks(ctx, v.ArrayValue(), nestedTFS, nestedPS)
+}
+
+// stripArrayOfBlocks strips stale __defaults from each nested-block element of an
+// array. Each element is unwrapped at most one level of secret here; the bridge's
+// input/state extraction does not produce multi-level Secret(Secret(...)) nesting
+// in practice, so deeper unwrapping would only be defensive.
+func stripArrayOfBlocks(
+	ctx context.Context,
+	arr []resource.PropertyValue,
+	nestedTFS shim.SchemaMap,
+	nestedPS map[string]*SchemaInfo,
+) (resource.PropertyValue, bool) {
+	var newArr []resource.PropertyValue
+	for i, elem := range arr {
+		inner, isSecret := unwrapSecret(elem)
+		if !inner.IsObject() {
+			continue
+		}
+		stripped, changed := stripStaleDefaults(ctx, inner.ObjectValue(), nestedTFS, nestedPS)
+		if !changed {
+			continue
+		}
+		if newArr == nil {
+			newArr = make([]resource.PropertyValue, len(arr))
+			copy(newArr, arr)
+		}
+		newArr[i] = rewrapSecret(resource.NewObjectProperty(stripped), isSecret)
+	}
+	if newArr == nil {
+		return resource.NewArrayProperty(arr), false
+	}
+	return resource.NewArrayProperty(newArr), true
 }
