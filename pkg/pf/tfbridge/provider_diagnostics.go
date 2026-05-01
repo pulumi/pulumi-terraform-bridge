@@ -110,7 +110,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/glog"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -191,7 +191,7 @@ func (p *provider) formatDiagnosticMessage(d *tfprotov6.Diagnostic, sc *schemaCo
 				isDeprecation, sc.schemaMap, sc.schemaInfos)
 			return fmt.Sprintf("[%s] %s", d.Severity.String(), msg)
 		}
-		glog.V(9).Infof("Failed to translate diagnostic attribute path: %v", err)
+		pulumilog.V(9).Infof("Failed to translate diagnostic attribute path: %v", err)
 	}
 
 	// Default formatting.

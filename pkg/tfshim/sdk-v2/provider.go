@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/glog"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -183,7 +183,7 @@ func (p v2Provider) NewProviderConfig(
 	typ := schema.InternalMap(p.tf.Schema).CoreConfigSchema().ImpliedType()
 	ctyVal, err := recoverCtyValueOfObjectType(typ, object)
 	if err != nil {
-		glog.V(9).Infof("Failed to recover cty value of object type: %v, falling back to old behaviour", err)
+		pulumilog.V(9).Infof("Failed to recover cty value of object type: %v, falling back to old behaviour", err)
 		return v2ResourceConfig{tfConfig}
 	}
 

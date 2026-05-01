@@ -21,13 +21,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-log/tfsdklog"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // See InitLogging.
@@ -158,20 +158,17 @@ func (l *host[L]) f(severity diag.Severity, msg string) {
 		}
 	}
 
-	// We failed to write out a clean error message, so lets write to glog.
-	var logF func(args ...any)
+	// We failed to write out a clean error message, so lets write to the Pulumi logger.
 	switch severity {
 	case diag.Info:
-		logF = glog.Info
+		pulumilog.Infof("%s", msg)
 	case diag.Warning:
-		logF = glog.Warning
+		pulumilog.Warningf("%s", msg)
 	case diag.Error:
-		logF = glog.Error
+		pulumilog.Errorf("%s", msg)
 	default: // Includes Debug
-		logF = glog.V(9).Info
+		pulumilog.V(9).Info(msg)
 	}
-
-	logF(msg)
 }
 
 func (l *host[L]) Status() L {

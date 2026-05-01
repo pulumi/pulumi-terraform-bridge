@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/glog"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -601,12 +601,12 @@ func (ctx *conversionContext) makeMapTerraformInputs(
 			return nil, err
 		}
 		result[name] = v
-		glog.V(9).Infof("Created Terraform input: %v = %v", name, v)
+		pulumilog.V(9).Infof("Created Terraform input: %v = %v", name, v)
 	}
 
-	if glog.V(5) {
+	if pulumilog.V(5).Enabled() {
 		for k, v := range result {
-			glog.V(5).Infof("Terraform input %v = %#v", k, v)
+			pulumilog.V(5).Infof("Terraform input %v = %#v", k, v)
 		}
 	}
 
@@ -664,7 +664,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 			return nil, err
 		}
 		result[name] = v
-		glog.V(9).Infof("Created Terraform input: %v = %v", name, v)
+		pulumilog.V(9).Infof("Created Terraform input: %v = %v", name, v)
 	}
 
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
@@ -672,9 +672,9 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		return nil, err
 	}
 
-	if glog.V(5) {
+	if pulumilog.V(5).Enabled() {
 		for k, v := range result {
-			glog.V(5).Infof("Terraform input %v = %#v", k, v)
+			pulumilog.V(5).Infof("Terraform input %v = %#v", k, v)
 		}
 	}
 
@@ -866,7 +866,7 @@ func (ctx *conversionContext) applyDefaults(
 				defaultValue, source = v, "func"
 			}
 			if defaultValue != nil {
-				glog.V(9).Infof("Created Terraform input: %v = %v (from %s)", name, defaultValue, source)
+				pulumilog.V(9).Infof("Created Terraform input: %v = %v (from %s)", name, defaultValue, source)
 				result[name] = defaultValue
 				newDefaults = append(newDefaults, key)
 
@@ -963,7 +963,7 @@ func (ctx *conversionContext) applyDefaults(
 				}
 
 				if dv != nil {
-					glog.V(9).Infof("Created Terraform input: %v = %v (from %s)", name, dv, source)
+					pulumilog.V(9).Infof("Created Terraform input: %v = %v (from %s)", name, dv, source)
 					result[name] = dv
 					newDefaults = append(newDefaults, key)
 				}
@@ -1133,9 +1133,9 @@ func MakeTerraformOutputs(
 		result[name] = out
 	}
 
-	if glog.V(5) {
+	if pulumilog.V(5).Enabled() {
 		for k, v := range result {
-			glog.V(5).Infof("Terraform output %v = %v", k, v)
+			pulumilog.V(5).Infof("Terraform output %v = %v", k, v)
 		}
 	}
 
@@ -1843,7 +1843,7 @@ func getDefaultValue(tfs shim.Schema, _ *SchemaInfo) interface{} {
 		if errors.Is(err, ErrSchemaDefaultValue) {
 			// Log error output but continue otherwise.
 			// This avoids a panic on preview. See https://github.com/pulumi/pulumi-terraform-bridge/issues/1329.
-			glog.V(9).Infof(err.Error())
+			pulumilog.V(9).Infof(err.Error())
 		} else {
 			return err
 		}
@@ -1984,14 +1984,14 @@ func extractSchemaInputsObject(
 		// Since Pulumi is so schema based, it might be better to error on
 		// !typeKnown instead of dropping a field.
 		if !typeKnown || (!etfs.Optional() && !etfs.Required()) {
-			glog.V(9).Infof("skipping '%v' (not an input)", k)
+			pulumilog.V(9).Infof("skipping '%v' (not an input)", k)
 			continue
 		}
 
 		ev := extractSchemaInputs(e, etfs, eps)
 
 		if allowDrop && !etfs.Required() && isDefaultOrZeroValue(etfs, eps, ev) {
-			glog.V(9).Infof("skipping '%v' (not required + default or zero value)", k)
+			pulumilog.V(9).Infof("skipping '%v' (not required + default or zero value)", k)
 			continue
 		}
 

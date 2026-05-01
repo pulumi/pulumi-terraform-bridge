@@ -23,7 +23,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/glog"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -157,7 +157,7 @@ func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*
 			existingValue, has := inputs.Fields[k]
 			if has && !proto.Equal(existingValue, v) {
 				// If different servers return different values, pick arbitrarily.
-				glog.V(9).Infof("[muxer] CheckConfig results do not agree on the '%s' property:"+
+				pulumilog.V(9).Infof("[muxer] CheckConfig results do not agree on the '%s' property:"+
 					"\n    server %d: %s"+
 					"\n    server %d: %s"+
 					"\nPicking the server %d response",

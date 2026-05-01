@@ -20,7 +20,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/golang/glog"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/hashicorp/go-cty/cty"
 	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -45,7 +45,7 @@ func makeResourceRawConfig(
 
 	// This should never happen in practice, but following the original design of this method error recovery
 	// is attempted by using approximate methods as it might be better to proceed than to fail fast.
-	glog.V(9).Infof("failed to recover resource config value from data, "+
+	pulumilog.V(9).Infof("failed to recover resource config value from data, "+
 		"falling back to approximate methods: %v", err)
 
 	return makeResourceRawConfigClassic(config, resource)
@@ -59,7 +59,7 @@ func makeResourceRawConfigClassic(config *terraform.ResourceConfig, resource *sc
 	coerced, err := resource.CoreConfigSchema().CoerceValue(original)
 	if err != nil {
 		// Once more, choosing to proceed with a slightly incorrect value rather than fail fast.
-		glog.V(9).Infof("failed to coerce config: %v", err)
+		pulumilog.V(9).Infof("failed to coerce config: %v", err)
 		return original
 	}
 	return coerced

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/hashicorp/go-cty/cty"
 	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/go-cty/cty/msgpack"
@@ -57,7 +57,7 @@ func (r *v2Resource2) InstanceState(
 	}
 	s, err := recoverAndCoerceCtyValueWithSchema(r.tf.CoreConfigSchema(), object)
 	if err != nil {
-		glog.V(9).Infof("failed to coerce config: %v, proceeding with imprecise value", err)
+		pulumilog.V(9).Infof("failed to coerce config: %v, proceeding with imprecise value", err)
 		original := schema.HCL2ValueFromConfigValue(object)
 		s = original
 	}
@@ -945,13 +945,13 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 			// Only lists and sets can be blocks and pass InternalValidate
 			// Ignore other types.
 			if fieldType.IsListType() {
-				glog.V(10).Info(
+				pulumilog.V(10).Infof(
 					"normalizeBlockCollections: replacing a nil list with an empty list because the underlying "+
 						"TF property is a block %s, %s",
 					fieldName, fieldType.ElementType())
 				valMap[fieldName] = cty.ListValEmpty(fieldType.ElementType())
 			} else if fieldType.IsSetType() {
-				glog.V(10).Info(
+				pulumilog.V(10).Infof(
 					"normalizeBlockCollections: replacing a nil set with an empty set because the underlying "+
 						"TF property is a block %s, %s",
 					fieldName, fieldType.ElementType())
@@ -960,12 +960,12 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 		} else {
 			subBlockSchema := res.SchemaMap()[fieldName]
 			if subBlockSchema == nil {
-				glog.V(5).Info("normalizeBlockCollections: Unexpected nil subBlockSchema for %s", fieldName)
+				pulumilog.V(5).Infof("normalizeBlockCollections: Unexpected nil subBlockSchema for %s", fieldName)
 				continue
 			}
 			subBlockRes, ok := subBlockSchema.Elem.(*schema.Resource)
 			if !ok {
-				glog.V(5).Info("normalizeBlockCollections: Unexpected schema type %s", fieldName)
+				pulumilog.V(5).Infof("normalizeBlockCollections: Unexpected schema type %s", fieldName)
 				continue
 			}
 			normalizedVal := normalizeSubBlock(subVal, subBlockRes)

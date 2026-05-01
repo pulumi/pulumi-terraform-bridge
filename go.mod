@@ -10,7 +10,6 @@ require (
 	github.com/deckarep/golang-set/v2 v2.5.0
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-test/deep v1.1.1
-	github.com/golang/glog v1.2.5
 	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cty v1.5.0
