@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -165,6 +166,12 @@ func (p *providerServer) Handshake(ctx context.Context,
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+}
+
+func (p *providerServer) List(
+	req *pulumirpc.ListRequest, stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
+) error {
+	return status.Error(codes.Unimplemented, "List is not yet implemented")
 }
 
 func (p *providerServer) GetSchema(ctx context.Context,
