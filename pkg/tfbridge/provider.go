@@ -1153,7 +1153,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	config, assets, err := MakeTerraformConfig(ctx, p, news, schema, fields)
+	config, assets, err := MakeTerraformConfig(ctx, p, olds, news, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -1309,7 +1309,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	// To get Terraform to create a new resource, the ID must be blank and existing state must be empty (since the
 	// resource does not exist yet), and the diff object should have no old state and all of the new state.
 	config, assets, err := MakeTerraformConfig(
-		ctx, p, props, res.TF.Schema(), res.Schema.Fields,
+		ctx, p, nil, props, res.TF.Schema(), res.Schema.Fields,
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property inputs", urn)
@@ -1472,7 +1472,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		}
 	}
 
-	config, assets, err := MakeTerraformConfig(ctx, p, oldInputs, res.TF.Schema(), res.Schema.Fields)
+	config, assets, err := MakeTerraformConfig(ctx, p, nil, oldInputs, res.TF.Schema(), res.Schema.Fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -1673,7 +1673,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	config, assets, err := MakeTerraformConfig(ctx, p, news, schema, fields)
+	config, assets, err := MakeTerraformConfig(ctx, p, olds, news, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}

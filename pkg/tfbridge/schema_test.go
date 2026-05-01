@@ -4762,3 +4762,239 @@ func TestCheckMakeTerraformInputsTypeSetReorder(t *testing.T) {
 		}
 	})
 }
+
+// TestUpdateMakeTerraformConfigTypeSetReorder verifies that the Update/Create code path
+// (makeTerraformConfigWithOlds / makeTerraformInputsNoDefaults) correctly matches TypeSet
+// elements by content rather than position when old state has a different order than new inputs.
+// This is the fix for the Update/Create portion of
+// https://github.com/pulumi/pulumi-terraform-bridge/issues/3383.
+func TestUpdateMakeTerraformConfigTypeSetReorder(t *testing.T) {
+	t.Parallel()
+
+	envSetSchema := schemaMap(map[string]*schema.Schema{
+		"envs": {
+			Type:     shim.TypeSet,
+			Optional: true,
+			Elem: (&schema.Resource{
+				Schema: schemaMap(map[string]*schema.Schema{
+					"name": {
+						Type: shim.TypeString,
+					},
+					"value": {
+						Type:     shim.TypeString,
+						Optional: true,
+					},
+					"value_source": {
+						Type:     shim.TypeString,
+						Optional: true,
+					},
+				}),
+			}).Shim(),
+		},
+	})
+
+	envListSchema := schemaMap(map[string]*schema.Schema{
+		"envs": {
+			Type:     shim.TypeList,
+			Optional: true,
+			Elem: (&schema.Resource{
+				Schema: schemaMap(map[string]*schema.Schema{
+					"name": {
+						Type: shim.TypeString,
+					},
+					"value": {
+						Type:     shim.TypeString,
+						Optional: true,
+					},
+					"value_source": {
+						Type:     shim.TypeString,
+						Optional: true,
+					},
+				}),
+			}).Shim(),
+		},
+	})
+
+	t.Run("cloud_run_oneof_no_corruption_on_update", func(t *testing.T) {
+		t.Parallel()
+
+		// Old state has GCP's alphabetical order (from a previous Create/Update).
+		// APP_SECRET has both value="" (TF default) and value_source set.
+		olds := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":        resource.NewStringProperty("APP_SECRET"),
+					"value":       resource.NewStringProperty(""),
+					"valueSource": resource.NewStringProperty("projects/p/secrets/s/versions/latest"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("DATABASE_URL"),
+					"value": resource.NewStringProperty("postgres://localhost:5432/db"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+			}),
+		}
+
+		// User's code has a different order: ZOO_MODE, APP_SECRET (valueSource only), DATABASE_URL.
+		news := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":        resource.NewStringProperty("APP_SECRET"),
+					"valueSource": resource.NewStringProperty("projects/p/secrets/s/versions/latest"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("DATABASE_URL"),
+					"value": resource.NewStringProperty("postgres://localhost:5432/db"),
+				}),
+			}),
+		}
+
+		// makeTerraformInputsNoDefaults mirrors the MakeTerraformConfig / makeTerraformConfigWithOlds
+		// code path used during Update and Diff (defaults disabled).
+		result, _, err := makeTerraformInputsNoDefaults(olds, news, envSetSchema, nil)
+		require.NoError(t, err)
+
+		// No env var should have both "value" and "value_source" set (oneof violation).
+		envs := result["envs"]
+		envsArr, ok := envs.([]interface{})
+		require.True(t, ok, "envs should be an array")
+		require.Len(t, envsArr, 3)
+
+		for _, env := range envsArr {
+			envMap, ok := env.(map[string]interface{})
+			require.True(t, ok)
+			name := envMap["name"].(string)
+			hasValue := envMap["value"] != nil && envMap["value"] != ""
+			hasValueSource := envMap["value_source"] != nil && envMap["value_source"] != ""
+			if hasValue && hasValueSource {
+				t.Errorf("env %q has both value=%q and value_source=%q — oneof violation",
+					name, envMap["value"], envMap["value_source"])
+			}
+		}
+	})
+
+	t.Run("three_element_reorder_with_mixed_value_types", func(t *testing.T) {
+		t.Parallel()
+
+		// Old state: cloud returned alphabetically with mixed value/valueSource
+		olds := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":        resource.NewStringProperty("API_KEY"),
+					"value":       resource.NewStringProperty(""),
+					"valueSource": resource.NewStringProperty("projects/p/secrets/api-key/versions/1"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("LOG_LEVEL"),
+					"value": resource.NewStringProperty("info"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":        resource.NewStringProperty("SESSION_SECRET"),
+					"value":       resource.NewStringProperty(""),
+					"valueSource": resource.NewStringProperty("projects/p/secrets/session/versions/1"),
+				}),
+			}),
+		}
+
+		// User's code has different order: LOG_LEVEL, SESSION_SECRET, API_KEY
+		news := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("LOG_LEVEL"),
+					"value": resource.NewStringProperty("debug"), // changed value
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":        resource.NewStringProperty("SESSION_SECRET"),
+					"valueSource": resource.NewStringProperty("projects/p/secrets/session/versions/1"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":        resource.NewStringProperty("API_KEY"),
+					"valueSource": resource.NewStringProperty("projects/p/secrets/api-key/versions/1"),
+				}),
+			}),
+		}
+
+		result, _, err := makeTerraformInputsNoDefaults(olds, news, envSetSchema, nil)
+		require.NoError(t, err)
+
+		envs := result["envs"]
+		envsArr, ok := envs.([]interface{})
+		require.True(t, ok, "envs should be an array")
+		require.Len(t, envsArr, 3)
+
+		for _, env := range envsArr {
+			envMap, ok := env.(map[string]interface{})
+			require.True(t, ok)
+			name := envMap["name"].(string)
+			hasValue := envMap["value"] != nil && envMap["value"] != ""
+			hasValueSource := envMap["value_source"] != nil && envMap["value_source"] != ""
+			if hasValue && hasValueSource {
+				t.Errorf("env %q has both value=%q and value_source=%q — oneof violation",
+					name, envMap["value"], envMap["value_source"])
+			}
+		}
+
+		// Verify specific elements have correct fields
+		for _, env := range envsArr {
+			envMap := env.(map[string]interface{})
+			name := envMap["name"].(string)
+			switch name {
+			case "LOG_LEVEL":
+				assert.Equal(t, "debug", envMap["value"], "LOG_LEVEL should have value=debug")
+			case "SESSION_SECRET":
+				assert.Equal(t, "projects/p/secrets/session/versions/1",
+					envMap["value_source"], "SESSION_SECRET should have value_source")
+			case "API_KEY":
+				assert.Equal(t, "projects/p/secrets/api-key/versions/1",
+					envMap["value_source"], "API_KEY should have value_source")
+			}
+		}
+	})
+
+	t.Run("typelist_still_positional_on_update", func(t *testing.T) {
+		t.Parallel()
+
+		// With TypeList, positional matching should be used (order matters).
+		olds := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":        resource.NewStringProperty("APP_SECRET"),
+					"valueSource": resource.NewStringProperty("secret_ref"),
+				}),
+			}),
+		}
+
+		news := resource.PropertyMap{
+			"envs": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":  resource.NewStringProperty("ZOO_MODE"),
+					"value": resource.NewStringProperty("production"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":        resource.NewStringProperty("APP_SECRET"),
+					"valueSource": resource.NewStringProperty("secret_ref"),
+				}),
+			}),
+		}
+
+		// TypeList with same ordering should work fine
+		result, _, err := makeTerraformInputsNoDefaults(olds, news, envListSchema, nil)
+		require.NoError(t, err)
+
+		envs := result["envs"]
+		envsArr, ok := envs.([]interface{})
+		require.True(t, ok, "envs should be an array")
+		require.Len(t, envsArr, 2)
+	})
+}

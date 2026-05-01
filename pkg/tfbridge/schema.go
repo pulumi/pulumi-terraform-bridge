@@ -654,7 +654,11 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 		}
 		tfAttributesToPulumiProperties[name] = string(key)
 		var old resource.PropertyValue
-		if ctx.ApplyDefaults && olds != nil {
+		// Always pass old values when available so that makeTerraformInput can use
+		// matchSetElements for content-based TypeSet matching. Old values are only used
+		// for matching context (not for populating defaults) when ApplyDefaults is false.
+		// See https://github.com/pulumi/pulumi-terraform-bridge/issues/3383.
+		if olds != nil {
 			old = olds[key]
 		}
 
@@ -1291,10 +1295,13 @@ func MakeTerraformOutput(
 }
 
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
-func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
+// When olds is non-nil, TypeSet arrays use content-based matching (via matchSetElements) instead of
+// positional matching, preventing oneof field leakage when cloud providers reorder set elements.
+// See https://github.com/pulumi/pulumi-terraform-bridge/issues/3383.
+func MakeTerraformConfig(ctx context.Context, p *Provider, olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (shim.ResourceConfig, AssetTable, error) {
-	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
+	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, olds, news, tfs, ps,
 		makeTerraformInputsOptions{
 			DisableDefaults: true, DisableTFDefaults: true,
 		})
@@ -1315,7 +1322,7 @@ func UnmarshalTerraformConfig(ctx context.Context, p *Provider, m *pbstruct.Stru
 	if err != nil {
 		return nil, nil, err
 	}
-	return MakeTerraformConfig(ctx, p, props, tfs, ps)
+	return MakeTerraformConfig(ctx, p, nil, props, tfs, ps)
 }
 
 // makeConfig is a helper for MakeTerraformConfigFromInputs that performs a deep-ish copy of its input, recursively
