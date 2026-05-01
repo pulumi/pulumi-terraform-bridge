@@ -24,12 +24,12 @@ import (
 	"strconv"
 	"strings"
 
-	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"

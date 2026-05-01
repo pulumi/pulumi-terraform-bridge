@@ -23,9 +23,9 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 
-	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 

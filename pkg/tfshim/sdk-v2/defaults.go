@@ -15,8 +15,8 @@
 package sdkv2
 
 import (
-	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 func withPatchedDefaults(s *schema.Schema) *schema.Schema {

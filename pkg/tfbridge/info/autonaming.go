@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
