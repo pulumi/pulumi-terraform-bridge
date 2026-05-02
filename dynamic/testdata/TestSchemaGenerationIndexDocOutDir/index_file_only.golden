@@ -80,7 +80,7 @@ server = random.Id("server",
     keepers={
         "ami_id": ami_id,
     },
-    byte_length=8)
+    byte_length=float(8))
 server_instance = aws.ec2.Instance("server",
     tags={
         "Name": server.hex.apply(lambda hex: f"web-server {hex}"),
@@ -99,7 +99,7 @@ using Random = Pulumi.Random;
 
 return await Deployment.RunAsync(() =>
 {
-    var server = new Random.Index.Id("server", new()
+    var server = new Random.Id("server", new()
     {
         Keepers =
         {
@@ -194,7 +194,7 @@ import com.pulumi.random.Id;
 import com.pulumi.random.IdArgs;
 import com.pulumi.aws.ec2.Instance;
 import com.pulumi.aws.ec2.InstanceArgs;
-import java.util.List;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Map;
 import java.io.File;
