@@ -280,7 +280,7 @@ resources:
       # If the file is not in the current working directory you will need to include a
       #   # path.module in the filename.
       code:
-        fn::FileArchive: lambda_function_payload.zip
+        fn::fileArchive: lambda_function_payload.zip
       role: ${iamForLambda.arn}
       handler: index.test
       runtime: nodejs18.x
@@ -645,7 +645,7 @@ resources:
     type: aws:lambda:Function
     properties:
       code:
-        fn::FileArchive: lambda_function_payload.zip
+        fn::fileArchive: lambda_function_payload.zip
       role: ${iamForLambda.arn}
       handler: index.test
       runtime: nodejs18.x
