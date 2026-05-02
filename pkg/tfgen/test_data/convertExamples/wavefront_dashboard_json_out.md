@@ -263,7 +263,7 @@ using Wavefront = Pulumi.Wavefront;
 
 return await Deployment.RunAsync(() => 
 {
-    var testDashboardJson = new Wavefront.Index.DashboardJson("testDashboardJson", new()
+    var testDashboardJson = new Wavefront.DashboardJson("testDashboardJson", new()
     {
         JSON = @"  {
     ""acl"": {
@@ -538,8 +538,8 @@ import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
 import com.pulumi.wavefront.DashboardJson;
 import com.pulumi.wavefront.DashboardJsonArgs;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;

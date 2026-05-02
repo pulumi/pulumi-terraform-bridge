@@ -58,7 +58,7 @@ using Auth0 = Pulumi.Auth0;
 
 return await Deployment.RunAsync(() => 
 {
-    var myPages = new Auth0.Index.Pages("myPages", new()
+    var myPages = new Auth0.Pages("myPages", new()
     {
         ChangePassword = new Auth0.Inputs.PagesChangePasswordArgs
         {
@@ -133,8 +133,8 @@ import com.pulumi.auth0.inputs.PagesChangePasswordArgs;
 import com.pulumi.auth0.inputs.PagesErrorArgs;
 import com.pulumi.auth0.inputs.PagesGuardianMfaArgs;
 import com.pulumi.auth0.inputs.PagesLoginArgs;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;
