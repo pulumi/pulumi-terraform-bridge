@@ -25,7 +25,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/golang/glog"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/go-multierror"
@@ -39,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc/codes"
@@ -515,7 +515,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	urn := resource.URN(req.GetUrn())
 	ctx = p.loggingContext(ctx, urn)
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
-	glog.V(9).Infof("%s executing", label)
+	pulumilog.V(9).Infof("%s executing", label)
 
 	configEnc := NewConfigEncoding(p.config, p.info.Config)
 
@@ -754,7 +754,7 @@ func validateProviderConfig(
 		msg := formatValidationWarning(warn, p.config, p.info.GetConfig())
 		logErr := p.host.Log(ctx, diag.Warning, "", fmt.Sprintf("provider config warning: %v", msg))
 		if logErr != nil {
-			glog.V(9).Infof("Failed to log to the engine: %v", logErr)
+			pulumilog.V(9).Infof("Failed to log to the engine: %v", logErr)
 			continue
 		}
 	}
@@ -775,7 +775,7 @@ func (p *Provider) DiffConfig(
 ) (*pulumirpc.DiffResponse, error) {
 	urn := resource.URN(req.GetUrn())
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
-	glog.V(9).Infof("%s executing", label)
+	pulumilog.V(9).Infof("%s executing", label)
 
 	return plugin.NewProviderServer(&configDiffer{
 		schemaMap:   p.config,
@@ -944,7 +944,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Check(%s/%s)", p.label(), urn, res.TFName)
-	glog.V(9).Infof("%s executing", label)
+	pulumilog.V(9).Infof("%s executing", label)
 
 	// Unmarshal the old and new properties.
 	var olds resource.PropertyMap
@@ -1081,7 +1081,7 @@ func markWronglyTypedMaxItemsOneStateDiff(
 		localSchema, info, err := LookupSchemas(schemaPath, schema, info)
 		contract.IgnoreError(err)
 		if IsMaxItemsOne(localSchema, info) && localValue.IsArray() {
-			glog.V(9).Infof("Found type mismatch for %s, flagging for update.", pulumiPath)
+			pulumilog.V(9).Infof("Found type mismatch for %s, flagging for update.", pulumiPath)
 			*res = true
 		}
 		return localValue, nil // don't change just visit
@@ -1108,7 +1108,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Diff(%s/%s)", p.label(), urn, res.TFName)
-	glog.V(9).Infof("%s executing", label)
+	pulumilog.V(9).Infof("%s executing", label)
 
 	// To figure out if we have a replacement, perform the diff and then look for RequiresNew flags.
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(),
@@ -1299,7 +1299,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	p.memStats.collectMemStats(ctx, createSpan)
 
 	label := fmt.Sprintf("%s.Create(%s/%s)", p.label(), urn, res.TFName)
-	glog.V(9).Infof("%s executing", label)
+	pulumilog.V(9).Infof("%s executing", label)
 
 	props, err := plugin.UnmarshalProperties(req.GetProperties(),
 		plugin.MarshalOptions{Label: label, KeepUnknowns: true, SkipNulls: true})
@@ -1412,7 +1412,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 
 	id := req.GetId()
 	label := fmt.Sprintf("%s.Read(%s, %s/%s)", p.label(), id, urn, res.TFName)
-	glog.V(9).Infof("%s executing", label)
+	pulumilog.V(9).Infof("%s executing", label)
 
 	// Manufacture Terraform attributes and state with the provided properties, in preparation for reading.
 	oldInputs, err := plugin.UnmarshalProperties(req.GetInputs(), plugin.MarshalOptions{
@@ -1458,7 +1458,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	isRefresh := len(req.GetProperties().GetFields()) != 0
 	if !isRefresh && res.TF.Importer() != nil {
 		isImportOrGet = true
-		glog.V(9).Infof("%s has TF Importer", res.TFName)
+		pulumilog.V(9).Infof("%s has TF Importer", res.TFName)
 
 		state, err = res.runTerraformImporter(ctx, id, p)
 		if err != nil {
@@ -1634,7 +1634,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Update(%s/%s)", p.label(), urn, res.TFName)
-	glog.V(9).Infof("%s executing", label)
+	pulumilog.V(9).Infof("%s executing", label)
 
 	// In order to perform the update, we first need to calculate the Terraform view of the diff.
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(),
@@ -1789,7 +1789,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Delete(%s/%s)", p.label(), urn, res.TFName)
-	glog.V(9).Infof("%s executing", label)
+	pulumilog.V(9).Infof("%s executing", label)
 
 	opts, err := getProviderOptions(p.providerOpts)
 	if err != nil {
@@ -1914,7 +1914,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	p.memStats.collectMemStats(ctx, span)
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
-	glog.V(9).Infof("%s executing", label)
+	pulumilog.V(9).Infof("%s executing", label)
 
 	// Unmarshal the arguments.
 	args, err := plugin.UnmarshalProperties(req.GetArgs(), plugin.MarshalOptions{

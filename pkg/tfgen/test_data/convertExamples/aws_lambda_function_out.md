@@ -116,7 +116,7 @@ return await Deployment.RunAsync(() =>
         AssumeRolePolicy = assumeRole.Apply(getPolicyDocumentResult => getPolicyDocumentResult.Json),
     });
 
-    var lambda = Archive.Index.GetFile.Invoke(new()
+    var lambda = Archive.GetFile.Invoke(new()
     {
         Type = "zip",
         SourceFile = "lambda.js",
@@ -221,8 +221,8 @@ import com.pulumi.aws.lambda.Function;
 import com.pulumi.aws.lambda.FunctionArgs;
 import com.pulumi.aws.lambda.inputs.FunctionEnvironmentArgs;
 import com.pulumi.asset.FileArchive;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;
@@ -280,7 +280,7 @@ resources:
       # If the file is not in the current working directory you will need to include a
       #   # path.module in the filename.
       code:
-        fn::FileArchive: lambda_function_payload.zip
+        fn::fileArchive: lambda_function_payload.zip
       role: ${iamForLambda.arn}
       handler: index.test
       runtime: nodejs18.x
@@ -385,8 +385,8 @@ import com.pulumi.core.Output;
 import com.pulumi.aws.lambda.LayerVersion;
 import com.pulumi.aws.lambda.Function;
 import com.pulumi.aws.lambda.FunctionArgs;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;
@@ -594,8 +594,8 @@ import com.pulumi.aws.lambda.Function;
 import com.pulumi.aws.lambda.FunctionArgs;
 import com.pulumi.aws.lambda.inputs.FunctionEphemeralStorageArgs;
 import com.pulumi.asset.FileArchive;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;
@@ -645,7 +645,7 @@ resources:
     type: aws:lambda:Function
     properties:
       code:
-        fn::FileArchive: lambda_function_payload.zip
+        fn::fileArchive: lambda_function_payload.zip
       role: ${iamForLambda.arn}
       handler: index.test
       runtime: nodejs18.x
@@ -932,8 +932,8 @@ import com.pulumi.aws.lambda.FunctionArgs;
 import com.pulumi.aws.lambda.inputs.FunctionFileSystemConfigArgs;
 import com.pulumi.aws.lambda.inputs.FunctionVpcConfigArgs;
 import com.pulumi.resources.CustomResourceOptions;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;
@@ -1282,8 +1282,8 @@ import com.pulumi.aws.lambda.Function;
 import com.pulumi.aws.lambda.FunctionArgs;
 import com.pulumi.aws.lambda.inputs.FunctionLoggingConfigArgs;
 import com.pulumi.resources.CustomResourceOptions;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;

@@ -15,8 +15,8 @@
 package sdkv2
 
 import (
-	"github.com/golang/glog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 func withPatchedDefaults(s *schema.Schema) *schema.Schema {
@@ -34,7 +34,7 @@ func hasInvalidDefault(s *schema.Schema) bool {
 	}
 	_, errors := s.ValidateFunc(s.Default, "field")
 	for _, err := range errors {
-		glog.V(9).Infof("ignoring an invalid (per ValidateFunc) Default %v: %v", s.Default, err)
+		pulumilog.V(9).Infof("ignoring an invalid (per ValidateFunc) Default %v: %v", s.Default, err)
 	}
 	return len(errors) > 0
 }

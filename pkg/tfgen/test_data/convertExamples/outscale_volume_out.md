@@ -47,7 +47,7 @@ using Outscale = Pulumi.Outscale;
 
 return await Deployment.RunAsync(() => 
 {
-    var volume01 = new Outscale.Index.Outscale_volume("volume01", new()
+    var volume01 = new Outscale.Outscale_volume("volume01", new()
     {
         SubregionName = $"{@var.Region}a",
         Size = 10,
@@ -90,8 +90,8 @@ import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
 import com.pulumi.outscale.outscale_volume;
 import com.pulumi.outscale.outscale_volumeArgs;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;
@@ -155,7 +155,7 @@ using Outscale = Pulumi.Outscale;
 
 return await Deployment.RunAsync(() => 
 {
-    var volume01 = new Outscale.Index.Outscale_volume("volume01", new()
+    var volume01 = new Outscale.Outscale_volume("volume01", new()
     {
         TerminationSnapshotName = "deleting_volume_snap",
         SubregionName = $"{@var.Region}a",
@@ -196,8 +196,8 @@ import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
 import com.pulumi.outscale.outscale_volume;
 import com.pulumi.outscale.outscale_volumeArgs;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;

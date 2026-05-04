@@ -23,9 +23,9 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 
-	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -181,7 +181,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 			return err
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			glog.Flush()
+			pulumilog.Flush()
 		},
 	}
 

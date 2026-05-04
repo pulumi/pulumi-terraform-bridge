@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -58,7 +58,7 @@ func (p *provider) detectCheckFailure(
 
 	pp, err := formatAttributePathAsPropertyPath(schemaMap, schemaInfos, diag.Attribute)
 	if err != nil {
-		glog.V(9).Infof("Ignoring path formatting error: %v", err)
+		pulumilog.V(9).Infof("Ignoring path formatting error: %v", err)
 		return nil
 	}
 

@@ -145,8 +145,8 @@ import com.pulumi.gcp.serviceaccount.inputs.GetAccountAccessTokenArgs;
 import com.pulumi.pulumi.providers.google;
 import com.pulumi.pulumi.providers.ProviderArgs;
 import com.pulumi.gcp.serviceaccount.inputs.GetAccountIdTokenArgs;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;
@@ -259,7 +259,7 @@ return await Deployment.RunAsync(() =>
         TargetAudience = "https://your.cloud.run.app/",
     });
 
-    var cloudrun = Http.Index.GetHttp.Invoke(new()
+    var cloudrun = Http.GetHttp.Invoke(new()
     {
         Url = "https://your.cloud.run.app/",
         RequestHeaders = 
@@ -317,8 +317,8 @@ import com.pulumi.gcp.serviceaccount.ServiceaccountFunctions;
 import com.pulumi.gcp.serviceaccount.inputs.GetAccountIdTokenArgs;
 import com.pulumi.http.HttpFunctions;
 import com.pulumi.http.inputs.GetHttpArgs;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;

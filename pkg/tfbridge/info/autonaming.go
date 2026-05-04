@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -42,7 +42,7 @@ import (
 // after [ProviderInfo.Resources] map is fully populated, as it relies on this map to find resources to auto-name.
 func (p *Provider) SetAutonaming(maxLength int, separator string) {
 	if p.P == nil {
-		glog.Warningln("SetAutonaming found a `ProviderInfo.P` nil. No Autonames were applied.")
+		pulumilog.Warningf("SetAutonaming found a `ProviderInfo.P` nil. No Autonames were applied.")
 		return
 	}
 
