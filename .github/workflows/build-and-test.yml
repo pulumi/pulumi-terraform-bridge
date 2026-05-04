@@ -211,7 +211,7 @@ jobs:
           echo "pulumi_version=$GO_VERSION"
           echo "pulumi_version=$GO_VERSION" >> $GITHUB_OUTPUT
       - name: Install pulumi
-        uses: pulumi/actions@8582a9e8cc630786854029b4e09281acd6794b58 # v6
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
         with:
           pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
       - name: export feature flags
