@@ -11,14 +11,5 @@
       ],
       enabled: false,
     },
-    {
-      description: "Pinned to main pending upstream releases with new PCL API",
-      matchDatasources: ["go"],
-      matchPackageNames: [
-        "github.com/pulumi/pulumi-yaml",
-        "github.com/pulumi/pulumi-java",
-      ],
-      enabled: false,
-    },
   ],
 }
