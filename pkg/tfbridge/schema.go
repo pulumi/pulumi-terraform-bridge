@@ -739,16 +739,21 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 	return conflictsWith
 }
 
-// schemaMarkersSkipDefault returns true if the TF schema marks a field such
-// that applyDefaults must skip applying any default to it. The exact gate is
-// shared by applyDefaults' overlay and TF branches and by shouldStripStaleDefault
-// in provider.go — keeping the three call sites in lockstep is the parity
-// invariant. Modify only here.
+// defaultExcluded returns true if the field must not have any default applied —
+// neither from the TF schema's Default/DefaultFunc, nor from a bridge overlay's
+// SchemaInfo.Default, nor reused from old state. The function combines bridge-
+// overlay markers (psi.Removed) with TF schema markers (Removed; Deprecated
+// without Required). Required-and-Deprecated is intentionally excluded: a
+// required field cannot be dropped without breaking PlanResourceChange's
+// required-field validation.
 //
-// Required-and-Deprecated is intentionally excluded: a required field cannot be
-// dropped without breaking PlanResourceChange's required-field validation, so
-// applyDefaults still applies its default and the strip still preserves it.
-func schemaMarkersSkipDefault(sch shim.Schema) bool {
+// This is the shared parity gate. applyDefaults' overlay and TF branches and
+// provider.go's shouldStripStaleDefault all call through here. Modify only
+// here; the three sites stay in lockstep automatically.
+func defaultExcluded(sch shim.Schema, psi *SchemaInfo) bool {
+	if psi != nil && psi.Removed {
+		return true
+	}
 	if sch == nil {
 		return false
 	}
@@ -788,17 +793,14 @@ func (ctx *conversionContext) applyDefaults(
 
 	// First, attempt to use the overlays.
 	for name, info := range ps {
-		if info.Removed {
+		sch := getSchema(tfs, name)
+		if defaultExcluded(sch, info) {
 			continue
 		}
 		if _, conflicts := conflictsWith[name]; conflicts {
 			continue
 		}
 		if _, exactlyOneOfConflicts := exactlyOneOf[name]; exactlyOneOfConflicts {
-			continue
-		}
-		sch := getSchema(tfs, name)
-		if schemaMarkersSkipDefault(sch) {
 			continue
 		}
 
@@ -911,7 +913,7 @@ func (ctx *conversionContext) applyDefaults(
 	if tfs != nil && ctx.ApplyTFDefaults {
 		var valueErr error
 		tfs.Range(func(name string, sch shim.Schema) bool {
-			if schemaMarkersSkipDefault(sch) {
+			if defaultExcluded(sch, ps[name]) {
 				return true
 			}
 			if _, conflicts := conflictsWith[name]; conflicts {
