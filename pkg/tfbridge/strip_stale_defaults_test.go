@@ -202,7 +202,7 @@ func TestStripStaleDefaults(t *testing.T) {
 
 	t.Run("field marked Removed in bridge SchemaInfo is stripped", func(t *testing.T) {
 		// A bridge SchemaInfo.Removed (overlay-level removal) must also strip the
-		// stored value, mirroring applyDefaults' overlay-branch skip at schema.go:772.
+		// stored value, mirroring applyDefaults' overlay-branch skip via defaultExcluded.
 		// This guards against bridge-overlay deprecation paths leaking stale values.
 		m := resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
@@ -249,11 +249,11 @@ func TestStripStaleDefaults(t *testing.T) {
 	})
 
 	t.Run("TF Removed shadows bridge Default (parity with applyDefaults)", func(t *testing.T) {
-		// applyDefaults at schema.go:781-784 skips overlay defaulting when TF marks
-		// the field Removed. classifyStaleDefault must mirror this — a stale value
-		// must be stripped even when an overlay declares a Default, otherwise the
-		// strip would forward the value to PlanResourceChange where SDKv2 rejects
-		// the Removed attribute.
+		// applyDefaults skips defaulting when TF marks the field Removed (via the
+		// shared defaultExcluded gate). shouldStripStaleDefault must mirror this —
+		// a stale value must be stripped even when an overlay declares a Default,
+		// otherwise the strip would forward the value to PlanResourceChange where
+		// SDKv2 rejects the Removed attribute.
 		m := resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("retiredField"),
@@ -277,8 +277,8 @@ func TestStripStaleDefaults(t *testing.T) {
 	})
 
 	t.Run("TF Deprecated&&!Required shadows bridge Default (parity with applyDefaults)", func(t *testing.T) {
-		// applyDefaults skips overlay defaulting when TF marks the field
-		// Deprecated && !Required. classifyStaleDefault must mirror this.
+		// applyDefaults skips defaulting when TF marks the field Deprecated && !Required
+		// (via the shared defaultExcluded gate). shouldStripStaleDefault must mirror this.
 		m := resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("legacyField"),
@@ -302,10 +302,10 @@ func TestStripStaleDefaults(t *testing.T) {
 	})
 
 	t.Run("deprecated optional field is stripped (mirrors applyDefaults gate)", func(t *testing.T) {
-		// applyDefaults at schema.go:782 skips defaulting when a field is Deprecated
-		// AND not Required. The strip mirrors this so a stale stored value isn't
-		// forwarded if the provider has tightened validation around the deprecated
-		// field on upgrade.
+		// applyDefaults skips defaulting (via defaultExcluded) when a field is
+		// Deprecated AND not Required. The strip mirrors this so a stale stored
+		// value isn't forwarded if the provider has tightened validation around
+		// the deprecated field on upgrade.
 		m := resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("legacyField"),
