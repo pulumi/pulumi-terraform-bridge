@@ -2099,19 +2099,29 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 	return timeoutOverrides
 }
 
-// stripStaleDefaults removes __defaults entries whose default the current schema
-// no longer declares (Default removed, field removed, or field marked
-// Removed/Deprecated). Forwarding such a value to PlanResourceChange triggers
-// validation or attribute-not-found errors.
+// stripStaleDefaults drops entries from m[reservedkeys.Defaults] (and the
+// corresponding values) when the provider would no longer fill them today —
+// i.e. the schema's Default/DefaultFunc is gone, the bridge's SchemaInfo no
+// longer supplies one, or the field is marked Removed/Deprecated. Without
+// this, Diff and Update would feed stale provider-defaulted values back into
+// PlanResourceChange and produce phantom diffs against an upgraded provider.
 //
-// Applied to news in Diff and Update; other RPCs rely on Check to keep stale
-// defaults out. Per-entry rules: see shouldStripStaleDefault. Recurses into
-// nested blocks; skips TypeSet because set membership hashes over element
-// fields, so stripping would force spurious rearrangement diffs.
+// Parity contract: a key is stripped iff applyDefaults (schema.go) would not
+// re-supply that default on the next Check. Per-entry classification lives in
+// shouldStripStaleDefault; this function is just the recursive walk over
+// nested objects and array-of-object elements. TypeSet is intentionally
+// skipped: TF hashes set elements over all their fields, so editing a nested
+// field would scramble element identity and produce spurious set churn on the
+// next plan.
 //
-// Known limitations, both resolved by #3434: a changed TF default (v1 → v2) is
-// preserved with the stale v1 value because the schema still declares a Default;
-// stale defaults inside TypeSet element schemas are not stripped.
+// Scope is deliberately narrow: only Diff and Update, only the config built
+// for PlanResourceChange. Check still runs full applyDefaults, and the
+// unstripped news is still handed to PlanStateEdit hooks via DiffOptions so
+// user-visible inputs aren't mutated.
+//
+// Known limitations, both resolved by #3434: a changed TF default (v1 → v2)
+// is preserved with the stale v1 value because the schema still declares a
+// Default; stale defaults inside TypeSet element schemas are not stripped.
 func stripStaleDefaults(
 	m resource.PropertyMap,
 	tfs shim.SchemaMap,

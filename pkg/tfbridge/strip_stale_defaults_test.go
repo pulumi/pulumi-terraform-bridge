@@ -102,16 +102,36 @@ func TestStripStaleDefaults(t *testing.T) {
 	})
 
 	t.Run("field with current TF Default is preserved", func(t *testing.T) {
-		// When the TF schema still has a Default for the field, the stored value is
-		// preserved (not stripped). Two reasons:
-		//   1. PR #3420 (TestUpdatePreservesLegacyFalsyTFDefaults) requires that
-		//      stored falsy values for fields whose schema has a matching Default
-		//      reach RawConfig as cty.False/0/"" rather than null — providers read
-		//      RawConfig presence as meaningful.
-		//   2. If the schema's Default value has changed (v1 → v2), preserving the
-		//      stored value avoids a phantom diff that the deeper applyDefaults
-		//      "old default" reuse path would silently undo. See issue #3434 for
-		//      the architectural fix.
+		// Preserve case: the stored value lives under __defaults AND the TF
+		// schema still declares a matching Default. shouldStripStaleDefault
+		// must classify this as not-stale, so stripStaleDefaults returns m
+		// verbatim.
+		//
+		// Why preservation (not stripping) is correct here, even though the
+		// value "would be re-defaulted anyway":
+		//  1. Legacy-stack falsy round-trip. Per
+		//     TestUpdatePreservesLegacyFalsyTFDefaults, fields with a schema
+		//     Default whose stored value is falsy (false, 0, "") must reach
+		//     Terraform's RawConfig as cty.False / cty.Zero / cty.EmptyString,
+		//     not cty.NullVal. Some providers branch on RawConfig presence
+		//     and treat present-but-falsy as semantically distinct from
+		//     omitted; stripping would collapse that distinction and regress
+		//     those providers.
+		//  2. Changed-default phantom-diff guard. When a provider bumps a
+		//     schema Default across versions (v1="x" → v2="y"), preserving
+		//     the stored prior value avoids a no-op user-visible diff. The
+		//     strip is not the full fix — applyDefaults' "old default reuse"
+		//     branch still re-injects stored values for any field where the
+		//     bridge's HasDefault is true, and the architectural cleanup is
+		//     tracked in #3434. The contract this test pins down is narrower:
+		//     the strip pass must not make the changed-default case worse by
+		//     removing the very value the reuse path depends on.
+		//
+		// Caveat about the assertion: assert.Equal(t, m, result) would also
+		// pass for a degenerate stripStaleDefaults that returned its input
+		// unmodified for every shape. Coverage of the stripping side comes
+		// from the sibling subtests in TestStripStaleDefaults; this case
+		// carries the preserve half of the table only.
 		m := resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("activeDefault"),
