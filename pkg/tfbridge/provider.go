@@ -1154,10 +1154,9 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	// Strip stale provider defaults for the TF-facing config only; pass the original
-	// `news` to shim.DiffOptions.NewInputs below so PlanStateEdit hooks see the
-	// post-Check user input rather than the bridge's internal sanitization. See the
-	// stripStaleDefaults doc for the full rationale.
+	// configNews has stale defaults stripped, so PlanResourceChange doesn't see
+	// them. NewInputs below keeps the raw `news` because PlanStateEdit hooks
+	// contract on Check's output, not on this bridge-internal transform.
 	configNews := stripStaleDefaults(news, schema, fields)
 
 	config, assets, err := MakeTerraformConfig(ctx, p, olds, configNews, schema, fields)
@@ -1680,8 +1679,8 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	// Mirror Diff: strip stale provider defaults from the TF-facing config so
-	// Update's internal tf.Diff sees the same shape. See the stripStaleDefaults doc.
+	// Mirror Diff: strip stale defaults so Update's internal tf.Diff sees the
+	// same config shape Diff RPC saw.
 	configNews := stripStaleDefaults(news, schema, fields)
 
 	config, assets, err := MakeTerraformConfig(ctx, p, olds, configNews, schema, fields)
@@ -2100,11 +2099,13 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 	return timeoutOverrides
 }
 
-// stripStaleDefaults removes properties from the property map that were recorded as
-// provider defaults (listed in __defaults) but for which the current schema offers
-// no mechanism to re-derive the value. Forwarding a stale stored value to
-// PlanResourceChange can trigger validation errors or attribute-not-found errors;
-// stripping it lets the provider's plan re-derive (or omit) the field cleanly.
+// stripStaleDefaults removes properties from the property map that were recorded
+// as provider defaults (listed in __defaults) but whose default the current
+// schema no longer declares — either because the field's Default was removed,
+// the field itself was removed, or the field is now marked Removed/Deprecated.
+// Forwarding such a stale stored value to PlanResourceChange can trigger
+// validation errors or attribute-not-found errors; stripping it lets the
+// provider's plan handle the field cleanly.
 //
 // Scope: applied to the news input on the Diff and Update RPCs. Other RPCs do not
 // invoke this — Check is responsible for not propagating stale defaults forward.
@@ -2233,8 +2234,8 @@ func stripStaleDefaultsRec(
 //     invokes DefaultFunc, which can return nil at runtime (e.g. unset env
 //     var) and that runtime-nil result must not be misclassified as "no
 //     default."
-//  4. Default → strip. No mechanism in the current bridge or schema can
-//     re-derive the value, so the stored entry is genuinely stale.
+//  4. Default → strip. Neither the bridge nor the current TF schema declares
+//     a default for this field, so the stored entry is genuinely stale.
 func shouldStripStaleDefault(
 	pulumiName resource.PropertyKey,
 	tfs shim.SchemaMap,
