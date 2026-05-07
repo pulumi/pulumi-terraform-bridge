@@ -2099,25 +2099,19 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 	return timeoutOverrides
 }
 
-// stripStaleDefaults removes properties from the property map that were recorded
-// as provider defaults (listed in __defaults) but whose default the current
-// schema no longer declares — either because the field's Default was removed,
-// the field itself was removed, or the field is now marked Removed/Deprecated.
-// Forwarding such a stale stored value to PlanResourceChange can trigger
-// validation errors or attribute-not-found errors; stripping it lets the
-// provider's plan handle the field cleanly.
+// stripStaleDefaults removes __defaults entries whose default the current schema
+// no longer declares (Default removed, field removed, or field marked
+// Removed/Deprecated). Forwarding such a value to PlanResourceChange triggers
+// validation or attribute-not-found errors.
 //
-// Scope: applied to the news input on the Diff and Update RPCs. Other RPCs do not
-// invoke this — Check is responsible for not propagating stale defaults forward.
-// See shouldStripStaleDefault for the per-entry classification rules. The function
-// recurses into nested objects and array elements; TypeSet is skipped (set
-// membership is hash-based on element fields, so stripping nested fields would
-// change hashes and produce spurious set-rearrangement diffs).
+// Applied to news in Diff and Update; other RPCs rely on Check to keep stale
+// defaults out. Per-entry rules: see shouldStripStaleDefault. Recurses into
+// nested blocks; skips TypeSet because set membership hashes over element
+// fields, so stripping would force spurious rearrangement diffs.
 //
-// Known limitations (see issue #3434 for the architectural follow-up that resolves
-// both): a changed TF schema default v1 → v2 is preserved with the stale v1 value
-// because the schema still declares a Default; nested defaults inside TypeSet
-// element schemas are not stripped.
+// Known limitations, both resolved by #3434: a changed TF default (v1 → v2) is
+// preserved with the stale v1 value because the schema still declares a Default;
+// stale defaults inside TypeSet element schemas are not stripped.
 func stripStaleDefaults(
 	m resource.PropertyMap,
 	tfs shim.SchemaMap,
@@ -2127,10 +2121,9 @@ func stripStaleDefaults(
 	return stripped
 }
 
-// stripStaleDefaultsRec is the recursive worker behind stripStaleDefaults. The bool
-// return reports whether anything changed; recursion uses it to short-circuit
-// re-allocation when a subtree is unchanged. The public stripStaleDefaults wrapper
-// drops the bool because no caller acts on it.
+// stripStaleDefaultsRec is the recursive worker. The bool reports whether anything
+// changed so recursion can skip reallocation on unchanged subtrees; the public
+// stripStaleDefaults wrapper drops it.
 func stripStaleDefaultsRec(
 	m resource.PropertyMap,
 	tfs shim.SchemaMap,
@@ -2156,9 +2149,9 @@ func stripStaleDefaultsRec(
 		}
 	}
 
-	// Recurse into non-stale keys to strip nested __defaults. Stale keys are skipped
-	// here — they're deleted below, and recursing into them would accidentally re-insert
-	// them via nestedChanges.
+	// Recurse into non-stale keys to strip nested __defaults. Stale keys are
+	// skipped here because recursing into them would re-insert them via
+	// nestedChanges, defeating the deletion below.
 	staleSet := make(map[resource.PropertyKey]bool, len(staleKeys))
 	for _, k := range staleKeys {
 		staleSet[k] = true
@@ -2180,9 +2173,8 @@ func stripStaleDefaultsRec(
 		return m, false
 	}
 
-	// Log only stale keys that were actually present in m — phantom __defaults
-	// entries (listed but absent) are pruned silently from the kept list, since
-	// logging them as "stripped" would be misleading.
+	// Log only keys actually present in m; phantom __defaults entries are pruned
+	// silently — logging them as "stripped" would mislead.
 	var loggedKeys []resource.PropertyKey
 	for _, k := range staleKeys {
 		if _, present := m[k]; present {
@@ -2212,30 +2204,26 @@ func stripStaleDefaultsRec(
 	return result, true
 }
 
-// shouldStripStaleDefault decides whether a __defaults entry should be stripped
-// from news or preserved. The strip is correct only when the same field would
-// be excluded from default application by applyDefaults during Check. The
-// shared gate defaultExcluded (schema.go) encodes the parity invariant; both
-// applyDefaults branches and this function call it.
+// shouldStripStaleDefault classifies a __defaults entry as strip or preserve.
+// Parity invariant: strip iff the same field would be excluded from default
+// application by applyDefaults during Check. The shared gate defaultExcluded
+// (schema.go) encodes the marker portion of that invariant; both applyDefaults
+// branches and this function call it.
 //
 // Precedence (first match wins):
 //
-//  1. defaultExcluded(tfSchema, psi) → strip. Removal markers (bridge psi.Removed,
-//     TF Removed, TF Deprecated && !Required) take precedence over any HasDefault
-//     preservation so a stale stored value cannot leak through to PlanResourceChange
-//     even if a Default is still attached.
-//  2. Bridge SchemaInfo with a managed Default → preserve. These are
-//     non-deterministic (auto-naming, EnvVars, From callbacks); stripping
-//     would force re-derivation and break ID stability.
-//  3. TF schema declares Default or DefaultFunc → preserve. Avoids the
-//     changed-default phantom diff and preserves the legacy-stack falsy
-//     round-trip when a stored value matches the schema-declared default.
-//     Structural check (Default/DefaultFunc), not DefaultValue() — the latter
-//     invokes DefaultFunc, which can return nil at runtime (e.g. unset env
-//     var) and that runtime-nil result must not be misclassified as "no
-//     default."
-//  4. Default → strip. Neither the bridge nor the current TF schema declares
-//     a default for this field, so the stored entry is genuinely stale.
+//  1. defaultExcluded(tfSchema, psi) → strip. Removal markers override any
+//     HasDefault preservation so stale values can't reach PlanResourceChange.
+//  2. Bridge SchemaInfo.Default → preserve. Bridge defaults are
+//     non-deterministic (auto-naming, EnvVars, From); stripping would force
+//     re-derivation and break ID stability.
+//  3. TF schema Default or DefaultFunc → preserve. Avoids the changed-default
+//     phantom diff and preserves the legacy-stack falsy round-trip. Use the
+//     structural check, not DefaultValue() — the latter invokes DefaultFunc,
+//     which can return nil at runtime (unset env var) and would be
+//     misclassified as "no default."
+//  4. Default → strip. Neither side declares a default; the stored entry is
+//     stale.
 func shouldStripStaleDefault(
 	pulumiName resource.PropertyKey,
 	tfs shim.SchemaMap,
@@ -2270,10 +2258,8 @@ func rewrapSecret(v resource.PropertyValue, isSecret bool) resource.PropertyValu
 	return v
 }
 
-// stripStaleDefaultsValue strips stale __defaults from a single PropertyValue that
-// may contain nested blocks (object or array-of-objects). Use this when recursing
-// through a value of unknown shape; use stripStaleDefaults directly when you already
-// have a PropertyMap. Returns the (possibly updated) value and whether it changed.
+// stripStaleDefaultsValue dispatches the recursion through a PropertyValue of
+// unknown shape (object, array-of-objects, or scalar). Returns whether v changed.
 func stripStaleDefaultsValue(
 	v resource.PropertyValue,
 	key resource.PropertyKey,
@@ -2298,10 +2284,8 @@ func stripStaleDefaultsValue(
 		return v, false
 	}
 
-	// Look up the TF schema and bridge SchemaInfo for this field in the parent schema.
 	_, tfSchema, psi := getInfoFromPulumiName(key, tfs, ps)
 
-	// Get the nested SchemaMap and Fields from the element schema.
 	var nestedTFS shim.SchemaMap
 	var nestedPS map[string]*SchemaInfo
 	if tfSchema != nil {
@@ -2312,22 +2296,20 @@ func stripStaleDefaultsValue(
 	if psi != nil {
 		nestedPS = psi.Fields
 	}
-	// nestedTFS is nil for scalar fields, unknown fields, or fields whose Elem is not a
-	// Resource — none of those carry nested __defaults.
+	// No nested resource → no nested __defaults.
 	if nestedTFS == nil {
 		return v, false
 	}
 
-	// Skip TypeSet entirely: set membership is hash-based on all element fields, so
-	// stripping a field from a nested element changes its hash and makes TF see set
-	// reorder/add/remove diffs instead of in-place updates. This applies whether the
-	// set is flattened to an object (MaxItemsOne) or kept as an array.
+	// TypeSet membership hashes over element fields, so stripping a nested field
+	// would force spurious set rearrangement diffs. Skip whether flattened to an
+	// object (MaxItemsOne) or kept as an array.
 	if tfSchema.Type() == shim.TypeSet {
 		return v, false
 	}
 
 	if v.IsObject() {
-		// Block-as-object: TypeList with MaxItemsOne flattened to a single object.
+		// MaxItemsOne TypeList flattened to a single object.
 		stripped, changed := stripStaleDefaultsRec(v.ObjectValue(), nestedTFS, nestedPS)
 		if !changed {
 			return v, false
@@ -2335,21 +2317,17 @@ func stripStaleDefaultsValue(
 		return resource.NewObjectProperty(stripped), true
 	}
 
-	// v.IsArray() — TypeList of blocks. (TypeSet was rejected above; TypeList elements
-	// have positional identity, so stripping nested fields is safe.)
+	// TypeList of blocks — positional identity, safe to strip nested fields.
 	if newArr, changed := stripArrayOfBlocks(v.ArrayValue(), nestedTFS, nestedPS); changed {
 		return resource.NewArrayProperty(newArr), true
 	}
 	return v, false
 }
 
-// stripArrayOfBlocks strips stale __defaults from each nested-block element of an
-// array. Returns the new slice (only when changed) and whether any element was
-// rewritten. Callers wrap in NewArrayProperty only on the changed path so the
-// no-change path doesn't allocate.
-//
-// Each element is unwrapped at most one level of secret; the bridge's input/state
-// extraction does not produce multi-level Secret(Secret(...)) nesting in practice.
+// stripArrayOfBlocks strips stale __defaults from each block element. Returns
+// the new slice only if at least one element changed; the no-change path
+// returns nil so callers skip the NewArrayProperty allocation. Element secrets
+// are unwrapped one level (the bridge doesn't produce nested Secret wraps).
 func stripArrayOfBlocks(
 	arr []resource.PropertyValue,
 	nestedTFS shim.SchemaMap,

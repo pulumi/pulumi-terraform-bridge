@@ -31,26 +31,22 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-// These tests exercise stripStaleDefaults via the runtime SDKv2 paths (Diff RPC
-// and Update's internal tf.Diff). The unit tests in
-// pkg/tfbridge/strip_stale_defaults_test.go cover the function in isolation, but
-// cannot catch issues that arise from the interaction between stripped inputs and
-// TF's plan, hash, or detailed-diff machinery.
+// Tests in this file exercise stripStaleDefaults through the runtime SDKv2 paths
+// (Diff RPC and Update's internal tf.Diff), catching interactions with TF's
+// plan/hash/detailed-diff machinery that the unit tests in pkg/tfbridge can't see.
 //
-// Two assertion styles are used, calibrated to scenario:
-//
-//  1. No-op scenarios (unchanged schema, unchanged program): assertNoChanges enforces
-//     that the preview reports only "same" — any spurious diff signals a real bug.
-//  2. Schema-migration scenarios (provider swapped between Up calls): the strip's
-//     effect is verified by inspecting the post-Up exported stack via resourceInputs
-//     and asserting the stale field was removed (or, for a changed default, that
-//     stored state reflects the new value). Stub TF providers used here do not run
-//     validation, so a "no error" assertion would pass even if the strip were
-//     deleted — the inputs check is what proves the strip ran.
+// The stub TF providers used here don't run validation, so a "no error"
+// assertion would pass even with the strip deleted. Tests use one of two
+// stronger assertions instead:
+//   - assertNoChanges for no-op scenarios (unchanged schema, unchanged program):
+//     the preview must report only "same".
+//   - resourceInputs checks for schema-migration scenarios (provider swapped
+//     between Up calls): inspect the post-Up exported stack to confirm the
+//     stale field was removed.
 
-// assertNoChanges asserts that a preview reports only "same" resources. Use this on
-// no-op scenarios (no schema change, program unchanged) to catch spurious diffs that
-// would indicate the strip is producing inputs that don't round-trip through TF cleanly.
+// assertNoChanges fails if the preview reports any op other than "same". Use on
+// no-op scenarios to catch spurious diffs caused by inputs that don't round-trip
+// through TF cleanly.
 func assertNoChanges(t *testing.T, summary map[apitype.OpType]int, label string) {
 	t.Helper()
 	for op, count := range summary {
@@ -60,13 +56,10 @@ func assertNoChanges(t *testing.T, summary map[apitype.OpType]int, label string)
 	}
 }
 
-// assertNoUnexpectedOps asserts that a preview reports only "same" or "update"
-// resources — never replace, create, or delete. Use this on schema-migration
-// scenarios where a transitional in-place update is expected (the strip removes a
-// stale value, so the resource updates to drop the field) but a replace would
-// indicate the strip caused unintended set-hash or identity changes. The function
-// only rejects unexpected op kinds; it does not require the summary to be
-// non-empty or assert that an update happened.
+// assertNoUnexpectedOps fails if the preview reports any op other than "same"
+// or "update". Use on schema-migration scenarios where an in-place update is
+// expected; a replace would indicate the strip caused unintended set-hash or
+// identity changes. Does not require the summary to be non-empty.
 func assertNoUnexpectedOps(t *testing.T, summary map[apitype.OpType]int, label string) {
 	t.Helper()
 	for op, count := range summary {
@@ -161,10 +154,9 @@ resources:
 	assertNoUnexpectedOps(t, res.ChangeSummary, "DefaultRemoved")
 	pt2.Up(t)
 
-	// Strong assertion: the strip removed optField from the new inputs, so the post-Up
-	// stored inputs must NOT contain it. Without the strip, Check's "old default"
-	// reuse path would re-pin "old-default" into news on every Diff, and the post-Up
-	// state would still record optField; this assertion would fail.
+	// Without the strip, Check's "old default" reuse path would re-pin
+	// "old-default" into news on every Diff and post-Up inputs would still
+	// record optField — so absence here proves the strip ran.
 	postInputs := resourceInputs(t, pt2.ExportStack(t).Deployment, "prov:index/test:Test::mainRes")
 	_, hasField := postInputs["optField"]
 	require.False(t, hasField,
@@ -493,20 +485,17 @@ resources:
 	assertNoChanges(t, res.ChangeSummary, "BridgeDefaultPreserved")
 }
 
-// TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath is a regression guard for
-// the strip's symmetry across the two RPC paths that feed PlanResourceChange: the
-// Diff RPC and Update's internal tf.Diff. Both must strip stale __defaults from
-// `news` before building the TF config, otherwise a future regression could let a
-// stale value reach Update's plan while Diff's plan stays clean — producing a
-// Preview→Apply divergence.
+// TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath is a regression
+// guard for strip symmetry across the two RPC paths that feed PlanResourceChange
+// (Diff RPC and Update's internal tf.Diff). Both must strip before building the
+// TF config; if Update drifts, Preview and Apply diverge.
 //
-// In current code Check sanitizes news upstream, so this test passes even if the
-// Update-path strip is removed. Its value is forward-looking: any future change that
-// lets stale entries survive Check (custom state-edit hooks, new RPC paths, refresh
-// flows that bypass Check) would be caught here only if both paths strip. The test
-// fires CustomizeDiff on every PlanResourceChange call — Diff RPC and Update RPC —
-// and records every site where opt_field reaches the raw config; the assertion is
-// zero sites.
+// Check sanitizes news upstream today, so the test passes even if Update's
+// strip is removed. The value is forward-looking: a future path that leaks
+// stale entries past Check (custom state-edit hooks, new RPC paths, refresh
+// flows that bypass Check) would be caught only if both Diff and Update strip.
+// CustomizeDiff records every PlanResourceChange site that sees opt_field; the
+// assertion is zero.
 func TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath(t *testing.T) {
 	t.Parallel()
 

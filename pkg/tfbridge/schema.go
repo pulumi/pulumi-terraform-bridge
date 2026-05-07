@@ -739,17 +739,13 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 	return conflictsWith
 }
 
-// defaultExcluded returns true if the field must not have any default applied —
-// neither from the TF schema's Default/DefaultFunc, nor from a bridge overlay's
-// SchemaInfo.Default, nor reused from old state. The function combines bridge-
-// overlay markers (psi.Removed) with TF schema markers (Removed; Deprecated
-// without Required). Required-and-Deprecated is intentionally excluded: a
-// required field cannot be dropped without breaking PlanResourceChange's
-// required-field validation.
+// defaultExcluded reports fields that are ineligible for default application —
+// flagged by SchemaInfo.Removed or by TF schema markers (Removed, or Deprecated
+// && !Required). Required-and-Deprecated is intentionally excluded: dropping a
+// required field would break PlanResourceChange's required-field validation.
 //
-// This is the shared parity gate. applyDefaults' overlay and TF branches and
-// provider.go's shouldStripStaleDefault all call through here. Modify only
-// here; the three sites stay in lockstep automatically.
+// Shared parity gate: applyDefaults' overlay and TF branches and provider.go's
+// shouldStripStaleDefault all call through here. Modify only here.
 func defaultExcluded(sch shim.Schema, psi *SchemaInfo) bool {
 	if psi != nil && psi.Removed {
 		return true

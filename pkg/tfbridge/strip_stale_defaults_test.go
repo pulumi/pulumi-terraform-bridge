@@ -102,17 +102,10 @@ func TestStripStaleDefaults(t *testing.T) {
 	})
 
 	t.Run("field with current TF Default is preserved", func(t *testing.T) {
-		// When the TF schema still has a Default for the field, the stored value is
-		// preserved (not stripped). Two reasons:
-		//   1. PR #3420 (TestUpdatePreservesLegacyFalsyTFDefaults) requires that
-		//      stored falsy values for fields whose schema has a matching Default
-		//      reach RawConfig as cty.False/0/"" rather than null — providers read
-		//      RawConfig presence as meaningful.
-		//   2. If the schema's Default value has changed (v1 → v2), stripping in Diff
-		//      alone would produce a Preview transition that Update silently fails to
-		//      apply (TF treats unstripped Update news as authoritative). Preserving
-		//      the stored value keeps the (silent) pre-PR baseline behavior intact;
-		//      see issue #3434 for the architectural fix.
+		// Preserving stored values when the schema still declares a Default
+		// protects two invariants: TestUpdatePreservesLegacyFalsyTFDefaults
+		// (RawConfig presence semantics for stored falsy defaults) and the
+		// changed-default phantom-diff guard tracked by #3434.
 		m := resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("activeDefault"),
@@ -131,11 +124,10 @@ func TestStripStaleDefaults(t *testing.T) {
 	})
 
 	t.Run("field with current TF DefaultFunc is preserved (even if it would return nil)", func(t *testing.T) {
-		// The strip predicate must check structural schema ownership
-		// (Default/DefaultFunc), not the runtime evaluation result. A DefaultFunc
-		// that returns nil at Diff time (e.g. a missing env var for an env-backed
-		// default) still represents a configured Default — the field is owned by
-		// the schema's default mechanism and must not be classified as stale.
+		// The predicate checks structural schema ownership (Default/DefaultFunc),
+		// not runtime evaluation. A DefaultFunc that returns nil at runtime (e.g.
+		// unset env var) still represents a configured Default and must not be
+		// classified as stale.
 		m := resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("envField"),
