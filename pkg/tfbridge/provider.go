@@ -2269,10 +2269,10 @@ func rewrapSecret(v resource.PropertyValue, isSecret bool) resource.PropertyValu
 	return v
 }
 
-// stripStaleDefaultsValue strips stale __defaults from a single PropertyValue that may
-// contain nested blocks (object, array-of-objects, or map-of-objects). Use this when
-// recursing through a value of unknown shape; use stripStaleDefaults directly when you
-// already have a PropertyMap. Returns the (possibly updated) value and whether it changed.
+// stripStaleDefaultsValue strips stale __defaults from a single PropertyValue that
+// may contain nested blocks (object or array-of-objects). Use this when recursing
+// through a value of unknown shape; use stripStaleDefaults directly when you already
+// have a PropertyMap. Returns the (possibly updated) value and whether it changed.
 func stripStaleDefaultsValue(
 	v resource.PropertyValue,
 	key resource.PropertyKey,
@@ -2326,11 +2326,7 @@ func stripStaleDefaultsValue(
 	}
 
 	if v.IsObject() {
-		// Block-as-object: TypeList with MaxItemsOne flattened to a single object,
-		// or (in PF, where the strip does not currently apply) a TypeMap with
-		// Resource element. SDKv2 reinterprets TypeMap+Elem=Resource as a
-		// string-string map (see shim.go's Schema.Elem doc), so for the SDKv2 path
-		// the values would be scalars and stripStaleDefaults would no-op anyway.
+		// Block-as-object: TypeList with MaxItemsOne flattened to a single object.
 		stripped, changed := stripStaleDefaultsRec(v.ObjectValue(), nestedTFS, nestedPS)
 		if !changed {
 			return v, false

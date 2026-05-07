@@ -31,8 +31,9 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-// These tests exercise stripStaleDefaults via the real Diff RPC path. The unit tests
-// in pkg/tfbridge/strip_stale_defaults_test.go cover the function in isolation, but
+// These tests exercise stripStaleDefaults via the runtime SDKv2 paths (Diff RPC
+// and Update's internal tf.Diff). The unit tests in
+// pkg/tfbridge/strip_stale_defaults_test.go cover the function in isolation, but
 // cannot catch issues that arise from the interaction between stripped inputs and
 // TF's plan, hash, or detailed-diff machinery.
 //
@@ -59,12 +60,14 @@ func assertNoChanges(t *testing.T, summary map[apitype.OpType]int, label string)
 	}
 }
 
-// assertOnlySameOrUpdate asserts that a preview reports only "same" or "update"
+// assertNoUnexpectedOps asserts that a preview reports only "same" or "update"
 // resources — never replace, create, or delete. Use this on schema-migration
 // scenarios where a transitional in-place update is expected (the strip removes a
 // stale value, so the resource updates to drop the field) but a replace would
-// indicate the strip caused unintended set-hash or identity changes.
-func assertOnlySameOrUpdate(t *testing.T, summary map[apitype.OpType]int, label string) {
+// indicate the strip caused unintended set-hash or identity changes. The function
+// only rejects unexpected op kinds; it does not require the summary to be
+// non-empty or assert that an update happened.
+func assertNoUnexpectedOps(t *testing.T, summary map[apitype.OpType]int, label string) {
 	t.Helper()
 	for op, count := range summary {
 		switch op {
@@ -155,7 +158,7 @@ resources:
 		"sanity: imported state should still have the stale value before Up")
 
 	res := pt2.Preview(t, optpreview.Diff())
-	assertOnlySameOrUpdate(t, res.ChangeSummary, "DefaultRemoved")
+	assertNoUnexpectedOps(t, res.ChangeSummary, "DefaultRemoved")
 	pt2.Up(t)
 
 	// Strong assertion: the strip removed optField from the new inputs, so the post-Up
@@ -169,12 +172,11 @@ resources:
 }
 
 // Note: there is no integration test for the *changed-default* scenario (provider
-// upgrade where a TF schema Default goes from v1 to v2). With the strip applied only
-// in Diff, the changed-default case is a known phantom-diff limitation — Diff/Preview
-// shows v1 → v2 but Update keeps v1 in state. This cannot be fixed by mirroring the
-// strip into Update without regressing the legacy-stack falsy-default round-trip
-// invariant from PR #3420 (TestUpdatePreservesLegacyFalsyTFDefaults). The TODO near
-// stripStaleDefaults points to the architectural cleanup that resolves this.
+// upgrade where a TF schema Default goes from v1 to v2). The changed-default case
+// is a known phantom-diff limitation tracked by issue #3434; resolving it without
+// regressing the legacy-stack falsy-default round-trip invariant
+// (TestUpdatePreservesLegacyFalsyTFDefaults) requires the architectural cleanup
+// described there.
 
 // TestStripStaleDefaultsIntegration_FieldRemovedFromSchema covers the case where a
 // field is removed from the TF schema entirely. The stale value must not be forwarded
@@ -236,7 +238,7 @@ resources:
 		"sanity: imported state should hold the stale removed_field value")
 
 	res := pt2.Preview(t, optpreview.Diff())
-	assertOnlySameOrUpdate(t, res.ChangeSummary, "FieldRemovedFromSchema")
+	assertNoUnexpectedOps(t, res.ChangeSummary, "FieldRemovedFromSchema")
 	pt2.Up(t)
 
 	// Strong assertion: the strip removed the dropped field entirely; the post-Up
@@ -335,7 +337,7 @@ resources:
 		"sanity: imported state should hold the stale nested default; got %+v", preBlock)
 
 	res := pt2.Preview(t, optpreview.Diff())
-	assertOnlySameOrUpdate(t, res.ChangeSummary, "NestedTypeListBlock")
+	assertNoUnexpectedOps(t, res.ChangeSummary, "NestedTypeListBlock")
 	pt2.Up(t)
 
 	// Strong assertion: nested recursion stripped the stale nested default.
@@ -426,7 +428,7 @@ resources:
 	require.Lenf(t, preItems, 2, "sanity: imported state should hold two array elements; got %+v", preInputs)
 
 	res := pt2.Preview(t, optpreview.Diff())
-	assertOnlySameOrUpdate(t, res.ChangeSummary, "TypeListOfBlocks")
+	assertNoUnexpectedOps(t, res.ChangeSummary, "TypeListOfBlocks")
 	pt2.Up(t)
 
 	// Strong assertion: stripArrayOfBlocks recursed into each element and removed the
@@ -492,11 +494,11 @@ resources:
 }
 
 // TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath is a regression guard for
-// the strip's symmetry across the two RPC paths that feed PlanResourceChange: Diff
-// (provider.go:1175) and Update's internal tf.Diff (provider.go:~1707). Both must
-// strip stale __defaults from `news` before building the TF config, otherwise a
-// future regression could let a stale value reach Update's plan while Diff's plan
-// stays clean — producing a Preview→Apply divergence.
+// the strip's symmetry across the two RPC paths that feed PlanResourceChange: the
+// Diff RPC and Update's internal tf.Diff. Both must strip stale __defaults from
+// `news` before building the TF config, otherwise a future regression could let a
+// stale value reach Update's plan while Diff's plan stays clean — producing a
+// Preview→Apply divergence.
 //
 // In current code Check sanitizes news upstream, so this test passes even if the
 // Update-path strip is removed. Its value is forward-looking: any future change that
