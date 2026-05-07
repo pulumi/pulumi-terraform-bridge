@@ -44,8 +44,9 @@ import (
 //     between Up calls): inspect the post-Up exported stack to confirm the
 //     stale field was removed.
 
-// assertNoChanges fails if the preview reports any op other than "same". Use on
-// no-op scenarios to catch spurious diffs caused by inputs that don't round-trip
+// assertNoChanges asserts that a preview reports only "same" resources. Use this
+// on no-op scenarios (no schema change, program unchanged) to catch spurious
+// diffs that would indicate the strip is producing inputs that don't round-trip
 // through TF cleanly.
 func assertNoChanges(t *testing.T, summary map[apitype.OpType]int, label string) {
 	t.Helper()
@@ -154,9 +155,11 @@ resources:
 	assertNoUnexpectedOps(t, res.ChangeSummary, "DefaultRemoved")
 	pt2.Up(t)
 
-	// Without the strip, Check's "old default" reuse path would re-pin
-	// "old-default" into news on every Diff and post-Up inputs would still
-	// record optField — so absence here proves the strip ran.
+	// Strong assertion: the strip removed optField from the new inputs, so the
+	// post-Up stored inputs must NOT contain it. Without the strip, Check's "old
+	// default" reuse path would re-pin "old-default" into news on every Diff,
+	// and the post-Up state would still record optField; this assertion would
+	// fail.
 	postInputs := resourceInputs(t, pt2.ExportStack(t).Deployment, "prov:index/test:Test::mainRes")
 	_, hasField := postInputs["optField"]
 	require.False(t, hasField,
@@ -486,16 +489,19 @@ resources:
 }
 
 // TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath is a regression
-// guard for strip symmetry across the two RPC paths that feed PlanResourceChange
-// (Diff RPC and Update's internal tf.Diff). Both must strip before building the
-// TF config; if Update drifts, Preview and Apply diverge.
+// guard for the strip's symmetry across the two RPC paths that feed
+// PlanResourceChange: the Diff RPC and Update's internal tf.Diff. Both must
+// strip stale __defaults from `news` before building the TF config, otherwise
+// a future regression could let a stale value reach Update's plan while Diff's
+// plan stays clean — producing a Preview→Apply divergence.
 //
-// Check sanitizes news upstream today, so the test passes even if Update's
-// strip is removed. The value is forward-looking: a future path that leaks
-// stale entries past Check (custom state-edit hooks, new RPC paths, refresh
-// flows that bypass Check) would be caught only if both Diff and Update strip.
-// CustomizeDiff records every PlanResourceChange site that sees opt_field; the
-// assertion is zero.
+// In current code Check sanitizes news upstream, so this test passes even if
+// the Update-path strip is removed. Its value is forward-looking: any future
+// change that lets stale entries survive Check (custom state-edit hooks, new
+// RPC paths, refresh flows that bypass Check) would be caught here only if
+// both paths strip. The test fires CustomizeDiff on every PlanResourceChange
+// call — Diff RPC and Update RPC — and records every site where opt_field
+// reaches the raw config; the assertion is zero sites.
 func TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath(t *testing.T) {
 	t.Parallel()
 

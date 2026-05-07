@@ -2173,8 +2173,9 @@ func stripStaleDefaultsRec(
 		return m, false
 	}
 
-	// Log only keys actually present in m; phantom __defaults entries are pruned
-	// silently — logging them as "stripped" would mislead.
+	// Log only stale keys that were actually present in m — phantom __defaults
+	// entries (listed but absent) are pruned silently from the kept list, since
+	// logging them as "stripped" would be misleading.
 	var loggedKeys []resource.PropertyKey
 	for _, k := range staleKeys {
 		if _, present := m[k]; present {
@@ -2204,26 +2205,30 @@ func stripStaleDefaultsRec(
 	return result, true
 }
 
-// shouldStripStaleDefault classifies a __defaults entry as strip or preserve.
-// Parity invariant: strip iff the same field would be excluded from default
-// application by applyDefaults during Check. The shared gate defaultExcluded
-// (schema.go) encodes the marker portion of that invariant; both applyDefaults
-// branches and this function call it.
+// shouldStripStaleDefault decides whether a __defaults entry should be stripped
+// from news or preserved. The strip is correct only when the same field would
+// be excluded from default application by applyDefaults during Check. The
+// shared gate defaultExcluded (schema.go) encodes the parity invariant; both
+// applyDefaults branches and this function call it.
 //
 // Precedence (first match wins):
 //
-//  1. defaultExcluded(tfSchema, psi) → strip. Removal markers override any
-//     HasDefault preservation so stale values can't reach PlanResourceChange.
-//  2. Bridge SchemaInfo.Default → preserve. Bridge defaults are
-//     non-deterministic (auto-naming, EnvVars, From); stripping would force
-//     re-derivation and break ID stability.
-//  3. TF schema Default or DefaultFunc → preserve. Avoids the changed-default
-//     phantom diff and preserves the legacy-stack falsy round-trip. Use the
-//     structural check, not DefaultValue() — the latter invokes DefaultFunc,
-//     which can return nil at runtime (unset env var) and would be
-//     misclassified as "no default."
-//  4. Default → strip. Neither side declares a default; the stored entry is
-//     stale.
+//  1. defaultExcluded(tfSchema, psi) → strip. Removal markers (bridge psi.Removed,
+//     TF Removed, TF Deprecated && !Required) take precedence over any HasDefault
+//     preservation so a stale stored value cannot leak through to PlanResourceChange
+//     even if a Default is still attached.
+//  2. Bridge SchemaInfo with a managed Default → preserve. These are
+//     non-deterministic (auto-naming, EnvVars, From callbacks); stripping
+//     would force re-derivation and break ID stability.
+//  3. TF schema declares Default or DefaultFunc → preserve. Avoids the
+//     changed-default phantom diff and preserves the legacy-stack falsy
+//     round-trip when a stored value matches the schema-declared default.
+//     Structural check (Default/DefaultFunc), not DefaultValue() — the latter
+//     invokes DefaultFunc, which can return nil at runtime (e.g. unset env
+//     var) and that runtime-nil result must not be misclassified as "no
+//     default."
+//  4. Default → strip. Neither the bridge nor the current TF schema declares
+//     a default for this field, so the stored entry is genuinely stale.
 func shouldStripStaleDefault(
 	pulumiName resource.PropertyKey,
 	tfs shim.SchemaMap,
@@ -2258,8 +2263,11 @@ func rewrapSecret(v resource.PropertyValue, isSecret bool) resource.PropertyValu
 	return v
 }
 
-// stripStaleDefaultsValue dispatches the recursion through a PropertyValue of
-// unknown shape (object, array-of-objects, or scalar). Returns whether v changed.
+// stripStaleDefaultsValue strips stale __defaults from a single PropertyValue
+// that may contain nested blocks (object or array-of-objects). Use this when
+// recursing through a value of unknown shape; use stripStaleDefaults directly
+// when you already have a PropertyMap. Returns the (possibly updated) value
+// and whether it changed.
 func stripStaleDefaultsValue(
 	v resource.PropertyValue,
 	key resource.PropertyKey,
@@ -2296,7 +2304,8 @@ func stripStaleDefaultsValue(
 	if psi != nil {
 		nestedPS = psi.Fields
 	}
-	// No nested resource → no nested __defaults.
+	// nestedTFS is nil for scalar fields, unknown fields, or fields whose Elem is
+	// not a Resource — none of those carry nested __defaults.
 	if nestedTFS == nil {
 		return v, false
 	}
@@ -2317,7 +2326,8 @@ func stripStaleDefaultsValue(
 		return resource.NewObjectProperty(stripped), true
 	}
 
-	// TypeList of blocks — positional identity, safe to strip nested fields.
+	// v.IsArray() — TypeList of blocks. (TypeSet was rejected above; TypeList
+	// elements have positional identity, so stripping nested fields is safe.)
 	if newArr, changed := stripArrayOfBlocks(v.ArrayValue(), nestedTFS, nestedPS); changed {
 		return resource.NewArrayProperty(newArr), true
 	}

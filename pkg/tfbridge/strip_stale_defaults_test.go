@@ -102,10 +102,16 @@ func TestStripStaleDefaults(t *testing.T) {
 	})
 
 	t.Run("field with current TF Default is preserved", func(t *testing.T) {
-		// Preserving stored values when the schema still declares a Default
-		// protects two invariants: TestUpdatePreservesLegacyFalsyTFDefaults
-		// (RawConfig presence semantics for stored falsy defaults) and the
-		// changed-default phantom-diff guard tracked by #3434.
+		// When the TF schema still has a Default for the field, the stored value is
+		// preserved (not stripped). Two reasons:
+		//   1. PR #3420 (TestUpdatePreservesLegacyFalsyTFDefaults) requires that
+		//      stored falsy values for fields whose schema has a matching Default
+		//      reach RawConfig as cty.False/0/"" rather than null — providers read
+		//      RawConfig presence as meaningful.
+		//   2. If the schema's Default value has changed (v1 → v2), preserving the
+		//      stored value avoids a phantom diff that the deeper applyDefaults
+		//      "old default" reuse path would silently undo. See issue #3434 for
+		//      the architectural fix.
 		m := resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("activeDefault"),
