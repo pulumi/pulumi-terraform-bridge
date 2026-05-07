@@ -974,8 +974,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 			Color: cmdutil.GetGlobalColorization(),
 			Debug: opts.Debug,
 		}
-		cmdutil.InitDiag(diagOpts)
-		sink = cmdutil.Diag()
+		sink = diag.DefaultSink(os.Stderr, os.Stderr, diagOpts)
 	}
 
 	pluginHost := opts.PluginHost
