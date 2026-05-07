@@ -739,6 +739,25 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 	return conflictsWith
 }
 
+// schemaMarkersSkipDefault returns true if the TF schema marks a field such
+// that applyDefaults must skip applying any default to it. The exact gate is
+// shared by applyDefaults' overlay and TF branches and by shouldStripStaleDefault
+// in provider.go — keeping the three call sites in lockstep is the parity
+// invariant. Modify only here.
+//
+// Required-and-Deprecated is intentionally excluded: a required field cannot be
+// dropped without breaking PlanResourceChange's required-field validation, so
+// applyDefaults still applies its default and the strip still preserves it.
+func schemaMarkersSkipDefault(sch shim.Schema) bool {
+	if sch == nil {
+		return false
+	}
+	if sch.Removed() != "" {
+		return true
+	}
+	return sch.Deprecated() != "" && !sch.Required()
+}
+
 func (ctx *conversionContext) applyDefaults(
 	result map[string]interface{},
 	olds, _news resource.PropertyMap,
@@ -779,7 +798,7 @@ func (ctx *conversionContext) applyDefaults(
 			continue
 		}
 		sch := getSchema(tfs, name)
-		if sch != nil && (sch.Removed() != "" || sch.Deprecated() != "" && !sch.Required()) {
+		if schemaMarkersSkipDefault(sch) {
 			continue
 		}
 
@@ -892,10 +911,7 @@ func (ctx *conversionContext) applyDefaults(
 	if tfs != nil && ctx.ApplyTFDefaults {
 		var valueErr error
 		tfs.Range(func(name string, sch shim.Schema) bool {
-			if sch.Removed() != "" {
-				return true
-			}
-			if sch.Deprecated() != "" && !sch.Required() {
+			if schemaMarkersSkipDefault(sch) {
 				return true
 			}
 			if _, conflicts := conflictsWith[name]; conflicts {

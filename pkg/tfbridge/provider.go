@@ -1162,7 +1162,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// for shim.DiffOptions.NewInputs. NewInputs is consumed by PlanStateEdit hooks
 	// (WithPlanStateEdit) as the post-Check user input from Pulumi, so it must reflect
 	// what Check produced rather than the bridge's internal sanitization.
-	configNews, _ := stripStaleDefaults(ctx, news, schema, fields)
+	configNews, _ := stripStaleDefaults(news, schema, fields)
 
 	config, assets, err := MakeTerraformConfig(ctx, p, olds, configNews, schema, fields)
 	if err != nil {
@@ -1684,7 +1684,14 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	config, assets, err := MakeTerraformConfig(ctx, p, olds, news, schema, fields)
+	// Mirror Diff: strip stale __defaults from the TF-facing config so Update's
+	// internal tf.Diff sees the same shape Diff RPC saw. Check normally sanitizes
+	// news before Update, so this is defense-in-depth for paths where Check is
+	// bypassed or where future state-edit hooks reintroduce stale entries. See the
+	// stripStaleDefaults doc for the full rationale.
+	configNews, _ := stripStaleDefaults(news, schema, fields)
+
+	config, assets, err := MakeTerraformConfig(ctx, p, olds, configNews, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -2106,6 +2113,11 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 // PlanResourceChange can trigger validation errors or attribute-not-found errors;
 // stripping it lets the provider's plan re-derive (or omit) the field cleanly.
 //
+// Scope: applied to the news input on the Diff and Update RPCs (both feed
+// PlanResourceChange). Other RPCs (Create, Read, Refresh, Check) do not invoke
+// this — Check is responsible for not propagating stale defaults forward in the
+// first place; #3434 below tracks consolidating those guarantees.
+//
 // Each entry in __defaults is classified by classifyStaleDefault — see that
 // function's doc for the precedence rules and rationale for each branch. The
 // short version: strip if no mechanism (bridge default, current TF Default,
@@ -2144,7 +2156,6 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 // the full SDKv2 lifecycle (validation interactions, GetRawConfig semantics, provider
 // Configure with Required+DefaultFunc, data source Invoke). Worth a dedicated PR.
 func stripStaleDefaults(
-	ctx context.Context,
 	m resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
@@ -2161,7 +2172,7 @@ func stripStaleDefaults(
 				continue
 			}
 			pulumiName := resource.PropertyKey(key.StringValue())
-			if classifyStaleDefault(pulumiName, tfs, ps) == staleDefaultStrip {
+			if shouldStripStaleDefault(pulumiName, tfs, ps) {
 				staleKeys = append(staleKeys, pulumiName)
 			} else {
 				keptDefaults = append(keptDefaults, key)
@@ -2181,7 +2192,7 @@ func stripStaleDefaults(
 		if k == reservedkeys.Defaults || staleSet[k] {
 			continue
 		}
-		if stripped, changed := stripStaleDefaultsValue(ctx, v, k, tfs, ps); changed {
+		if stripped, changed := stripStaleDefaultsValue(v, k, tfs, ps); changed {
 			if nestedChanges == nil {
 				nestedChanges = make(map[resource.PropertyKey]resource.PropertyValue)
 			}
@@ -2216,61 +2227,54 @@ func stripStaleDefaults(
 	return result, true
 }
 
-// staleDefaultDisposition classifies what stripStaleDefaults should do with a
-// __defaults entry: strip the corresponding value or preserve it.
-type staleDefaultDisposition int
-
-const (
-	staleDefaultStrip staleDefaultDisposition = iota
-	staleDefaultPreserve
-)
-
-// classifyStaleDefault decides whether a __defaults entry should be stripped
-// from news or preserved. The rules are ordered by precedence; each branch
-// mirrors the eligibility gate that applyDefaults applies in schema.go's
-// makeObjectTerraformInputs. Keep this in sync with applyDefaults — the strip
-// is correct only when the same field would be excluded from default
-// application by Check.
+// shouldStripStaleDefault decides whether a __defaults entry should be stripped
+// from news or preserved. The rules are ordered by precedence.
+//
+// The strip is correct only when the same field would be excluded from default
+// application by applyDefaults during Check. The shared gate
+// schemaMarkersSkipDefault (schema.go) encodes the TF-marker portion of that
+// invariant — both applyDefaults branches and this function call it, so changes
+// land in one place.
 //
 // Precedence (first match wins):
 //
 //  1. Bridge SchemaInfo.Removed → strip. Mirrors applyDefaults' overlay-branch
-//     skip; signals an overlay-level removal/rename.
-//  2. Bridge SchemaInfo with a managed Default → preserve. These are
+//     skip at schema.go:772.
+//  2. TF schema marker via schemaMarkersSkipDefault → strip. Mirrors the
+//     overlay-branch skip at schema.go:782 and TF-branch skip at schema.go:895.
+//     Removal-markers take precedence over HasDefault preservation so a stale
+//     stored value cannot leak through to PlanResourceChange even if a Default
+//     is still attached. Required-and-Deprecated is excluded by
+//     schemaMarkersSkipDefault — dropping a required field would break
+//     PlanResourceChange's required-field validation.
+//  3. Bridge SchemaInfo with a managed Default → preserve. These are
 //     non-deterministic (auto-naming, EnvVars, From callbacks); stripping
 //     would force re-derivation and break ID stability.
-//  3. TF schema Removed → strip. Field is no longer accepted by the provider;
-//     forwarding the stale value risks validation failure.
-//  4. TF schema Deprecated && !Required → strip. applyDefaults skips this case;
-//     deprecated-and-required is left to the Default-preservation branch below
-//     (a required field can't be stripped without breaking validation).
-//  5. TF schema declares Default or DefaultFunc → preserve. Avoids the
+//  4. TF schema declares Default or DefaultFunc → preserve. Avoids the
 //     changed-default phantom diff and preserves the legacy-stack falsy
-//     round-trip from PR #3420. Note: structural check (Default/DefaultFunc),
-//     not DefaultValue() — the latter invokes DefaultFunc, which can return
-//     nil at Diff time (e.g. unset env var) and that runtime-nil result must
-//     not be misclassified as "no default."
-//  6. Default → strip. No mechanism in the current bridge or schema can
+//     round-trip from PR #3420. Structural check (Default/DefaultFunc), not
+//     DefaultValue() — the latter invokes DefaultFunc, which can return nil
+//     at Diff time (e.g. unset env var) and that runtime-nil result must not
+//     be misclassified as "no default."
+//  5. Default → strip. No mechanism in the current bridge or schema can
 //     re-derive the value, so the stored entry is genuinely stale.
-func classifyStaleDefault(
+func shouldStripStaleDefault(
 	pulumiName resource.PropertyKey,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
-) staleDefaultDisposition {
+) bool {
 	_, tfSchema, psi := getInfoFromPulumiName(pulumiName, tfs, ps)
 	switch {
 	case psi != nil && psi.Removed:
-		return staleDefaultStrip
+		return true
+	case schemaMarkersSkipDefault(tfSchema):
+		return true
 	case psi != nil && psi.HasDefault():
-		return staleDefaultPreserve
-	case tfSchema != nil && tfSchema.Removed() != "":
-		return staleDefaultStrip
-	case tfSchema != nil && tfSchema.Deprecated() != "" && !tfSchema.Required():
-		return staleDefaultStrip
+		return false
 	case tfSchema != nil && (tfSchema.Default() != nil || tfSchema.DefaultFunc() != nil):
-		return staleDefaultPreserve
+		return false
 	default:
-		return staleDefaultStrip
+		return true
 	}
 }
 
@@ -2295,7 +2299,6 @@ func rewrapSecret(v resource.PropertyValue, isSecret bool) resource.PropertyValu
 // recursing through a value of unknown shape; use stripStaleDefaults directly when you
 // already have a PropertyMap. Returns the (possibly updated) value and whether it changed.
 func stripStaleDefaultsValue(
-	ctx context.Context,
 	v resource.PropertyValue,
 	key resource.PropertyKey,
 	tfs shim.SchemaMap,
@@ -2303,7 +2306,7 @@ func stripStaleDefaultsValue(
 ) (resource.PropertyValue, bool) {
 	// Unwrap secrets transparently — recurse on the inner value, re-wrap if changed.
 	if v.IsSecret() {
-		inner, changed := stripStaleDefaultsValue(ctx, v.SecretValue().Element, key, tfs, ps)
+		inner, changed := stripStaleDefaultsValue(v.SecretValue().Element, key, tfs, ps)
 		if !changed {
 			return v, false
 		}
@@ -2353,7 +2356,7 @@ func stripStaleDefaultsValue(
 		// Resource element. SDKv2 reinterprets TypeMap+Elem=Resource as a
 		// string-string map (see shim.go's Schema.Elem doc), so for the SDKv2 path
 		// the values would be scalars and stripStaleDefaults would no-op anyway.
-		stripped, changed := stripStaleDefaults(ctx, v.ObjectValue(), nestedTFS, nestedPS)
+		stripped, changed := stripStaleDefaults(v.ObjectValue(), nestedTFS, nestedPS)
 		if !changed {
 			return v, false
 		}
@@ -2362,7 +2365,7 @@ func stripStaleDefaultsValue(
 
 	// v.IsArray() — TypeList of blocks. (TypeSet was rejected above; TypeList elements
 	// have positional identity, so stripping nested fields is safe.)
-	return stripArrayOfBlocks(ctx, v.ArrayValue(), nestedTFS, nestedPS)
+	return stripArrayOfBlocks(v.ArrayValue(), nestedTFS, nestedPS)
 }
 
 // stripArrayOfBlocks strips stale __defaults from each nested-block element of an
@@ -2370,7 +2373,6 @@ func stripStaleDefaultsValue(
 // input/state extraction does not produce multi-level Secret(Secret(...)) nesting
 // in practice, so deeper unwrapping would only be defensive.
 func stripArrayOfBlocks(
-	ctx context.Context,
 	arr []resource.PropertyValue,
 	nestedTFS shim.SchemaMap,
 	nestedPS map[string]*SchemaInfo,
@@ -2381,7 +2383,7 @@ func stripArrayOfBlocks(
 		if !inner.IsObject() {
 			continue
 		}
-		stripped, changed := stripStaleDefaults(ctx, inner.ObjectValue(), nestedTFS, nestedPS)
+		stripped, changed := stripStaleDefaults(inner.ObjectValue(), nestedTFS, nestedPS)
 		if !changed {
 			continue
 		}

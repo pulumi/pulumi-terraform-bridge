@@ -15,7 +15,6 @@
 package tfbridge
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -30,7 +29,6 @@ import (
 
 func TestStripStaleDefaults(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
 	// Helper to build a SchemaMap from a map of schema definitions.
 	makeSchemaMap := func(schemas map[string]shim.Schema) shim.SchemaMap {
@@ -44,7 +42,7 @@ func TestStripStaleDefaults(t *testing.T) {
 		tfs := makeSchemaMap(map[string]shim.Schema{
 			"foo": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		assert.Equal(t, m, result)
 	})
 
@@ -56,7 +54,7 @@ func TestStripStaleDefaults(t *testing.T) {
 		tfs := makeSchemaMap(map[string]shim.Schema{
 			"foo": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		assert.Equal(t, m, result)
 	})
 
@@ -76,7 +74,7 @@ func TestStripStaleDefaults(t *testing.T) {
 			"stale_field": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 			"other_field": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		_, hasStale := result["staleField"]
 		assert.False(t, hasStale, "stale default should be stripped when schema has no current Default")
 		assert.Equal(t, resource.NewStringProperty("keep"), result["otherField"])
@@ -99,7 +97,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				Value: "auto-default",
 			}},
 		}
-		result, _ := stripStaleDefaults(ctx, m, tfs, ps)
+		result, _ := stripStaleDefaults(m, tfs, ps)
 		assert.Equal(t, m, result)
 	})
 
@@ -128,7 +126,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				Default:  "current-default",
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		assert.Equal(t, m, result, "field with current TF Default must be preserved")
 	})
 
@@ -151,7 +149,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				DefaultFunc: func() (any, error) { return nil, nil },
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		assert.Equal(t, m, result,
 			"field whose schema declares DefaultFunc must be preserved regardless of runtime value")
 	})
@@ -171,7 +169,7 @@ func TestStripStaleDefaults(t *testing.T) {
 		tfs := makeSchemaMap(map[string]shim.Schema{
 			"kept_field": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		_, hasRemoved := result["removedField"]
 		assert.False(t, hasRemoved, "field absent from current TF schema should be stripped")
 		assert.Equal(t, resource.NewStringProperty("present"), result["keptField"])
@@ -196,7 +194,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				Removed:  "use new_field instead",
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		_, hasRetired := result["retiredField"]
 		assert.False(t, hasRetired,
 			"a Removed field must be stripped even when the schema still has a Default attached")
@@ -218,9 +216,62 @@ func TestStripStaleDefaults(t *testing.T) {
 		ps := map[string]*SchemaInfo{
 			"renamed_field": {Removed: true},
 		}
-		result, _ := stripStaleDefaults(ctx, m, tfs, ps)
+		result, _ := stripStaleDefaults(m, tfs, ps)
 		_, hasField := result["renamedField"]
 		assert.False(t, hasField, "a bridge-Removed field must be stripped")
+	})
+
+	t.Run("TF Removed shadows bridge Default (parity with applyDefaults)", func(t *testing.T) {
+		// applyDefaults at schema.go:781-784 skips overlay defaulting when TF marks
+		// the field Removed. classifyStaleDefault must mirror this — a stale value
+		// must be stripped even when an overlay declares a Default, otherwise the
+		// strip would forward the value to PlanResourceChange where SDKv2 rejects
+		// the Removed attribute.
+		m := resource.PropertyMap{
+			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("retiredField"),
+			}),
+			"retiredField": resource.NewStringProperty("env-derived-value"),
+		}
+		tfs := makeSchemaMap(map[string]shim.Schema{
+			"retired_field": (&schema.Schema{
+				Type:     shim.TypeString,
+				Optional: true,
+				Removed:  "use new_field instead",
+			}).Shim(),
+		})
+		ps := map[string]*SchemaInfo{
+			"retired_field": {Default: &info.Default{EnvVars: []string{"OLD_VAR"}}},
+		}
+		result, _ := stripStaleDefaults(m, tfs, ps)
+		_, hasField := result["retiredField"]
+		assert.False(t, hasField,
+			"TF Removed must take precedence over bridge HasDefault — stale value must be stripped")
+	})
+
+	t.Run("TF Deprecated&&!Required shadows bridge Default (parity with applyDefaults)", func(t *testing.T) {
+		// applyDefaults skips overlay defaulting when TF marks the field
+		// Deprecated && !Required. classifyStaleDefault must mirror this.
+		m := resource.PropertyMap{
+			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("legacyField"),
+			}),
+			"legacyField": resource.NewStringProperty("env-derived-value"),
+		}
+		tfs := makeSchemaMap(map[string]shim.Schema{
+			"legacy_field": (&schema.Schema{
+				Type:       shim.TypeString,
+				Optional:   true,
+				Deprecated: "use new_field instead",
+			}).Shim(),
+		})
+		ps := map[string]*SchemaInfo{
+			"legacy_field": {Default: &info.Default{EnvVars: []string{"OLD_VAR"}}},
+		}
+		result, _ := stripStaleDefaults(m, tfs, ps)
+		_, hasField := result["legacyField"]
+		assert.False(t, hasField,
+			"TF Deprecated&&!Required must take precedence over bridge HasDefault — stale value must be stripped")
 	})
 
 	t.Run("deprecated optional field is stripped (mirrors applyDefaults gate)", func(t *testing.T) {
@@ -242,7 +293,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				Deprecated: "use new_field instead",
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		_, hasField := result["legacyField"]
 		assert.False(t, hasField,
 			"a deprecated optional field must be stripped even with a Default attached")
@@ -267,7 +318,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				Deprecated: "soft warning only",
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		assert.Equal(t, m, result,
 			"a deprecated-but-required field must be preserved (strip would break validation)")
 	})
@@ -285,7 +336,7 @@ func TestStripStaleDefaults(t *testing.T) {
 		tfs := makeSchemaMap(map[string]shim.Schema{
 			"stale_field": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		_, hasStale := result["staleField"]
 		assert.False(t, hasStale, "string entry should still be stripped")
 		defaultsVal, hasDefaults := result[reservedkeys.Defaults]
@@ -311,7 +362,7 @@ func TestStripStaleDefaults(t *testing.T) {
 			"missing_field": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 			"other_field":   (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		_, hasDefaults := result[reservedkeys.Defaults]
 		assert.False(t, hasDefaults, "__defaults should be removed when its only entry is stripped")
 		assert.Equal(t, resource.NewStringProperty("present"), result["otherField"])
@@ -333,7 +384,7 @@ func TestStripStaleDefaults(t *testing.T) {
 		ps := map[string]*SchemaInfo{
 			"region": {Default: &info.Default{EnvVars: []string{"AWS_REGION"}}},
 		}
-		result, _ := stripStaleDefaults(ctx, m, tfs, ps)
+		result, _ := stripStaleDefaults(m, tfs, ps)
 		assert.Equal(t, m, result, "field with EnvVars-based bridge default should be preserved")
 	})
 
@@ -354,7 +405,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				From: func(res *info.PulumiResource) (any, error) { return "computed", nil },
 			}},
 		}
-		result, _ := stripStaleDefaults(ctx, m, tfs, ps)
+		result, _ := stripStaleDefaults(m, tfs, ps)
 		assert.Equal(t, m, result, "field with From-based bridge default should be preserved")
 	})
 
@@ -372,7 +423,7 @@ func TestStripStaleDefaults(t *testing.T) {
 			"secret_field": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 			"other_field":  (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		_, hasSecret := result["secretField"]
 		assert.False(t, hasSecret, "secret-wrapped scalar in __defaults should be stripped")
 	})
@@ -396,7 +447,7 @@ func TestStripStaleDefaults(t *testing.T) {
 		ps := map[string]*SchemaInfo{
 			"bridge_field": {Default: &info.Default{Value: "bridge-default"}},
 		}
-		result, _ := stripStaleDefaults(ctx, m, tfs, ps)
+		result, _ := stripStaleDefaults(m, tfs, ps)
 		_, hasStale := result["staleField"]
 		assert.False(t, hasStale, "TF-only default should be stripped")
 		assert.Equal(t, resource.NewStringProperty("bridge-default"), result["bridgeField"])
@@ -419,7 +470,7 @@ func TestStripStaleDefaults(t *testing.T) {
 			"stale1": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 			"stale2": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		_, hasDefaults := result[reservedkeys.Defaults]
 		assert.False(t, hasDefaults, "__defaults should be removed entirely")
 		_, hasStale1 := result["stale1"]
@@ -453,7 +504,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		blockVal := result["block"].ObjectValue()
 		_, hasNestedStale := blockVal["nestedStale"]
 		assert.False(t, hasNestedStale, "nested stale default should be stripped")
@@ -492,7 +543,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		assert.Equal(t, m, result, "nested field with current TF Default must be preserved")
 	})
 
@@ -528,7 +579,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				"nested_name": {Default: &info.Default{Value: "bridge-generated"}},
 			}},
 		}
-		result, _ := stripStaleDefaults(ctx, m, tfs, ps)
+		result, _ := stripStaleDefaults(m, tfs, ps)
 		assert.Equal(t, m, result, "nested field with bridge Default must be preserved")
 	})
 
@@ -559,7 +610,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		blockVal := result["block"].ObjectValue()
 		_, hasRemoved := blockVal["removedNested"]
 		assert.False(t, hasRemoved, "field absent from nested schema must be stripped")
@@ -591,7 +642,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		items := result["items"].ArrayValue()
 		assert.Len(t, items, 1)
 		elemVal := items[0].ObjectValue()
@@ -630,7 +681,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		// The TypeSet element must be untouched: the "default" field and the nested
 		// __defaults must both still be present, otherwise the set hash changes.
 		assert.Equal(t, m, result, "TypeSet element fields and nested __defaults must be preserved")
@@ -665,7 +716,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		assert.Equal(t, m, result, "MaxItemsOne TypeSet element fields must be preserved")
 	})
 
@@ -696,7 +747,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		// Result should still be a secret
 		assert.True(t, result["block"].IsSecret())
 		blockVal := result["block"].SecretValue().Element.ObjectValue()
@@ -730,7 +781,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		items := result["items"].ArrayValue()
 		assert.Len(t, items, 1)
 		assert.True(t, items[0].IsSecret(), "element should still be secret-wrapped")
@@ -775,7 +826,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		outerVal := result["outer"].ObjectValue()
 		innerList := outerVal["innerList"].ArrayValue()
 		assert.Len(t, innerList, 1)
@@ -814,7 +865,7 @@ func TestStripStaleDefaults(t *testing.T) {
 				}).Shim(),
 			}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		_, hasBlock := result["block"]
 		assert.False(t, hasBlock, "top-level stale block should be stripped, not re-inserted by nested-change handling")
 		_, hasDefaults := result[reservedkeys.Defaults]
@@ -831,7 +882,7 @@ func TestStripStaleDefaults(t *testing.T) {
 		tfs := makeSchemaMap(map[string]shim.Schema{
 			"stale_field": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 		})
-		result, _ := stripStaleDefaults(ctx, m, tfs, nil)
+		result, _ := stripStaleDefaults(m, tfs, nil)
 		// Original should still have the field
 		assert.Equal(t, resource.NewStringProperty("old-default"), m["staleField"])
 		// Result should not

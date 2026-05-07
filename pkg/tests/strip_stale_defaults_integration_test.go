@@ -15,8 +15,11 @@
 package tests
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -486,6 +489,128 @@ resources:
 	// run, but a stripped Diff could spuriously report an in-place update).
 	res := pt.Preview(t, optpreview.Diff())
 	assertNoChanges(t, res.ChangeSummary, "BridgeDefaultPreserved")
+}
+
+// TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath is a regression guard for
+// the strip's symmetry across the two RPC paths that feed PlanResourceChange: Diff
+// (provider.go:1175) and Update's internal tf.Diff (provider.go:~1707). Both must
+// strip stale __defaults from `news` before building the TF config, otherwise a
+// future regression could let a stale value reach Update's plan while Diff's plan
+// stays clean — producing a Preview→Apply divergence.
+//
+// In current code Check sanitizes news upstream, so this test passes even if the
+// Update-path strip is removed. Its value is forward-looking: any future change that
+// lets stale entries survive Check (custom state-edit hooks, new RPC paths, refresh
+// flows that bypass Check) would be caught here only if both paths strip. The test
+// fires CustomizeDiff on every PlanResourceChange call — Diff RPC and Update RPC —
+// and records every site where opt_field reaches the raw config; the assertion is
+// zero sites.
+func TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath(t *testing.T) {
+	t.Parallel()
+
+	withDefault := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"opt_field": {
+						Type:     schema.TypeString,
+						Optional: true,
+						Default:  "old-default",
+					},
+					"trigger_update": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		},
+	}
+	bp1 := pulcheck.BridgedProvider(t, "prov", withDefault)
+
+	// staleSeen records every CustomizeDiff invocation where opt_field appears in the
+	// raw config. The expected count under the fix is zero — both Diff RPC and Update
+	// RPC must strip before PlanResourceChange runs.
+	var staleSeen atomic.Int64
+	var seenLock sync.Mutex
+	var seenSites []string
+	recordSite := func(value any) {
+		seenLock.Lock()
+		defer seenLock.Unlock()
+		seenSites = append(seenSites, formatVal(value))
+	}
+
+	withoutDefault := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"opt_field": {
+						Type:     schema.TypeString,
+						Optional: true,
+						// Default removed.
+					},
+					"trigger_update": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+				CustomizeDiff: func(_ context.Context, d *schema.ResourceDiff, _ any) error {
+					raw := d.GetRawConfig()
+					if raw.IsNull() || !raw.Type().IsObjectType() || !raw.Type().HasAttribute("opt_field") {
+						return nil
+					}
+					optAttr := raw.GetAttr("opt_field")
+					if !optAttr.IsNull() && optAttr.IsKnown() {
+						staleSeen.Add(1)
+						recordSite(optAttr.AsString())
+					}
+					return nil
+				},
+			},
+		},
+	}
+	bp2 := pulcheck.BridgedProvider(t, "prov", withoutDefault)
+
+	// Trigger an Update by changing trigger_update across the upgrade — this forces the
+	// engine to call Update (not just Diff) so that Update's internal tf.Diff exercises
+	// the strip path under test.
+	programV1 := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      triggerUpdate: "before"
+`
+	programV2 := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      triggerUpdate: "after"
+`
+
+	pt := pulcheck.PulCheck(t, bp1, programV1)
+	pt.Up(t)
+	stack := pt.ExportStack(t)
+
+	pt2 := pulcheck.PulCheck(t, bp2, programV2)
+	pt2.ImportStack(t, stack)
+	pt2.Up(t)
+
+	require.Zerof(t, staleSeen.Load(),
+		"opt_field must not reach PlanResourceChange after the strip; saw it at: %v", seenSites)
+}
+
+// formatVal renders a cty value into a short string for diagnostic output. Defined
+// locally because the test only needs a best-effort representation.
+func formatVal(v any) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return "<non-string>"
 }
 
 // TestStripStaleDefaultsIntegration_TypeSetHashStability is the regression guard for
