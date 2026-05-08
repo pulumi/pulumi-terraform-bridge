@@ -2103,7 +2103,7 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 // i.e. the schema's Default/DefaultFunc is gone, the bridge's SchemaInfo no
 // longer supplies one, or the field is marked Removed/Deprecated. Without
 // this, Diff and Update would feed stale provider-defaulted values back into
-// PlanResourceChange and produce phantom diffs against an upgraded provider.
+// PlanResourceChange, which has caused problems during provider upgrades.
 //
 // Parity contract: a key is stripped iff applyDefaults (schema.go) would not
 // re-supply that default on the next Check.
@@ -2120,11 +2120,11 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 //
 // Scope is deliberately narrow: only Diff and Update, only the config built
 // for PlanResourceChange. Check still runs full applyDefaults, and the
-// unstripped news is still handed to PlanStateEdit hooks via DiffOptions so
+// unstripped `news` is still handed to PlanStateEdit hooks via DiffOptions so
 // user-visible inputs aren't mutated.
 //
 // Known limitation: a changed TF default (v1 → v2) is preserved with the stale
-// v1 value because the schema still declares a Default.
+// v1 value because the schema still declares a Default. #3434 tracks this.
 func stripStaleDefaults(
 	news resource.PropertyMap,
 	tfs shim.SchemaMap,
@@ -2135,8 +2135,7 @@ func stripStaleDefaults(
 }
 
 // stripStaleDefaultsRec is the recursive worker. The bool reports whether anything
-// changed so recursion can skip reallocation on unchanged subtrees; the public
-// stripStaleDefaults wrapper drops it.
+// changed so recursion can skip reallocation on unchanged subtrees.
 func stripStaleDefaultsRec(
 	news resource.PropertyMap,
 	tfs shim.SchemaMap,
@@ -2186,7 +2185,7 @@ func stripStaleDefaultsRec(
 		return news, false
 	}
 
-	// Log only stale keys that were actually present in news — phantom __defaults
+	// Log only stale keys that were actually present in `news` — phantom __defaults
 	// entries (listed but absent) are pruned silently from the kept list, since
 	// logging them as "stripped" would be misleading.
 	var loggedKeys []resource.PropertyKey
@@ -2198,7 +2197,7 @@ func stripStaleDefaultsRec(
 	if len(loggedKeys) > 0 {
 		// V(5): same level as other unusual schema-evolution events (e.g.
 		// normalizeBlockCollections). Loud enough to triage post-upgrade-churn
-		// reports under `-v=5` without spamming routine logs at default verbosity.
+		// without spamming routine logs at default verbosity.
 		pulumilog.V(5).Infof("stripStaleDefaults: removing stale provider defaults from inputs: %v", loggedKeys)
 	}
 
@@ -2218,29 +2217,8 @@ func stripStaleDefaultsRec(
 }
 
 // shouldStripStaleDefault decides whether a __defaults entry should be stripped
-// from news or preserved. The strip is correct only when the same field would
-// be excluded from default application by applyDefaults during Check. The
-// shared gate defaultExcluded (schema.go) encodes the parity invariant; both
-// applyDefaults branches and this function call it.
-//
-// Precedence (first match wins):
-//
-//  1. defaultExcluded(tfSchema, psi) → strip. Removal markers (bridge psi.Removed,
-//     TF Removed, TF Deprecated && !Required) take precedence over any HasDefault
-//     preservation so a stale stored value cannot leak through to PlanResourceChange
-//     even if a Default is still attached.
-//  2. Bridge SchemaInfo with a managed Default → preserve. These are
-//     non-deterministic (auto-naming, EnvVars, From callbacks); stripping
-//     would force re-derivation and break ID stability.
-//  3. TF schema declares Default or DefaultFunc → preserve. Avoids the
-//     changed-default phantom diff and preserves the legacy-stack falsy
-//     round-trip when a stored value matches the schema-declared default.
-//     Structural check (Default/DefaultFunc), not DefaultValue() — the latter
-//     invokes DefaultFunc, which can return nil at runtime (e.g. unset env
-//     var) and that runtime-nil result must not be misclassified as "no
-//     default."
-//  4. Otherwise → strip. Neither the bridge nor the current TF schema
-//     declares a default for this field, so the stored entry is genuinely stale.
+// The strip is correct only when the same field would be excluded from default 
+// application by applyDefaults during Check, based on the shared defaultExcluded()
 func shouldStripStaleDefault(
 	pulumiName resource.PropertyKey,
 	tfs shim.SchemaMap,
@@ -2248,18 +2226,24 @@ func shouldStripStaleDefault(
 ) bool {
 	_, tfSchema, psi := getInfoFromPulumiName(pulumiName, tfs, ps)
 	switch {
+	// Removal markers on the schema field take precedence
 	case defaultExcluded(tfSchema, psi):
 		return true
+	// Bridge injected SchemaInfo with a managed default
+	// (e.g. auto-naming, EnvVars, etc)
 	case psi != nil && psi.HasDefault():
 		return false
+	// TF schema declares a default. Structural check (Default/DefaultFunc), 
+	// not DefaultValue() which invokes DefaultFunc() and can return a misleading nil 
+	// (e.g. unset env var)
 	case tfSchema != nil && (tfSchema.Default() != nil || tfSchema.DefaultFunc() != nil):
 		return false
+	// Neither the bridge nor the current TF schema declares a default for this field
 	default:
 		return true
 	}
 }
 
-// unwrapSecret returns the inner value and true if v is a secret, or v itself and false otherwise.
 func unwrapSecret(v resource.PropertyValue) (resource.PropertyValue, bool) {
 	if v.IsSecret() {
 		return v.SecretValue().Element, true
@@ -2267,7 +2251,6 @@ func unwrapSecret(v resource.PropertyValue) (resource.PropertyValue, bool) {
 	return v, false
 }
 
-// rewrapSecret wraps v in a secret if isSecret is true.
 func rewrapSecret(v resource.PropertyValue, isSecret bool) resource.PropertyValue {
 	if isSecret {
 		return resource.MakeSecret(v)

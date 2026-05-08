@@ -552,7 +552,7 @@ resources:
 // a future regression could let a stale value reach Update's plan while Diff's
 // plan stays clean — producing a Preview→Apply divergence.
 //
-// In current code Check sanitizes news upstream, so this test passes even if
+// In current code Check sanitizes `news` upstream, so this test passes even if
 // the Update-path strip is removed. Its value is forward-looking: any future
 // change that lets stale entries survive Check (custom state-edit hooks, new
 // RPC paths, refresh flows that bypass Check) would be caught here only if

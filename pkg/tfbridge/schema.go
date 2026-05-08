@@ -746,10 +746,6 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 // without Required). Required-and-Deprecated is intentionally excluded: a
 // required field cannot be dropped without breaking PlanResourceChange's
 // required-field validation.
-//
-// This is the shared parity gate. applyDefaults' overlay and TF branches and
-// provider.go's shouldStripStaleDefault all call through here. Modify only
-// here; the three sites stay in lockstep automatically.
 func defaultExcluded(sch shim.Schema, psi *SchemaInfo) bool {
 	if psi != nil && psi.Removed {
 		return true
