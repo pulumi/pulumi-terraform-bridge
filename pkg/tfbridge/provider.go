@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"sort"
 	"strings"
@@ -1210,9 +1211,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 		if changes == pulumirpc.DiffResponse_DIFF_SOME {
 			// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
-			for path, diff := range dd.collectionDiffs {
-				detailedDiff[path] = diff
-			}
+			maps.Copy(detailedDiff, dd.collectionDiffs)
 		}
 	}
 
@@ -2099,7 +2098,7 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 	return timeoutOverrides
 }
 
-// stripStaleDefaults drops entries from m[reservedkeys.Defaults] (and the
+// stripStaleDefaults drops entries from news[reservedkeys.Defaults] (and the
 // corresponding values) when the provider would no longer fill them today —
 // i.e. the schema's Default/DefaultFunc is gone, the bridge's SchemaInfo no
 // longer supplies one, or the field is marked Removed/Deprecated. Without
@@ -2107,27 +2106,31 @@ func newTimeoutOverrides(key shim.TimeoutKey, maybeTimeoutSeconds float64) map[s
 // PlanResourceChange and produce phantom diffs against an upgraded provider.
 //
 // Parity contract: a key is stripped iff applyDefaults (schema.go) would not
-// re-supply that default on the next Check. Per-entry classification lives in
-// shouldStripStaleDefault; this function is just the recursive walk over
-// nested objects and array-of-object elements. TypeSet is intentionally
-// skipped: TF hashes set elements over all their fields, so editing a nested
-// field would scramble element identity and produce spurious set churn on the
-// next plan.
+// re-supply that default on the next Check.
+//
+// User-visible effect: a strip can surface as a one-time element rearrangement
+// on the next plan when the affected field sits inside a TypeSet element (TF
+// hashes Set membership over element fields, so removing a stale field changes
+// the element's hash). This mirrors `terraform apply` against the same
+// provider schema change and is preferable to silently retaining a value the
+// current schema can no longer attribute to a default.
+//
+// Per-entry classification lives in shouldStripStaleDefault; this function is
+// just the recursive walk over nested objects and array-of-object elements.
 //
 // Scope is deliberately narrow: only Diff and Update, only the config built
 // for PlanResourceChange. Check still runs full applyDefaults, and the
 // unstripped news is still handed to PlanStateEdit hooks via DiffOptions so
 // user-visible inputs aren't mutated.
 //
-// Known limitations, both resolved by #3434: a changed TF default (v1 → v2)
-// is preserved with the stale v1 value because the schema still declares a
-// Default; stale defaults inside TypeSet element schemas are not stripped.
+// Known limitation: a changed TF default (v1 → v2) is preserved with the stale
+// v1 value because the schema still declares a Default.
 func stripStaleDefaults(
-	m resource.PropertyMap,
+	news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 ) resource.PropertyMap {
-	stripped, _ := stripStaleDefaultsRec(m, tfs, ps)
+	stripped, _ := stripStaleDefaultsRec(news, tfs, ps)
 	return stripped
 }
 
@@ -2135,14 +2138,14 @@ func stripStaleDefaults(
 // changed so recursion can skip reallocation on unchanged subtrees; the public
 // stripStaleDefaults wrapper drops it.
 func stripStaleDefaultsRec(
-	m resource.PropertyMap,
+	news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 ) (resource.PropertyMap, bool) {
 	var staleKeys []resource.PropertyKey
 	var keptDefaults []resource.PropertyValue
 
-	if defaults, hasDefaults := m[reservedkeys.Defaults]; hasDefaults && defaults.IsArray() {
+	if defaults, hasDefaults := news[reservedkeys.Defaults]; hasDefaults && defaults.IsArray() {
 		for _, key := range defaults.ArrayValue() {
 			if !key.IsString() {
 				// Non-string entries shouldn't appear in __defaults but if they do,
@@ -2167,7 +2170,7 @@ func stripStaleDefaultsRec(
 		staleSet[k] = true
 	}
 	var nestedChanges map[resource.PropertyKey]resource.PropertyValue
-	for k, v := range m {
+	for k, v := range news {
 		if k == reservedkeys.Defaults || staleSet[k] {
 			continue
 		}
@@ -2180,33 +2183,32 @@ func stripStaleDefaultsRec(
 	}
 
 	if len(staleKeys) == 0 && len(nestedChanges) == 0 {
-		return m, false
+		return news, false
 	}
 
-	// Log only stale keys that were actually present in m — phantom __defaults
+	// Log only stale keys that were actually present in news — phantom __defaults
 	// entries (listed but absent) are pruned silently from the kept list, since
 	// logging them as "stripped" would be misleading.
 	var loggedKeys []resource.PropertyKey
 	for _, k := range staleKeys {
-		if _, present := m[k]; present {
+		if _, present := news[k]; present {
 			loggedKeys = append(loggedKeys, k)
 		}
 	}
 	if len(loggedKeys) > 0 {
-		pulumilog.V(9).Infof("stripStaleDefaults: removing stale provider defaults from inputs: %v", loggedKeys)
+		// V(5): same level as other unusual schema-evolution events (e.g.
+		// normalizeBlockCollections). Loud enough to triage post-upgrade-churn
+		// reports under `-v=5` without spamming routine logs at default verbosity.
+		pulumilog.V(5).Infof("stripStaleDefaults: removing stale provider defaults from inputs: %v", loggedKeys)
 	}
 
 	// Make a shallow copy to avoid mutating the original.
-	result := make(resource.PropertyMap, len(m))
-	for k, v := range m {
-		result[k] = v
-	}
+	result := make(resource.PropertyMap, len(news))
+	maps.Copy(result, news)
 	for _, k := range staleKeys {
 		delete(result, k)
 	}
-	for k, v := range nestedChanges {
-		result[k] = v
-	}
+	maps.Copy(result, nestedChanges)
 	if len(keptDefaults) > 0 {
 		result[reservedkeys.Defaults] = resource.NewArrayProperty(keptDefaults)
 	} else {
@@ -2237,8 +2239,8 @@ func stripStaleDefaultsRec(
 //     invokes DefaultFunc, which can return nil at runtime (e.g. unset env
 //     var) and that runtime-nil result must not be misclassified as "no
 //     default."
-//  4. Default → strip. Neither the bridge nor the current TF schema declares
-//     a default for this field, so the stored entry is genuinely stale.
+//  4. Otherwise → strip. Neither the bridge nor the current TF schema
+//     declares a default for this field, so the stored entry is genuinely stale.
 func shouldStripStaleDefault(
 	pulumiName resource.PropertyKey,
 	tfs shim.SchemaMap,
@@ -2278,15 +2280,18 @@ func rewrapSecret(v resource.PropertyValue, isSecret bool) resource.PropertyValu
 // recursing through a value of unknown shape; use stripStaleDefaults directly
 // when you already have a PropertyMap. Returns the (possibly updated) value
 // and whether it changed.
+//
+// parentKey is the Pulumi name under which v sits in its parent map; it's
+// used to resolve v's own schema so the recursion knows what shape v has.
 func stripStaleDefaultsValue(
 	v resource.PropertyValue,
-	key resource.PropertyKey,
+	parentKey resource.PropertyKey,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 ) (resource.PropertyValue, bool) {
 	// Unwrap secrets transparently — recurse on the inner value, re-wrap if changed.
 	if inner, isSecret := unwrapSecret(v); isSecret {
-		stripped, changed := stripStaleDefaultsValue(inner, key, tfs, ps)
+		stripped, changed := stripStaleDefaultsValue(inner, parentKey, tfs, ps)
 		if !changed {
 			return v, false
 		}
@@ -2302,7 +2307,7 @@ func stripStaleDefaultsValue(
 		return v, false
 	}
 
-	_, tfSchema, psi := getInfoFromPulumiName(key, tfs, ps)
+	_, tfSchema, psi := getInfoFromPulumiName(parentKey, tfs, ps)
 
 	var nestedTFS shim.SchemaMap
 	var nestedPS map[string]*SchemaInfo
@@ -2320,15 +2325,8 @@ func stripStaleDefaultsValue(
 		return v, false
 	}
 
-	// TypeSet membership hashes over element fields, so stripping a nested field
-	// would force spurious set rearrangement diffs. Skip whether flattened to an
-	// object (MaxItemsOne) or kept as an array.
-	if tfSchema.Type() == shim.TypeSet {
-		return v, false
-	}
-
 	if v.IsObject() {
-		// MaxItemsOne TypeList flattened to a single object.
+		// MaxItemsOne TypeList/TypeSet flattened to a single object.
 		stripped, changed := stripStaleDefaultsRec(v.ObjectValue(), nestedTFS, nestedPS)
 		if !changed {
 			return v, false
@@ -2336,8 +2334,7 @@ func stripStaleDefaultsValue(
 		return resource.NewObjectProperty(stripped), true
 	}
 
-	// v.IsArray() — TypeList of blocks. (TypeSet was rejected above; TypeList
-	// elements have positional identity, so stripping nested fields is safe.)
+	// v.IsArray() — TypeList or TypeSet of blocks.
 	if newArr, changed := stripArrayOfBlocks(v.ArrayValue(), nestedTFS, nestedPS); changed {
 		return resource.NewArrayProperty(newArr), true
 	}

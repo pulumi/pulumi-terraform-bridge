@@ -703,16 +703,17 @@ func TestStripStaleDefaults(t *testing.T) {
 		assert.False(t, hasDefaults, "array element __defaults should be removed when empty")
 	})
 
-	t.Run("nested __defaults inside TypeSet elements are NOT stripped", func(t *testing.T) {
-		// TypeSet membership is hash-based on all element fields. Stripping a field
-		// from a nested element changes its hash and makes TF see set reorder/add/remove
-		// diffs instead of in-place updates. The recursion must skip TypeSet entirely.
+	t.Run("stale default inside TypeSet element is stripped", func(t *testing.T) {
+		// Stripping a stale default from a Set element does change its hash, so the
+		// next plan shows a one-time membership rearrangement. That mirrors the
+		// behavior of `terraform apply` against the same provider schema change and
+		// is preferable to retaining a value the current schema can't attribute.
 		nestedElem := resource.NewObjectProperty(resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("default"),
+				resource.NewStringProperty("elemStale"),
 			}),
-			"default":    resource.NewStringProperty("default"),
-			"nestedProp": resource.NewStringProperty("val1"),
+			"elemStale": resource.NewStringProperty("old-default"),
+			"elemKept":  resource.NewStringProperty("user-set"),
 		})
 		m := resource.PropertyMap{
 			"items": resource.NewArrayProperty([]resource.PropertyValue{nestedElem}),
@@ -723,30 +724,32 @@ func TestStripStaleDefaults(t *testing.T) {
 				Optional: true,
 				Elem: (&schema.Resource{
 					Schema: schema.SchemaMap{
-						"default": (&schema.Schema{
-							Type: shim.TypeString, Optional: true, Default: "default",
-						}).Shim(),
-						"nested_prop": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+						"elem_stale": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+						"elem_kept":  (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 					},
 				}).Shim(),
 			}).Shim(),
 		})
 		result := stripStaleDefaults(m, tfs, nil)
-		// The TypeSet element must be untouched: the "default" field and the nested
-		// __defaults must both still be present, otherwise the set hash changes.
-		assert.Equal(t, m, result, "TypeSet element fields and nested __defaults must be preserved")
+		items := result["items"].ArrayValue()
+		assert.Len(t, items, 1)
+		elemVal := items[0].ObjectValue()
+		_, hasElemStale := elemVal["elemStale"]
+		assert.False(t, hasElemStale, "stale default in TypeSet element should be stripped")
+		assert.Equal(t, resource.NewStringProperty("user-set"), elemVal["elemKept"])
+		_, hasDefaults := elemVal[reservedkeys.Defaults]
+		assert.False(t, hasDefaults, "TypeSet element __defaults should be removed when empty")
 	})
 
-	t.Run("nested __defaults inside MaxItemsOne TypeSet are NOT stripped", func(t *testing.T) {
-		// MaxItemsOne TypeSet flattens to a single object, but TF still hashes it as
-		// a set element. Stripping nested fields would change the hash and mislead TF
-		// about set membership.
+	t.Run("stale default inside MaxItemsOne TypeSet element is stripped", func(t *testing.T) {
+		// MaxItemsOne TypeSet flattens to a single object. Same parity rationale as
+		// the array-of-elements case above.
 		nested := resource.NewObjectProperty(resource.PropertyMap{
 			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("default"),
+				resource.NewStringProperty("nestedStale"),
 			}),
-			"default":    resource.NewStringProperty("default"),
-			"nestedProp": resource.NewStringProperty("val1"),
+			"nestedStale": resource.NewStringProperty("old-default"),
+			"nestedKept":  resource.NewStringProperty("user-set"),
 		})
 		m := resource.PropertyMap{
 			"item": nested,
@@ -758,16 +761,19 @@ func TestStripStaleDefaults(t *testing.T) {
 				Optional: true,
 				Elem: (&schema.Resource{
 					Schema: schema.SchemaMap{
-						"default": (&schema.Schema{
-							Type: shim.TypeString, Optional: true, Default: "default",
-						}).Shim(),
-						"nested_prop": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+						"nested_stale": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+						"nested_kept":  (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
 					},
 				}).Shim(),
 			}).Shim(),
 		})
 		result := stripStaleDefaults(m, tfs, nil)
-		assert.Equal(t, m, result, "MaxItemsOne TypeSet element fields must be preserved")
+		itemVal := result["item"].ObjectValue()
+		_, hasNestedStale := itemVal["nestedStale"]
+		assert.False(t, hasNestedStale, "stale default in MaxItemsOne TypeSet should be stripped")
+		assert.Equal(t, resource.NewStringProperty("user-set"), itemVal["nestedKept"])
+		_, hasDefaults := itemVal[reservedkeys.Defaults]
+		assert.False(t, hasDefaults, "MaxItemsOne TypeSet __defaults should be removed when empty")
 	})
 
 	t.Run("stale default in secret-wrapped nested object is stripped", func(t *testing.T) {
@@ -839,6 +845,47 @@ func TestStripStaleDefaults(t *testing.T) {
 		_, hasStale := elemVal["elemStale"]
 		assert.False(t, hasStale, "stale default in secret-wrapped array element should be stripped")
 		assert.Equal(t, resource.NewStringProperty("user-set"), elemVal["elemKept"])
+	})
+
+	t.Run("stale default in fully-secret-wrapped TypeSet array is stripped", func(t *testing.T) {
+		// Sensitive Set fields can be encoded with the secret wrapping the whole
+		// array (rather than per-element). The recursion must unwrap the array,
+		// strip stale defaults from each element, and re-wrap the result as a
+		// secret. Distinct from the per-element case above and from the
+		// MaxItemsOne block-level case — three different secret shapes.
+		elem := resource.NewObjectProperty(resource.PropertyMap{
+			reservedkeys.Defaults: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("elemStale"),
+			}),
+			"elemStale": resource.NewStringProperty("old-default"),
+			"elemKept":  resource.NewStringProperty("user-set"),
+		})
+		m := resource.PropertyMap{
+			"items": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{elem})),
+		}
+		tfs := makeSchemaMap(map[string]shim.Schema{
+			"items": (&schema.Schema{
+				Type:      shim.TypeSet,
+				Optional:  true,
+				Sensitive: true,
+				Elem: (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"elem_stale": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+						"elem_kept":  (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+					},
+				}).Shim(),
+			}).Shim(),
+		})
+		result := stripStaleDefaults(m, tfs, nil)
+		assert.True(t, result["items"].IsSecret(), "outer Set must remain secret-wrapped")
+		items := result["items"].SecretValue().Element.ArrayValue()
+		assert.Len(t, items, 1)
+		elemVal := items[0].ObjectValue()
+		_, hasStale := elemVal["elemStale"]
+		assert.False(t, hasStale, "stale default inside fully-secret-wrapped Set must be stripped")
+		assert.Equal(t, resource.NewStringProperty("user-set"), elemVal["elemKept"])
+		_, hasDefaults := elemVal[reservedkeys.Defaults]
+		assert.False(t, hasDefaults, "element __defaults must be cleaned when empty")
 	})
 
 	t.Run("deeply nested stale default is stripped (object -> array -> object)", func(t *testing.T) {

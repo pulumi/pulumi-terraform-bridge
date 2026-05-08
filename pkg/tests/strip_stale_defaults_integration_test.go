@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -118,6 +117,18 @@ func TestStripStaleDefaultsIntegration_DefaultRemoved(t *testing.T) {
 	}
 	bp1 := pulcheck.BridgedProvider(t, "prov", withDefault)
 
+	// CustomizeDiff fires every PlanResourceChange and records sites where
+	// opt_field reaches RawConfig — the load-bearing observation, since post-Up
+	// stored inputs are shaped by Check (which already drops the field) and
+	// would not discriminate the strip from Check on their own.
+	var seenLock sync.Mutex
+	var seenSites []string
+	recordSite := func(value any) {
+		seenLock.Lock()
+		defer seenLock.Unlock()
+		seenSites = append(seenSites, formatVal(value))
+	}
+
 	withoutDefault := &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"prov_test": {
@@ -127,6 +138,17 @@ func TestStripStaleDefaultsIntegration_DefaultRemoved(t *testing.T) {
 						Optional: true,
 						// Default removed.
 					},
+				},
+				CustomizeDiff: func(_ context.Context, d *schema.ResourceDiff, _ any) error {
+					raw := d.GetRawConfig()
+					if raw.IsNull() || !raw.Type().IsObjectType() || !raw.Type().HasAttribute("opt_field") {
+						return nil
+					}
+					attr := raw.GetAttr("opt_field")
+					if !attr.IsNull() && attr.IsKnown() {
+						recordSite(attr.AsString())
+					}
+					return nil
 				},
 			},
 		},
@@ -155,15 +177,15 @@ resources:
 	assertNoUnexpectedOps(t, res.ChangeSummary, "DefaultRemoved")
 	pt2.Up(t)
 
-	// Strong assertion: the strip removed optField from the new inputs, so the
-	// post-Up stored inputs must NOT contain it. Without the strip, Check's "old
-	// default" reuse path would re-pin "old-default" into news on every Diff,
-	// and the post-Up state would still record optField; this assertion would
-	// fail.
 	postInputs := resourceInputs(t, pt2.ExportStack(t).Deployment, "prov:index/test:Test::mainRes")
 	_, hasField := postInputs["optField"]
 	require.False(t, hasField,
 		"after Up against the schema with no Default, optField must be absent from stored inputs; got %+v", postInputs)
+
+	seenLock.Lock()
+	defer seenLock.Unlock()
+	require.Emptyf(t, seenSites,
+		"opt_field must not reach PlanResourceChange after the strip; saw it at: %v", seenSites)
 }
 
 // Note: there is no integration test for the *changed-default* scenario (provider
@@ -281,6 +303,17 @@ func TestStripStaleDefaultsIntegration_NestedTypeListBlock(t *testing.T) {
 	}
 	bp1 := pulcheck.BridgedProvider(t, "prov", withNestedDefault)
 
+	// CustomizeDiff records sites where the stripped nested_default reaches
+	// PlanResourceChange's RawConfig — load-bearing observation since post-Up
+	// stored inputs are shaped by Check and would not discriminate the strip.
+	var seenLock sync.Mutex
+	var seenSites []string
+	recordSite := func(value any) {
+		seenLock.Lock()
+		defer seenLock.Unlock()
+		seenSites = append(seenSites, formatVal(value))
+	}
+
 	withoutNestedDefault := &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"prov_test": {
@@ -303,6 +336,28 @@ func TestStripStaleDefaultsIntegration_NestedTypeListBlock(t *testing.T) {
 							},
 						},
 					},
+				},
+				CustomizeDiff: func(_ context.Context, d *schema.ResourceDiff, _ any) error {
+					raw := d.GetRawConfig()
+					if raw.IsNull() || !raw.Type().IsObjectType() || !raw.Type().HasAttribute("block") {
+						return nil
+					}
+					block := raw.GetAttr("block")
+					if block.IsNull() || !block.IsKnown() || block.LengthInt() == 0 {
+						return nil
+					}
+					it := block.ElementIterator()
+					for it.Next() {
+						_, elem := it.Element()
+						if elem.IsNull() || !elem.Type().IsObjectType() || !elem.Type().HasAttribute("nested_default") {
+							continue
+						}
+						attr := elem.GetAttr("nested_default")
+						if !attr.IsNull() && attr.IsKnown() {
+							recordSite(attr.AsString())
+						}
+					}
+					return nil
 				},
 			},
 		},
@@ -344,15 +399,17 @@ resources:
 		"nestedDefault must be stripped from the nested block after Up; got %+v", postBlock)
 	require.Equalf(t, "alpha", postBlock["name"],
 		"sibling field 'name' must be preserved; got %+v", postBlock)
+
+	seenLock.Lock()
+	defer seenLock.Unlock()
+	require.Emptyf(t, seenSites,
+		"nested_default must not reach PlanResourceChange after the strip; saw it at: %v", seenSites)
 }
 
 // TestStripStaleDefaultsIntegration_TypeListOfBlocks covers stripArrayOfBlocks: a
 // non-MaxItemsOne TypeList of objects, each carrying a nested __defaults entry that
 // is removed in the upgraded schema. Distinct from _NestedTypeListBlock which uses
-// MaxItems=1 (single object branch). TypeSet is intentionally skipped by the strip
-// (set membership is hash-based on element fields), but TypeList elements are
-// positional — this test confirms the array recursion path is still exercised for
-// TypeList and not accidentally disabled along with TypeSet.
+// MaxItems=1 (single object branch).
 func TestStripStaleDefaultsIntegration_TypeListOfBlocks(t *testing.T) {
 	t.Parallel()
 
@@ -524,10 +581,10 @@ func TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath(t *testing.T) {
 	}
 	bp1 := pulcheck.BridgedProvider(t, "prov", withDefault)
 
-	// staleSeen records every CustomizeDiff invocation where opt_field appears in the
-	// raw config. The expected count under the fix is zero — both Diff RPC and Update
-	// RPC must strip before PlanResourceChange runs.
-	var staleSeen atomic.Int64
+	// seenSites records every CustomizeDiff invocation where opt_field appears in
+	// the raw config. The expected count under the fix is zero — both Diff RPC and
+	// Update RPC must strip before PlanResourceChange runs. Counter and slice are
+	// updated together under the same lock so failure-path output stays coherent.
 	var seenLock sync.Mutex
 	var seenSites []string
 	recordSite := func(value any) {
@@ -557,7 +614,6 @@ func TestStripStaleDefaultsIntegration_StripAppliesInUpdatePath(t *testing.T) {
 					}
 					optAttr := raw.GetAttr("opt_field")
 					if !optAttr.IsNull() && optAttr.IsKnown() {
-						staleSeen.Add(1)
 						recordSite(optAttr.AsString())
 					}
 					return nil
@@ -597,7 +653,9 @@ resources:
 	pt2.ImportStack(t, stack)
 	pt2.Up(t)
 
-	require.Zerof(t, staleSeen.Load(),
+	seenLock.Lock()
+	defer seenLock.Unlock()
+	require.Emptyf(t, seenSites,
 		"opt_field must not reach PlanResourceChange after the strip; saw it at: %v", seenSites)
 }
 
@@ -610,13 +668,173 @@ func formatVal(v any) string {
 	return "<non-string>"
 }
 
-// TestStripStaleDefaultsIntegration_TypeSetHashStability is the regression guard for
-// the bug hit during development of this feature:
-// stripping nested fields from TypeSet elements changed element hashes and made TF
-// report set rearrangement instead of in-place updates.
-// The strip skips TypeSet entirely, so __defaults inside set elements remain intact
-// across the round-trip; this test verifies no spurious diff from that round-trip.
-func TestStripStaleDefaultsIntegration_TypeSetHashStability(t *testing.T) {
+// TestStripStaleDefaultsIntegration_StaleDefaultInSetElement guards the strip's
+// recursion into TypeSet elements end-to-end. Mirrors _NestedTypeListBlock but
+// with a TypeSet (non-MaxItemsOne) — element identity is hash-based, so
+// stripping a stale field changes the element hash. The test verifies the
+// lifecycle still lands cleanly: Up succeeds (no PlanResourceChange validation
+// error), the stale field is gone from RawConfig per the CustomizeDiff hook,
+// the post-Up stored inputs no longer carry it, and a follow-up preview shows
+// no further churn (the strip's effect is one-time).
+func TestStripStaleDefaultsIntegration_StaleDefaultInSetElement(t *testing.T) {
+	t.Parallel()
+
+	withElemDefault := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"items": {
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"name": {
+									Type:     schema.TypeString,
+									Optional: true,
+								},
+								"elem_default": {
+									Type:     schema.TypeString,
+									Optional: true,
+									Default:  "old-elem",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	bp1 := pulcheck.BridgedProvider(t, "prov", withElemDefault)
+
+	// CustomizeDiff records sites where the stripped elem_default reaches
+	// PlanResourceChange's RawConfig — load-bearing observation since post-Up
+	// stored inputs are shaped by Check and would not discriminate the strip.
+	var seenLock sync.Mutex
+	var seenSites []string
+	recordSite := func(value any) {
+		seenLock.Lock()
+		defer seenLock.Unlock()
+		seenSites = append(seenSites, formatVal(value))
+	}
+
+	withoutElemDefault := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"items": {
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"name": {
+									Type:     schema.TypeString,
+									Optional: true,
+								},
+								"elem_default": {
+									Type:     schema.TypeString,
+									Optional: true,
+									// Default removed.
+								},
+							},
+						},
+					},
+				},
+				CustomizeDiff: func(_ context.Context, d *schema.ResourceDiff, _ any) error {
+					raw := d.GetRawConfig()
+					if raw.IsNull() || !raw.Type().IsObjectType() || !raw.Type().HasAttribute("items") {
+						return nil
+					}
+					items := raw.GetAttr("items")
+					if items.IsNull() || !items.IsKnown() {
+						return nil
+					}
+					it := items.ElementIterator()
+					for it.Next() {
+						_, elem := it.Element()
+						if elem.IsNull() || !elem.Type().IsObjectType() || !elem.Type().HasAttribute("elem_default") {
+							continue
+						}
+						attr := elem.GetAttr("elem_default")
+						if !attr.IsNull() && attr.IsKnown() {
+							recordSite(attr.AsString())
+						}
+					}
+					return nil
+				},
+			},
+		},
+	}
+	bp2 := pulcheck.BridgedProvider(t, "prov", withoutElemDefault)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      items:
+        - name: "alpha"
+`
+
+	pt := pulcheck.PulCheck(t, bp1, program)
+	pt.Up(t)
+	stack := pt.ExportStack(t)
+
+	pt2 := pulcheck.PulCheck(t, bp2, program)
+	pt2.ImportStack(t, stack)
+
+	// Sanity: imported state holds the stale element default before the strip runs.
+	preInputs := resourceInputs(t, pt2.ExportStack(t).Deployment, "prov:index/test:Test::mainRes")
+	preItems, _ := preInputs["items"].([]any)
+	require.Lenf(t, preItems, 1, "imported state should have one element; got %+v", preInputs)
+	preElem, _ := preItems[0].(map[string]any)
+	require.Equalf(t, "old-elem", preElem["elemDefault"],
+		"sanity: imported state should hold the stale elem default; got %+v", preElem)
+
+	// Up must succeed without a PlanResourceChange validation error. The strip
+	// causes a one-time element rearrangement (set hash change), which is
+	// expected — assertNoUnexpectedOps allows same/update but not replace.
+	res := pt2.Preview(t, optpreview.Diff())
+	assertNoUnexpectedOps(t, res.ChangeSummary, "StaleDefaultInSetElement")
+	pt2.Up(t)
+
+	// After Up: the stale field is stripped from stored inputs, the sibling
+	// 'name' is preserved.
+	postInputs := resourceInputs(t, pt2.ExportStack(t).Deployment, "prov:index/test:Test::mainRes")
+	postItems, ok := postInputs["items"].([]any)
+	require.Truef(t, ok, "items must remain in stored inputs; got %+v", postInputs)
+	require.Lenf(t, postItems, 1, "items must still have one element after Up; got %+v", postInputs)
+	postElem, _ := postItems[0].(map[string]any)
+	_, hasElem := postElem["elemDefault"]
+	require.Falsef(t, hasElem,
+		"elemDefault must be stripped from the Set element after Up; got %+v", postElem)
+	require.Equalf(t, "alpha", postElem["name"],
+		"sibling field 'name' must be preserved; got %+v", postElem)
+
+	// Stability: a second preview against the same v2 schema must report no
+	// further changes — the strip's effect is one-time.
+	res2 := pt2.Preview(t, optpreview.Diff())
+	assertNoChanges(t, res2.ChangeSummary, "StaleDefaultInSetElement-stability")
+
+	seenLock.Lock()
+	defer seenLock.Unlock()
+	require.Emptyf(t, seenSites,
+		"elem_default must not reach PlanResourceChange after the strip; saw it at: %v", seenSites)
+}
+
+// TestStripStaleDefaultsIntegration_TypeSetLiveDefaultPreserved pins the
+// preserve branch of shouldStripStaleDefault for Set element fields: when the
+// nested default is *still declared* by the current schema, the value must
+// neither be stripped (no churn) nor misclassified as stale. The test creates
+// a Set where the program omits the defaulted field, lets the bridge default
+// it on Up, and asserts the post-Up stored inputs still carry the schema
+// default value — proving the predicate's preserve branch fired.
+//
+// Note: this test does not pin full Set-hash stability across schema-evolution
+// boundaries (the strip-into-Set behavior intentionally does change hashes for
+// stale defaults — see _StaleDefaultInSetElement).
+func TestStripStaleDefaultsIntegration_TypeSetLiveDefaultPreserved(t *testing.T) {
 	t.Parallel()
 
 	prov := &schema.Provider{
@@ -661,6 +879,21 @@ resources:
 	pt := pulcheck.PulCheck(t, bp, program)
 	pt.Up(t)
 
+	// Strong assertion: the bridge applied the schema-declared default to each
+	// Set element, and the post-Up stored inputs round-tripped it. If
+	// shouldStripStaleDefault wrongly stripped this value, the post-Up inputs
+	// would lack nestedDefault.
+	postInputs := resourceInputs(t, pt.ExportStack(t).Deployment, "prov:index/test:Test::mainRes")
+	postItems, ok := postInputs["items"].([]any)
+	require.Truef(t, ok, "items must be present in stored inputs; got %+v", postInputs)
+	require.Lenf(t, postItems, 2, "must have two elements after Up; got %+v", postItems)
+	for i, raw := range postItems {
+		elem, _ := raw.(map[string]any)
+		require.Equalf(t, "default-value", elem["nestedDefault"],
+			"element %d must carry the schema-declared default value; got %+v", i, elem)
+	}
+
+	// Stability: a fresh preview must report no changes.
 	res := pt.Preview(t, optpreview.Diff())
-	assertNoChanges(t, res.ChangeSummary, "TypeSetHashStability")
+	assertNoChanges(t, res.ChangeSummary, "TypeSetLiveDefaultPreserved")
 }
