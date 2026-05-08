@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	hcl2hcl "github.com/pulumi-labs/pulumi-hcl/pkg/codegen"
 	hcl2dotnet "github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3/codegen"
 	hcl2java "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	hcl2yaml "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
@@ -556,6 +557,9 @@ func (cc *cliConverter) convertPCL(
 		diagnostics = append(diagnostics, genDiags...)
 	case "java":
 		generatedFiles, genDiags, err = hcl2java.GenerateProgram(program)
+		diagnostics = append(diagnostics, genDiags...)
+	case "hcl":
+		generatedFiles, genDiags, err = hcl2hcl.GenerateProgram(program, hcl2hcl.SkipRequiredProvidersVersion())
 		diagnostics = append(diagnostics, genDiags...)
 	default:
 		err = fmt.Errorf("unsupported language: %q", languageName)

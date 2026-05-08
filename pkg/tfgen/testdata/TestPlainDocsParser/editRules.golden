@@ -42,7 +42,7 @@ Additionally, the `ssh` URI supports passwords using the `driver+ssh://[username
 As the provider does not use libvirt on the client side, not all connection URI options are supported or apply.
 ## Example Usage
 
-{{< chooser language "typescript,python,go,csharp,java,yaml" >}}
+{{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}
 {{% choosable language typescript %}}
 ```yaml
 # Pulumi.yaml provider configuration file
@@ -264,6 +264,16 @@ public class App {
             .build());
 
     }
+}
+```
+
+{{% /choosable %}}
+{{% choosable language hcl %}}
+```hcl
+## Define a resource
+resource "simple_resource" "a_resource" {
+  input_one = "hello"
+  input_two = true
 }
 ```
 

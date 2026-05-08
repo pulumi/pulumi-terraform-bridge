@@ -283,7 +283,7 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 
 	langs := genLanguageToSlice(g.language)
 	const (
-		chooserStart = `{{< chooser language "typescript,python,go,csharp,java,yaml" >}}` + "\n"
+		chooserStart = `{{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}` + "\n"
 		chooserEnd   = "{{< /chooser >}}\n"
 		choosableEnd = "\n{{% /choosable %}}\n"
 	)
@@ -294,9 +294,9 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	for _, lang := range langs {
 		choosableStart := fmt.Sprintf("{{%% choosable language %s %%}}\n", lang)
 
-		// Generate the Pulumi.yaml config file for each language
+		// Generate the Pulumi.yaml config file for each language. HCL programs do not use Pulumi.yaml.
 		var pulumiYAML string
-		if pclExample.PulumiYAML != "" {
+		if pclExample.PulumiYAML != "" && lang != "hcl" {
 			pulumiYAML = processConfigYaml(pclExample.PulumiYAML, lang)
 		}
 

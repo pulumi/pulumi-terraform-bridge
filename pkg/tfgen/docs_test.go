@@ -2950,7 +2950,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "resource name with backticks",
 			input:    "Use the `random_pet` resource to generate pet names.",
-			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\">`random.RandomPet`</span> resource to generate pet names.",
+			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\" pulumi-lang-hcl=\"`random_pet`\">`random.RandomPet`</span> resource to generate pet names.",
 			ctx: infoContext{
 				pkg: "random",
 				info: tfbridge.ProviderInfo{
@@ -2963,7 +2963,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "data source name with backticks",
 			input:    "Use the `random_id` data source to get random IDs.",
-			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\">`random.RandomId`</span> data source to get random IDs.",
+			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\" pulumi-lang-hcl=\"`data.random_id`\">`random.RandomId`</span> data source to get random IDs.",
 			ctx: infoContext{
 				pkg: "random",
 				info: tfbridge.ProviderInfo{
@@ -2976,7 +2976,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "property name with backticks",
 			input:    "The `length` property controls the output length.",
-			expected: "The <span pulumi-lang-nodejs=\"`length`\" pulumi-lang-dotnet=\"`Length`\" pulumi-lang-go=\"`length`\" pulumi-lang-python=\"`length`\" pulumi-lang-yaml=\"`length`\" pulumi-lang-java=\"`length`\">`length`</span> property controls the output length.",
+			expected: "The <span pulumi-lang-nodejs=\"`length`\" pulumi-lang-dotnet=\"`Length`\" pulumi-lang-go=\"`length`\" pulumi-lang-python=\"`length`\" pulumi-lang-yaml=\"`length`\" pulumi-lang-java=\"`length`\" pulumi-lang-hcl=\"`length`\">`length`</span> property controls the output length.",
 			ctx: infoContext{
 				pkg:  "random",
 				info: tfbridge.ProviderInfo{},
@@ -2985,7 +2985,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "property name with underscores",
 			input:    "The length must also be greater than `min_upper`.",
-			expected: "The length must also be greater than <span pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\">`minUpper`</span>.",
+			expected: "The length must also be greater than <span pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\" pulumi-lang-hcl=\"`min_upper`\">`minUpper`</span>.",
 			ctx: infoContext{
 				pkg:  "random",
 				info: tfbridge.ProviderInfo{},
@@ -2994,7 +2994,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "resource name without backticks",
 			input:    "Use random_pet resource to generate pet names.",
-			expected: "Use<span pulumi-lang-nodejs=\" random.RandomPet \" pulumi-lang-dotnet=\" random.RandomPet \" pulumi-lang-go=\" RandomPet \" pulumi-lang-python=\" RandomPet \" pulumi-lang-yaml=\" random.RandomPet \" pulumi-lang-java=\" random.RandomPet \"> random.RandomPet </span>resource to generate pet names.",
+			expected: "Use<span pulumi-lang-nodejs=\" random.RandomPet \" pulumi-lang-dotnet=\" random.RandomPet \" pulumi-lang-go=\" RandomPet \" pulumi-lang-python=\" RandomPet \" pulumi-lang-yaml=\" random.RandomPet \" pulumi-lang-java=\" random.RandomPet \" pulumi-lang-hcl=\" random_pet \"> random.RandomPet </span>resource to generate pet names.",
 			ctx: infoContext{
 				pkg: "random",
 				info: tfbridge.ProviderInfo{
@@ -3007,7 +3007,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "multiple resource references",
 			input:    "Use `random_pet` and `random_id` together.",
-			expected: "Use <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\">`random.RandomPet`</span> and <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\">`random.RandomId`</span> together.",
+			expected: "Use <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\" pulumi-lang-hcl=\"`random_pet`\">`random.RandomPet`</span> and <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\" pulumi-lang-hcl=\"`data.random_id`\">`random.RandomId`</span> together.",
 			ctx: infoContext{
 				pkg: "random",
 				info: tfbridge.ProviderInfo{

@@ -2,7 +2,7 @@ Use the navigation to the left to read about the available resources.
 
 ## Example Usage
 
-{{< chooser language "typescript,python,go,csharp,java,yaml" >}}
+{{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}
 {{% choosable language typescript %}}
 ```yaml
 # Pulumi.yaml provider configuration file
@@ -223,6 +223,18 @@ public class App {
 
         ctx.export("someOutput", aResource.result());
     }
+}
+```
+{{% /choosable %}}
+{{% choosable language hcl %}}
+```hcl
+## Define a resource
+resource "simple_resource" "a_resource" {
+  renamed_input1 = "hello"
+  input_two      = true
+}
+output "someOutput" {
+  value = simple_resource.a_resource.result
 }
 ```
 {{% /choosable %}}

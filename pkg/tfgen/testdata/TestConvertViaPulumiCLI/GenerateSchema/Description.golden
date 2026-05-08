@@ -62,6 +62,23 @@ func main() {
 	})
 }
 ```
+```hcl
+pulumi {
+  required_providers {
+    simple = {
+      source = "pulumi/simple"
+    }
+  }
+}
+
+resource "simple_resource" "a_resource" {
+  renamed_input1 = "hello"
+  input_two      = true
+}
+output "someOutput" {
+  value = simple_resource.a_resource.result
+}
+```
 ```java
 package generated_program;
 

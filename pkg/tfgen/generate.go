@@ -92,6 +92,7 @@ const (
 	Python Language = "python"
 	CSharp Language = "dotnet"
 	Java   Language = "java"
+	HCL    Language = "hcl"
 	Schema Language = "schema"
 	PCL    Language = "pulumi"
 	// RegistryDocs
@@ -106,7 +107,7 @@ const (
 
 func (l Language) shouldConvertExamples() bool {
 	switch l {
-	case Golang, NodeJS, Python, CSharp, Java, Schema, PCL:
+	case Golang, NodeJS, Python, CSharp, Java, HCL, Schema, PCL:
 		return true
 	}
 	return false
@@ -949,7 +950,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	// Ensure the language is valid.
 	switch lang {
-	case Golang, NodeJS, Python, CSharp, Java, Schema, PCL, RegistryDocs:
+	case Golang, NodeJS, Python, CSharp, Java, HCL, Schema, PCL, RegistryDocs:
 		// OK
 	default:
 		return nil, fmt.Errorf("unrecognized language runtime: %s", lang)

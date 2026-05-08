@@ -43,6 +43,7 @@ const (
 	LanguageGo         string = "go"
 	LanguageJava       string = "java"
 	LanguageYaml       string = "yaml"
+	LanguageHCL        string = "hcl"
 )
 
 var ValidLanguages = []string{
