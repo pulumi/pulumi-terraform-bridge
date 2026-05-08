@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,6 +15,7 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -419,7 +421,7 @@ func TestSchemaGeneration(t *testing.T) { //nolint:paralleltest
 		require.NoError(t, err)
 		var fmtSchema bytes.Buffer
 		require.NoError(t, json.Indent(&fmtSchema, []byte(schema.Schema), "", "    "))
-		autogold.ExpectFile(t, autogold.Raw(fmtSchema.String()))
+		requireGoldenFileEqual(t, fmtSchema.Bytes())
 	})
 
 	testSchema := func(name, version string) {
@@ -448,7 +450,7 @@ func TestSchemaGeneration(t *testing.T) { //nolint:paralleltest
 			require.NoError(t, err)
 			var fmtSchema bytes.Buffer
 			require.NoError(t, json.Indent(&fmtSchema, []byte(schema.Schema), "", "    "))
-			autogold.ExpectFile(t, autogold.Raw(fmtSchema.String()))
+			requireGoldenFileEqual(t, fmtSchema.Bytes())
 		})
 	}
 
@@ -508,9 +510,123 @@ func TestSchemaGenerationFullDocs(t *testing.T) { //nolint:paralleltest
 			require.NoError(t, err)
 			var fmtSchema bytes.Buffer
 			require.NoError(t, json.Indent(&fmtSchema, []byte(schema.Schema), "", "    "))
-			autogold.ExpectFile(t, autogold.Raw(fmtSchema.String()))
+			requireGoldenFileEqual(t, fmtSchema.Bytes())
 		})
 	}
+}
+
+// requireFileEqual asserts that the file on disk at path matches content.
+//
+// When PULUMI_ACCEPT is truthy the helper rewrites the golden with content
+// verbatim; otherwise it diffs and reports the first mismatching byte plus a
+// short context.
+func requireFileEqual(t *testing.T, path string, content []byte) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
+		require.NoError(t, os.WriteFile(path, content, 0o600))
+		return
+	}
+
+	tmp, err := os.CreateTemp(t.TempDir(), "golden-*")
+	require.NoError(t, err)
+	_, err = tmp.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, tmp.Close())
+
+	if firstDiff := firstFileDiff(t, tmp.Name(), path); firstDiff != "" {
+		t.Fatalf("content does not match %s; rerun with PULUMI_ACCEPT=1 to refresh the golden\n%s", path, firstDiff)
+	}
+}
+
+// requireGoldenFileEqual asserts that content matches it's test-specific golden
+// file.
+//
+// When PULUMI_ACCEPT is truthy the helper rewrites the golden with content
+// verbatim; otherwise it diffs and reports the first mismatching byte plus a
+// short context.
+func requireGoldenFileEqual(t *testing.T, content []byte) {
+	t.Helper()
+	requireFileEqual(t, filepath.Join("testdata", t.Name()+".golden"), content)
+}
+
+// firstFileDiff returns "" if the two files match.  Otherwise it returns a
+// short human-readable description including the first byte offset that
+// differs and ~120 bytes of context from each file -- enough to root-cause a
+// CI failure without dumping a multi-MB diff.
+func firstFileDiff(t *testing.T, got, want string) string {
+	t.Helper()
+	gf, err := os.Open(got)
+	require.NoError(t, err)
+	defer gf.Close()
+	wf, err := os.Open(want)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Sprintf("golden file %s does not exist", want)
+		}
+		require.NoError(t, err)
+	}
+	defer wf.Close()
+
+	const chunk = 64 * 1024
+	bufG := make([]byte, chunk)
+	bufW := make([]byte, chunk)
+	var offset int64
+	for {
+		nG, errG := io.ReadFull(gf, bufG)
+		nW, errW := io.ReadFull(wf, bufW)
+		min := nG
+		if nW < min {
+			min = nW
+		}
+		for i := 0; i < min; i++ {
+			if bufG[i] != bufW[i] {
+				return diffContext(offset+int64(i), bufG[:nG], bufW[:nW], i)
+			}
+		}
+		if nG != nW {
+			return fmt.Sprintf("got=%dB want=%dB; first short read at offset %d (got %d, want %d)",
+				fileSize(t, gf), fileSize(t, wf), offset+int64(min), nG, nW)
+		}
+		if errG == io.EOF || errG == io.ErrUnexpectedEOF {
+			if errW == io.EOF || errW == io.ErrUnexpectedEOF {
+				return ""
+			}
+		}
+		if errG != nil && errG != io.ErrUnexpectedEOF {
+			require.NoError(t, errG)
+		}
+		if errW != nil && errW != io.ErrUnexpectedEOF {
+			require.NoError(t, errW)
+		}
+		offset += int64(nG)
+	}
+}
+
+func fileSize(t *testing.T, f *os.File) int64 {
+	t.Helper()
+	st, err := f.Stat()
+	require.NoError(t, err)
+	return st.Size()
+}
+
+func diffContext(offset int64, got, want []byte, i int) string {
+	const span = 120
+	lo := i - span/2
+	if lo < 0 {
+		lo = 0
+	}
+	hiG := i + span/2
+	if hiG > len(got) {
+		hiG = len(got)
+	}
+	hiW := i + span/2
+	if hiW > len(want) {
+		hiW = len(want)
+	}
+	return fmt.Sprintf("first byte differs at offset %d:\n  got:  %q\n  want: %q",
+		offset, got[lo:hiG], want[lo:hiW])
 }
 
 func TestSchemaGenerationIndexDocOutDir(t *testing.T) { //nolint:paralleltest
