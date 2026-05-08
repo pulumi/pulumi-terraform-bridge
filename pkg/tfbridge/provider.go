@@ -2217,7 +2217,7 @@ func stripStaleDefaultsRec(
 }
 
 // shouldStripStaleDefault decides whether a __defaults entry should be stripped
-// The strip is correct only when the same field would be excluded from default 
+// The strip is correct only when the same field would be excluded from default
 // application by applyDefaults during Check, based on the shared defaultExcluded()
 func shouldStripStaleDefault(
 	pulumiName resource.PropertyKey,
@@ -2233,8 +2233,8 @@ func shouldStripStaleDefault(
 	// (e.g. auto-naming, EnvVars, etc)
 	case psi != nil && psi.HasDefault():
 		return false
-	// TF schema declares a default. Structural check (Default/DefaultFunc), 
-	// not DefaultValue() which invokes DefaultFunc() and can return a misleading nil 
+	// TF schema declares a default. Structural check (Default/DefaultFunc),
+	// not DefaultValue() which invokes DefaultFunc() and can return a misleading nil
 	// (e.g. unset env var)
 	case tfSchema != nil && (tfSchema.Default() != nil || tfSchema.DefaultFunc() != nil):
 		return false
