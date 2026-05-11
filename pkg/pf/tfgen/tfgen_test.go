@@ -23,6 +23,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	tflist "github.com/hashicorp/terraform-plugin-framework/list"
+	lschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -80,6 +82,7 @@ func TestMaxItemsOne(t *testing.T) {
 type schemaTestProvider struct {
 	schema    prschema.Schema
 	resources map[string]rschema.Schema
+	lists     map[string]lschema.Schema
 }
 
 func (*schemaTestProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -104,6 +107,41 @@ func (p *schemaTestProvider) Resources(context.Context) []func() resource.Resour
 		r = append(r, makeTestResource(k, v))
 	}
 	return r
+}
+
+func (p *schemaTestProvider) ListResources(context.Context) []func() tflist.ListResource {
+	r := make([]func() tflist.ListResource, 0, len(p.lists))
+	for k, v := range p.lists {
+		r = append(r, makeTestListResource(k, v))
+	}
+	return r
+}
+
+func makeTestListResource(name string, schema lschema.Schema) func() tflist.ListResource {
+	return func() tflist.ListResource { return schemaTestListResource{name, schema} }
+}
+
+type schemaTestListResource struct {
+	name   string
+	schema lschema.Schema
+}
+
+func (r schemaTestListResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + r.name
+}
+
+func (r schemaTestListResource) ListResourceConfigSchema(
+	_ context.Context, _ tflist.ListResourceSchemaRequest, resp *tflist.ListResourceSchemaResponse,
+) {
+	panic(r.name)
+}
+
+func (r schemaTestListResource) List(
+	_ context.Context, _ tflist.ListRequest, _ *tflist.ListResultsStream,
+) {
+	panic(r.name)
 }
 
 func makeTestResource(name string, schema rschema.Schema) func() resource.Resource {
