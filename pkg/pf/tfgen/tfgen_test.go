@@ -135,13 +135,68 @@ func (r schemaTestListResource) Metadata(
 func (r schemaTestListResource) ListResourceConfigSchema(
 	_ context.Context, _ tflist.ListResourceSchemaRequest, resp *tflist.ListResourceSchemaResponse,
 ) {
-	panic(r.name)
+	resp.Schema = r.schema
 }
 
 func (r schemaTestListResource) List(
 	_ context.Context, _ tflist.ListRequest, _ *tflist.ListResultsStream,
 ) {
 	panic(r.name)
+}
+
+func TestListInputs(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	p := &schemaTestProvider{
+		resources: map[string]rschema.Schema{
+			"thing": {
+				Attributes: map[string]rschema.Attribute{
+					"name": rschema.StringAttribute{
+						Required: true,
+					},
+				},
+			},
+		},
+		lists: map[string]lschema.Schema{
+			"thing": {
+				Attributes: map[string]lschema.Attribute{
+					"parent_id": lschema.StringAttribute{
+						Required:    true,
+						Description: "The parent identifier to list things under.",
+					},
+					"prefix": lschema.StringAttribute{
+						Optional:    true,
+						Description: "An optional name prefix filter.",
+					},
+				},
+			},
+		},
+	}
+
+	res, err := GenerateSchema(ctx, GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name: "testprovider",
+			P:    pftfbridge.ShimProvider(p),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_thing": {
+					Tok: "testprovider:index:Thing",
+				},
+			},
+		},
+		XInMemoryDocs: true,
+	})
+	require.NoError(t, err)
+
+	var schema puschema.PackageSpec
+	require.NoError(t, json.Unmarshal(res.ProviderMetadata.PackageSchema, &schema))
+
+	resource := schema.Resources["testprovider:index:Thing"]
+	require.NotNil(t, resource.ListInputs)
+	require.Equal(t, "object", resource.ListInputs.Type)
+	require.Equal(t, []string{"parentId"}, resource.ListInputs.Required)
+	require.Contains(t, resource.ListInputs.Properties, "parentId")
+	require.Contains(t, resource.ListInputs.Properties, "prefix")
 }
 
 func makeTestResource(name string, schema rschema.Schema) func() resource.Resource {
