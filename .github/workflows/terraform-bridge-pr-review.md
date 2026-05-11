@@ -19,6 +19,8 @@ imports:
 - pulumi-labs/gh-aw-internal/.github/workflows/shared/plugins/code-review/code-review.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29
 description: Automated PR review for trusted internal contributors.
 source: pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-review.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29
+safe-outputs:
+  threat-detection: false
 strict: true
 timeout-minutes: 15
 ---
