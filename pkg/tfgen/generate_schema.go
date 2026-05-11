@@ -98,6 +98,7 @@ func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 		p := member.resourcePath
 		nt.gatherFromProperties(p.Inputs(), member, member.name, member.inprops, true)
 		nt.gatherFromProperties(p.Outputs(), member, member.name, member.outprops, false)
+		nt.gatherFromProperties(p.ListInputs(), member, member.name, member.listprops, true)
 		if !member.IsProvider() {
 			nt.gatherFromProperties(p.State(), member, member.name, member.statet.properties, true)
 		}
