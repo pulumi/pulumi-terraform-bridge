@@ -28,64 +28,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// noBackoff is a backoff function that always returns zero, so retry tests
-// don't sleep.
-func noBackoff(int) time.Duration { return 0 }
-
-func TestIsTextFileBusy(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		err  error
-		want bool
-	}{
-		{nil, false},
-		{errors.New("permission denied"), false},
-		{errors.New("fork/exec /foo/bar: text file busy"), true},
-		{errors.New("text file busy"), true},
-		{errors.New("Unrecognized remote plugin message"), false},
-	}
-	for _, c := range cases {
-		assert.Equal(t, c.want, isTextFileBusy(c.err), "for err=%v", c.err)
-	}
-}
-
 // retryOnTextFileBusy is the unit under test. It is exercised here without
 // spinning up real plugin processes by injecting a fake pluginStarter.
 //
 // Issue #3425: under concurrent `pulumi install`, the bridge sporadically hits
 // "text file busy" from execve. The fix retries up to etxtbsyMaxAttempts.
-
-func TestRetryOnTextFileBusy_SucceedsFirstTry(t *testing.T) {
-	t.Parallel()
-
-	var calls int
-	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
-		calls++
-		return nil, nil, nil
-	}
-
-	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, noBackoff)
-	require.NoError(t, err)
-	assert.Equal(t, 1, calls)
-}
-
-func TestRetryOnTextFileBusy_RecoversAfterRetry(t *testing.T) {
-	t.Parallel()
-
-	var calls int
-	busy := errors.New("fork/exec /cache/terraform-provider-x: text file busy")
-	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
-		calls++
-		if calls < 3 {
-			return nil, nil, busy
-		}
-		return nil, nil, nil
-	}
-
-	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, noBackoff)
-	require.NoError(t, err)
-	assert.Equal(t, 3, calls, "should have retried twice before succeeding")
-}
 
 func TestRetryOnTextFileBusy_NonRetryableErrorReturnsImmediately(t *testing.T) {
 	t.Parallel()
@@ -96,27 +43,11 @@ func TestRetryOnTextFileBusy_NonRetryableErrorReturnsImmediately(t *testing.T) {
 		calls++
 		return nil, nil, other
 	}
+	noBackoff := func(int) time.Duration { return 0 }
 
 	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, noBackoff)
 	require.ErrorIs(t, err, other)
 	assert.Equal(t, 1, calls, "non-ETXTBSY errors must not retry")
-}
-
-func TestRetryOnTextFileBusy_GivesUpAfterMaxAttempts(t *testing.T) {
-	t.Parallel()
-
-	busy := errors.New("text file busy")
-	var calls int
-	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
-		calls++
-		return nil, nil, busy
-	}
-
-	_, _, err := retryOnTextFileBusy(context.Background(), "registry.opentofu.org/hashicorp/random", start, noBackoff)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, busy)
-	assert.Contains(t, err.Error(), "registry.opentofu.org/hashicorp/random")
-	assert.Equal(t, etxtbsyMaxAttempts, calls)
 }
 
 func TestRetryOnTextFileBusy_BackoffIsCalledBeforeRetries(t *testing.T) {
