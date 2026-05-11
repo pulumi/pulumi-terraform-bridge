@@ -28,17 +28,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// noBackoff replaces etxtbsyBackoff with a zero-sleep variant so retry tests
-// run in microseconds rather than seconds. Returns a restorer.
-func noBackoff(t *testing.T) {
-	t.Helper()
-	prev := etxtbsyBackoff
-	etxtbsyBackoff = func(int) time.Duration { return 0 }
-	t.Cleanup(func() { etxtbsyBackoff = prev })
-}
+// noBackoff is a backoff function that always returns zero, so retry tests
+// don't sleep.
+func noBackoff(int) time.Duration { return 0 }
 
 func TestIsTextFileBusy(t *testing.T) {
-	t.Parallel() // only reads the function, never mutates package state
+	t.Parallel()
 	cases := []struct {
 		err  error
 		want bool
@@ -59,12 +54,9 @@ func TestIsTextFileBusy(t *testing.T) {
 //
 // Issue #3425: under concurrent `pulumi install`, the bridge sporadically hits
 // "text file busy" from execve. The fix retries up to etxtbsyMaxAttempts.
-//
-// These tests overwrite the package-level etxtbsyBackoff variable, so they
-// cannot run in parallel with each other.
 
-func TestRetryOnTextFileBusy_SucceedsFirstTry(t *testing.T) { //nolint:paralleltest
-	noBackoff(t)
+func TestRetryOnTextFileBusy_SucceedsFirstTry(t *testing.T) {
+	t.Parallel()
 
 	var calls int
 	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
@@ -72,13 +64,13 @@ func TestRetryOnTextFileBusy_SucceedsFirstTry(t *testing.T) { //nolint:parallelt
 		return nil, nil, nil
 	}
 
-	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start)
+	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, noBackoff)
 	require.NoError(t, err)
 	assert.Equal(t, 1, calls)
 }
 
-func TestRetryOnTextFileBusy_RecoversAfterRetry(t *testing.T) { //nolint:paralleltest
-	noBackoff(t)
+func TestRetryOnTextFileBusy_RecoversAfterRetry(t *testing.T) {
+	t.Parallel()
 
 	var calls int
 	busy := errors.New("fork/exec /cache/terraform-provider-x: text file busy")
@@ -90,13 +82,13 @@ func TestRetryOnTextFileBusy_RecoversAfterRetry(t *testing.T) { //nolint:paralle
 		return nil, nil, nil
 	}
 
-	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start)
+	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, noBackoff)
 	require.NoError(t, err)
 	assert.Equal(t, 3, calls, "should have retried twice before succeeding")
 }
 
-func TestRetryOnTextFileBusy_NonRetryableErrorReturnsImmediately(t *testing.T) { //nolint:paralleltest
-	noBackoff(t)
+func TestRetryOnTextFileBusy_NonRetryableErrorReturnsImmediately(t *testing.T) {
+	t.Parallel()
 
 	other := errors.New("permission denied")
 	var calls int
@@ -105,13 +97,13 @@ func TestRetryOnTextFileBusy_NonRetryableErrorReturnsImmediately(t *testing.T) {
 		return nil, nil, other
 	}
 
-	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start)
+	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, noBackoff)
 	require.ErrorIs(t, err, other)
 	assert.Equal(t, 1, calls, "non-ETXTBSY errors must not retry")
 }
 
-func TestRetryOnTextFileBusy_GivesUpAfterMaxAttempts(t *testing.T) { //nolint:paralleltest
-	noBackoff(t)
+func TestRetryOnTextFileBusy_GivesUpAfterMaxAttempts(t *testing.T) {
+	t.Parallel()
 
 	busy := errors.New("text file busy")
 	var calls int
@@ -120,27 +112,25 @@ func TestRetryOnTextFileBusy_GivesUpAfterMaxAttempts(t *testing.T) { //nolint:pa
 		return nil, nil, busy
 	}
 
-	_, _, err := retryOnTextFileBusy(context.Background(), "registry.opentofu.org/hashicorp/random", start)
+	_, _, err := retryOnTextFileBusy(context.Background(), "registry.opentofu.org/hashicorp/random", start, noBackoff)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, busy)
 	assert.Contains(t, err.Error(), "registry.opentofu.org/hashicorp/random")
 	assert.Equal(t, etxtbsyMaxAttempts, calls)
 }
 
-func TestRetryOnTextFileBusy_BackoffIsCalledBeforeRetries(t *testing.T) { //nolint:paralleltest
-	var (
-		calls         int
-		backoffCalls  []int
-		busy          = errors.New("text file busy")
-		prevBackoff   = etxtbsyBackoff
-		recordBackoff = func(attempt int) time.Duration {
-			backoffCalls = append(backoffCalls, attempt)
-			return 0
-		}
-	)
-	etxtbsyBackoff = recordBackoff
-	t.Cleanup(func() { etxtbsyBackoff = prevBackoff })
+func TestRetryOnTextFileBusy_BackoffIsCalledBeforeRetries(t *testing.T) {
+	t.Parallel()
 
+	var (
+		calls        int
+		backoffCalls []int
+		busy         = errors.New("text file busy")
+	)
+	recordBackoff := func(attempt int) time.Duration {
+		backoffCalls = append(backoffCalls, attempt)
+		return 0
+	}
 	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
 		calls++
 		if calls < 2 {
@@ -149,7 +139,7 @@ func TestRetryOnTextFileBusy_BackoffIsCalledBeforeRetries(t *testing.T) { //noli
 		return nil, nil, nil
 	}
 
-	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start)
+	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, recordBackoff)
 	require.NoError(t, err)
 	// First attempt has no backoff; second attempt is preceded by one backoff call with attempt=1.
 	assert.Equal(t, []int{1}, backoffCalls)

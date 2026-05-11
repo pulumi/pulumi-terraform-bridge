@@ -106,9 +106,9 @@ func LocalProvider(ctx context.Context, path string) (Provider, error) {
 // attempts with the default backoff is 350ms.
 const etxtbsyMaxAttempts = 4
 
-// etxtbsyBackoff is the sleep before the (attempt+1)'th attempt; attempt 0 has
-// no preceding sleep. It is a package variable so tests can override it.
-var etxtbsyBackoff = func(attempt int) time.Duration {
+// defaultETXTBSYBackoff is the sleep before the (attempt+1)'th attempt;
+// attempt 0 has no preceding sleep. Yields 50ms, 100ms, 200ms.
+func defaultETXTBSYBackoff(attempt int) time.Duration {
 	return time.Duration(50*(1<<(attempt-1))) * time.Millisecond
 }
 
@@ -151,7 +151,7 @@ func startPluginClient(
 		}
 	}
 
-	return retryOnTextFileBusy(ctx, meta.Provider.String(), func() (*plugin.Client, plugin.ClientProtocol, error) {
+	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
 		client := plugin.NewClient(newConfig())
 		rpcClient, err := client.Client()
 		if err != nil {
@@ -159,7 +159,8 @@ func startPluginClient(
 			return nil, nil, err
 		}
 		return client, rpcClient, nil
-	})
+	}
+	return retryOnTextFileBusy(ctx, meta.Provider.String(), start, defaultETXTBSYBackoff)
 }
 
 // pluginStarter constructs a fresh plugin.Client and attempts to start it,
@@ -168,16 +169,18 @@ type pluginStarter func() (*plugin.Client, plugin.ClientProtocol, error)
 
 // retryOnTextFileBusy invokes start in a bounded loop, retrying only when
 // start returns an ETXTBSY error. All other errors are returned immediately.
+// backoff returns the sleep before the (attempt+1)'th attempt; attempt 0 has
+// no preceding sleep.
 //
 // Split out from startPluginClient so the retry policy can be exercised by
 // unit tests without spinning up real plugin processes.
 func retryOnTextFileBusy(
-	ctx context.Context, providerName string, start pluginStarter,
+	ctx context.Context, providerName string, start pluginStarter, backoff func(attempt int) time.Duration,
 ) (*plugin.Client, plugin.ClientProtocol, error) {
 	var lastErr error
 	for attempt := 0; attempt < etxtbsyMaxAttempts; attempt++ {
 		if attempt > 0 {
-			time.Sleep(etxtbsyBackoff(attempt))
+			time.Sleep(backoff(attempt))
 		}
 		client, rpcClient, err := start()
 		if err == nil {
