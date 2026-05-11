@@ -38,7 +38,7 @@ type SchemaOnlyProvider struct {
 	tf              pfprovider.Provider
 	resourceMap     schemaOnlyResourceMap
 	dataSourceMap   schemaOnlyDataSourceMap
-	listResourceMap schemaOnlyResourceMap
+	listResourceMap schemaOnlyListResourceMap
 	internalinter.Internal
 }
 
