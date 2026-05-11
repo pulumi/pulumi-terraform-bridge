@@ -804,6 +804,7 @@ type resourceType struct {
 	inprops    []*variable
 	outprops   []*variable
 	reqprops   map[string]bool
+	listprops  []*variable
 	argst      *propertyType // input properties.
 	statet     *propertyType // output properties (all optional).
 	schema     shim.Resource

@@ -862,6 +862,18 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 		spec.StateInputs = &stateInputs
 	}
 
+	// If the resources supports listing we'll have set listprops to non-nil, and we need to correspondingly populate
+	// the ListInputs section of the schema. Note that there might not actually be _any_ properties.
+	if res.listprops != nil {
+		spec.ListInputs = &pschema.ObjectTypeSpec{}
+		for _, prop := range res.listprops {
+			spec.ListInputs.Properties[prop.name] = g.genProperty(prop)
+			if !prop.optional() {
+				spec.ListInputs.Required = append(spec.ListInputs.Required, prop.name)
+			}
+		}
+	}
+
 	for _, a := range res.info.Aliases {
 		if a.Type != nil && *a.Type != "" {
 			aspec := pschema.AliasSpec{}
