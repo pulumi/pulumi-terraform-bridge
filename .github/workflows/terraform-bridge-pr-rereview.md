@@ -10,10 +10,10 @@ permissions:
   id-token: write
   pull-requests: read
 imports:
-- pulumi-labs/gh-aw-internal/.github/workflows/shared/review.md@9a981e07d7134a447fac35073f0857f8512f16c4
-- pulumi-labs/gh-aw-internal/.github/workflows/shared/plugins/code-review/code-review.md@9a981e07d7134a447fac35073f0857f8512f16c4
+- pulumi-labs/gh-aw-internal/.github/workflows/shared/review.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29
+- pulumi-labs/gh-aw-internal/.github/workflows/shared/plugins/code-review/code-review.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29
 description: Run PR re-review on explicit maintainer slash command.
-source: pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@9a981e07d7134a447fac35073f0857f8512f16c4
+source: pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29
 strict: true
 timeout-minutes: 15
 ---
