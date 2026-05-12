@@ -2575,9 +2575,10 @@ func reformatTextWithOptions(
 	g infoContext, text string, footerLinks map[string]string, trimSpace bool,
 ) string {
 	cleanupText := func(text string) string {
-		// Replace occurrences of "->" or "~>" with just ">", to get a proper Markdown note.
+		// Replace occurrences of "->", "~>" and "!>" with ">" to get a Markdown note.
 		text = strings.ReplaceAll(text, "-> ", "> ")
 		text = strings.ReplaceAll(text, "~> ", "> ")
+		text = strings.ReplaceAll(text, "!> ", "> ")
 
 		// Trim Prefixes we see when the description is spread across multiple lines.
 		text = strings.TrimPrefix(text, "\n(Required)\n")
