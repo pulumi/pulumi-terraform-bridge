@@ -28,8 +28,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// See https://github.com/pulumi/pulumi-terraform-bridge/issues/3425.
-
 func TestRetryOnTextFileBusy_NonRetryableErrorReturnsImmediately(t *testing.T) {
 	t.Parallel()
 

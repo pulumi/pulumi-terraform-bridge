@@ -106,7 +106,7 @@ func defaultETXTBSYBackoff(attempt int) time.Duration {
 }
 
 // startPluginClient launches the cached provider via go-plugin, retrying on
-// ETXTBSY. See https://github.com/pulumi/pulumi-terraform-bridge/issues/3425.
+// ETXTBSY.
 func startPluginClient(
 	ctx context.Context, meta *providercache.CachedProvider, execFile string,
 ) (*plugin.Client, plugin.ClientProtocol, error) {
