@@ -101,7 +101,6 @@ func LocalProvider(ctx context.Context, path string) (Provider, error) {
 	})
 }
 
-// defaultETXTBSYBackoff yields 50ms, 100ms, 200ms.
 func defaultETXTBSYBackoff(attempt int) time.Duration {
 	return time.Duration(50*(1<<(attempt-1))) * time.Millisecond
 }
@@ -131,7 +130,6 @@ func startPluginClient(
 		}
 	}
 
-	// One launch attempt; retryOnTextFileBusy runs this in a loop.
 	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
 		client := plugin.NewClient(newConfig())
 		rpcClient, err := client.Client()
