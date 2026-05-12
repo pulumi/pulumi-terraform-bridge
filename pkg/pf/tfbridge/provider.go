@@ -300,6 +300,8 @@ func (p *provider) GetPluginInfoWithContext(_ context.Context) (plugin.PluginInf
 // initialization error. SignalCancellation is advisory and non-blocking; it is up to the host to decide how long to
 // wait after SignalCancellation is called before (e.g.) hard-closing any gRPC connection.
 func (p *provider) SignalCancellationWithContext(_ context.Context) error {
+	// Some improvements are possible here to gracefully shut down.
+
 	if p.listSessions != nil {
 		p.listSessions.close()
 	}
