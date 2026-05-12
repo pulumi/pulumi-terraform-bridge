@@ -101,34 +101,13 @@ func LocalProvider(ctx context.Context, path string) (Provider, error) {
 	})
 }
 
-// etxtbsyMaxAttempts is the maximum number of times startPluginClient will
-// retry plugin start in the face of ETXTBSY. Worst-case total wait between
-// attempts with the default backoff is 350ms.
-const etxtbsyMaxAttempts = 4
-
-// defaultETXTBSYBackoff is the sleep before the (attempt+1)'th attempt;
-// attempt 0 has no preceding sleep. Yields 50ms, 100ms, 200ms.
+// defaultETXTBSYBackoff yields 50ms, 100ms, 200ms.
 func defaultETXTBSYBackoff(attempt int) time.Duration {
 	return time.Duration(50*(1<<(attempt-1))) * time.Millisecond
 }
 
-// startPluginClient launches the cached provider via go-plugin, retrying when
-// the kernel returns ETXTBSY ("text file busy") at fork+exec.
-//
-// On Linux, execve fails with ETXTBSY if any process holds the binary open for
-// write at the moment of exec. The dynamic bridge writes each provider binary
-// to its cache directory and then immediately exec's it; under concurrent
-// pulumi install (parallel >= 2 packages) the install path occasionally leaves
-// a brief open-for-write window that overlaps the exec, surfacing as
-//
-//	fork/exec <provider>: text file busy
-//
-// see https://github.com/pulumi/pulumi-terraform-bridge/issues/3425. The race
-// is sub-millisecond, so a small bounded retry resolves it cleanly. macOS does
-// not enforce ETXTBSY, so this path is effectively a no-op there.
-//
-// plugin.ClientConfig must be rebuilt on each attempt because exec.Cmd is
-// single-use after Start, and plugin.NewClient takes ownership of the Cmd.
+// startPluginClient launches the cached provider via go-plugin, retrying on
+// ETXTBSY. See https://github.com/pulumi/pulumi-terraform-bridge/issues/3425.
 func startPluginClient(
 	ctx context.Context, meta *providercache.CachedProvider, execFile string,
 ) (*plugin.Client, plugin.ClientProtocol, error) {
@@ -138,19 +117,21 @@ func startPluginClient(
 			Logger:           logging.NewProviderLogger(""),
 			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 			Managed:          true,
-			// We intentionally use [context.Background] so the lifetime of the
-			// provider can escape the lifetime of the parameterize call.
+			// context.Background so the launched provider isn't killed when
+			// the caller's context (typically Parameterize) is cancelled.
 			Cmd:              exec.CommandContext(context.Background(), execFile),
 			AutoMTLS:         true,
 			VersionedPlugins: tfplugin.VersionedPlugins,
 			SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
 			SyncStderr:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stderr", meta.Provider)),
 			GRPCDialOptions: []grpc.DialOption{
+				// Appends plugin-side panic stack traces to gRPC errors.
 				grpc.WithUnaryInterceptor(includePanic),
 			},
 		}
 	}
 
+	// One launch attempt; retryOnTextFileBusy runs this in a loop.
 	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
 		client := plugin.NewClient(newConfig())
 		rpcClient, err := client.Client()
@@ -163,47 +144,35 @@ func startPluginClient(
 	return retryOnTextFileBusy(ctx, meta.Provider.String(), start, defaultETXTBSYBackoff)
 }
 
-// pluginStarter constructs a fresh plugin.Client and attempts to start it,
-// returning the running client + protocol on success, or an error.
-type pluginStarter func() (*plugin.Client, plugin.ClientProtocol, error)
-
-// retryOnTextFileBusy invokes start in a bounded loop, retrying only when
-// start returns an ETXTBSY error. All other errors are returned immediately.
-// backoff returns the sleep before the (attempt+1)'th attempt; attempt 0 has
-// no preceding sleep.
-//
-// Split out from startPluginClient so the retry policy can be exercised by
-// unit tests without spinning up real plugin processes.
 func retryOnTextFileBusy(
-	ctx context.Context, providerName string, start pluginStarter, backoff func(attempt int) time.Duration,
+	ctx context.Context, providerName string,
+	start func() (*plugin.Client, plugin.ClientProtocol, error),
+	backoff func(attempt int) time.Duration,
 ) (*plugin.Client, plugin.ClientProtocol, error) {
-	var lastErr error
-	for attempt := 0; attempt < etxtbsyMaxAttempts; attempt++ {
+	const maxAttempts = 4
+	var (
+		client    *plugin.Client
+		rpcClient plugin.ClientProtocol
+		err       error
+	)
+	for attempt := 0; attempt < maxAttempts; attempt++ {
 		if attempt > 0 {
 			time.Sleep(backoff(attempt))
 		}
-		client, rpcClient, err := start()
+		client, rpcClient, err = start()
 		if err == nil {
 			return client, rpcClient, nil
 		}
-		if !isTextFileBusy(err) {
+		if !strings.Contains(err.Error(), "text file busy") {
 			return nil, nil, err
 		}
-		lastErr = err
 		slog.InfoContext(ctx, "provider exec hit ETXTBSY, retrying",
 			slog.String("provider", providerName),
 			slog.Int("attempt", attempt+1),
 			slog.String("error", err.Error()))
 	}
 	return nil, nil, fmt.Errorf("provider %s exec failed with ETXTBSY after %d attempts: %w",
-		providerName, etxtbsyMaxAttempts, lastErr)
-}
-
-// isTextFileBusy reports whether err originated from execve returning ETXTBSY.
-// We match on the string because go-plugin wraps the underlying *exec.Error
-// from cmd.Start, losing the typed syscall errno.
-func isTextFileBusy(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "text file busy")
+		providerName, maxAttempts, err)
 }
 
 func cutLast(s, sep string) (string, string, bool) {

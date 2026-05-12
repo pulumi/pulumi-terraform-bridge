@@ -28,11 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// retryOnTextFileBusy is the unit under test. It is exercised here without
-// spinning up real plugin processes by injecting a fake pluginStarter.
-//
-// Issue #3425: under concurrent `pulumi install`, the bridge sporadically hits
-// "text file busy" from execve. The fix retries up to etxtbsyMaxAttempts.
+// See https://github.com/pulumi/pulumi-terraform-bridge/issues/3425.
 
 func TestRetryOnTextFileBusy_NonRetryableErrorReturnsImmediately(t *testing.T) {
 	t.Parallel()
