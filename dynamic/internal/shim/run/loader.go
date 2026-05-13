@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/apparentlymart/go-versions/versions"
 	plugin "github.com/hashicorp/go-plugin"
@@ -98,6 +99,78 @@ func LocalProvider(ctx context.Context, path string) (Provider, error) {
 		Version:    versions.Version{},
 		PackageDir: dir,
 	})
+}
+
+func defaultETXTBSYBackoff(attempt int) time.Duration {
+	return time.Duration(50*(1<<(attempt-1))) * time.Millisecond
+}
+
+// startPluginClient launches the cached provider via go-plugin, retrying on
+// ETXTBSY.
+func startPluginClient(
+	ctx context.Context, meta *providercache.CachedProvider, execFile string,
+) (*plugin.Client, plugin.ClientProtocol, error) {
+	newConfig := func() *plugin.ClientConfig {
+		return &plugin.ClientConfig{
+			HandshakeConfig:  tfplugin.Handshake,
+			Logger:           logging.NewProviderLogger(""),
+			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+			Managed:          true,
+			// context.Background so the launched provider isn't killed when
+			// the caller's context (typically Parameterize) is cancelled.
+			Cmd:              exec.CommandContext(context.Background(), execFile),
+			AutoMTLS:         true,
+			VersionedPlugins: tfplugin.VersionedPlugins,
+			SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
+			SyncStderr:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stderr", meta.Provider)),
+			GRPCDialOptions: []grpc.DialOption{
+				// Appends plugin-side panic stack traces to gRPC errors.
+				grpc.WithUnaryInterceptor(includePanic),
+			},
+		}
+	}
+
+	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
+		client := plugin.NewClient(newConfig())
+		rpcClient, err := client.Client()
+		if err != nil {
+			client.Kill()
+			return nil, nil, err
+		}
+		return client, rpcClient, nil
+	}
+	return retryOnTextFileBusy(ctx, meta.Provider.String(), start, defaultETXTBSYBackoff)
+}
+
+func retryOnTextFileBusy(
+	ctx context.Context, providerName string,
+	start func() (*plugin.Client, plugin.ClientProtocol, error),
+	backoff func(attempt int) time.Duration,
+) (*plugin.Client, plugin.ClientProtocol, error) {
+	const maxAttempts = 4
+	var (
+		client    *plugin.Client
+		rpcClient plugin.ClientProtocol
+		err       error
+	)
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(backoff(attempt))
+		}
+		client, rpcClient, err = start()
+		if err == nil {
+			return client, rpcClient, nil
+		}
+		if !strings.Contains(err.Error(), "text file busy") {
+			return nil, nil, err
+		}
+		slog.InfoContext(ctx, "provider exec hit ETXTBSY, retrying",
+			slog.String("provider", providerName),
+			slog.Int("attempt", attempt+1),
+			slog.String("error", err.Error()))
+	}
+	return nil, nil, fmt.Errorf("provider %s exec failed with ETXTBSY after %d attempts: %w",
+		providerName, maxAttempts, err)
 }
 
 func cutLast(s, sep string) (string, string, bool) {
@@ -222,25 +295,7 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		return nil, err
 	}
 
-	config := &plugin.ClientConfig{
-		HandshakeConfig:  tfplugin.Handshake,
-		Logger:           logging.NewProviderLogger(""),
-		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
-		Managed:          true,
-		// We intentionally use [context.Background] so the lifetime of the
-		// provider can escape the lifetime of the parameterize call.
-		Cmd:              exec.CommandContext(context.Background(), execFile),
-		AutoMTLS:         true,
-		VersionedPlugins: tfplugin.VersionedPlugins,
-		SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
-		SyncStderr:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stderr", meta.Provider)),
-		GRPCDialOptions: []grpc.DialOption{
-			grpc.WithUnaryInterceptor(includePanic),
-		},
-	}
-
-	client := plugin.NewClient(config)
-	rpcClient, err := client.Client()
+	client, rpcClient, err := startPluginClient(ctx, meta, execFile)
 	if err != nil {
 		return nil, err
 	}

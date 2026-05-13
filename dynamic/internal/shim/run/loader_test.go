@@ -16,14 +16,59 @@ package run
 
 import (
 	"context"
+	"errors"
 	"runtime"
 	"testing"
+	"time"
 
+	plugin "github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRetryOnTextFileBusy_NonRetryableErrorReturnsImmediately(t *testing.T) {
+	t.Parallel()
+
+	other := errors.New("permission denied")
+	var calls int
+	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
+		calls++
+		return nil, nil, other
+	}
+	noBackoff := func(int) time.Duration { return 0 }
+
+	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, noBackoff)
+	require.ErrorIs(t, err, other)
+	assert.Equal(t, 1, calls, "non-ETXTBSY errors must not retry")
+}
+
+func TestRetryOnTextFileBusy_BackoffIsCalledBeforeRetries(t *testing.T) {
+	t.Parallel()
+
+	var (
+		calls        int
+		backoffCalls []int
+		busy         = errors.New("text file busy")
+	)
+	recordBackoff := func(attempt int) time.Duration {
+		backoffCalls = append(backoffCalls, attempt)
+		return 0
+	}
+	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
+		calls++
+		if calls < 2 {
+			return nil, nil, busy
+		}
+		return nil, nil, nil
+	}
+
+	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, recordBackoff)
+	require.NoError(t, err)
+	// First attempt has no backoff; second attempt is preceded by one backoff call with attempt=1.
+	assert.Equal(t, []int{1}, backoffCalls)
+}
 
 func Integration(t *testing.T) {
 	t.Helper()
