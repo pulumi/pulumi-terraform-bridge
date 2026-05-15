@@ -2144,7 +2144,12 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 	var diags hcl.Diagnostics
 	var err error
 
-	if cliConverterEnabled() {
+	// The legacy convert path runs the full TF11/TF12 ejector, which can produce
+	// multi-file PCL programs.  pulumi-hcl preserves that file structure on output,
+	// so legacyConvert hits its `len(files) == 1` assertion.  Route HCL through the
+	// cliConverter regardless of PULUMI_CONVERT -- the cliConverter feeds a single
+	// "example.pp" in and pulumi-hcl emits exactly one file out.
+	if cliConverterEnabled() || languageName == convert.LanguageHCL {
 		// The cliConverter has a slightly different error behavior as it can return both
 		// err and diags but does not panic. Handle this by re-coding err as a diag and
 		// proceeding to handle diags normally.
@@ -2204,6 +2209,7 @@ func (s languages) Less(i, j int) bool {
 		convert.LanguagePython,
 		convert.LanguageCSharp,
 		convert.LanguageGo,
+		convert.LanguageHCL,
 	}
 
 	ii := indexOf(s[i], languages)
@@ -2350,6 +2356,8 @@ func genLanguageToSlice(input Language) []string {
 		return []string{convert.LanguageGo}
 	case Java:
 		return []string{convert.LanguageJava}
+	case HCL:
+		return []string{convert.LanguageHCL}
 	case PCL:
 		return []string{convert.LanguagePulumi}
 	case Schema, RegistryDocs:
@@ -2360,6 +2368,7 @@ func genLanguageToSlice(input Language) []string {
 			convert.LanguageGo,
 			convert.LanguageYaml,
 			convert.LanguageJava,
+			convert.LanguageHCL,
 		}
 	default:
 		msg := fmt.Sprintf("Unable to convert generator language '%v' to a list of languages the Bridge understands.", input)
@@ -2432,12 +2441,12 @@ type infoContext struct {
 }
 
 type spanValues struct {
-	node, dotnet, golang, python, yaml, java, defaultDisplay string
+	node, dotnet, golang, python, yaml, java, hcl, defaultDisplay string
 }
 
 func buildSpan(values spanValues) string {
 	//nolint:lll
-	spanFormat := `<span pulumi-lang-nodejs="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`
+	spanFormat := `<span pulumi-lang-nodejs="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s" pulumi-lang-hcl="%s">%s</span>`
 	return fmt.Sprintf(
 		spanFormat,
 		values.node,
@@ -2446,6 +2455,7 @@ func buildSpan(values spanValues) string {
 		values.python,
 		values.yaml,
 		values.java,
+		values.hcl,
 		values.defaultDisplay)
 }
 
@@ -2492,6 +2502,7 @@ func (c infoContext) fixupPropertyReference(text string) string {
 				python:         goAndPyFormat,
 				yaml:           allOtherLangs,
 				java:           allOtherLangs,
+				hcl:            open + name + close,
 				defaultDisplay: allOtherLangs,
 			})
 		} else if dataInfo, hasDatasourceInfo := c.info.DataSources[name]; hasDatasourceInfo {
@@ -2513,6 +2524,7 @@ func (c infoContext) fixupPropertyReference(text string) string {
 				python:         pyFormat,
 				yaml:           allOtherLangs,
 				java:           allOtherLangs,
+				hcl:            open + "data." + name + close,
 				defaultDisplay: allOtherLangs,
 			})
 		}
@@ -2534,6 +2546,7 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			python:         match,
 			yaml:           camelCaseFormat,
 			java:           camelCaseFormat,
+			hcl:            match,
 			defaultDisplay: camelCaseFormat,
 		})
 	})

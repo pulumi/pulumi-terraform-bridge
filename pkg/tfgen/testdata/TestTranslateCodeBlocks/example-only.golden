@@ -2,7 +2,7 @@ This example will only translate the resource code. It has no configuration file
 
 ## Example Usage
 
-{{< chooser language "typescript,python,go,csharp,java,yaml" >}}
+{{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}
 {{% choosable language typescript %}}
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
@@ -121,6 +121,18 @@ public class App {
 
         ctx.export("someOutput", aResource.result());
     }
+}
+```
+{{% /choosable %}}
+{{% choosable language hcl %}}
+```hcl
+## Define a resource
+resource "simple_resource" "a_resource" {
+  renamed_input1 = "hello"
+  input_two      = true
+}
+output "someOutput" {
+  value = simple_resource.a_resource.result
 }
 ```
 {{% /choosable %}}
