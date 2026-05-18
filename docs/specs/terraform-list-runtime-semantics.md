@@ -149,17 +149,16 @@ RPC so provider panics are logged with method context before being re-thrown.
     have been produced, the current Pulumi RPC returns the error rather than a
     successful empty continuation.
 
-12. Resource-object Terraform list results extract the same importable Pulumi
-    ID that `Read` expects. The bridge should request resource-object results
-    from Terraform by setting `IncludeResource: true`.
+12. The bridge should request resource-object results from Terraform by setting
+    `IncludeResource: true`.
 
-13. Identity-only Terraform list results are an explicit compatibility boundary.
-    The bridge must not invent an opaque `identity:` ID unless the import/read
-    path is extended to decode it and call an identity-aware Terraform
-    read/import protocol. A phased implementation may support a narrowly
-    guarded string-ID shortcut for identity schemas with exactly one required
-    scalar identity attribute, but compound identity-only results should fail
-    closed until identity-aware import/read support exists.
+13. `ListResponse.Result.Id` is a best-effort string handle for the listed
+    resource. Terraform does not expose a generic string import-ID format for
+    structured identity data, so the bridge should fail open with deterministic
+    Pulumi-owned formatting instead of hiding otherwise useful list results.
+    Prefer an explicit `id` when Terraform returns one. If no `id` is
+    available, derive an ID from Terraform identity data as described in "Result
+    IDs" below.
 
 14. Muxed providers use list-specific dispatch. A Pulumi resource's `List` RPC
     routes to the subprovider that owns the Terraform list resource and list
@@ -261,9 +260,9 @@ fail the Pulumi request and no background list goroutine is started.
 
 When calling Terraform `ListResource`, request resource-object results with
 `IncludeResource: true`. Pulumi needs an importable result ID, and
-resource-object results can use the existing state decode and `extractID`
-paths. Providers may still return identity-only results; those remain governed
-by the identity-only policy below.
+resource-object results may contain a provider-populated top-level `id`.
+Providers may still return identity-only results; those remain governed by the
+identity policy below.
 
 ### Session Identity
 
@@ -280,22 +279,29 @@ session.
 
 ### Result IDs
 
-Prefer Terraform resource-object results because they can be decoded through
-the existing bridge state decoder and `extractID`. This is important for
-SDK-backed list resources such as terraform-provider-aws
-`aws_lb_target_group_attachment`, where the list implementation formats the
-provider-specific import ID into SDKv2 `ResourceData` before returning a
-resource object.
+Prefer Terraform resource-object results because they can contain the provider's
+normal state shape. If the decoded resource object has a concrete top-level
+`id` value, stringify that value as `ListResponse.Result.Id`. Do not call
+`extractID` or `ResourceInfo.ComputeID` for list results; those paths produce
+Pulumi state IDs and are not proof of Terraform string import-ID compatibility.
 
-For identity-only results, do not invent an opaque `identity:` ID unless the
-read/import path is extended to decode it and call the correct Terraform
-identity-aware read/import protocol. Until that compatibility exists, the only
-acceptable string-ID shortcut is a guarded single-required-scalar identity
-schema path: decode the identity with the Terraform resource identity schema,
-extract the one required scalar identity attribute, and use that value as the
-Pulumi list result ID. Compound identities, missing identity schemas, non-scalar
-identity values, and decode failures should fail with an error that names the
-Terraform resource and explains that no importable ID was available.
+If the resource object has no usable top-level `id`, or if Terraform returns an
+identity-only result, decode the Terraform identity data with the Terraform
+resource identity schema and derive a Pulumi-owned string ID:
+
+1. If there is an identity attribute named `id`, stringify that value.
+2. If there is exactly one identity attribute, stringify that attribute value.
+3. If there are multiple identity attributes, sort them by attribute name,
+   stringify each value, and join the values with `,`.
+
+This default format is intentionally a Pulumi list result format, not a claim
+that Terraform import accepts the same string. Terraform does not expose the
+provider's string import-ID formatter for structured identities. The derived ID
+keeps users unblocked and gives them the listed identity values; users may still
+need to adjust the string manually when importing through existing `Read`.
+Missing identity schemas, identity decode failures, and values that cannot be
+stringified deterministically should fail with an error that names the Terraform
+resource and explains that no list ID could be derived.
 
 ### Muxed Providers
 
@@ -343,9 +349,10 @@ continuation.
 - **Dynamic bridge:** Dynamic providers consuming generated schema need stable
   `listInputs` output. Add dynamic/golden coverage before changing dynamic
   schema behavior.
-- **Imports and refresh:** `ListResponse.Result.Id` must be accepted by the
-  existing `Read` path. Identity-only Terraform results are risky until proven
-  against PF import/read support.
+- **Imports and refresh:** `ListResponse.Result.Id` is best-effort for
+  structured identities because Terraform does not expose a generic string
+  import-ID format. IDs derived from identity data may need manual adjustment
+  before use with the existing `Read` import path.
 - **Secrets and unknowns:** Query conversion must preserve Pulumi unknowns and
   should reject or unwrap secrets consistently with other request inputs.
 - **Diagnostics timing:** Terraform validation diagnostics should fail before a
@@ -384,10 +391,11 @@ Runtime tests:
 - Changed continuation `token`, `query`, or `limit` is rejected.
 - `page_size` and `limit` combinations: `limit < page_size`, exact boundary,
   multi-page limit exhaustion, and provider overproduction.
-- Resource-object result decodes through state conversion and extracts the same
-  importable ID used by `Read`.
-- Identity-only result either proves a readable/importable ID path or fails
-  closed.
+- Resource-object result with a top-level `id` uses that value without calling
+  `extractID` or `ComputeID`.
+- Identity result with one attribute stringifies that value.
+- Identity result with multiple attributes uses the documented sorted
+  comma-joined Pulumi ID format.
 - Terraform `ListResource` is called with `IncludeResource: true`.
 - Terminal error after partial results returns an error, not a successful empty
   continuation.

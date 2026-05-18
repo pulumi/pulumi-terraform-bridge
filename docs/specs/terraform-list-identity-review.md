@@ -169,20 +169,23 @@ single-parameter identity on `bucket` imports from the bucket name, and an ARN
 identity imports from the ARN string. That is AWS implementation behavior, not
 a Terraform protocol guarantee.
 
-Therefore a generic bridge implementation can safely use identity schemas for
-classification and for identity-aware import. It should treat "extract the only
-required identity attribute and use it as the Pulumi list result ID" as a
-temporary compatibility shortcut, not the end-state model.
+Therefore a generic bridge implementation can safely use identity schemas to
+decode list identity data and construct deterministic Pulumi list result IDs.
+Those IDs are not guaranteed Terraform string import IDs because Terraform does
+not expose a generic provider-defined import-ID formatter.
 
-If such a shortcut is used before identity-aware `Read` exists, it should be
-guarded narrowly:
+Before identity-aware `Read` exists, the bridge should still return useful list
+results when it can decode identity data:
 
-1. exactly one required identity attribute;
-2. value is a primitive scalar that can be stringified predictably;
-3. no provider-specific compound import handler is needed;
-4. failures are clear and fail closed; and
-5. tests cover both a working single-parameter case and a compound-identity
-   case that must not guess.
+1. prefer a concrete top-level resource object `id` when Terraform returns one;
+2. prefer an identity attribute named `id` when present;
+3. for a single identity attribute, stringify that value;
+4. for multiple identity attributes, sort by attribute name, stringify each
+   value, and join the values with `,`;
+5. treat the result as a Pulumi-owned list ID format, not proof that Terraform
+   import accepts the same string; and
+6. fail only when identity data is missing, cannot be decoded, or cannot be
+   stringified deterministically.
 
 ## SDKv2 Resource State Versus SDKv2 List Identity
 
@@ -248,33 +251,34 @@ resource has no usable `id`, the bridge may synthesize a Pulumi ID through
 `ComputeID` or `MissingIDComputeID`. That keeps Pulumi state valid, but it does
 not automatically provide the string Terraform import expects.
 
-## What Would Be Safe For The First Version
+## First-Version ID Rules
 
-The first version should fail closed unless it can produce an ID that the
-current bridge `Read` path can actually import.
+The first version should fail open when it can infer a useful deterministic ID
+from Terraform result data. The bridge cannot know every provider's Terraform
+string import-ID format, but returning the listed identity values is better than
+hiding otherwise usable results.
 
 Recommended first-version rules:
 
 1. Request `IncludeResource: true` so Terraform returns resource objects when
    it can.
-2. Do not accept identity-only results by synthesizing `identity:<base64>` IDs.
-3. For identity-only results, support only the narrow single-required-scalar
-   shortcut:
-   - fetch the Terraform resource identity schema;
-   - require exactly one required identity attribute;
-   - require the decoded identity value to be a primitive scalar;
-   - stringify that value as `ListResponse.Result.Id`; and
-   - fail closed for compound identity, missing schemas, decode failures, or
-     non-scalar values.
-4. Treat this as a compatibility shortcut, not proof that Terraform identity
-   attributes are generally string import IDs.
-5. Treat `extractID` as Pulumi-ID extraction, not import-ID extraction.
+2. If the resource object has a concrete top-level `id`, stringify that value as
+   `ListResponse.Result.Id`.
+3. Do not call `extractID` or `ComputeID`; those produce Pulumi state IDs, not
+   necessarily Terraform import IDs.
+4. If no top-level `id` is available, decode Terraform identity data with the
+   resource identity schema.
+5. If the decoded identity has an attribute named `id`, stringify that value.
+6. If the decoded identity has one attribute, stringify that value.
+7. If the decoded identity has multiple attributes, sort attributes by name,
+   stringify each value, and join the values with `,`.
+8. Fail only when there is no resource-object `id` and the identity data is
+   missing, cannot be decoded, or cannot be stringified deterministically.
 
-For AWS Framework list resources, this covers the `10` resources whose identity
-attribute is named `id` plus `16` more resources with a single non-`id` identity
-parameter or ARN. The remaining `6` Framework list resources have compound
-identity and should fail closed until the bridge has identity-aware import/read
-support or explicit provider metadata for formatting import IDs.
+For AWS Framework list resources, this means the `10` resources whose identity
+attribute is named `id` use their `id` value, the `16` resources with a single
+non-`id` identity parameter or ARN use that value, and the remaining `6`
+compound-identity resources use the sorted comma-joined Pulumi ID format.
 
 ## Deferred Design: Identity-Aware Read
 
@@ -292,18 +296,6 @@ That would require:
 - deciding how this interacts with existing Pulumi import strings and provider
   `ComputeID` behavior.
 
-Until that design exists, identity-only list results outside the
-single-required-scalar shortcut should be reported as unsupported instead of
-appearing to work with an opaque ID that later fails on `Read`.
-
-## Open Review Questions
-
-1. Should Phase 1 require explicit metadata for importable list IDs, or is it
-   acceptable to use the current Pulumi `id` extraction for Framework resources
-   whose providers conventionally use the same value for import?
-2. If we keep using Pulumi `id` extraction temporarily, what test fixture proves
-   the failure mode where Pulumi ID and import ID differ?
-3. Should identity-aware import be part of the same feature stack, or should it
-   be a separate follow-up after resource-object list support lands?
-4. Do we need a provider-facing escape hatch such as `ListID`, or should this
-   reuse existing `ComputeID` with clearer documentation about importability?
+Until that design exists, identity-derived list result IDs remain best-effort
+Pulumi-owned strings. They should be deterministic and inspectable, but they
+are not guaranteed to be accepted unchanged by Terraform string import.

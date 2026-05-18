@@ -33,16 +33,20 @@ be framed as implementation repair and staging, not greenfield design.
 Goal: land coherent list support for a non-muxed PF provider, with unsupported
 cases failing closed.
 
-Recommended v1 identity scope:
+Recommended v1 ID scope:
 
-- Support identity-only results only when the Terraform resource identity schema
-  has exactly one required scalar identity attribute.
-- Decode the Terraform identity value and use that single attribute value as
-  `ListResponse.Result.Id`.
-- Treat this as a narrow string-ID compatibility shortcut, not the end-state
-  identity model.
-- Fail closed for compound identities, missing identity schemas, non-scalar
-  identity values, and identity-only results that cannot be decoded.
+- Request resource-object list results with `IncludeResource: true`.
+- Use a concrete top-level resource object `id` when Terraform returns one.
+- If no resource object `id` is available, decode Terraform identity data with
+  the resource identity schema.
+- If the identity data has an attribute named `id`, stringify that value.
+- For one identity attribute, stringify that value as `ListResponse.Result.Id`.
+- For multiple identity attributes, sort attributes by name, stringify each
+  value, and join the values with `,`.
+- Treat identity-derived IDs as a deterministic Pulumi-owned list result format,
+  not as proof that Terraform import accepts the same string.
+- Fail only when no resource object `id` is available and identity data is
+  missing, cannot be decoded, or cannot be stringified deterministically.
 
 AWS evidence for this v1 scope:
 
@@ -51,9 +55,10 @@ AWS evidence for this v1 scope:
 - AWS currently has `32` `@FrameworkListResource` entries.
 - `10` have an identity attribute named `id`.
 - `16` more have a single non-`id` identity parameter or ARN.
-- This v1 rule covers `26 / 32` AWS Framework list resources.
+- This v1 rule uses a single identity value for `26 / 32` AWS Framework list
+  resources.
 - The remaining `6` AWS Framework list resources have compound identities and
-  should fail closed:
+  use the sorted comma-joined Pulumi ID format:
   - `aws_dynamodb_global_secondary_index`
   - `aws_msk_topic`
   - `aws_wafv2_web_acl_rule`
@@ -77,9 +82,8 @@ Required fixes:
   session.
 - Bind continuation tokens to the original Pulumi token, normalized query, and
   limit.
-- Support the narrow single-required-scalar identity-only result path described
-  above, and fail closed for other identity-only Terraform list results unless
-  the read/import path gains identity-aware support.
+- Support the identity-derived ID path described above, including the sorted
+  comma-joined format for compound identities.
 - Return terminal errors after partial results instead of sending a successful
   empty continuation.
 - Bound provider-side buffering for unbounded Pulumi `limit`.
@@ -93,10 +97,13 @@ Minimum tests:
 - Concrete query calls `ValidateListResourceConfig` before `ListResource`.
 - Validation diagnostics fail before session creation.
 - Continuation token rejects changed token, query, or limit.
-- Identity-only result with one required scalar identity attribute produces a
-  list result ID from that attribute value.
-- Identity-only result with compound identity fails closed.
-- Resource-object result extracts the importable ID used by `Read`.
+- Resource-object result with a top-level `id` uses that value without
+  `extractID` or `ComputeID`.
+- Identity-only result with an `id` attribute uses that value.
+- Identity-only result with one attribute produces a list result ID from that
+  attribute value.
+- Identity-only result with compound identity uses the sorted comma-joined
+  Pulumi ID format.
 - Terminal error after partial results returns an error.
 - `limit` and `page_size` boundary cases cover overproduction and unbounded
   limit behavior.
@@ -153,13 +160,12 @@ Minimum tests:
 
 ## Deferred: Identity-Aware Import Or Read
 
-General and compound identity-only Terraform list results remain out of scope
-until the bridge has a read/import path that can decode Terraform identity data
-and call the correct identity-aware Terraform protocol. Until then, compound
-identity-only list results must fail closed with a clear error.
+Identity-aware import/read remains out of scope. Phase 1 returns deterministic
+Pulumi-owned list IDs for decoded Terraform identities, but those strings are
+not guaranteed to match a provider's Terraform string import-ID format.
 
 See `docs/specs/terraform-list-identity-review.md` for the current identity
-findings, AWS provider evidence, and open review questions.
+findings and AWS provider evidence.
 
 ## Current Known Mismatches
 
