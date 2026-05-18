@@ -23,7 +23,9 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -70,6 +72,7 @@ func (p *provider) ListWithContext(
 	if pageSize <= 0 {
 		pageSize = defaultListPageSize
 	}
+	pageSize = min(pageSize, int64(maxBufferedListResults))
 
 	var (
 		session *listSession
@@ -118,6 +121,7 @@ func (p *provider) ListWithContext(
 		if err := stream.Send(&pulumirpc.ListResponse{
 			Response: &pulumirpc.ListResponse_Result_{Result: item},
 		}); err != nil {
+			p.listSessions.remove(token)
 			return err
 		}
 	}
@@ -132,7 +136,11 @@ func (p *provider) ListWithContext(
 		return sendContinuation(stream, "")
 	}
 
-	return sendContinuation(stream, token)
+	if err := sendContinuation(stream, token); err != nil {
+		p.listSessions.remove(token)
+		return err
+	}
+	return nil
 }
 
 func (p *provider) startListSession(
@@ -266,11 +274,6 @@ func (p *provider) convertListResult(
 		if err != nil {
 			return nil, fmt.Errorf("terraform list result could not be decoded: %w", err)
 		}
-		stateMap, err = transformFromState(ctx, rh, stateMap)
-		if err != nil {
-			return nil, fmt.Errorf("terraform list result could not be transformed: %w", err)
-		}
-
 		if id, ok, err := propertyMapID(stateMap); ok || err != nil {
 			if err != nil {
 				return nil, fmt.Errorf("terraform list result id could not be stringified: %w", err)
@@ -511,19 +514,26 @@ func identityDataToID(
 		return "", fmt.Errorf("terraform resource %q identity data is empty", tfResourceName)
 	}
 
-	if len(values) > 1 {
-		return "", fmt.Errorf("terraform resource %q has compound identity data; list ID derivation is not supported", tfResourceName)
-	}
-
 	if idValue, ok := values["id"]; ok {
 		return stringifyTerraformValue(idValue)
 	}
 
+	names := make([]string, 0, len(values))
 	for name := range values {
-		return stringifyTerraformValue(values[name])
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	parts := make([]string, len(names))
+	for i, name := range names {
+		part, err := stringifyTerraformValue(values[name])
+		if err != nil {
+			return "", err
+		}
+		parts[i] = part
 	}
 
-	return "", fmt.Errorf("terraform resource %q identity data is empty", tfResourceName)
+	return strings.Join(parts, ","), nil
 }
 
 func stringifyTerraformValue(value tftypes.Value) (string, error) {

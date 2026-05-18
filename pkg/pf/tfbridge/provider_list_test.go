@@ -123,6 +123,31 @@ func TestListWithContextDefaultPageSize(t *testing.T) {
 	assert.Equal(t, token, cont)
 }
 
+func TestListWithContextCapsOversizedPageSize(t *testing.T) {
+	t.Parallel()
+
+	p := &provider{listSessions: newListSessionStore(time.Minute)}
+	t.Cleanup(p.listSessions.close)
+
+	session := newListSession(func() {}, 0, "", "")
+	for i := 0; i < maxBufferedListResults; i++ {
+		ok, err := session.append(context.Background(), &pulumirpc.ListResponse_Result{Id: fmt.Sprintf("id-%d", i+1)})
+		require.NoError(t, err)
+		require.True(t, ok)
+	}
+
+	token := "tok-oversized-page"
+	p.listSessions.put(token, session)
+
+	req := &pulumirpc.ListRequest{ContinuationToken: token, PageSize: int64(maxBufferedListResults + 1)}
+	stream := newRecordingListStream(context.Background())
+	require.NoError(t, p.ListWithContext(context.Background(), req, stream))
+
+	results, cont := splitResponses(stream.sent)
+	assert.Len(t, results, maxBufferedListResults)
+	assert.Equal(t, token, cont)
+}
+
 func TestListWithContextRejectsNegativeBounds(t *testing.T) {
 	t.Parallel()
 
@@ -213,6 +238,56 @@ func TestListWithContextReturnsTerminalErrorAfterPartialResults(t *testing.T) {
 	assert.Empty(t, cont)
 }
 
+func TestListWithContextResultSendFailureRemovesSession(t *testing.T) {
+	t.Parallel()
+
+	p := &provider{listSessions: newListSessionStore(time.Minute)}
+	t.Cleanup(p.listSessions.close)
+
+	var canceled atomic.Int32
+	session := newListSession(func() { canceled.Add(1) }, 0, "", "")
+	ok, err := session.append(context.Background(), &pulumirpc.ListResponse_Result{Id: "id-1"})
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	token := "tok-result-send-failure"
+	p.listSessions.put(token, session)
+
+	sendErr := errors.New("send failed")
+	stream := newFailingListStream(context.Background(), 1, sendErr)
+	err = p.ListWithContext(context.Background(), &pulumirpc.ListRequest{ContinuationToken: token, PageSize: 1}, stream)
+	require.ErrorIs(t, err, sendErr)
+
+	_, ok = p.listSessions.get(token)
+	assert.False(t, ok)
+	assert.EqualValues(t, 1, canceled.Load())
+}
+
+func TestListWithContextContinuationSendFailureRemovesSession(t *testing.T) {
+	t.Parallel()
+
+	p := &provider{listSessions: newListSessionStore(time.Minute)}
+	t.Cleanup(p.listSessions.close)
+
+	var canceled atomic.Int32
+	session := newListSession(func() { canceled.Add(1) }, 0, "", "")
+	ok, err := session.append(context.Background(), &pulumirpc.ListResponse_Result{Id: "id-1"})
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	token := "tok-continuation-send-failure"
+	p.listSessions.put(token, session)
+
+	sendErr := errors.New("send failed")
+	stream := newFailingListStream(context.Background(), 2, sendErr)
+	err = p.ListWithContext(context.Background(), &pulumirpc.ListRequest{ContinuationToken: token, PageSize: 1}, stream)
+	require.ErrorIs(t, err, sendErr)
+
+	_, ok = p.listSessions.get(token)
+	assert.False(t, ok)
+	assert.EqualValues(t, 1, canceled.Load())
+}
+
 func TestPopulateListSessionIntegration(t *testing.T) {
 	t.Parallel()
 
@@ -248,6 +323,8 @@ func TestPopulateListSessionIntegration(t *testing.T) {
 	assert.Equal(t, "two", results[1].Name)
 	assert.Equal(t, "one", results[0].Id)
 	assert.Equal(t, token, cont)
+	require.NotNil(t, caller.listRequest)
+	assert.True(t, caller.listRequest.IncludeResource)
 }
 
 func TestIdentityDataToID(t *testing.T) {
@@ -281,7 +358,7 @@ func TestIdentityDataToID(t *testing.T) {
 			want: "arn-value",
 		},
 		{
-			name: "compound attributes fail closed",
+			name: "compound attributes sort and join by name",
 			attrs: []*tfprotov6.ResourceIdentitySchemaAttribute{
 				{Name: "zeta", Type: tftypes.String, RequiredForImport: true},
 				{Name: "alpha", Type: tftypes.String, RequiredForImport: true},
@@ -290,7 +367,19 @@ func TestIdentityDataToID(t *testing.T) {
 				"zeta":  tftypes.NewValue(tftypes.String, "z"),
 				"alpha": tftypes.NewValue(tftypes.String, "a"),
 			},
-			err: "compound identity data",
+			want: "a,z",
+		},
+		{
+			name: "id attribute wins in compound identity",
+			attrs: []*tfprotov6.ResourceIdentitySchemaAttribute{
+				{Name: "zeta", Type: tftypes.String, RequiredForImport: true},
+				{Name: "id", Type: tftypes.String, RequiredForImport: true},
+			},
+			values: map[string]tftypes.Value{
+				"zeta": tftypes.NewValue(tftypes.String, "z"),
+				"id":   tftypes.NewValue(tftypes.String, "id-value"),
+			},
+			want: "id-value",
 		},
 	}
 
@@ -336,8 +425,9 @@ func TestUnmarshalListQueryPreservesUnknowns(t *testing.T) {
 }
 
 type fakeListResourceCaller struct {
-	results []tfprotov6.ListResourceResult
-	err     error
+	results     []tfprotov6.ListResourceResult
+	err         error
+	listRequest *tfprotov6.ListResourceRequest
 }
 
 func (f *fakeListResourceCaller) ValidateListResourceConfig(
@@ -347,8 +437,9 @@ func (f *fakeListResourceCaller) ValidateListResourceConfig(
 }
 
 func (f *fakeListResourceCaller) ListResource(
-	_ context.Context, _ *tfprotov6.ListResourceRequest,
+	_ context.Context, req *tfprotov6.ListResourceRequest,
 ) (*tfprotov6.ListResourceServerStream, error) {
+	f.listRequest = req
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -373,6 +464,28 @@ func newRecordingListStream(ctx context.Context) *recordingListStream {
 }
 
 func (s *recordingListStream) Send(resp *pulumirpc.ListResponse) error {
+	s.sent = append(s.sent, resp)
+	return nil
+}
+
+type failingListStream struct {
+	recordingListStream
+	failOn int
+	err    error
+}
+
+func newFailingListStream(ctx context.Context, failOn int, err error) *failingListStream {
+	return &failingListStream{
+		recordingListStream: recordingListStream{ctx: ctx},
+		failOn:              failOn,
+		err:                 err,
+	}
+}
+
+func (s *failingListStream) Send(resp *pulumirpc.ListResponse) error {
+	if len(s.sent)+1 == s.failOn {
+		return s.err
+	}
 	s.sent = append(s.sent, resp)
 	return nil
 }
