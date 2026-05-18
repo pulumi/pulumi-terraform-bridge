@@ -98,6 +98,7 @@ func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
 		p := member.resourcePath
 		nt.gatherFromProperties(p.Inputs(), member, member.name, member.inprops, true)
 		nt.gatherFromProperties(p.Outputs(), member, member.name, member.outprops, false)
+		nt.gatherFromProperties(p.ListInputs(), member, member.name, member.listprops, true)
 		if !member.IsProvider() {
 			nt.gatherFromProperties(p.State(), member, member.name, member.statet.properties, true)
 		}
@@ -860,6 +861,21 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 			typePaths: paths.SingletonTypePathSet(stateTypePath),
 		}, true)
 		spec.StateInputs = &stateInputs
+	}
+
+	// If the resources supports listing we'll have set listprops to non-nil, and we need to correspondingly populate
+	// the ListInputs section of the schema. Note that there might not actually be _any_ properties.
+	if res.listprops != nil {
+		spec.ListInputs = &pschema.ObjectTypeSpec{
+			Type:       "object",
+			Properties: map[string]pschema.PropertySpec{},
+		}
+		for _, prop := range res.listprops {
+			spec.ListInputs.Properties[prop.name] = g.genProperty(prop)
+			if !prop.optional() {
+				spec.ListInputs.Required = append(spec.ListInputs.Required, prop.name)
+			}
+		}
 	}
 
 	for _, a := range res.info.Aliases {

@@ -805,6 +805,7 @@ type resourceType struct {
 	inprops    []*variable
 	outprops   []*variable
 	reqprops   map[string]bool
+	listprops  []*variable
 	argst      *propertyType // input properties.
 	statet     *propertyType // output properties (all optional).
 	schema     shim.Resource
@@ -1038,6 +1039,23 @@ func (g *Generator) debug(f string, args ...interface{}) {
 
 func (g *Generator) provider() shim.Provider {
 	return g.info.P
+}
+
+type listResourceProvider interface {
+	ListResourcesMap() shim.ResourceMap
+}
+
+func (g *Generator) listResourceSchema(rawname string) (shim.Resource, bool) {
+	provider, ok := g.provider().(listResourceProvider)
+	if !ok {
+		return nil, false
+	}
+
+	resources := provider.ListResourcesMap()
+	if resources == nil {
+		return nil, false
+	}
+	return resources.GetOk(rawname)
 }
 
 type GenerateOptions struct {
@@ -1545,6 +1563,37 @@ func (g *Generator) gatherResource(rawname string,
 		if stateVar != nil {
 			stateVar.opt = true
 			stateVars = append(stateVars, stateVar)
+		}
+	}
+
+	if !isProvider {
+		if listSchema, ok := g.listResourceSchema(rawname); ok {
+			res.listprops = []*variable{}
+			for _, key := range stableSchemas(listSchema.Schema()) {
+				propschema := listSchema.Schema().Get(key)
+				if propschema.Removed() != "" {
+					continue
+				}
+
+				propinfo := info.Fields[key]
+				if !input(propschema, propinfo) {
+					continue
+				}
+
+				rawdoc := reformatText(infoContext{
+					language: g.language,
+					pkg:      g.pkg,
+					info:     g.info,
+				}, propschema.Description(), nil)
+				listprop, err := g.propertyVariable(resourcePath.ListInputs(),
+					key, listSchema.Schema(), info.Fields, rawdoc, rawdoc, false /*out*/, entityDocs)
+				if err != nil {
+					return nil, err
+				}
+				if listprop != nil {
+					res.listprops = append(res.listprops, listprop)
+				}
+			}
 		}
 	}
 

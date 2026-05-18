@@ -41,6 +41,7 @@ import (
 	pulumilog "github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -2036,6 +2037,15 @@ func (p *Provider) GetMapping(
 
 	// An empty response is valid for GetMapping, it means we don't have a mapping for the given key
 	return &pulumirpc.GetMappingResponse{}, nil
+}
+
+func (p *Provider) List(
+	req *pulumirpc.ListRequest,
+	stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
+) error {
+	_ = req
+	_ = stream
+	return status.Error(codes.Unimplemented, "List is not implemented for sdkv2 tfbridge providers")
 }
 
 func initializationError(id string, props *pbstruct.Struct, reasons []string) error {

@@ -95,6 +95,13 @@ func (p *ResourcePath) State() *ResourceMemberPath {
 	}
 }
 
+func (p *ResourcePath) ListInputs() *ResourceMemberPath {
+	return &ResourceMemberPath{
+		ResourcePath:       p,
+		ResourceMemberKind: ResourceListInputs,
+	}
+}
+
 func (p *ResourcePath) String() string {
 	if p.isProvider {
 		return fmt.Sprintf("resource[provider=%q]", p.token.String())
@@ -110,6 +117,7 @@ const (
 	ResourceInputs ResourceMemberKind = iota
 	ResourceOutputs
 	ResourceState
+	ResourceListInputs
 )
 
 func (s ResourceMemberKind) String() string {
@@ -120,6 +128,8 @@ func (s ResourceMemberKind) String() string {
 		return "outputs"
 	case ResourceState:
 		return "state"
+	case ResourceListInputs:
+		return "listInputs"
 	}
 	return "unknown"
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"gotest.tools/v3/assert"
 )
@@ -300,6 +301,15 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetMappings): GetMappings panic"),
 		},
+		{
+			testName: "List",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				err := rps.List(&pulumirpc.ListRequest{}, &testListServerStream{ctx: ctx})
+				contract.IgnoreError(err)
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=List): List panic"),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -547,3 +557,33 @@ func (s *testRPS) GetMappings(
 ) (*pulumirpc.GetMappingsResponse, error) {
 	panic("GetMappings panic")
 }
+
+func (s *testRPS) List(
+	req *pulumirpc.ListRequest,
+	stream pulumirpc.ResourceProvider_ListServer,
+) error {
+	panic("List panic")
+}
+
+type testListServerStream struct {
+	ctx context.Context
+}
+
+func (s *testListServerStream) SetHeader(metadata.MD) error { return nil }
+
+func (s *testListServerStream) SendHeader(metadata.MD) error { return nil }
+
+func (s *testListServerStream) SetTrailer(metadata.MD) {}
+
+func (s *testListServerStream) Context() context.Context {
+	if s.ctx != nil {
+		return s.ctx
+	}
+	return context.Background()
+}
+
+func (s *testListServerStream) Send(*pulumirpc.ListResponse) error { return nil }
+
+func (s *testListServerStream) SendMsg(any) error { return nil }
+
+func (s *testListServerStream) RecvMsg(any) error { return nil }
