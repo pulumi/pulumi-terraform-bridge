@@ -163,6 +163,35 @@ func TestMergeSchemasAndComputeDispatchTable(t *testing.T) {
 			"pkg:mod:ResA": 0,
 			"pkg:mod:ResB": 1,
 		},
-		Functions: map[string]int{},
+		Functions:     map[string]int{},
+		ListResources: map[string]int{},
 	}, computedDT.dispatchTable)
+}
+
+func TestMergeSchemasAndComputeDispatchTableRecordsListOwner(t *testing.T) {
+	t.Parallel()
+
+	schemas := []schema.PackageSpec{
+		{
+			Name: "pkg",
+			Resources: map[string]schema.ResourceSpec{
+				"pkg:mod:ResA": {},
+			},
+		},
+		{
+			Name: "pkg",
+			Resources: map[string]schema.ResourceSpec{
+				"pkg:mod:ResB": {
+					ListInputs: &schema.ObjectTypeSpec{Type: "object"},
+				},
+			},
+		},
+	}
+
+	computedDT, _, err := MergeSchemasAndComputeDispatchTable(schemas)
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]int{
+		"pkg:mod:ResB": 1,
+	}, computedDT.dispatchTable.ListResources)
 }

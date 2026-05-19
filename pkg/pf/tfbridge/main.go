@@ -31,6 +31,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
@@ -172,7 +174,10 @@ func MakeMuxedServer(
 				m.Servers = append(m.Servers, muxer.Endpoint{
 					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 						infoCopy := info
-						infoCopy.P = prov
+						infoCopy.P = muxedPFSchemaProvider{
+							ShimProvider:   prov.(pf.ShimProvider),
+							schemaProvider: shim,
+						}
 
 						// https://github.com/pulumi/pulumi-terraform-bridge/issues/2697:
 						// Avoid accidentally casting (*rprovider.HostClient)(nil) to
@@ -195,4 +200,27 @@ func MakeMuxedServer(
 		}
 		return m.Server(host, pkg, version)
 	}
+}
+
+type listResourceSchemaProvider interface {
+	ListResourcesMap() shim.ResourceMap
+}
+
+type muxedPFSchemaProvider struct {
+	pf.ShimProvider
+	schemaProvider shim.Provider
+}
+
+func (p muxedPFSchemaProvider) ResourcesMap() shim.ResourceMap {
+	// A PF list sidecar can list resources whose CRUD schema is owned by another
+	// provider in the mux. Keep runtime RPCs on the PF sidecar, but expose the
+	// merged schema map so list result decoding can use the CRUD resource schema.
+	return p.schemaProvider.ResourcesMap()
+}
+
+func (p muxedPFSchemaProvider) ListResourcesMap() shim.ResourceMap {
+	if provider, ok := p.schemaProvider.(listResourceSchemaProvider); ok {
+		return provider.ListResourcesMap()
+	}
+	return shimschema.ResourceMap{}
 }
