@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -390,6 +391,56 @@ func TestPopulateListSessionIntegration(t *testing.T) {
 	assert.Equal(t, token, cont)
 	require.NotNil(t, caller.listRequest)
 	assert.True(t, caller.listRequest.IncludeResource)
+}
+
+func TestListResourceHandleUsesSchemaOnlyResourceSchema(t *testing.T) {
+	t.Parallel()
+
+	resourceSchema := schema.SchemaMap{
+		"id":   (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
+		"name": (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
+	}
+	schemaProvider := (&schema.Provider{
+		ResourcesMap: schema.ResourceMap{
+			"test_resource": (&schema.Resource{Schema: resourceSchema}).Shim(),
+		},
+	}).Shim()
+	info := bridge.ProviderInfo{
+		Resources: map[string]*bridge.ResourceInfo{
+			"test_resource": {Tok: "test:index:Resource"},
+		},
+	}
+	p := &provider{
+		info:               info,
+		schemaOnlyProvider: schemaProvider,
+		encoding:           convert.NewEncoding(schemaProvider, &info),
+	}
+
+	rh, objectType, err := p.listResourceHandle(context.Background(), "test_resource", "test:index:Resource")
+	require.NoError(t, err)
+	assert.Equal(t, "test_resource", rh.terraformResourceName)
+	assert.Contains(t, objectType.AttributeTypes, "id")
+	assert.Contains(t, objectType.AttributeTypes, "name")
+
+	resourceValue := tftypes.NewValue(objectType, map[string]tftypes.Value{
+		"id":   tftypes.NewValue(tftypes.String, "resource-id"),
+		"name": tftypes.NewValue(tftypes.String, "resource-name"),
+	})
+	resourceDV, err := tfprotov6.NewDynamicValue(objectType, resourceValue)
+	require.NoError(t, err)
+
+	item, err := p.convertListResult(
+		context.Background(),
+		rh,
+		objectType,
+		func(context.Context) (*tfprotov6.ResourceIdentitySchema, error) {
+			return nil, errors.New("identity schema should not be loaded")
+		},
+		tfprotov6.ListResourceResult{DisplayName: "display-name", Resource: &resourceDV},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "resource-id", item.Id)
+	assert.Equal(t, "display-name", item.Name)
 }
 
 func TestConvertListResultSkipsIdentitySchemaWhenResourceIDPresent(t *testing.T) {

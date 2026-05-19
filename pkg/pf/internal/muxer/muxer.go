@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 )
 
@@ -89,6 +90,20 @@ type ProviderShim struct {
 	MuxedProviders []shim.Provider
 }
 
+type listResourceMapProvider interface {
+	ListResourcesMap() shim.ResourceMap
+}
+
+// ListResourcesMap is not part of shim.Provider: plain SDKv2 providers do not
+// expose Terraform protocol list resources, while PF schema-only providers may.
+// Treat providers without this optional method as having no list resources.
+func listResourcesMap(provider shim.Provider) shim.ResourceMap {
+	if provider, ok := provider.(listResourceMapProvider); ok {
+		return provider.ListResourcesMap()
+	}
+	return shimschema.ResourceMap{}
+}
+
 // Check if a Resource is served via in the Plugin Framework.
 func (m *ProviderShim) ResourceIsPF(token string) bool {
 	// In an augmented shim.Provider, underlying providers are PF providers iff they
@@ -125,8 +140,10 @@ func (m *ProviderShim) extend(provider shim.Provider) ([]string, []string) {
 	conflictingResources := res.ConflictingKeys()
 	data := newUnionMap(m.dataSources, provider.DataSourcesMap())
 	conflictingDataSources := data.ConflictingKeys()
+	listResources := newUnionMap(m.listResources, listResourcesMap(provider))
 	m.resources = res
 	m.dataSources = data
+	m.listResources = listResources
 	m.MuxedProviders = append(m.MuxedProviders, provider)
 	return conflictingResources, conflictingDataSources
 }
@@ -134,9 +151,10 @@ func (m *ProviderShim) extend(provider shim.Provider) ([]string, []string) {
 func newProviderShim(provider shim.Provider) ProviderShim {
 	return ProviderShim{
 		simpleSchemaProvider: simpleSchemaProvider{
-			schema:      provider.Schema(),
-			resources:   provider.ResourcesMap(),
-			dataSources: provider.DataSourcesMap(),
+			schema:        provider.Schema(),
+			resources:     provider.ResourcesMap(),
+			dataSources:   provider.DataSourcesMap(),
+			listResources: listResourcesMap(provider),
 		},
 		MuxedProviders: []shim.Provider{provider},
 	}
@@ -151,29 +169,34 @@ func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) (muxer.Dispa
 	var dispatch muxer.DispatchTable
 	dispatch.Resources = map[string]int{}
 	dispatch.Functions = map[string]int{}
+	dispatch.ListResources = map[string]int{}
 
 	unbackedResources := resolveDispatchMap(m, dispatch.Resources, info.Resources,
 		func(p shim.Provider) shim.ResourceMap { return p.ResourcesMap() })
 	unbackedDatasources := resolveDispatchMap(m, dispatch.Functions, info.DataSources,
 		func(p shim.Provider) shim.ResourceMap { return p.DataSourcesMap() })
+	// List ownership is intentionally separate from CRUD ownership. Muxed providers
+	// can expose a Terraform list resource from a PF sidecar for an SDKv2 CRUD resource.
+	unbackedListResources := resolveDispatchMap(m, dispatch.ListResources, info.Resources, listResourcesMap)
 	joinErr := func(label string, tks []string) error {
 		return fmt.Errorf("%s without backing provider:\n- %s",
 			label, strings.Join(tks, "\n- "))
 	}
 
-	switch {
-	case len(unbackedResources) == 0 && len(unbackedDatasources) == 0:
-		return dispatch, nil
-	case len(unbackedResources) == 0:
-		return dispatch, joinErr("DataSources", unbackedDatasources)
-	case len(unbackedDatasources) == 0:
-		return dispatch, joinErr("Resources", unbackedResources)
-	default:
-		return dispatch, multierror.Append(
-			joinErr("Resources", unbackedResources),
-			joinErr("DataSources", unbackedDatasources),
-		)
+	var errs multierror.Error
+	if len(unbackedResources) > 0 {
+		errs.Errors = append(errs.Errors, joinErr("Resources", unbackedResources))
 	}
+	if len(unbackedDatasources) > 0 {
+		errs.Errors = append(errs.Errors, joinErr("DataSources", unbackedDatasources))
+	}
+	if len(unbackedListResources) > 0 {
+		errs.Errors = append(errs.Errors, joinErr("ListResources", unbackedListResources))
+	}
+	if len(errs.Errors) > 0 {
+		return dispatch, &errs
+	}
+	return dispatch, nil
 }
 
 // Resolve either resources or datasoruces into their originating providers.
@@ -234,9 +257,10 @@ func resolveDispatchMap[T interface{ GetTok() tokens.Token }](
 
 type simpleSchemaProvider struct {
 	schemashim.SchemaOnlyProvider
-	schema      shim.SchemaMap
-	resources   shim.ResourceMap
-	dataSources shim.ResourceMap
+	schema        shim.SchemaMap
+	resources     shim.ResourceMap
+	dataSources   shim.ResourceMap
+	listResources shim.ResourceMap
 }
 
 func (p *simpleSchemaProvider) Schema() shim.SchemaMap {
@@ -249,6 +273,10 @@ func (p *simpleSchemaProvider) ResourcesMap() shim.ResourceMap {
 
 func (p *simpleSchemaProvider) DataSourcesMap() shim.ResourceMap {
 	return p.dataSources
+}
+
+func (p *simpleSchemaProvider) ListResourcesMap() shim.ResourceMap {
+	return p.listResources
 }
 
 var _ shim.Provider = (*simpleSchemaProvider)(nil)

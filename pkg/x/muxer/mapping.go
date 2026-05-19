@@ -67,18 +67,23 @@ type dispatchTable struct {
 	// Resources and functions can only map to a single provider
 	Resources map[string]int `json:"resources"`
 	Functions map[string]int `json:"functions"`
+	// ListResources can differ from Resources for muxed providers where CRUD is
+	// SDKv2-backed but Terraform ListResource is exposed by a PF sidecar.
+	ListResources map[string]int `json:"listResources,omitempty"`
 }
 
 func newDispatchTable() dispatchTable {
 	return dispatchTable{
-		Resources: make(map[string]int),
-		Functions: make(map[string]int),
+		Resources:     make(map[string]int),
+		Functions:     make(map[string]int),
+		ListResources: make(map[string]int),
 	}
 }
 
 func (dispatchTable dispatchTable) isEmpty() bool {
 	return dispatchTable.Resources == nil &&
-		dispatchTable.Functions == nil
+		dispatchTable.Functions == nil &&
+		dispatchTable.ListResources == nil
 }
 
 // Layer `srcSchema` under `dstSchema`, keeping track of where resources and functions
@@ -194,6 +199,9 @@ type dispatchTableCtx struct {
 
 func (m *dispatchTableCtx) setResource(token string, resource schema.ResourceSpec) {
 	m.dispatchTable.Resources[token] = m.srcIndex
+	if resource.ListInputs != nil {
+		m.dispatchTable.ListResources[token] = m.srcIndex
+	}
 
 	m.dstSchema.Resources[token] = resource
 	m.addProperties(resource.InputProperties)
