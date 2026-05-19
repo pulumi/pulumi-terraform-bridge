@@ -32,12 +32,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	puschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema" //nolint:importas
 	"github.com/stretchr/testify/require"
 
+	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
 	pftfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	sdkv2shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 // Regressing an issue with AWS provider not recognizing that assume_role config setting is singular via
@@ -197,6 +200,61 @@ func TestListInputs(t *testing.T) {
 	require.Equal(t, []string{"parentId"}, resource.ListInputs.Required)
 	require.Contains(t, resource.ListInputs.Properties, "parentId")
 	require.Contains(t, resource.ListInputs.Properties, "prefix")
+}
+
+func TestListInputsForSDKv2ResourceFromPFListResource(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	sdkProvider := &sdkschema.Provider{
+		Schema: map[string]*sdkschema.Schema{},
+		ResourcesMap: map[string]*sdkschema.Resource{
+			"test_thing": {
+				Schema: map[string]*sdkschema.Schema{
+					"id": {
+						Type:     sdkschema.TypeString,
+						Computed: true,
+					},
+				},
+			},
+		},
+	}
+	pfListProvider := &schemaTestProvider{
+		lists: map[string]lschema.Schema{
+			"thing": {
+				Attributes: map[string]lschema.Attribute{
+					"parent_id": lschema.StringAttribute{Required: true},
+				},
+			},
+		},
+	}
+	providerInfo := tfbridge.ProviderInfo{
+		Name: "testprovider",
+		P: pftfbridge.MuxShimWithPF(ctx,
+			sdkv2shim.NewProvider(sdkProvider),
+			pfListProvider),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"test_thing": {
+				Tok: "testprovider:index:Thing",
+			},
+		},
+	}
+
+	res, err := GenerateSchema(ctx, GenerateSchemaOptions{
+		ProviderInfo:  providerInfo,
+		XInMemoryDocs: true,
+	})
+	require.NoError(t, err)
+
+	var schema puschema.PackageSpec
+	require.NoError(t, json.Unmarshal(res.ProviderMetadata.PackageSchema, &schema))
+	require.NotNil(t, schema.Resources["testprovider:index:Thing"].ListInputs)
+	require.Contains(t, schema.Resources["testprovider:index:Thing"].ListInputs.Properties, "parentId")
+
+	dispatch, err := providerInfo.P.(*pfmuxer.ProviderShim).ResolveDispatch(&providerInfo)
+	require.NoError(t, err)
+	require.Equal(t, 0, dispatch.Resources["testprovider:index:Thing"])
+	require.Equal(t, 1, dispatch.ListResources["testprovider:index:Thing"])
 }
 
 func TestListInputsEmptySchema(t *testing.T) {

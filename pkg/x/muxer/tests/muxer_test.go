@@ -102,6 +102,60 @@ func TestListDispatch(t *testing.T) {
 	assert.Equal(t, "listed-resource", stream.responses[0].GetResult().GetId())
 }
 
+func TestListDispatchUsesListOwner(t *testing.T) {
+	t.Parallel()
+	var m muxer.DispatchTable
+	m.Resources = map[string]int{
+		"test:mod:A": 0,
+	}
+	m.ListResources = map[string]int{
+		"test:mod:A": 1,
+	}
+
+	muxedServer := buildMux(t, m, nil,
+		&server{t: t},
+		&server{t: t, calls: []call{
+			{
+				incoming: `{
+					"token": "test:mod:A",
+					"pageSize": "10"
+				}`,
+				response: `{
+					"result": {
+						"id": "listed-resource"
+					}
+				}`,
+			},
+		}},
+	)
+	stream := &listStream{ctx: context.Background()}
+	err := muxedServer.List(&pulumirpc.ListRequest{
+		Token:    "test:mod:A",
+		PageSize: 10,
+	}, stream)
+	require.NoError(t, err)
+	require.Len(t, stream.responses, 1)
+	assert.Equal(t, "listed-resource", stream.responses[0].GetResult().GetId())
+}
+
+func TestListDispatchRejectsUnlistableResource(t *testing.T) {
+	t.Parallel()
+	var m muxer.DispatchTable
+	m.Resources = map[string]int{
+		"test:mod:A": 0,
+	}
+	m.ListResources = map[string]int{}
+
+	muxedServer := buildMux(t, m, nil, &server{t: t})
+	stream := &listStream{ctx: context.Background()}
+	err := muxedServer.List(&pulumirpc.ListRequest{
+		Token:    "test:mod:A",
+		PageSize: 10,
+	}, stream)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is not listable")
+}
+
 func TestCheckConfigErrorNotDuplicated(t *testing.T) {
 	t.Parallel()
 	var m muxer.DispatchTable
