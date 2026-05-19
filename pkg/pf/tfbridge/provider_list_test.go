@@ -43,6 +43,37 @@ func TestListSessionStoreReapExpiredRemovesAndCancels(t *testing.T) {
 	assert.EqualValues(t, 1, canceled.Load())
 }
 
+func TestListSessionStoreReapExpiredSkipsInUseSession(t *testing.T) {
+	t.Parallel()
+
+	store := newListSessionStore(time.Minute)
+	t.Cleanup(store.close)
+
+	var canceled atomic.Int32
+	session := newListSession(func() { canceled.Add(1) }, 0, "", "")
+	require.NoError(t, session.acquire(context.Background()))
+	session.mu.Lock()
+	session.lastAccess = time.Now().Add(-2 * time.Minute)
+	session.mu.Unlock()
+	store.put("active", session)
+
+	store.reapExpired(time.Now())
+
+	_, ok := store.get("active")
+	assert.True(t, ok)
+	assert.EqualValues(t, 0, canceled.Load())
+
+	session.release()
+	session.mu.Lock()
+	session.lastAccess = time.Now().Add(-2 * time.Minute)
+	session.mu.Unlock()
+	store.reapExpired(time.Now())
+
+	_, ok = store.get("active")
+	assert.False(t, ok)
+	assert.EqualValues(t, 1, canceled.Load())
+}
+
 func TestListSessionStoreCloseCancelsAllAndRejectsNewSessions(t *testing.T) {
 	t.Parallel()
 

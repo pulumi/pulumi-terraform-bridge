@@ -836,7 +836,7 @@ func (s *listSession) commit(start, end int64) (hasMore bool, terminalErr error)
 func (s *listSession) isExpired(now time.Time, ttl time.Duration) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return now.Sub(s.lastAccess) > ttl
+	return !s.inUse && now.Sub(s.lastAccess) > ttl
 }
 
 func contextWakeup(ctx context.Context, cond *sync.Cond) func() {
