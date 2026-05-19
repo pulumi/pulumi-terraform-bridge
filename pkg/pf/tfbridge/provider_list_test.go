@@ -17,6 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 func TestListSessionStoreReapExpiredRemovesAndCancels(t *testing.T) {
@@ -238,6 +242,29 @@ func TestListWithContextReturnsTerminalErrorAfterPartialResults(t *testing.T) {
 	assert.Empty(t, cont)
 }
 
+func TestListWithContextTerminalPreparePageErrorRemovesSession(t *testing.T) {
+	t.Parallel()
+
+	p := &provider{listSessions: newListSessionStore(time.Minute)}
+	t.Cleanup(p.listSessions.close)
+
+	var canceled atomic.Int32
+	session := newListSession(func() { canceled.Add(1) }, 0, "", "")
+	session.finish(errors.New("terminal list failure"))
+
+	token := "tok-terminal-error-empty"
+	p.listSessions.put(token, session)
+
+	stream := newRecordingListStream(context.Background())
+	err := p.ListWithContext(context.Background(), &pulumirpc.ListRequest{ContinuationToken: token, PageSize: 10}, stream)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "terminal list failure")
+
+	_, ok := p.listSessions.get(token)
+	assert.False(t, ok)
+	assert.EqualValues(t, 1, canceled.Load())
+}
+
 func TestListWithContextResultSendFailureRemovesSession(t *testing.T) {
 	t.Parallel()
 
@@ -291,6 +318,22 @@ func TestListWithContextContinuationSendFailureRemovesSession(t *testing.T) {
 func TestPopulateListSessionIntegration(t *testing.T) {
 	t.Parallel()
 
+	identitySchema := &tfprotov6.ResourceIdentitySchema{
+		IdentityAttributes: []*tfprotov6.ResourceIdentitySchemaAttribute{
+			{Name: "name", Type: tftypes.String, RequiredForImport: true},
+		},
+	}
+	caller := &fakeListResourceCaller{
+		results: []tfprotov6.ListResourceResult{
+			{DisplayName: "one", Identity: mustIdentityData(t, "one")},
+			{DisplayName: "two", Identity: mustIdentityData(t, "two")},
+			{DisplayName: "three", Identity: mustIdentityData(t, "three")},
+		},
+		identitySchemas: map[string]*tfprotov6.ResourceIdentitySchema{
+			"test_resource": identitySchema,
+		},
+	}
+
 	p := &provider{listSessions: newListSessionStore(time.Minute)}
 	t.Cleanup(p.listSessions.close)
 
@@ -298,20 +341,11 @@ func TestPopulateListSessionIntegration(t *testing.T) {
 	token := "tok-integration"
 	p.listSessions.put(token, session)
 
-	caller := &fakeListResourceCaller{
-		results: []tfprotov6.ListResourceResult{
-			{DisplayName: "one", Identity: mustIdentityData(t, "one")},
-			{DisplayName: "two", Identity: mustIdentityData(t, "two")},
-			{DisplayName: "three", Identity: mustIdentityData(t, "three")},
-		},
-	}
-
 	p.populateListSession(context.Background(), session, caller,
-		resourceHandle{terraformResourceName: "test_resource"}, tftypes.Object{}, &tfprotov6.ResourceIdentitySchema{
-			IdentityAttributes: []*tfprotov6.ResourceIdentitySchemaAttribute{
-				{Name: "name", Type: tftypes.String, RequiredForImport: true},
-			},
-		}, nil, terraformListFetchLimit)
+		resourceHandle{terraformResourceName: "test_resource"}, tftypes.Object{}, nil, terraformListFetchLimit,
+		func(context.Context) (*tfprotov6.ResourceIdentitySchema, error) {
+			return identitySchema, nil
+		})
 
 	req := &pulumirpc.ListRequest{ContinuationToken: token, PageSize: 2}
 	stream := newRecordingListStream(context.Background())
@@ -325,6 +359,103 @@ func TestPopulateListSessionIntegration(t *testing.T) {
 	assert.Equal(t, token, cont)
 	require.NotNil(t, caller.listRequest)
 	assert.True(t, caller.listRequest.IncludeResource)
+}
+
+func TestConvertListResultSkipsIdentitySchemaWhenResourceIDPresent(t *testing.T) {
+	t.Parallel()
+
+	objectType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{"id": tftypes.String}}
+	decoder, err := convert.NewObjectDecoder(convert.ObjectSchema{
+		SchemaMap: schema.SchemaMap{
+			"id": (&schema.Schema{Type: shim.TypeString}).Shim(),
+		},
+		Object: &objectType,
+	})
+	require.NoError(t, err)
+	resourceValue := tftypes.NewValue(objectType, map[string]tftypes.Value{
+		"id": tftypes.NewValue(tftypes.String, "resource-id"),
+	})
+	resourceDV, err := tfprotov6.NewDynamicValue(objectType, resourceValue)
+	require.NoError(t, err)
+
+	var identitySchemaCalls atomic.Int32
+	item, err := (&provider{}).convertListResult(
+		context.Background(),
+		resourceHandle{terraformResourceName: "test_resource", decoder: decoder},
+		objectType,
+		func(context.Context) (*tfprotov6.ResourceIdentitySchema, error) {
+			identitySchemaCalls.Add(1)
+			return nil, errors.New("identity schema should not be loaded")
+		},
+		tfprotov6.ListResourceResult{Resource: &resourceDV},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "resource-id", item.Id)
+	assert.EqualValues(t, 0, identitySchemaCalls.Load())
+}
+
+func TestConvertListResultFallsBackToIdentityWhenResourceIDUnusable(t *testing.T) {
+	t.Parallel()
+
+	objectType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"id": tftypes.Map{ElementType: tftypes.String},
+	}}
+	decoder, err := convert.NewObjectDecoder(convert.ObjectSchema{
+		SchemaMap: schema.SchemaMap{
+			"id": (&schema.Schema{
+				Type: shim.TypeMap,
+				Elem: (&schema.Schema{Type: shim.TypeString}).Shim(),
+			}).Shim(),
+		},
+		Object: &objectType,
+	})
+	require.NoError(t, err)
+	resourceValue := tftypes.NewValue(objectType, map[string]tftypes.Value{
+		"id": tftypes.NewValue(tftypes.Map{ElementType: tftypes.String}, map[string]tftypes.Value{
+			"part": tftypes.NewValue(tftypes.String, "not-a-pulumi-id"),
+		}),
+	})
+	resourceDV, err := tfprotov6.NewDynamicValue(objectType, resourceValue)
+	require.NoError(t, err)
+
+	identitySchema := &tfprotov6.ResourceIdentitySchema{
+		IdentityAttributes: []*tfprotov6.ResourceIdentitySchemaAttribute{
+			{Name: "name", Type: tftypes.String, RequiredForImport: true},
+		},
+	}
+	var identitySchemaCalls atomic.Int32
+	item, err := (&provider{}).convertListResult(
+		context.Background(),
+		resourceHandle{terraformResourceName: "test_resource", decoder: decoder},
+		objectType,
+		func(context.Context) (*tfprotov6.ResourceIdentitySchema, error) {
+			identitySchemaCalls.Add(1)
+			return identitySchema, nil
+		},
+		tfprotov6.ListResourceResult{
+			Resource: &resourceDV,
+			Identity: mustIdentityDataWithSchema(t, identitySchema, map[string]tftypes.Value{
+				"name": tftypes.NewValue(tftypes.String, "identity-id"),
+			}),
+		},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "identity-id", item.Id)
+	assert.EqualValues(t, 1, identitySchemaCalls.Load())
+}
+
+func TestListSessionAppendStopsWhenSessionClosed(t *testing.T) {
+	t.Parallel()
+
+	var canceled atomic.Int32
+	session := newListSession(func() { canceled.Add(1) }, 0, "", "")
+	session.close()
+
+	ok, err := session.append(context.Background(), &pulumirpc.ListResponse_Result{Id: "late-id"})
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Empty(t, session.items)
+	assert.EqualValues(t, 1, canceled.Load())
 }
 
 func TestIdentityDataToID(t *testing.T) {
@@ -425,9 +556,10 @@ func TestUnmarshalListQueryPreservesUnknowns(t *testing.T) {
 }
 
 type fakeListResourceCaller struct {
-	results     []tfprotov6.ListResourceResult
-	err         error
-	listRequest *tfprotov6.ListResourceRequest
+	results         []tfprotov6.ListResourceResult
+	identitySchemas map[string]*tfprotov6.ResourceIdentitySchema
+	err             error
+	listRequest     *tfprotov6.ListResourceRequest
 }
 
 func (f *fakeListResourceCaller) ValidateListResourceConfig(
@@ -452,6 +584,12 @@ func (f *fakeListResourceCaller) ListResource(
 			}
 		},
 	}, nil
+}
+
+func (f *fakeListResourceCaller) GetResourceIdentitySchemas(
+	_ context.Context, _ *tfprotov6.GetResourceIdentitySchemasRequest,
+) (*tfprotov6.GetResourceIdentitySchemasResponse, error) {
+	return &tfprotov6.GetResourceIdentitySchemasResponse{IdentitySchemas: f.identitySchemas}, nil
 }
 
 type recordingListStream struct {

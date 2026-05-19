@@ -38,9 +38,7 @@ type schemaOnlyListResourceMap struct {
 	Map map[string]*schemaOnlyListResource
 }
 
-var (
-	_ runtypes.ListResources = schemaOnlyListResourceMap{}
-)
+var _ runtypes.ListResources = schemaOnlyListResourceMap{}
 
 func (m schemaOnlyListResourceMap) Len() int {
 	return len(m.Map)

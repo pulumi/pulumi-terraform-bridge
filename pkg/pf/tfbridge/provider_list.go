@@ -75,12 +75,14 @@ func (p *provider) ListWithContext(
 	pageSize = min(pageSize, int64(maxBufferedListResults))
 
 	var (
-		session *listSession
-		token   string
-		err     error
+		session    *listSession
+		token      string
+		err        error
+		newSession bool
 	)
 
 	if req.GetContinuationToken() == "" {
+		newSession = true
 		session, token, err = p.startListSession(ctx, req)
 		if err != nil {
 			return err
@@ -112,8 +114,12 @@ func (p *provider) ListWithContext(
 	start, end, page, err := session.preparePage(ctx, pageSize)
 	if err != nil {
 		if errorsIsContext(err) {
+			if newSession {
+				p.listSessions.remove(token)
+			}
 			return status.Error(codes.Canceled, err.Error())
 		}
+		p.listSessions.remove(token)
 		return err
 	}
 
@@ -187,11 +193,6 @@ func (p *provider) startListSession(
 		return nil, "", err
 	}
 
-	identitySchema, err := p.resourceIdentitySchema(ctx, rh.terraformResourceName)
-	if err != nil {
-		return nil, "", err
-	}
-
 	token, err := newContinuationToken()
 	if err != nil {
 		return nil, "", err
@@ -206,7 +207,10 @@ func (p *provider) startListSession(
 		tfLimit = req.GetLimit()
 	}
 
-	go p.populateListSession(listCtx, session, tfListServer, rh, objectType, identitySchema, config, tfLimit)
+	go p.populateListSession(listCtx, session, tfListServer, rh, objectType, config, tfLimit,
+		func(ctx context.Context) (*tfprotov6.ResourceIdentitySchema, error) {
+			return p.resourceIdentitySchema(ctx, rh.terraformResourceName)
+		})
 
 	return session, token, nil
 }
@@ -217,9 +221,9 @@ func (p *provider) populateListSession(
 	tfListServer tfprotov6.ListResourceServer,
 	rh resourceHandle,
 	objectType tftypes.Object,
-	identitySchema *tfprotov6.ResourceIdentitySchema,
 	config *tfprotov6.DynamicValue,
 	tfLimit int64,
+	loadIdentitySchema func(context.Context) (*tfprotov6.ResourceIdentitySchema, error),
 ) {
 	listStream, err := tfListServer.ListResource(ctx, &tfprotov6.ListResourceRequest{
 		TypeName:        rh.terraformResourceName,
@@ -232,12 +236,25 @@ func (p *provider) populateListSession(
 		return
 	}
 
+	var (
+		identitySchema       *tfprotov6.ResourceIdentitySchema
+		identitySchemaLoaded bool
+		identitySchemaErr    error
+	)
+	getIdentitySchema := func(ctx context.Context) (*tfprotov6.ResourceIdentitySchema, error) {
+		if !identitySchemaLoaded {
+			identitySchema, identitySchemaErr = loadIdentitySchema(ctx)
+			identitySchemaLoaded = true
+		}
+		return identitySchema, identitySchemaErr
+	}
+
 	for result := range listStream.Results {
 		if err := p.processDiagnostics(ctx, result.Diagnostics); err != nil {
 			session.finish(err)
 			return
 		}
-		item, err := p.convertListResult(ctx, rh, objectType, identitySchema, result)
+		item, err := p.convertListResult(ctx, rh, objectType, getIdentitySchema, result)
 		if err != nil {
 			session.finish(err)
 			return
@@ -260,7 +277,7 @@ func (p *provider) convertListResult(
 	ctx context.Context,
 	rh resourceHandle,
 	objectType tftypes.Object,
-	identitySchema *tfprotov6.ResourceIdentitySchema,
+	getIdentitySchema func(context.Context) (*tfprotov6.ResourceIdentitySchema, error),
 	result tfprotov6.ListResourceResult,
 ) (*pulumirpc.ListResponse_Result, error) {
 	item := &pulumirpc.ListResponse_Result{Name: result.DisplayName}
@@ -274,18 +291,21 @@ func (p *provider) convertListResult(
 		if err != nil {
 			return nil, fmt.Errorf("terraform list result could not be decoded: %w", err)
 		}
-		if id, ok, err := propertyMapID(stateMap); ok || err != nil {
-			if err != nil {
-				return nil, fmt.Errorf("terraform list result id could not be stringified: %w", err)
-			}
+		if id, ok, err := propertyMapID(stateMap); ok && err == nil {
 			item.Id = id
 			return item, nil
+		} else if err != nil && result.Identity == nil {
+			return nil, fmt.Errorf("terraform list result id could not be stringified: %w", err)
 		}
 	}
 
 	if result.Identity == nil {
 		return nil, status.Errorf(codes.Internal,
 			"terraform list result for %q has no top-level id and no identity data", rh.terraformResourceName)
+	}
+	identitySchema, err := getIdentitySchema(ctx)
+	if err != nil {
+		return nil, err
 	}
 	id, err := identityDataToID(rh.terraformResourceName, identitySchema, result.Identity)
 	if err != nil {
@@ -645,9 +665,7 @@ func newComputedListSession() *listSession {
 
 func (s *listSession) lock() {
 	s.mu.Lock()
-	if !s.done {
-		s.lastAccess = time.Now()
-	}
+	s.lastAccess = time.Now()
 }
 
 func (s *listSession) unlock() {
@@ -664,6 +682,12 @@ func (s *listSession) append(ctx context.Context, item *pulumirpc.ListResponse_R
 			return false, ctx.Err()
 		}
 		s.cond.Wait()
+	}
+	if s.done {
+		return false, nil
+	}
+	if ctx.Err() != nil {
+		return false, ctx.Err()
 	}
 	if s.maxResults > 0 && s.produced >= s.maxResults {
 		return false, nil
