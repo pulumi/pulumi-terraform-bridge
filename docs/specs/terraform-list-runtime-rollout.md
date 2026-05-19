@@ -12,10 +12,8 @@ land.
 
 ## Current Branch State
 
-Branch `chall/list-runtime-spec` is a specs-only planning branch. The
-implementation work should start by cherry-picking the existing commits from
-`fraser/list`, then repairing and staging that implementation against the
-semantics in this spec set.
+Branch `chall/list-runtime-spec` is staging the first implementation slice from
+the `fraser/list` work, repaired against the semantics in this spec set.
 
 The `fraser/list` code has the right broad shape for a single PF provider:
 
@@ -28,10 +26,15 @@ The `fraser/list` code has the right broad shape for a single PF provider:
 Those commits do not yet satisfy the end-state semantics. The next work should
 be framed as implementation repair and staging, not greenfield design.
 
-## Phase 1: Single-Provider PF Support
+## Phase 1: PF Runtime And PF-Owned Mux Support
 
-Goal: land coherent list support for a non-muxed PF provider, with unsupported
+Goal: land coherent list support for PF-owned resources, including the normal
+muxed-provider path used by providers such as `pulumi-aws`, with unsupported
 cases failing closed.
+
+Phase 1 is done only when a live `pulumi-aws` test can call Pulumi `List`
+through the provider's normal muxed server for a PF-owned resource. A direct
+non-muxed PF provider test is useful but is not sufficient.
 
 Recommended v1 ID scope:
 
@@ -50,8 +53,9 @@ Recommended v1 ID scope:
 
 AWS evidence for this v1 scope:
 
-- The initial non-muxed scope only reaches `@FrameworkListResource`
-  implementations.
+- The initial scope reaches PF-owned resources through the normal muxed
+  provider path. It does not yet reach SDKv2-owned resources whose list
+  implementation is exposed by the framework sidecar.
 - AWS currently has `32` `@FrameworkListResource` entries.
 - `10` have an identity attribute named `id`.
 - `16` more have a single non-`id` identity parameter or ARN.
@@ -87,6 +91,10 @@ Required fixes:
 - Return terminal errors after partial results instead of sending a successful
   empty continuation.
 - Bound provider-side buffering for unbounded Pulumi `limit`.
+- Add mux `List` forwarding for resources already owned by the PF subprovider
+  according to the existing resource dispatch table.
+- Keep SDKv2-owned resources whose list support lives on the PF side
+  unimplemented until list-specific mux ownership metadata exists.
 
 Minimum tests:
 
@@ -107,6 +115,13 @@ Minimum tests:
 - Terminal error after partial results returns an error.
 - `limit` and `page_size` boundary cases cover overproduction and unbounded
   limit behavior.
+- Muxed `List` routes a PF-owned resource token through the existing resource
+  dispatch table.
+- Live downstream proof: `pulumi-aws` can call `List` through
+  `testProviderServer()` for a PF-owned resource token.
+- SDKv2-owned list resources in muxed providers still fail closed rather than
+  accidentally routing by Terraform list ownership that Phase 1 does not yet
+  model.
 
 Suggested verification:
 
@@ -114,6 +129,7 @@ Suggested verification:
 mise exec -- go test -count=1 ./pkg/pf/internal/schemashim ./pkg/pf/tfgen ./pkg/pf/tfbridge -run 'Test.*List|Test.*ListResource'
 mise exec -- go test -count=1 ./pkg/pf/tests -run 'TestPFCheckConfig|TestCallWithTerraformConfig'
 mise exec -- go test -count=1 ./pkg/providerserver -run TestPanicRecoveringProviderServer_List
+mise exec -- go test -count=1 ./pkg/x/muxer/... -run 'TestList|TestSimpleDispatch'
 git diff --check origin/main..HEAD
 ```
 
@@ -141,11 +157,11 @@ Minimum tests:
 
 ## Phase 3: Mux Runtime List Dispatch
 
-Goal: route Pulumi `List` to the subprovider that owns Terraform list support.
+Goal: route Pulumi `List` to the subprovider that owns Terraform list support
+when that owner differs from the managed-resource CRUD owner.
 
 Required work:
 
-- Add streaming `List` forwarding to `pkg/x/muxer`.
 - Route by list dispatch table, not by managed-resource dispatch.
 - Return `Unimplemented` when a resource token has no list owner.
 - Prove an SDKv2-managed resource exposed through a framework list wrapper can
@@ -173,7 +189,8 @@ These are known gaps between the current implementation commits and the
 end-state spec:
 
 - Non-list PF providers can panic during schema-only shim construction.
-- The muxer has no `List` method and no list-owner dispatch table.
+- The muxer has no list-owner dispatch table for resources whose CRUD owner and
+  Terraform list owner differ.
 - Identity-only results currently synthesize `identity:` IDs.
 - Continuation tokens are looked up by opaque token only.
 - Query conversion uses `structpb.Struct.AsMap()` and loses Pulumi unknowns.
