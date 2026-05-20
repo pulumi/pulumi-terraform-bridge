@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
@@ -481,6 +482,34 @@ func (s *PanicRecoveringProviderServer) GetMappings(
 		}()
 	}
 	return s.innerServer.GetMappings(withPanicHandlerInstalled(ctx), req)
+}
+
+func (s *PanicRecoveringProviderServer) List(
+	req *pulumirpc.ListRequest,
+	stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
+) error {
+	ctx := stream.Context()
+	if !isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "List", err, debug.Stack(), nil)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.List(req, &panicHandlerListStream{
+		ServerStreamingServer: stream,
+		ctx:                   withPanicHandlerInstalled(ctx),
+	})
+}
+
+type panicHandlerListStream struct {
+	grpc.ServerStreamingServer[pulumirpc.ListResponse]
+	ctx context.Context
+}
+
+func (s *panicHandlerListStream) Context() context.Context {
+	return s.ctx
 }
 
 // Guess Pulumi URN from ConstructRequest.

@@ -95,6 +95,7 @@ type provider struct {
 
 	schemaOnlyProvider shim.Provider
 	providerOpts       []providerOption
+	listSessions       *listSessionStore
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -195,6 +196,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		schemaOnlyProvider: info.P,
 		parameterize:       meta.XParamaterize,
 		providerOpts:       opts,
+		listSessions:       newListSessionStore(listSessionTTL),
 	}
 
 	return configencoding.New(p), nil
@@ -229,6 +231,9 @@ func NewProviderServer(
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 func (p *provider) Close() error {
+	if p.listSessions != nil {
+		p.listSessions.close()
+	}
 	return nil
 }
 
@@ -264,6 +269,9 @@ func (p *provider) ParameterizeWithContext(
 				return err
 			}
 			pp.Unwrap().logSink = p.logSink // Preserve the log sink from p
+			if p.listSessions != nil {
+				p.listSessions.close()
+			}
 
 			*p = *pp.Unwrap()
 
@@ -293,6 +301,10 @@ func (p *provider) GetPluginInfoWithContext(_ context.Context) (plugin.PluginInf
 // wait after SignalCancellation is called before (e.g.) hard-closing any gRPC connection.
 func (p *provider) SignalCancellationWithContext(_ context.Context) error {
 	// Some improvements are possible here to gracefully shut down.
+
+	if p.listSessions != nil {
+		p.listSessions.close()
+	}
 	return nil
 }
 

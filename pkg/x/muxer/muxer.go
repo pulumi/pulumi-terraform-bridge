@@ -418,6 +418,17 @@ func (m *muxer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*empt
 	})
 }
 
+func (m *muxer) List(
+	req *pulumirpc.ListRequest,
+	stream pulumirpc.ResourceProvider_ListServer,
+) error {
+	server := m.getResource(req.GetToken())
+	if server == nil {
+		return status.Errorf(codes.NotFound, "Resource type '%s' not found.", req.GetToken())
+	}
+	return server.List(req, stream)
+}
+
 func (m *muxer) Construct(ctx context.Context, req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
 	server := m.getResource(req.GetType())
 	if server == nil {
