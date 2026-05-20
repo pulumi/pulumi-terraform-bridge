@@ -1,99 +1,135 @@
 ---
 name: create-bridge-spec
-description: Use when planning or designing substantial Pulumi Terraform Bridge behavior changes, especially changes involving tfgen versus runtime boundaries, SDKv2 versus Plugin Framework paths, muxed providers, dynamic bridge compatibility, provider schema construction, lifecycle RPCs, state upgrade, imports, refresh, raw state, or provider upgrade regressions. Do not use for routine generated SDK churn, small local bug fixes, or straightforward docs/codegen edits unless bridge runtime semantics are being debated.
+description: Use when creating, reviewing, or revising a design/spec for a non-trivial Pulumi Terraform Bridge behavior change. Applies across build-time generation, runtime SDKv2, runtime Plugin Framework, muxed providers, dynamic bridge, lifecycle/state behavior, schema metadata, docs/codegen boundaries, and downstream provider proofs. Do not use for narrow code edits where the behavior and validation path are already obvious.
 ---
 
-# Pulumi Terraform Bridge Runtime Design
+# Create Bridge Spec
 
-Use this skill to turn ambiguous bridge behavior into a repo-grounded design or implementation plan. The goal is to preserve distinctions that are easy to blur in this repo: build-time versus runtime, SDKv2 versus Plugin Framework, static providers versus dynamic bridge, Terraform protocol behavior versus Pulumi provider behavior, and schema metadata versus live provider schemas.
+Use this skill to turn ambiguous bridge work into a compact, repo-grounded spec
+or implementation plan. The bridge crosses many boundaries; the job is to make
+the relevant boundaries explicit without creating a checklist of every possible
+bridge subsystem.
 
-## Start With The Boundary
+## Core Move
 
-Before drafting a plan or spec, classify the change:
+Before drafting the spec, establish four things:
 
-- **Build-time**: `pkg/tfgen`, `pkg/convert`, `pkg/tf2pulumi`, provider schema generation, docs conversion, metadata generation.
-- **Runtime SDKv2**: `pkg/tfbridge`, `pkg/tfshim/sdk-v{1,2}`, `pkg/providerserver`.
-- **Runtime Plugin Framework**: `pkg/pf/tfbridge`, `pkg/pf/internal/*`, `pkg/pf/proto`.
-- **Muxing**: `pkg/x/muxer`, `pkg/pf/internal/muxer`, dispatch metadata.
-- **Dynamic bridge**: `dynamic/*`, `pkg/pf/proto`, generated dynamic schema compatibility.
-- **Cross-cutting**: state upgrade, raw state delta, naming, secrets, defaults, config encoding, diagnostics.
+1. **Behavior**: what user-visible or provider-author-visible behavior is being
+   changed.
+2. **Path**: which real code path proves that behavior today.
+3. **Ownership**: which layer owns each capability involved.
+4. **Proof**: the smallest executable check that would make the change done.
 
-Do not ask the user to explain code facts that can be read from the repo. Trace the current flow first, then decide what should change.
+If any of those are unclear, investigate the repo before writing conclusions.
 
-## Required Context
+## Boundary Map
 
-For substantial runtime or schema behavior, inspect and summarize:
+Classify only the boundaries that matter for the task:
 
-- The issue, PR, failing test, downstream provider regression, or memory/performance measurement motivating the work.
-- Which Pulumi RPCs are involved: `CheckConfig`, `Configure`, `Check`, `Diff`, `Create`, `Read`, `Update`, `Delete`, `Invoke`, import, refresh, or state upgrade.
-- Whether the behavior must match Terraform, prior Pulumi bridge behavior, generated Pulumi schema, SDKv2 behavior, PF behavior, or dynamic bridge compatibility.
-- The schema source being used: Terraform SDK schema, PF provider/resource/data source schema, generated Pulumi package schema, bridge metadata, mux dispatch table, or dynamic provider schema.
-- The local code path with file/line references.
+- **Build-time generation**: `pkg/tfgen`, `pkg/convert`, `pkg/tf2pulumi`,
+  provider schema generation, docs conversion, metadata generation.
+- **Runtime SDKv2**: `pkg/tfbridge`, `pkg/tfshim/sdk-v{1,2}`,
+  `pkg/providerserver`.
+- **Runtime Plugin Framework**: `pkg/pf/tfbridge`, `pkg/pf/internal/*`,
+  `pkg/pf/proto`.
+- **Muxing**: `pkg/x/muxer`, `pkg/pf/internal/muxer`, dispatch metadata,
+  ownership split between subproviders.
+- **Dynamic bridge**: `dynamic/*`, `pkg/pf/proto`, generated dynamic schema
+  compatibility.
+- **Cross-cutting runtime state**: lifecycle RPCs, imports, refresh, state
+  upgrade, raw state, config, defaults, secrets, diagnostics.
 
-## Decide The Artifact
+Do not assume that one layer owns all related behavior. Schema shape, runtime
+RPC handling, metadata, validation, state translation, and downstream provider
+exposure can have different owners.
+
+## Assumption Checkpoint
+
+When the plan crosses any boundary above, pause and write down:
+
+- The assumptions being made about routing, schema source, metadata source,
+  state shape, lifecycle order, and provider mode.
+- One plausible alternative assumption for each risky point.
+- The quickest repo or downstream probe that can distinguish them.
+
+Keep this short. The point is to prevent hidden assumptions from becoming a
+phase plan.
+
+## Choose The Artifact
 
 Use the smallest artifact that reduces real risk:
 
-- **Chat-only plan**: narrow behavior change with obvious implementation and low compatibility risk.
-- **Checked-in design spec**: cross-cutting behavior, lifecycle semantics, tfgen/runtime boundary changes, SDKv2/PF parity questions, dynamic bridge compatibility, or multiple plausible models.
-- **Handoff/status doc**: multi-session work where decisions, blockers, and verification state must survive context loss.
+- **Chat-only plan**: the behavior is narrow, the path is clear, and the
+  validation proof is obvious.
+- **Checked-in spec**: behavior crosses build-time/runtime boundaries, SDKv2/PF
+  parity, mux ownership, dynamic bridge compatibility, lifecycle/state
+  semantics, or multiple plausible designs.
+- **Handoff/status doc**: the work spans sessions and has temporary branch
+  state, staged rollout details, or unresolved blockers that should not clutter
+  the durable spec.
 
-Prefer one bridge behavior/design spec over separate product and tech specs unless the user explicitly wants that split.
+Use downstream providers as proof points, not as bridge-owned inventories. A
+specific provider example may prove the path, but the bridge spec should stay
+provider-agnostic unless the task is explicitly provider-specific.
 
 ## Spec Shape
 
-When a checked-in spec is warranted, use a compact Markdown document with these sections:
+For a checked-in spec, prefer this compact shape:
 
 ```markdown
-# <issue-or-topic> Bridge Runtime Semantics
+# <Topic> Bridge Semantics
 
 ## Summary
-What behavior is wrong, what semantic model should replace it, and which issue/PR this serves.
+What is changing, who observes it, and why it matters.
 
 ## Current Flow
-Code-grounded walkthrough. Distinguish tfgen/build-time, runtime startup, per-RPC runtime behavior, mux dispatch, and dynamic bridge behavior.
+Code-grounded walkthrough of the relevant path. Distinguish build-time,
+runtime startup, per-RPC behavior, mux dispatch, dynamic bridge behavior, and
+downstream provider exposure only where relevant.
 
 ## Desired Semantics
-Numbered, testable invariants from the perspective of provider authors, Pulumi users, the Pulumi engine, generated SDKs, Terraform protocol servers, and future bridge maintainers.
-
-## Validation Boundary
-What runs at build time, what runs at runtime startup, and what runs per user operation.
+Numbered invariants that can be tested or reviewed.
 
 ## Design
-Implementation approach that fits the existing bridge. Name key modules, ownership boundaries, metadata used, and rejected shortcuts.
+Implementation approach, capability owners, metadata/schema sources, and
+shortcuts rejected.
 
 ## Compatibility Risks
-SDKv2/PF parity, muxing, aliases, dynamic providers, state upgrade, imports, refresh, secrets, defaults, raw state, generated schema stability, and diagnostics timing.
-
-## Test Plan
-Targeted unit tests, PF/SDKv2 runtime tests, cross-tests, generated schema checks, dynamic bridge golden checks, downstream provider proof, and memory/performance benchmarks.
-```
-
-Omit sections only when they truly add no information.
-
-## Domain Rules
-
-- Treat **tfgen schema generation** and **runtime provider execution** as separate phases. Do not use runtime validation or provider schema availability as proof of build-time coverage without tracing both paths.
-- For PF changes, identify whether the behavior depends on `providerserver.NewProtocol6`, `GetProviderSchema`, `GetMetadata`, per-resource schema loading, or bridge schema adapters.
-- For SDKv2 changes, check the SDK shim and Terraform SDK behavior before assuming a PF rule applies.
-- For muxed providers, prove whether the SDKv2-only path pays PF costs, and whether dispatch/alias resolution requires schema or only metadata.
-- For dynamic bridge changes, check generated schema compatibility and dynamic golden tests before accepting schema drift.
-- For lifecycle changes, trace the specific RPC path and the state shape it consumes or returns.
-- For refresh/import questions, keep refresh from existing state separate from import-style reads.
-- For state upgrade and raw state, inspect `__meta`, `RawStateDelta`, private state, and `UpgradeResourceState`.
-- Do not hand-edit generated SDKs, generated schema artifacts, vendored upstream provider code, or submodule content.
+Only the risks that apply: SDKv2/PF parity, muxing, aliases, dynamic providers,
+state upgrade, imports, refresh, secrets, defaults, raw state, generated schema,
+diagnostics timing, or downstream provider behavior.
 
 ## Validation
+The smallest executable proof for each important invariant, including any
+downstream provider probe needed to prove the real path.
+```
 
-Map every important invariant to concrete verification:
+Omit sections that add no information. Split durable semantics from temporary
+rollout notes when combining them would make the spec noisy.
 
-- Use targeted tests in `pkg/pf/tests`, `pkg/pf/internal/*`, or `pkg/pf/tfbridge` for PF runtime behavior.
-- Use targeted tests in `pkg/tfbridge`, `pkg/tfshim/sdk-v2`, or `pkg/internal/tests/cross-tests` for SDKv2 and parity behavior.
-- Use `pkg/tfgen` and `pkg/pf/tfgen` tests for build-time schema and metadata behavior.
-- Use dynamic bridge tests and golden files when schema output compatibility could change.
-- Prefer focused commands such as `go test ./pkg/pf/tests -run '<TestName>' -count=1` before broad suites.
-- When the repo guidance says to use `mise`, use `mise exec -- make ...` or `mise exec -- go test ...` instead of bare commands.
+## Validation Guidance
 
-## Stop Conditions
+Map each important invariant to a concrete check:
 
-Stop and return to the user when the semantic model is not settled, when SDKv2 and PF compatibility require different user-visible behavior, when dynamic bridge compatibility is unclear, or when the implementation would require generated schema or SDK behavior changes beyond the requested issue.
+- Build-time schema/metadata: `pkg/tfgen`, `pkg/pf/tfgen`, generated schema
+  tests, or golden files.
+- PF runtime: `pkg/pf/tests`, `pkg/pf/internal/*`, `pkg/pf/tfbridge`.
+- SDKv2 runtime and parity: `pkg/tfbridge`, `pkg/tfshim/sdk-v2`,
+  `pkg/internal/tests/cross-tests`.
+- Mux behavior: mux dispatch tests plus a proof that the normal downstream
+  provider path exercises the intended route.
+- Dynamic bridge: dynamic tests and golden files when schema compatibility can
+  drift.
+
+Prefer focused test commands first. When repo guidance says to use `mise`, use
+`mise exec -- go test ...` or `mise exec -- make ...`.
+
+## Guardrails
+
+- Trace code facts from the repo instead of asking the user to supply them.
+- Keep examples representative, not exhaustive.
+- Do not hand-edit generated SDKs, generated schema artifacts, vendored
+  upstream provider code, or submodule content.
+- Stop and return to the user when the semantic model is unsettled, the proof
+  path depends on credentials or external state, or the requested scope would
+  require a broader compatibility decision than the user asked for.
