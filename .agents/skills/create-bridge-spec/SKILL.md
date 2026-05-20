@@ -47,9 +47,9 @@ exposure can have different owners.
 
 When the plan crosses any boundary above, pause and write down:
 
-- The assumptions being made about routing, schema source, metadata source,
-  state shape, lifecycle order, and provider mode.
-- One plausible alternative assumption for each risky point.
+- The risky assumptions the plan depends on (e.g., who owns a capability,
+  where schema or state comes from, lifecycle ordering).
+- One plausible alternative for each.
 - The quickest repo or downstream probe that can distinguish them.
 
 Keep this short. The point is to prevent hidden assumptions from becoming a
@@ -67,10 +67,6 @@ Use the smallest artifact that reduces real risk:
 - **Handoff/status doc**: the work spans sessions and has temporary branch
   state, staged rollout details, or unresolved blockers that should not clutter
   the durable spec.
-
-Use downstream providers as proof points, not as bridge-owned inventories. A
-specific provider example may prove the path, but the bridge spec should stay
-provider-agnostic unless the task is explicitly provider-specific.
 
 ## Spec Shape
 
@@ -128,6 +124,9 @@ Prefer focused test commands first. When repo guidance says to use `mise`, use
 
 - Trace code facts from the repo instead of asking the user to supply them.
 - Keep examples representative, not exhaustive.
+- Treat downstream providers as proof points, not as bridge-owned inventories.
+  A specific provider may prove the path, but the spec should stay
+  provider-agnostic unless the task is provider-specific.
 - Do not hand-edit generated SDKs, generated schema artifacts, vendored
   upstream provider code, or submodule content.
 - Stop and return to the user when the semantic model is unsettled, the proof
