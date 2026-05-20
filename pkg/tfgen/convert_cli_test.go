@@ -429,6 +429,91 @@ This is some intentionally broken HCL that should not convert.
 		require.NotContains(t, stdout.String(), cliConverterErrUnexpectedHCLSnippet)
 		require.NotContains(t, stderr.String(), cliConverterErrUnexpectedHCLSnippet)
 	})
+
+	t.Run("deterministic-ordering", func(t *testing.T) {
+		t.Parallel()
+
+		hcl1 := `
+resource "simple_resource" "a_resource" {
+    input_one = "hello"
+    input_two = true
+}
+output "some_output" {
+    value = simple_resource.a_resource.result
+}`
+		hcl2 := `
+resource "simple_resource" "b_resource" {
+    input_one = "world"
+    input_two = false
+}
+output "some_output" {
+    value = simple_resource.b_resource.result
+}`
+
+		pi := tfbridge.ProviderInfo{
+			Name: "simple",
+			P: shimv2.NewProvider(&schema.Provider{
+				ResourcesMap: map[string]*schema.Resource{
+					"simple_resource": {
+						Schema: map[string]*schema.Schema{
+							"input_one": {Type: schema.TypeString, Optional: true},
+							"input_two": {Type: schema.TypeBool, Optional: true},
+						},
+					},
+					"simple_resource2": {
+						Schema: map[string]*schema.Schema{
+							"input_one": {Type: schema.TypeString, Optional: true},
+							"input_two": {Type: schema.TypeBool, Optional: true},
+						},
+					},
+				},
+			}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"simple_resource": {
+					Tok: "simple:index:resource",
+					Docs: &tfbridge.DocInfo{
+						Markdown: []byte(fmt.Sprintf(
+							"Resource 1.\n## Example Usage\n\n```hcl\n%s\n```\n", hcl1,
+						)),
+					},
+				},
+				"simple_resource2": {
+					Tok: "simple:index:resource2",
+					Docs: &tfbridge.DocInfo{
+						Markdown: []byte(fmt.Sprintf(
+							"Resource 2.\n## Example Usage\n\n```hcl\n%s\n```\n", hcl2,
+						)),
+					},
+				},
+			},
+		}
+
+		generate := func() []byte {
+			dir := t.TempDir()
+			g, err := NewGenerator(GeneratorOptions{
+				Package:      pi.Name,
+				Language:     Schema,
+				PluginHost:   &testPluginHost{},
+				ProviderInfo: pi,
+				Root:         afero.NewBasePathFs(afero.NewOsFs(), dir),
+				Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+					Color: colors.Never,
+				}),
+			})
+			require.NoError(t, err)
+			_, err = g.Generate()
+			require.NoError(t, err)
+			d, err := os.ReadFile(filepath.Join(dir, "schema.json"))
+			require.NoError(t, err)
+			return d
+		}
+
+		first := generate()
+		for i := 0; i < 4; i++ {
+			require.Equal(t, string(first), string(generate()),
+				"schema output differed on run %d — bulkConvert ordering is non-deterministic", i+2)
+		}
+	})
 }
 
 func TestNotYetImplementedErrorHandling(t *testing.T) {

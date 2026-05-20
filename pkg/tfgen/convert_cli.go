@@ -213,8 +213,13 @@ func (cc *cliConverter) bulkConvert() error {
 		return nil
 	}
 	examples := map[string]string{}
-	n := 0
+	hclKeys := make([]string, 0, len(cc.hcls))
 	for hcl := range cc.hcls {
+		hclKeys = append(hclKeys, hcl)
+	}
+	sort.Strings(hclKeys)
+	n := 0
+	for _, hcl := range hclKeys {
 		fileName := fmt.Sprintf("e%d", n)
 		examples[fileName] = hcl
 		n++
