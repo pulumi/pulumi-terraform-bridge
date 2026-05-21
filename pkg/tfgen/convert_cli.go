@@ -18,10 +18,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -213,8 +215,11 @@ func (cc *cliConverter) bulkConvert() error {
 		return nil
 	}
 	examples := map[string]string{}
+
+	hclKeys := slices.Sorted(maps.Keys(cc.hcls))
+
 	n := 0
-	for hcl := range cc.hcls {
+	for _, hcl := range hclKeys {
 		fileName := fmt.Sprintf("e%d", n)
 		examples[fileName] = hcl
 		n++
