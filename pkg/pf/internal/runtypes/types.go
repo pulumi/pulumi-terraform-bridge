@@ -66,3 +66,9 @@ type DataSources interface {
 	collection
 	IsDataSources()
 }
+
+// Represents all provider's list resources pre-indexed by TypeOrRenamedEntityName.
+type ListResources interface {
+	collection
+	IsListResources()
+}

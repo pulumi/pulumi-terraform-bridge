@@ -68,6 +68,40 @@ func TestSimpleDispatch(t *testing.T) {
 	)
 }
 
+func TestListDispatch(t *testing.T) {
+	t.Parallel()
+	var m muxer.DispatchTable
+	m.Resources = map[string]int{
+		"test:mod:A": 0,
+		"test:mod:B": 1,
+	}
+
+	muxedServer := buildMux(t, m, nil,
+		&server{t: t},
+		&server{t: t, calls: []call{
+			{
+				incoming: `{
+					"token": "test:mod:B",
+					"pageSize": "10"
+				}`,
+				response: `{
+					"result": {
+						"id": "listed-resource"
+					}
+				}`,
+			},
+		}},
+	)
+	stream := &listStream{ctx: context.Background()}
+	err := muxedServer.List(&pulumirpc.ListRequest{
+		Token:    "test:mod:B",
+		PageSize: 10,
+	}, stream)
+	require.NoError(t, err)
+	require.Len(t, stream.responses, 1)
+	assert.Equal(t, "listed-resource", stream.responses[0].GetResult().GetId())
+}
+
 func TestCheckConfigErrorNotDuplicated(t *testing.T) {
 	t.Parallel()
 	var m muxer.DispatchTable
@@ -480,6 +514,17 @@ func (m *server) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emp
 	return handleMethod[*pulumirpc.DeleteRequest, *emptypb.Empty](m, req)
 }
 
+func (m *server) List(
+	req *pulumirpc.ListRequest,
+	stream pulumirpc.ResourceProvider_ListServer,
+) error {
+	response, err := handleMethod[*pulumirpc.ListRequest, *pulumirpc.ListResponse](m, req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(response)
+}
+
 func (m *server) Construct(ctx context.Context, req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
 	return handleMethod[*pulumirpc.ConstructRequest, *pulumirpc.ConstructResponse](m, req)
 }
@@ -500,4 +545,20 @@ func (m *server) GetMapping(
 	ctx context.Context, req *pulumirpc.GetMappingRequest,
 ) (*pulumirpc.GetMappingResponse, error) {
 	return handleMethod[*pulumirpc.GetMappingRequest, *pulumirpc.GetMappingResponse](m, req)
+}
+
+type listStream struct {
+	pulumirpc.ResourceProvider_ListServer
+
+	ctx       context.Context
+	responses []*pulumirpc.ListResponse
+}
+
+func (s *listStream) Send(response *pulumirpc.ListResponse) error {
+	s.responses = append(s.responses, response)
+	return nil
+}
+
+func (s *listStream) Context() context.Context {
+	return s.ctx
 }
