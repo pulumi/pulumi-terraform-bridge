@@ -138,6 +138,8 @@ git diff --check origin/main..HEAD
 Goal: represent list-resource ownership separately from managed-resource CRUD
 ownership.
 
+Status: implemented on branch `list-runtime-sdkv2`.
+
 Required work:
 
 - Extend PF mux schema discovery to carry list-resource maps from each
@@ -160,6 +162,11 @@ Minimum tests:
 Goal: route Pulumi `List` to the subprovider that owns Terraform list support
 when that owner differs from the managed-resource CRUD owner.
 
+Status: implemented on branch `list-runtime-sdkv2` with repo-local mux tests.
+The downstream `pulumi-aws` SDKv2 live proof is staged in
+`provider/list_live_test.go` in the `chall-list-rpc-live-test` worktree and
+requires manual AWS credentials.
+
 Required work:
 
 - Route by list dispatch table, not by managed-resource dispatch.
@@ -173,6 +180,8 @@ Minimum tests:
 - Muxed SDK-backed list resource dispatches to the PF/framework list owner.
 - CRUD dispatch and list dispatch may target different subproviders for the
   same Pulumi resource token.
+- Downstream manual proof: `pulumi-aws` can call `List` for an SDKv2-backed
+  resource exposed through an upstream framework list wrapper.
 
 ## Deferred: Identity-Aware Import Or Read
 
@@ -189,8 +198,6 @@ These are known gaps between the current implementation commits and the
 end-state spec:
 
 - Non-list PF providers can panic during schema-only shim construction.
-- The muxer has no list-owner dispatch table for resources whose CRUD owner and
-  Terraform list owner differ.
 - Identity-only results currently synthesize `identity:` IDs.
 - Continuation tokens are looked up by opaque token only.
 - Query conversion uses `structpb.Struct.AsMap()` and loses Pulumi unknowns.

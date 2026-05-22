@@ -321,12 +321,11 @@ func (p *provider) listResourceHandle(
 	token tokens.Type,
 ) (resourceHandle, tftypes.Object, error) {
 	rt := runtypes.TypeOrRenamedEntityName(tfNameOrRenamedEntity)
-	if !p.resources.Has(rt) {
+	schema, ok := p.listResultResourceSchema(rt)
+	if !ok {
 		return resourceHandle{}, tftypes.Object{},
 			fmt.Errorf("[pf/tfbridge] unknown resource type: %q", tfNameOrRenamedEntity)
 	}
-
-	schema := p.resources.Schema(rt)
 	objectType, ok := schema.Type(ctx).(tftypes.Object)
 	if !ok {
 		return resourceHandle{}, tftypes.Object{},
@@ -349,6 +348,62 @@ func (p *provider) listResourceHandle(
 	}
 
 	return rh, objectType, nil
+}
+
+func (p *provider) listResultResourceSchema(
+	rt runtypes.TypeOrRenamedEntityName,
+) (runtypes.Schema, bool) {
+	if p.resources != nil && p.resources.Has(rt) {
+		return p.resources.Schema(rt), true
+	}
+
+	// Muxed list providers may serve only the Terraform ListResource RPC while
+	// the corresponding CRUD resource schema comes from another provider.
+	resource, ok := p.schemaOnlyProvider.ResourcesMap().GetOk(string(rt))
+	if !ok {
+		return nil, false
+	}
+	return shimResourceSchema{
+		name:     runtypes.TypeName(rt),
+		resource: resource,
+	}, true
+}
+
+type shimResourceSchema struct {
+	name     runtypes.TypeName
+	resource shim.Resource
+}
+
+var _ runtypes.Schema = shimResourceSchema{}
+
+func (s shimResourceSchema) ApplyTerraform5AttributePathStep(
+	step tftypes.AttributePathStep,
+) (interface{}, error) {
+	return s.Type(context.Background()).(tftypes.Object).ApplyTerraform5AttributePathStep(step)
+}
+
+func (s shimResourceSchema) Type(context.Context) tftypes.Type {
+	return convert.InferObjectType(s.resource.Schema(), nil)
+}
+
+func (s shimResourceSchema) ResourceSchemaVersion() int64 {
+	return int64(s.resource.SchemaVersion())
+}
+
+func (s shimResourceSchema) Shim() shim.SchemaMap {
+	return s.resource.Schema()
+}
+
+func (s shimResourceSchema) DeprecationMessage() string {
+	return s.resource.DeprecationMessage()
+}
+
+func (s shimResourceSchema) ResourceProtoSchema(context.Context) (*tfprotov6.Schema, error) {
+	return nil, nil
+}
+
+func (s shimResourceSchema) TFName() runtypes.TypeName {
+	return s.name
 }
 
 func (p *provider) listConfigSchema(ctx context.Context, tfResourceName string) (*tfprotov6.Schema, error) {

@@ -117,6 +117,18 @@ func (m *muxer) getResource(token string) server {
 	return m.servers[i]
 }
 
+func (m *muxer) getListResource(token string) server {
+	if m.dispatchTable.ListResources == nil {
+		return m.getResource(token)
+	}
+
+	i, ok := m.dispatchTable.ListResources[token]
+	if !ok {
+		return nil
+	}
+	return m.servers[i]
+}
+
 func (m *muxer) GetSchema(ctx context.Context, req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
 	if req.Version != SchemaVersion {
 		return nil, fmt.Errorf("Expected schema version %d, got %d",
@@ -422,9 +434,9 @@ func (m *muxer) List(
 	req *pulumirpc.ListRequest,
 	stream pulumirpc.ResourceProvider_ListServer,
 ) error {
-	server := m.getResource(req.GetToken())
+	server := m.getListResource(req.GetToken())
 	if server == nil {
-		return status.Errorf(codes.NotFound, "Resource type '%s' not found.", req.GetToken())
+		return status.Errorf(codes.Unimplemented, "Resource type '%s' is not listable.", req.GetToken())
 	}
 	return server.List(req, stream)
 }
