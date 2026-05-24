@@ -1,0 +1,8 @@
+[]tokens.Type{
+	tokens.Type("myprov:index/WebAclStatement:WebAclStatement"),
+	tokens.Type("myprov:index/WebAclStatementRateBasedStatement:WebAclStatementRateBasedStatement"),
+	tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement"),
+	tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatement"),
+	tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement"),
+	tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement"),
+}
