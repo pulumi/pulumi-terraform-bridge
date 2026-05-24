@@ -90,7 +90,7 @@ func (a attribute) Elem() interface{} {
 			contract.Failf("Invalid attribute nesting: %s", a.attr.NestedType.Nesting)
 		}
 	}
-	return newElement(a.attr.ValueType(), a.Optional()).Elem()
+	return newElement(a.attr.ValueType(), a.Optional(), a.Computed()).Elem()
 }
 
 // Defaults are applied in the provider binary, not here
