@@ -1,0 +1,93 @@
+
+* Root-cause
+
+Sets are represented as lists in Pulumi and the diffing logic is sensitive to element reordering.
+Set inputs do not come into the system in canonical order, because Pulumi represents it as lists and
+the user may specify them differently. We cannot assume that Pulumi statefiles store sets in the
+canonical order, or that providers return set data in the canonical order in their slice-typed
+outputs.
+
+* Constraints
+
+What would the ideal fix look like?
+
+- ensure that diffing proposes no-change plans for proposed/actual pairs that differ by set element
+  ordering
+
+- minimize reordering things in Pulumi to keep the original program-specified ordering as much as
+  possible
+
+- make sure that set order differences are projected back
+
+* Evidence of reordering in 2442 specifically
+
+[[file:~/code/pulumi-aws/upstream/internal/service/rds/parameter_group.go::func ResourceParameterModifyChunk(all \[\]*rds.Parameter, maxChunkSize int) (\[\]*rds.Parameter, \[\]*rds.Parameter) {][ResourceParameterModifyChunk]] is there to reorder parameters before applying to cloud. The output
+parameter order is determined by resourceParameterGroupRead which may cause changes as well. There
+is a magic constant of 20 at which the shuffling behavior changes, which may explain why this only
+reproduces with a large number of parameters.
+
+* Canonical ordering
+
+Some code is calling schema.NewSet from v2/helper/schema
+
+We can perhaps canonicalize the order of this with *schema.Set in Pulumi.
+
+Canonical order is defined as the one returned by *schema.Set helper and taking into account the
+hash function defined by the provider.
+
+* Where does TF order the elements
+
+Does cty.Value represent Sets specially? The answer is yes:
+
+[[file:~/go/pkg/mod/github.com/hashicorp/go-cty@v1.4.1-0.20200414143053-d3edf31b6320/cty/set/set.go::func NewSetFromSlice(rules Rules, vals \[\]interface{}) Set {][Set Implementation]]
+
+And specifically this implementation permits custom has functions, which are indeed used in the
+provider.
+
+* How does TF do it?
+
+Run an experiment diffing a re-ordered set, debug an observe at which point in the lifecycle the
+elements get ordered.
+
+So CustomizeDiff, Create and Update receive a special Set representation in a simple case:
+ *Set(map[string]interface {}{"430998943":"A", "849204828":"B"})
+
+Likewise, in cty space:
+ "set":cty.SetVal([]cty.Value{cty.StringVal("A"), cty.StringVal("B")))
+
+This happens as part of translating to cty.Value when passing to a provider.
+
+* Implications of canonical ordering
+
+Set elements are lacking a canonical order.
+
+Idea: what if we introduced an ordering pass at the phase of translating Pulumi data to TF, before
+diffing or any other processing of resources:
+
+config -> sort --> tf-config
+state  -> sort --> tf-state
+
+This would make diffs report no-changes when the planned vs actual state differ in the order only.
+
+Making the ordering canonical would be observable via Pulumi state. For pass-through input-output
+properties, it would change the ordering of elements stored in the state vs the original order
+specified in the user program.
+
+Would this surface during the provider upgrades? Seemingly it would not affect provider upgrades
+since the changing the order would not affect new diff results. Downgrading the provider after using
+the one with set canonicalization would result in diffs.
+
+A critical piece that is required here is to make sure that detailed diffs reported by the bridge
+are translated back into the order defined by either config or state. At a glance the code that
+constructs detailed diffs is set-aware but having full confidence might require additional checks.
+
+One edge case to call out here specifically is what happens with a delete diff?
+
+State={a,b,c} Config={a,c}  DetailedDiff=?
+
+We need to report that `b` was deleted but what is its index in the original Pulumi list? The
+canonicalization may have reordered State={b,a,c} to State={a,b,c} before storing.
+
+* References
+
+- https://github.com/pulumi/pulumi-aws/issues/2442
