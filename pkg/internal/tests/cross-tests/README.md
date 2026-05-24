@@ -47,6 +47,7 @@ Currently, SDKv2 cross-testing supports:
 
 - [Create](./create.go)
 - [Configure](./configure.go)
+- [Refresh](./refresh.go)
 
 Cross-tests can be written **either by** specify both the Terraform value *and* the Pulumi value **or** by
 specifying *only* the Terraform value and letting the framework infer an equivalent Pulumi value.
