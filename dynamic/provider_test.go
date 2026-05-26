@@ -54,7 +54,7 @@ func TestStacktraceDisplayed(t *testing.T) {
 	skipWindows(t)
 
 	ctx := context.Background()
-	grpc := parameterizedTestServer(ctx, t, pfProviderPath)
+	grpc := parameterizedTestServer(t, pfProviderPath)
 
 	_, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
 		Urn: string(resource.NewURN(
@@ -385,10 +385,10 @@ func grpcTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProvide
 }
 
 func parameterizedTestServer(
-	ctx context.Context, t *testing.T,
+	t *testing.T,
 	pathHelper func(t *testing.T) string,
 ) pulumirpc.ResourceProviderServer {
-	grpc := grpcTestServer(ctx, t)
+	grpc := grpcTestServer(t.Context(), t)
 	t.Run("parameterize", assertGRPCCall(grpc.Parameterize, &pulumirpc.ParameterizeRequest{
 		Parameters: &pulumirpc.ParameterizeRequest_Args{
 			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
@@ -757,9 +757,7 @@ func TestSDKv1Provider(t *testing.T) {
 	helper.Integration(t)
 	skipWindows(t)
 
-	ctx := context.Background()
-
-	server := parameterizedTestServer(ctx, t, sdkv1ProviderPath)
+	server := parameterizedTestServer(t, sdkv1ProviderPath)
 
 	const typ = "sdkv1:index/res:Res"
 	urn := string(resource.NewURN(
