@@ -50,3 +50,35 @@ func TestConflictsWithNamePrefixOnly(t *testing.T) {
 		require.NotNil(t, resp)
 	})
 }
+
+// When the user explicitly supplies both `name` and `name_prefix`, the bridge
+// must surface the upstream ConflictsWith error rather than silently dropping
+// one of the user-provided values.
+func TestConflictsWithBothUserSpecified(t *testing.T) {
+	t.Parallel()
+	helper.Integration(t)
+	skipWindows(t)
+
+	server := parameterizedTestServer(t, conflictsProviderPath)
+
+	const typ = "conflictsprovider:index/logGroup:LogGroup"
+	urn := string(resource.NewURN("test", "test", "", typ, "lg"))
+
+	news := marshal(resource.PropertyMap{
+		"name":       resource.NewProperty("explicit-name"),
+		"namePrefix": resource.NewProperty("example-"),
+	})
+
+	resp, err := server.Check(t.Context(), &pulumirpc.CheckRequest{Urn: urn, News: news})
+	require.NoError(t, err)
+	require.Len(t, resp.Failures, 2,
+		"Check must surface both ConflictsWith failures when the user provides both values")
+
+	reasons := []string{resp.Failures[0].Reason, resp.Failures[1].Reason}
+	assert.Contains(t, reasons,
+		`Conflicting configuration arguments. "name": conflicts with name_prefix.`+
+			` Examine values at 'lg.name'.`)
+	assert.Contains(t, reasons,
+		`Conflicting configuration arguments. "name_prefix": conflicts with name.`+
+			` Examine values at 'lg.namePrefix'.`)
+}
