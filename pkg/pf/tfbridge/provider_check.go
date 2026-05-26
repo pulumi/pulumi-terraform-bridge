@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/defaults"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // Check validates the given resource inputs from the user program and computes checked inputs that fill out default
@@ -79,10 +80,17 @@ func (p *provider) CheckWithContext(
 		ProviderConfig: p.lastKnownProviderConfig,
 	})
 
-	checkFailures, err := p.validateResourceConfig(ctx, urn, rh, news)
-
 	schemaMap := rh.schemaOnlyShimResource.Schema()
 	schemaInfos := rh.pulumiResourceInfo.GetFields()
+
+	// Identify keys auto-defaulted by ApplyDefaultInfoValues (via AutoName) so we can
+	// roll them back if they trigger upstream ConflictsWith validation. The bridge
+	// cannot read ConflictsWith from the protocol-level schema, so the only way to
+	// learn about a conflict is to call ValidateResourceConfig.
+	autoDefaulted := autoDefaultedKeys(inputs, news, schemaMap, schemaInfos)
+
+	news, checkFailures, err := p.validateResourceConfig(ctx, urn, rh, news, autoDefaulted)
+
 	news = tfbridge.MarkSchemaSecrets(ctx, schemaMap, schemaInfos, resource.NewObjectProperty(news)).ObjectValue()
 
 	if err != nil {
@@ -97,12 +105,13 @@ func (p *provider) validateResourceConfig(
 	urn resource.URN,
 	rh resourceHandle,
 	inputs resource.PropertyMap,
-) ([]plugin.CheckFailure, error) {
+	autoDefaulted map[resource.PropertyKey]bool,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	encodedInputs, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, inputs)
 	if err != nil {
-		return nil, fmt.Errorf("cannot encode resource inputs to call ValidateResourceConfig: %w", err)
+		return inputs, nil, fmt.Errorf("cannot encode resource inputs to call ValidateResourceConfig: %w", err)
 	}
 
 	req := tfprotov6.ValidateResourceConfigRequest{
@@ -115,11 +124,22 @@ func (p *provider) validateResourceConfig(
 
 	resp, err := p.tfServer.ValidateResourceConfig(ctx, &req)
 	if err != nil {
-		return nil, fmt.Errorf("error calling ValidateResourceConfig: %w", err)
+		return inputs, nil, fmt.Errorf("error calling ValidateResourceConfig: %w", err)
 	}
 
 	schemaMap := rh.schemaOnlyShimResource.Schema()
 	schemaInfos := rh.pulumiResourceInfo.GetFields()
+
+	// If any ConflictsWith failure targets a property we auto-defaulted (e.g. an
+	// AutoName injected `name`), drop it from the inputs and re-validate once.
+	// The bridge cannot see ConflictsWith metadata in the protocol-level schema,
+	// so this is the only way to honour it for dynamic providers.
+	if len(autoDefaulted) > 0 {
+		stripped := stripConflictingAutoDefaults(inputs, autoDefaulted, resp.Diagnostics, schemaMap, schemaInfos)
+		if stripped != nil {
+			return p.validateResourceConfig(ctx, urn, rh, stripped, nil)
+		}
+	}
 
 	checkFailures := []plugin.CheckFailure{}
 	remainingDiagnostics := []*tfprotov6.Diagnostic{}
@@ -133,8 +153,76 @@ func (p *provider) validateResourceConfig(
 
 	sc := &schemaContext{schemaMap: schemaMap, schemaInfos: schemaInfos}
 	if err := p.processDiagnosticsWithContext(ctx, remainingDiagnostics, sc); err != nil {
-		return nil, err
+		return inputs, nil, err
 	}
 
-	return checkFailures, nil
+	return inputs, checkFailures, nil
+}
+
+// autoDefaultedKeys returns the property keys that ApplyDefaultInfoValues added to
+// news via an AutoName default (the user did not provide them in inputs).
+func autoDefaultedKeys(
+	inputs, news resource.PropertyMap,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+) map[resource.PropertyKey]bool {
+	out := map[resource.PropertyKey]bool{}
+	for tfKey, info := range schemaInfos {
+		if info == nil || info.Default == nil || !info.Default.AutoNamed {
+			continue
+		}
+		pk := resource.PropertyKey(tfbridge.TerraformToPulumiNameV2(tfKey, schemaMap, schemaInfos))
+		if _, inUser := inputs[pk]; inUser {
+			continue
+		}
+		if _, inNews := news[pk]; inNews {
+			out[pk] = true
+		}
+	}
+	return out
+}
+
+// stripConflictingAutoDefaults inspects ValidateResourceConfig diagnostics for
+// "Conflicting configuration arguments" errors. If the conflict points at an
+// auto-defaulted attribute, the attribute is removed from the returned inputs.
+// Returns nil if no auto-defaulted keys were dropped.
+func stripConflictingAutoDefaults(
+	inputs resource.PropertyMap,
+	autoDefaulted map[resource.PropertyKey]bool,
+	diags []*tfprotov6.Diagnostic,
+	schemaMap shim.SchemaMap,
+	schemaInfos map[string]*tfbridge.SchemaInfo,
+) resource.PropertyMap {
+	stripped := inputs.Copy()
+	dropped := false
+	for _, diag := range diags {
+		if diag == nil || diag.Severity > tfprotov6.DiagnosticSeverityError {
+			continue
+		}
+		if diag.Summary != "Conflicting configuration arguments" {
+			continue
+		}
+		if diag.Attribute == nil {
+			continue
+		}
+		steps := diag.Attribute.Steps()
+		if len(steps) != 1 {
+			continue
+		}
+		name, ok := steps[0].(tftypes.AttributeName)
+		if !ok {
+			continue
+		}
+		pulumiName := tfbridge.TerraformToPulumiNameV2(string(name), schemaMap, schemaInfos)
+		pk := resource.PropertyKey(pulumiName)
+		if !autoDefaulted[pk] {
+			continue
+		}
+		delete(stripped, pk)
+		dropped = true
+	}
+	if !dropped {
+		return nil
+	}
+	return stripped
 }
