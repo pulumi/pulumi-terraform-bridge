@@ -87,7 +87,11 @@ func (p *provider) CheckWithContext(
 	// roll them back if they trigger upstream ConflictsWith validation. The bridge
 	// cannot read ConflictsWith from the protocol-level schema, so the only way to
 	// learn about a conflict is to call ValidateResourceConfig.
-	autoDefaulted := autoDefaultedKeys(inputs, news, schemaMap, schemaInfos)
+	//
+	// Compare against checkedInputs (post-PreCheckCallback), not raw inputs, so a
+	// value supplied by a PreCheckCallback isn't mistaken for an AutoName default
+	// and silently stripped when it triggers ConflictsWith.
+	autoDefaulted := autoDefaultedKeys(checkedInputs, news, schemaMap, schemaInfos)
 
 	news, checkFailures, err := p.validateResourceConfig(ctx, urn, rh, news, autoDefaulted)
 
