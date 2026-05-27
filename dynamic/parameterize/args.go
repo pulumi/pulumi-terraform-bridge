@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -37,6 +38,9 @@ type Args struct {
 	// Includes is the list of resource and datasource TF tokens to include in the
 	// provider.  If empty, all resources and datasources are included.
 	Includes []string
+	// Excludes is the list of resource and datasource TF tokens to exclude from the
+	// provider.  If empty, nothing is excluded.
+	Excludes []string
 	// ProviderName is the custom name for the generated provider.
 	// If empty, the default Terraform provider name is used.
 	ProviderName string
@@ -73,6 +77,7 @@ func ParseArgs(ctx context.Context, cliArgs []string) (Args, error) {
 	var upstreamRepoPath string
 	var indexDocOutDir string
 	var includes []string
+	var excludes []string
 	var providerName string
 
 	// If --help is included in `a`, then `RunE` will never be executed.
@@ -85,7 +90,8 @@ func ParseArgs(ctx context.Context, cliArgs []string) (Args, error) {
 		RunE: func(cmd *cobra.Command, a []string) error {
 			cmdWasRun = true
 			var err error
-			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath, indexDocOutDir, includes, providerName)
+			args, err = parseArgs(
+				cmd.Context(), a, fullDocs, upstreamRepoPath, indexDocOutDir, includes, excludes, providerName)
 			return err
 		},
 		Args: func(cmd *cobra.Command, args []string) error {
@@ -108,6 +114,11 @@ func ParseArgs(ctx context.Context, cliArgs []string) (Args, error) {
 			`(e.g. aws_instance,aws_vpc).
 
 If no include filter is specified, all resources and datasources are mapped.`)
+	cmd.Flags().StringSliceVar(&excludes, "exclude", nil,
+		`Comma-separated list of resource and datasource Terraform tokens to exclude from the provider `+
+			`(e.g. aws_instance,aws_vpc).
+
+If no exclude filter is specified, nothing is excluded.`)
 	cmd.Flags().StringVar(&providerName, "provider-name", "",
 		"Custom name for the generated provider to avoid name collisions")
 
@@ -156,9 +167,14 @@ func parseArgs(
 	args []string,
 	fullDocs bool,
 	upstreamRepoPath, indexDocOutDir string,
-	includes []string,
+	includes, excludes []string,
 	providerName string,
 ) (Args, error) {
+	if conflicts := intersection(includes, excludes); len(conflicts) > 0 {
+		return Args{}, fmt.Errorf(
+			"tokens cannot be both included and excluded: %s", strings.Join(conflicts, ", "))
+	}
+
 	// If we see a local prefix (starts with '.' or '/'), parse args for a local provider
 	if strings.HasPrefix(args[0], ".") || strings.HasPrefix(args[0], "/") {
 		if len(args) > 1 {
@@ -178,6 +194,7 @@ func parseArgs(
 				IndexDocOutDir:   indexDocOutDir,
 			},
 			Includes:     includes,
+			Excludes:     excludes,
 			ProviderName: providerName,
 		}, nil
 	}
@@ -200,5 +217,22 @@ func parseArgs(
 		Version:        version,
 		Docs:           fullDocs,
 		IndexDocOutDir: indexDocOutDir,
-	}, Includes: includes, ProviderName: providerName}, nil
+	}, Includes: includes, Excludes: excludes, ProviderName: providerName}, nil
+}
+
+func intersection(a, b []string) []string {
+	bSet := make(map[string]bool, len(b))
+	for _, x := range b {
+		bSet[x] = true
+	}
+	var common []string
+	seen := make(map[string]bool)
+	for _, x := range a {
+		if bSet[x] && !seen[x] {
+			seen[x] = true
+			common = append(common, x)
+		}
+	}
+	sort.Strings(common)
+	return common
 }

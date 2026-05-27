@@ -104,24 +104,34 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		prov.Repository = "https://github.com/" + ghOrg + "/terraform-provider-" + name
 	}
 
-	// Apply resource filtering if specified
-	if len(value.Includes) > 0 {
-		// Create a set of resources to include
-		includeSet := make(map[string]bool)
+	if len(value.Includes) > 0 || len(value.Excludes) > 0 {
+		includeSet := make(map[string]bool, len(value.Includes))
 		for _, resource := range value.Includes {
 			includeSet[resource] = true
 		}
+		excludeSet := make(map[string]bool, len(value.Excludes))
+		for _, resource := range value.Excludes {
+			excludeSet[resource] = true
+		}
 
-		// Add all resources NOT in the include set to IgnoreMappings
+		// A token is ignored if it is explicitly excluded, or if an include
+		// filter is present and the token is not in it.
+		shouldIgnore := func(key string) bool {
+			if excludeSet[key] {
+				return true
+			}
+			return len(includeSet) > 0 && !includeSet[key]
+		}
+
 		var ignoreMappings []string
 		for key := range provider.ResourcesMap().Range {
-			if !includeSet[key] {
+			if shouldIgnore(key) {
 				ignoreMappings = append(ignoreMappings, key)
 			}
 		}
 		// Also check data sources
 		for key := range provider.DataSourcesMap().Range {
-			if !includeSet[key] {
+			if shouldIgnore(key) {
 				ignoreMappings = append(ignoreMappings, key)
 			}
 		}
