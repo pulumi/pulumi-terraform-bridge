@@ -23,12 +23,19 @@ import (
 	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
+	sdkdiag "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -357,6 +364,109 @@ func TestPFCheck(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSDKv2PreCheckCallbackValueNotDroppedByConflictStripping(t *testing.T) {
+	t.Parallel()
+
+	sdkProv := &sdkschema.Provider{
+		ResourcesMap: map[string]*sdkschema.Resource{
+			"testprovider_log_group": {
+				Schema: map[string]*sdkschema.Schema{
+					"name": {
+						Type:          sdkschema.TypeString,
+						Optional:      true,
+						Computed:      true,
+						ForceNew:      true,
+						ConflictsWith: []string{"name_prefix"},
+					},
+					"name_prefix": {
+						Type:          sdkschema.TypeString,
+						Optional:      true,
+						Computed:      true,
+						ForceNew:      true,
+						ConflictsWith: []string{"name"},
+					},
+				},
+				CreateContext: func(
+					_ context.Context, d *sdkschema.ResourceData, _ any,
+				) sdkdiag.Diagnostics {
+					d.SetId("log-group-id")
+					return nil
+				},
+				ReadContext: func(
+					_ context.Context, _ *sdkschema.ResourceData, _ any,
+				) sdkdiag.Diagnostics {
+					return nil
+				},
+				DeleteContext: func(
+					_ context.Context, _ *sdkschema.ResourceData, _ any,
+				) sdkdiag.Diagnostics {
+					return nil
+				},
+			},
+		},
+	}
+
+	v6server, err := tf5to6server.UpgradeServer(t.Context(), func() tfprotov5.ProviderServer {
+		return sdkProv.GRPCProvider()
+	})
+	require.NoError(t, err)
+
+	const callbackName = "name-from-precheck-callback"
+
+	info := tfbridge0.ProviderInfo{
+		Name:         "testprovider",
+		Version:      "0.0.1",
+		P:            proto.New(t.Context(), v6server),
+		MetadataInfo: &tfbridge0.MetadataInfo{},
+		Resources: map[string]*tfbridge0.ResourceInfo{
+			"testprovider_log_group": {
+				Tok:  "testprovider:index/logGroup:LogGroup",
+				Docs: &tfbridge0.DocInfo{Markdown: []byte("OK")},
+				ComputeID: func(_ context.Context, state resource.PropertyMap) (resource.ID, error) {
+					if v, ok := state["id"]; ok && v.IsString() {
+						return resource.ID(v.StringValue()), nil
+					}
+					return "log-group-id", nil
+				},
+				Fields: map[string]*tfbridge0.SchemaInfo{
+					// Rename the SDKv2 "id" so it doesn't collide with Pulumi's reserved id.
+					"id":   {Name: "logGroupId"},
+					"name": tfbridge0.AutoName("name", 50, "-"),
+				},
+				PreCheckCallback: func(
+					_ context.Context,
+					config, _ resource.PropertyMap,
+				) (resource.PropertyMap, error) {
+					out := config.Copy()
+					out["name"] = resource.NewProperty(callbackName)
+					return out, nil
+				},
+			},
+		},
+	}
+
+	server, err := newProviderServer(t, info)
+	require.NoError(t, err)
+
+	news, err := plugin.MarshalProperties(resource.PropertyMap{
+		"namePrefix": resource.NewProperty("example-"),
+	}, plugin.MarshalOptions{})
+	require.NoError(t, err)
+
+	resp, err := server.Check(t.Context(), &pulumirpc.CheckRequest{
+		Urn:        "urn:pulumi:st::pg::testprovider:index/logGroup:LogGroup::lg",
+		News:       news,
+		RandomSeed: []byte("wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="),
+	})
+	require.NoError(t, err)
+
+	checked, err := plugin.UnmarshalProperties(resp.Inputs, plugin.MarshalOptions{KeepSecrets: true})
+	require.NoError(t, err)
+
+	name := checked["name"]
+	assert.Equal(t, callbackName, name.StringValue())
 }
 
 func TestCheckWithIntID(t *testing.T) {
