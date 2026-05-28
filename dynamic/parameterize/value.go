@@ -31,6 +31,9 @@ type Value struct {
 	// Includes is the list of resource and datasource names to include in the
 	// provider.  If empty, all resources are included.
 	Includes []string `json:"includes,omitempty"`
+	// Excludes is the list of resource and datasource names to exclude from the
+	// provider.  If empty, nothing is excluded.
+	Excludes []string `json:"excludes,omitempty"`
 	// ProviderName is the custom name for the generated provider.
 	// If empty, the default Terraform provider name is used.
 	ProviderName string `json:"providerName,omitempty"`
@@ -103,10 +106,10 @@ func (p *Value) IntoArgs() Args {
 	if p.Local != nil {
 		return Args{Local: &LocalArgs{
 			Path: p.Local.Path,
-		}, Includes: p.Includes, ProviderName: p.ProviderName}
+		}, Includes: p.Includes, Excludes: p.Excludes, ProviderName: p.ProviderName}
 	}
 	return Args{Remote: &RemoteArgs{
 		Name:    p.Remote.URL,
 		Version: p.Remote.Version,
-	}, Includes: p.Includes, ProviderName: p.ProviderName}
+	}, Includes: p.Includes, Excludes: p.Excludes, ProviderName: p.ProviderName}
 }

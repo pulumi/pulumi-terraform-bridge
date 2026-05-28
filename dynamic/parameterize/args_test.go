@@ -175,6 +175,61 @@ func TestParseArgs(t *testing.T) {
 			},
 		},
 		{
+			name: "local with excludes",
+			args: []string{"./my-provider", "--exclude=resource1,resource2"},
+			expect: Args{
+				Local:    &LocalArgs{Path: "./my-provider"},
+				Excludes: []string{"resource1", "resource2"},
+			},
+		},
+		{
+			name: "remote with excludes",
+			args: []string{"registry/provider", "1.2.3", "--exclude=res_a,res_b,res_c"},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name:    "registry/provider",
+					Version: "1.2.3",
+				},
+				Excludes: []string{"res_a", "res_b", "res_c"},
+			},
+		},
+		{
+			name: "single exclude",
+			args: []string{"registry/provider", "--exclude=single_resource"},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name: "registry/provider",
+				},
+				Excludes: []string{"single_resource"},
+			},
+		},
+		{
+			name: "multiple exclude invocations",
+			args: []string{"registry/provider", "--exclude", "res_a", "--exclude", "res_b"},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name: "registry/provider",
+				},
+				Excludes: []string{"res_a", "res_b"},
+			},
+		},
+		{
+			name: "include and exclude disjoint",
+			args: []string{"registry/provider", "--include=res_a,res_b", "--exclude=res_c"},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name: "registry/provider",
+				},
+				Includes: []string{"res_a", "res_b"},
+				Excludes: []string{"res_c"},
+			},
+		},
+		{
+			name:   "include and exclude conflict",
+			args:   []string{"registry/provider", "--include=res_a,res_b", "--exclude=res_b,res_c"},
+			errMsg: autogold.Expect("tokens cannot be both included and excluded: res_b"),
+		},
+		{
 			name: "local with provider name",
 			args: []string{"./my-provider", "--provider-name=custom-provider"},
 			expect: Args{

@@ -312,6 +312,98 @@ func TestIncludeFilter(t *testing.T) {
 	})
 }
 
+func TestExcludeFilter(t *testing.T) {
+	t.Parallel()
+
+	provider := schemaOnlyProvider{
+		name:    "test",
+		version: "1.0.0",
+		schema: &tfprotov6.GetProviderSchemaResponse{
+			ResourceSchemas: map[string]*tfprotov6.Schema{
+				"test_resource_a": {Block: &tfprotov6.SchemaBlock{}},
+				"test_resource_b": {Block: &tfprotov6.SchemaBlock{}},
+				"test_resource_c": {Block: &tfprotov6.SchemaBlock{}},
+			},
+			DataSourceSchemas: map[string]*tfprotov6.Schema{
+				"test_data_a": {Block: &tfprotov6.SchemaBlock{}},
+				"test_data_b": {Block: &tfprotov6.SchemaBlock{}},
+			},
+		},
+	}
+
+	tokens := func(prov info.Provider) []string {
+		out := make([]string, 0, len(prov.Resources)+len(prov.DataSources))
+		for tfName := range prov.Resources {
+			out = append(out, tfName)
+		}
+		for tfName := range prov.DataSources {
+			out = append(out, tfName)
+		}
+		return out
+	}
+
+	t.Run("exclude a single resource", func(t *testing.T) {
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Excludes: []string{"test_resource_b"},
+		})
+		require.NoError(t, err)
+
+		assert.ElementsMatch(t, []string{"test_resource_b"}, info.IgnoreMappings)
+		assert.ElementsMatch(t,
+			[]string{"test_resource_a", "test_resource_c", "test_data_a", "test_data_b"},
+			tokens(info))
+	})
+
+	t.Run("exclude a datasource", func(t *testing.T) {
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Excludes: []string{"test_data_a"},
+		})
+		require.NoError(t, err)
+
+		assert.ElementsMatch(t, []string{"test_data_a"}, info.IgnoreMappings)
+		assert.ElementsMatch(t,
+			[]string{"test_resource_a", "test_resource_b", "test_resource_c", "test_data_b"},
+			tokens(info))
+	})
+
+	t.Run("include and exclude disjoint", func(t *testing.T) {
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Includes: []string{"test_resource_a", "test_resource_b"},
+			Excludes: []string{"test_data_a"},
+		})
+		require.NoError(t, err)
+
+		assert.ElementsMatch(t,
+			[]string{"test_resource_c", "test_data_a", "test_data_b"},
+			info.IgnoreMappings)
+		assert.ElementsMatch(t, []string{"test_resource_a", "test_resource_b"}, tokens(info))
+	})
+
+	t.Run("exclude non-existent token is a no-op", func(t *testing.T) {
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Excludes: []string{"non_existent_resource"},
+		})
+		require.NoError(t, err)
+
+		assert.Empty(t, info.IgnoreMappings)
+		assert.ElementsMatch(t,
+			[]string{"test_resource_a", "test_resource_b", "test_resource_c", "test_data_a", "test_data_b"},
+			tokens(info))
+	})
+
+	t.Run("nil excludes excludes nothing", func(t *testing.T) {
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Excludes: nil,
+		})
+		require.NoError(t, err)
+
+		assert.Empty(t, info.IgnoreMappings)
+		assert.ElementsMatch(t,
+			[]string{"test_resource_a", "test_resource_b", "test_resource_c", "test_data_a", "test_data_b"},
+			tokens(info))
+	})
+}
+
 func TestProviderNameOverride(t *testing.T) {
 	t.Parallel()
 
