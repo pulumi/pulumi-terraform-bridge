@@ -238,18 +238,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "bucketId",
-                "bucketName",
-                "capabilities",
-                "namePrefix"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketCorsRule:getBucketCorsRule": {
             "properties": {
@@ -284,20 +273,7 @@
                     "type": "number"
                 }
             },
-            "type": "object",
-            "required": [
-                "allowedHeaders",
-                "allowedOperations",
-                "allowedOrigins",
-                "corsRuleName",
-                "exposeHeaders",
-                "maxAgeSeconds"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketDefaultServerSideEncryption:getBucketDefaultServerSideEncryption": {
             "properties": {
@@ -308,16 +284,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "algorithm",
-                "mode"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketFileFileVersion:getBucketFileFileVersion": {
             "properties": {
@@ -361,25 +328,7 @@
                     "type": "number"
                 }
             },
-            "type": "object",
-            "required": [
-                "action",
-                "bucketId",
-                "contentMd5",
-                "contentSha1",
-                "contentType",
-                "fileId",
-                "fileInfo",
-                "fileName",
-                "serverSideEncryptions",
-                "size",
-                "uploadTimestamp"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketFileFileVersionServerSideEncryption:getBucketFileFileVersionServerSideEncryption": {
             "properties": {
@@ -390,16 +339,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "algorithm",
-                "mode"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketFileLockConfiguration:getBucketFileLockConfiguration": {
             "properties": {
@@ -413,16 +353,7 @@
                     "type": "boolean"
                 }
             },
-            "type": "object",
-            "required": [
-                "defaultRetentions",
-                "isFileLockEnabled"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketFileLockConfigurationDefaultRetention:getBucketFileLockConfigurationDefaultRetention": {
             "properties": {
@@ -436,16 +367,7 @@
                     }
                 }
             },
-            "type": "object",
-            "required": [
-                "mode",
-                "periods"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketFileLockConfigurationDefaultRetentionPeriod:getBucketFileLockConfigurationDefaultRetentionPeriod": {
             "properties": {
@@ -456,16 +378,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "duration",
-                "unit"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketFilesFileVersion:getBucketFilesFileVersion": {
             "properties": {
@@ -509,25 +422,7 @@
                     "type": "number"
                 }
             },
-            "type": "object",
-            "required": [
-                "action",
-                "bucketId",
-                "contentMd5",
-                "contentSha1",
-                "contentType",
-                "fileId",
-                "fileInfo",
-                "fileName",
-                "serverSideEncryptions",
-                "size",
-                "uploadTimestamp"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketFilesFileVersionServerSideEncryption:getBucketFilesFileVersionServerSideEncryption": {
             "properties": {
@@ -538,16 +433,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "algorithm",
-                "mode"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "b2:index/getBucketLifecycleRule:getBucketLifecycleRule": {
             "properties": {
@@ -561,17 +447,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "daysFromHidingToDeleting",
-                "daysFromUploadingToHiding",
-                "fileNamePrefix"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         }
     },
     "provider": {

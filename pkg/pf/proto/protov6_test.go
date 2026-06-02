@@ -150,6 +150,48 @@ func TestBlockSchemaGeneration(t *testing.T) {
 		"Blocks should map to input properties")
 }
 
+// TestAttributeAsBlocksRequired asserts that when no required/optional information is present, then we fall back to
+// assuming all fields are optional.
+func TestAttributeAsBlocksRequired(t *testing.T) {
+	t.Parallel()
+	p := proto.New(t.Context(), providerServer{
+		SchemaResponse: &tfprotov6.GetProviderSchemaResponse{
+			ResourceSchemas: map[string]*tfprotov6.Schema{
+				"testprov_my_res": {Block: &tfprotov6.SchemaBlock{
+					Attributes: []*tfprotov6.SchemaAttribute{{
+						Name:     "ingress",
+						Optional: true,
+						Type: tftypes.List{ElementType: tftypes.Object{
+							AttributeTypes: map[string]tftypes.Type{
+								"from_port":   tftypes.Number,
+								"to_port":     tftypes.Number,
+								"protocol":    tftypes.String,
+								"description": tftypes.String,
+								"cidr_blocks": tftypes.List{ElementType: tftypes.String},
+							},
+						}},
+					}},
+				}},
+			},
+		},
+	})
+	providerInfo := info.Provider{
+		P:    p,
+		Name: "testprov",
+		Resources: map[string]*info.Resource{
+			"testprov_my_res": {
+				Tok: "testprov:index:MyRes",
+			},
+		},
+	}
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	spec, err := tfgen.GenerateSchema(providerInfo, nilSink)
+	require.NoError(t, err)
+
+	typ := spec.Types["testprov:index/MyResIngress:MyResIngress"]
+	autogold.Expect([]string{}).Equal(t, typ.Required)
+}
+
 type providerServer struct {
 	tfprotov6.ProviderServer // This will panic if un-overridden methods are called
 

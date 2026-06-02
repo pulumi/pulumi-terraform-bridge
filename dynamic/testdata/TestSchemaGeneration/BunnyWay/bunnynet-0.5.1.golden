@@ -76,13 +76,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "parameter1",
-                "parameter2",
-                "parameter3",
-                "type"
-            ]
+            "type": "object"
         },
         "bunnynet:index/PullzoneEdgeruleTrigger:PullzoneEdgeruleTrigger": {
             "properties": {
@@ -105,14 +99,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "matchType",
-                "parameter1",
-                "parameter2",
-                "patterns",
-                "type"
-            ]
+            "type": "object"
         },
         "bunnynet:index/PullzoneOrigin:PullzoneOrigin": {
             "properties": {
@@ -230,12 +217,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "end",
-                "start",
-                "title"
-            ]
+            "type": "object"
         },
         "bunnynet:index/StreamVideoMoment:StreamVideoMoment": {
             "properties": {
@@ -246,11 +228,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "label",
-                "timestamp"
-            ]
+            "type": "object"
         }
     },
     "provider": {

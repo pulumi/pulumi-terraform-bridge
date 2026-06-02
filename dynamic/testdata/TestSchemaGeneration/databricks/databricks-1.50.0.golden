@@ -6900,15 +6900,7 @@
                     }
                 }
             },
-            "type": "object",
-            "required": [
-                "continuousUpdateStatuses",
-                "detailedState",
-                "failedStatuses",
-                "message",
-                "provisioningStatuses",
-                "triggeredUpdateStatuses"
-            ]
+            "type": "object"
         },
         "databricks:index/OnlineTableStatusContinuousUpdateStatus:OnlineTableStatusContinuousUpdateStatus": {
             "properties": {
@@ -6925,12 +6917,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "initialPipelineSyncProgresses",
-                "lastProcessedCommitVersion",
-                "timestamp"
-            ]
+            "type": "object"
         },
         "databricks:index/OnlineTableStatusContinuousUpdateStatusInitialPipelineSyncProgress:OnlineTableStatusContinuousUpdateStatusInitialPipelineSyncProgress": {
             "properties": {
@@ -6950,14 +6937,7 @@
                     "type": "number"
                 }
             },
-            "type": "object",
-            "required": [
-                "estimatedCompletionTimeSeconds",
-                "latestVersionCurrentlyProcessing",
-                "syncProgressCompletion",
-                "syncedRowCount",
-                "totalRowCount"
-            ]
+            "type": "object"
         },
         "databricks:index/OnlineTableStatusFailedStatus:OnlineTableStatusFailedStatus": {
             "properties": {
@@ -6968,11 +6948,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "lastProcessedCommitVersion",
-                "timestamp"
-            ]
+            "type": "object"
         },
         "databricks:index/OnlineTableStatusProvisioningStatus:OnlineTableStatusProvisioningStatus": {
             "properties": {
@@ -6983,10 +6959,7 @@
                     }
                 }
             },
-            "type": "object",
-            "required": [
-                "initialPipelineSyncProgresses"
-            ]
+            "type": "object"
         },
         "databricks:index/OnlineTableStatusProvisioningStatusInitialPipelineSyncProgress:OnlineTableStatusProvisioningStatusInitialPipelineSyncProgress": {
             "properties": {
@@ -7006,14 +6979,7 @@
                     "type": "number"
                 }
             },
-            "type": "object",
-            "required": [
-                "estimatedCompletionTimeSeconds",
-                "latestVersionCurrentlyProcessing",
-                "syncProgressCompletion",
-                "syncedRowCount",
-                "totalRowCount"
-            ]
+            "type": "object"
         },
         "databricks:index/OnlineTableStatusTriggeredUpdateStatus:OnlineTableStatusTriggeredUpdateStatus": {
             "properties": {
@@ -7030,12 +6996,7 @@
                     }
                 }
             },
-            "type": "object",
-            "required": [
-                "lastProcessedCommitVersion",
-                "timestamp",
-                "triggeredUpdateProgresses"
-            ]
+            "type": "object"
         },
         "databricks:index/OnlineTableStatusTriggeredUpdateStatusTriggeredUpdateProgress:OnlineTableStatusTriggeredUpdateStatusTriggeredUpdateProgress": {
             "properties": {
@@ -7055,14 +7016,7 @@
                     "type": "number"
                 }
             },
-            "type": "object",
-            "required": [
-                "estimatedCompletionTimeSeconds",
-                "latestVersionCurrentlyProcessing",
-                "syncProgressCompletion",
-                "syncedRowCount",
-                "totalRowCount"
-            ]
+            "type": "object"
         },
         "databricks:index/OnlineTableTimeouts:OnlineTableTimeouts": {
             "properties": {
@@ -8164,14 +8118,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "details",
-                "failureReasons",
-                "message",
-                "status",
-                "summary"
-            ]
+            "type": "object"
         },
         "databricks:index/SqlEndpointHealthFailureReason:SqlEndpointHealthFailureReason": {
             "properties": {
@@ -8188,12 +8135,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "code",
-                "parameters",
-                "type"
-            ]
+            "type": "object"
         },
         "databricks:index/SqlEndpointOdbcParam:SqlEndpointOdbcParam": {
             "properties": {
@@ -8210,13 +8152,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "hostname",
-                "path",
-                "port",
-                "protocol"
-            ]
+            "type": "object"
         },
         "databricks:index/SqlEndpointTags:SqlEndpointTags": {
             "properties": {
@@ -8863,11 +8799,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "message",
-                "state"
-            ]
+            "type": "object"
         },
         "databricks:index/VectorSearchEndpointTimeouts:VectorSearchEndpointTimeouts": {
             "properties": {
@@ -8992,13 +8924,7 @@
                     "type": "boolean"
                 }
             },
-            "type": "object",
-            "required": [
-                "indexUrl",
-                "indexedRowCount",
-                "message",
-                "ready"
-            ]
+            "type": "object"
         },
         "databricks:index/VectorSearchIndexTimeouts:VectorSearchIndexTimeouts": {
             "properties": {
@@ -10314,16 +10240,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "fileSize",
-                "path"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "databricks:index/getExternalLocationExternalLocationInfo:getExternalLocationExternalLocationInfo": {
             "properties": {
@@ -14858,16 +14775,7 @@
                     "type": "string"
                 }
             },
-            "type": "object",
-            "required": [
-                "language",
-                "path"
-            ],
-            "language": {
-                "nodejs": {
-                    "requiredInputs": []
-                }
-            }
+            "type": "object"
         },
         "databricks:index/getSchemaSchemaInfo:getSchemaSchemaInfo": {
             "properties": {
