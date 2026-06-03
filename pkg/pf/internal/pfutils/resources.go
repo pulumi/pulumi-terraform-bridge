@@ -40,18 +40,28 @@ func GatherResources[F func(Schema) shim.SchemaMap](
 			ProviderTypeName: provMetadata.TypeName,
 		}, &meta)
 
-		schemaResponse := &resource.SchemaResponse{}
-		res.Schema(ctx, resource.SchemaRequest{}, schemaResponse)
-
-		resSchema, diag := schemaResponse.Schema, schemaResponse.Diagnostics
-		if err := checkDiagsForErrors(diag); err != nil {
-			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
-		}
+		makeResource := makeResource
+		tfName := runtypes.TypeName(meta.TypeName)
 
 		rs[runtypes.TypeOrRenamedEntityName(meta.TypeName)] = entry[func() resource.Resource]{
-			t:      makeResource,
-			schema: FromResourceSchema(resSchema),
-			tfName: runtypes.TypeName(meta.TypeName),
+			t: makeResource,
+			schema: &lazySchema{
+				kind:   "resource",
+				tfName: tfName,
+				load: func() (Schema, error) {
+					res := makeResource()
+					schemaResponse := &resource.SchemaResponse{}
+					res.Schema(ctx, resource.SchemaRequest{}, schemaResponse)
+
+					resSchema, diag := schemaResponse.Schema, schemaResponse.Diagnostics
+					if err := checkDiagsForErrors(diag); err != nil {
+						return nil, fmt.Errorf("Resource %s GetSchema() error: %w", tfName, err)
+					}
+
+					return FromResourceSchema(resSchema), nil
+				},
+			},
+			tfName: tfName,
 		}
 	}
 

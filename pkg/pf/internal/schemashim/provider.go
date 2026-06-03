@@ -42,18 +42,13 @@ type SchemaOnlyProvider struct {
 	internalinter.Internal
 }
 
-func (p *SchemaOnlyProvider) Server(ctx context.Context) (tfprotov6.ProviderServer, error) {
+func (p *SchemaOnlyProvider) FrameworkProvider() pfprovider.Provider {
+	return p.tf
+}
+
+func (p *SchemaOnlyProvider) Server(context.Context) (tfprotov6.ProviderServer, error) {
 	newServer6 := providerserver.NewProtocol6(p.tf)
-	server6 := newServer6()
-
-	// Somehow this GetProviderSchema call needs to happen at least once to avoid Resource Type Not Found in the
-	// tfServer, to init it properly to remember provider name and compute correct resource names like
-	// random_integer instead of _integer (unknown provider name).
-	if _, err := server6.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{}); err != nil {
-		return nil, err
-	}
-
-	return server6, nil
+	return newServer6(), nil
 }
 
 func (p *SchemaOnlyProvider) Resources(ctx context.Context) (runtypes.Resources, error) {

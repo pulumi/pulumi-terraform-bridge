@@ -749,22 +749,15 @@ func TestWriteOnlyAttributesGenerateToSchema(t *testing.T) {
 	autogold.ExpectFile(t, autogold.Raw(b.String()))
 }
 
-func TestPFRequiredInputWithDefault(t *testing.T) {
+func TestGenerateSchemaFailsOnInvalidPFResourceSchemaImplementation(t *testing.T) {
 	t.Parallel()
-
-	if runtime.GOOS == "windows" {
-		t.Skipf("Skipping on windows - tests cases need to be made robust to newline handling")
-	}
 
 	schema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"id": rschema.StringAttribute{Computed: true},
 			"a1": rschema.StringAttribute{
-				Required: true,
+				Optional: true,
 				Default:  stringdefault.StaticString("default"),
-			},
-			"a2": rschema.StringAttribute{
-				Required: true,
 			},
 		},
 	}
@@ -774,7 +767,7 @@ func TestPFRequiredInputWithDefault(t *testing.T) {
 		Docs: &tfbridge.DocInfo{Markdown: []byte{' '}},
 	}
 
-	res, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
+	_, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
 		ProviderInfo: tfbridge.ProviderInfo{
 			Name:             "testprovider",
 			UpstreamRepoPath: ".", // no invalid mappings warnings
@@ -788,8 +781,6 @@ func TestPFRequiredInputWithDefault(t *testing.T) {
 			},
 		},
 	})
-	require.NoError(t, err)
-	var b bytes.Buffer
-	require.NoError(t, json.Indent(&b, res.ProviderMetadata.PackageSchema, "", "    "))
-	autogold.ExpectFile(t, autogold.Raw(b.String()))
+	require.ErrorContains(t, err, "Plugin Framework resource test_res ValidateImplementation failed")
+	require.ErrorContains(t, err, `Attribute "a1" must be computed when using default`)
 }

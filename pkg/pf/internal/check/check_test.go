@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -485,6 +486,10 @@ func (testProvider) DataSources(context.Context) []func() datasource.DataSource 
 
 func (testProvider) Metadata(_ context.Context, _ provider.MetadataRequest, req *provider.MetadataResponse) {
 	req.TypeName = "test"
+}
+
+func (testProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = prschema.Schema{}
 }
 
 func (testMissingIDResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

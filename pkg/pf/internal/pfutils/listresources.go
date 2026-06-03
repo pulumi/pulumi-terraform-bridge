@@ -45,19 +45,29 @@ func GatherListResources[F func(Schema) shim.SchemaMap](
 			ProviderTypeName: provMetadata.TypeName,
 		}, &meta)
 
-		schemaResponse := &tflist.ListResourceSchemaResponse{}
-		listResource.ListResourceConfigSchema(ctx, tflist.ListResourceSchemaRequest{}, schemaResponse)
-
-		listResourceSchema := schemaResponse.Schema
-		diag := schemaResponse.Diagnostics
-		if err := checkDiagsForErrors(diag); err != nil {
-			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
-		}
+		makeListResource := makeListResource
+		tfName := runtypes.TypeName(meta.TypeName)
 
 		ls[runtypes.TypeOrRenamedEntityName(meta.TypeName)] = entry[func() tflist.ListResource]{
-			t:      makeListResource,
-			schema: FromListSchema(listResourceSchema),
-			tfName: runtypes.TypeName(meta.TypeName),
+			t: makeListResource,
+			schema: &lazySchema{
+				kind:   "list resource",
+				tfName: tfName,
+				load: func() (Schema, error) {
+					listResource := makeListResource()
+					schemaResponse := &tflist.ListResourceSchemaResponse{}
+					listResource.ListResourceConfigSchema(ctx, tflist.ListResourceSchemaRequest{}, schemaResponse)
+
+					listResourceSchema := schemaResponse.Schema
+					diag := schemaResponse.Diagnostics
+					if err := checkDiagsForErrors(diag); err != nil {
+						return nil, fmt.Errorf("ListResource %s GetSchema() error: %w", tfName, err)
+					}
+
+					return FromListSchema(listResourceSchema), nil
+				},
+			},
+			tfName: tfName,
 		}
 	}
 

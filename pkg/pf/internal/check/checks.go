@@ -15,6 +15,7 @@
 package check
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -40,6 +41,7 @@ func Provider(sink diag.Sink, info tfbridge.ProviderInfo) error {
 	}
 
 	return errors.Join(
+		validateFrameworkSchemas(context.Background(), sink, info.P),
 		checkIDProperties(sink, info, isPFResource),
 		notSupported(sink, info, isPFResource, isPFDataSource),
 	)
