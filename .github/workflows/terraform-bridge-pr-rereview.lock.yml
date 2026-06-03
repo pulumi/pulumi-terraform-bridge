@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"29594eaa589f4bf5919ec7d01c8a0e489e3221affa37278d2a34ac513cc8959b","compiler_version":"v0.71.5","strict":true,"agent_id":"claude"}
-# gh-aw-manifest: {"version":1,"secrets":["GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache","sha":"27d5ce7f107fe9357f9df03efb73ab90386fccae","version":"v5.0.5"},{"repo":"actions/checkout","sha":"de0fac2e4500dabe0009e67214ff5f5447ce83dd","version":"v6.0.2"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9"},{"repo":"actions/setup-node","sha":"48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e","version":"v6.4.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"b8068426813005612b960b5ab0b8bd2c27142323","version":"v0.71.5"},{"repo":"pulumi/esc-action","sha":"9eb774255b1a4afb7855678ae8d4a77359da0d9b","version":"9eb774255b1a4afb7855678ae8d4a77359da0d9b"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.25.40","digest":"sha256:14ff567e8d9d4c2fbc5e55c973488381c71d7e0fdbe72d30ee7b8a738fd86504","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.25.40@sha256:14ff567e8d9d4c2fbc5e55c973488381c71d7e0fdbe72d30ee7b8a738fd86504"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.25.40","digest":"sha256:2883ca3e5ae9f330cafdd9345bfd4ae17fc8da36c96d4c9a1f76e922b4c45280","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.25.40@sha256:2883ca3e5ae9f330cafdd9345bfd4ae17fc8da36c96d4c9a1f76e922b4c45280"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.25.40","digest":"sha256:b084f4a2c771f584ee68084ced52fa6b3245197a1889645d817462d307d3ac51","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.25.40@sha256:b084f4a2c771f584ee68084ced52fa6b3245197a1889645d817462d307d3ac51"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.3.6","digest":"sha256:2bb8eef86006a4c5963c55616a9c51c32f27bfdecb023b8aa6f91f6718d9171c","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.3.6@sha256:2bb8eef86006a4c5963c55616a9c51c32f27bfdecb023b8aa6f91f6718d9171c"},{"image":"ghcr.io/github/github-mcp-server:v1.0.3","digest":"sha256:2ac27ef03461ef2b877031b838a7d1fd7f12b12d4ace7796d8cad91446d55959","pinned_image":"ghcr.io/github/github-mcp-server:v1.0.3@sha256:2ac27ef03461ef2b877031b838a7d1fd7f12b12d4ace7796d8cad91446d55959"},{"image":"node:lts-alpine","digest":"sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f","pinned_image":"node:lts-alpine@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f"}]}
+# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"dbdc5f3da094203a4c6caff9846ebc1760d78e807aa00d8f3dab0576d16cf15c","compiler_version":"v0.71.5","strict":true,"agent_id":"claude"}
+# gh-aw-manifest: {"version":1,"secrets":["GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_TOKEN","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache","sha":"27d5ce7f107fe9357f9df03efb73ab90386fccae","version":"v5.0.5"},{"repo":"actions/checkout","sha":"de0fac2e4500dabe0009e67214ff5f5447ce83dd","version":"v6.0.2"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9"},{"repo":"actions/setup-node","sha":"48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e","version":"v6.4.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"b8068426813005612b960b5ab0b8bd2c27142323","version":"v0.71.5"},{"repo":"pulumi/esc-action","sha":"6cf9520e68354d86f81c455e8d43eabd58f5c9f5","version":"6cf9520e68354d86f81c455e8d43eabd58f5c9f5"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.25.40","digest":"sha256:14ff567e8d9d4c2fbc5e55c973488381c71d7e0fdbe72d30ee7b8a738fd86504","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.25.40@sha256:14ff567e8d9d4c2fbc5e55c973488381c71d7e0fdbe72d30ee7b8a738fd86504"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.25.40","digest":"sha256:2883ca3e5ae9f330cafdd9345bfd4ae17fc8da36c96d4c9a1f76e922b4c45280","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.25.40@sha256:2883ca3e5ae9f330cafdd9345bfd4ae17fc8da36c96d4c9a1f76e922b4c45280"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.25.40","digest":"sha256:b084f4a2c771f584ee68084ced52fa6b3245197a1889645d817462d307d3ac51","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.25.40@sha256:b084f4a2c771f584ee68084ced52fa6b3245197a1889645d817462d307d3ac51"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.3.6","digest":"sha256:2bb8eef86006a4c5963c55616a9c51c32f27bfdecb023b8aa6f91f6718d9171c","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.3.6@sha256:2bb8eef86006a4c5963c55616a9c51c32f27bfdecb023b8aa6f91f6718d9171c"},{"image":"ghcr.io/github/github-mcp-server:v1.0.3","digest":"sha256:2ac27ef03461ef2b877031b838a7d1fd7f12b12d4ace7796d8cad91446d55959","pinned_image":"ghcr.io/github/github-mcp-server:v1.0.3@sha256:2ac27ef03461ef2b877031b838a7d1fd7f12b12d4ace7796d8cad91446d55959"},{"image":"node:lts-alpine","digest":"sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f","pinned_image":"node:lts-alpine@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f"}]}
 #    ___                   _   _      
 #   / _ \                 | | (_)     
 #  | |_| | __ _  ___ _ __ | |_ _  ___ 
@@ -16,7 +16,7 @@
 #
 # This file was automatically generated by gh-aw (v0.71.5). DO NOT EDIT.
 #
-# To update this file, edit pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29 and run:
+# To update this file, edit pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@242988150273951aad5f67b008256266bdff6112 and run:
 #   gh aw compile
 # Not all edits will cause changes to this file.
 #
@@ -24,12 +24,12 @@
 #
 # Run PR re-review on explicit maintainer slash command.
 #
-# Source: pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29
+# Source: pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@242988150273951aad5f67b008256266bdff6112
 #
 # Resolved workflow manifest:
 #   Imports:
-#     - pulumi-labs/gh-aw-internal/.github/workflows/shared/plugins/code-review/code-review.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29
-#     - pulumi-labs/gh-aw-internal/.github/workflows/shared/review.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29
+#     - pulumi-labs/gh-aw-internal/.github/workflows/shared/plugins/code-review/code-review.md@242988150273951aad5f67b008256266bdff6112
+#     - pulumi-labs/gh-aw-internal/.github/workflows/shared/review.md@242988150273951aad5f67b008256266bdff6112
 #
 # Secrets used:
 #   - GH_AW_GITHUB_MCP_SERVER_TOKEN
@@ -45,7 +45,7 @@
 #   - actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
 #   - actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
 #   - github/gh-aw-actions/setup@b8068426813005612b960b5ab0b8bd2c27142323 # v0.71.5
-#   - pulumi/esc-action@9eb774255b1a4afb7855678ae8d4a77359da0d9b # 9eb774255b1a4afb7855678ae8d4a77359da0d9b
+#   - pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # 6cf9520e68354d86f81c455e8d43eabd58f5c9f5
 #
 # Container images used:
 #   - ghcr.io/github/gh-aw-firewall/agent:0.25.40@sha256:14ff567e8d9d4c2fbc5e55c973488381c71d7e0fdbe72d30ee7b8a738fd86504
@@ -76,7 +76,7 @@ run-name: "Internal PR Re-Review (Slash Command)"
 jobs:
   activation:
     needs: pre_activation
-    if: "needs.pre_activation.outputs.activated == 'true' && (github.event_name == 'issue_comment' && (startsWith(github.event.comment.body, '/review-again ') || startsWith(github.event.comment.body, '/review-again\n') || github.event.comment.body == '/review-again') && github.event.issue.pull_request != null || github.event_name == 'pull_request_review_comment' && (startsWith(github.event.comment.body, '/review-again ') || startsWith(github.event.comment.body, '/review-again\n') || github.event.comment.body == '/review-again'))"
+    if: "needs.pre_activation.outputs.activated == 'true' && (github.event_name == 'issue_comment' && (startsWith(github.event.comment.body, '/review-again ') || startsWith(github.event.comment.body, '/review-again\n') || github.event.comment.body == '/review-again' || startsWith(github.event.comment.body, '/review ') || startsWith(github.event.comment.body, '/review\n') || github.event.comment.body == '/review') && github.event.issue.pull_request != null || github.event_name == 'pull_request_review_comment' && (startsWith(github.event.comment.body, '/review-again ') || startsWith(github.event.comment.body, '/review-again\n') || github.event.comment.body == '/review-again' || startsWith(github.event.comment.body, '/review ') || startsWith(github.event.comment.body, '/review\n') || github.event.comment.body == '/review'))"
     runs-on: ubuntu-slim
     permissions:
       actions: read
@@ -237,21 +237,21 @@ jobs:
         run: |
           bash "${RUNNER_TEMP}/gh-aw/actions/create_prompt_first.sh"
           {
-          cat << 'GH_AW_PROMPT_6025cab4cdde803e_EOF'
+          cat << 'GH_AW_PROMPT_39625d81dda1ea5d_EOF'
           <system>
-          GH_AW_PROMPT_6025cab4cdde803e_EOF
+          GH_AW_PROMPT_39625d81dda1ea5d_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/xpia.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/temp_folder_prompt.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/markdown.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/cache_memory_prompt.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/safe_outputs_prompt.md"
-          cat << 'GH_AW_PROMPT_6025cab4cdde803e_EOF'
+          cat << 'GH_AW_PROMPT_39625d81dda1ea5d_EOF'
           <safe-output-tools>
           Tools: create_pull_request_review_comment(max:12), submit_pull_request_review, resolve_pull_request_review_thread(max:12), missing_tool, missing_data, noop
           </safe-output-tools>
-          GH_AW_PROMPT_6025cab4cdde803e_EOF
+          GH_AW_PROMPT_39625d81dda1ea5d_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/mcp_cli_tools_prompt.md"
-          cat << 'GH_AW_PROMPT_6025cab4cdde803e_EOF'
+          cat << 'GH_AW_PROMPT_39625d81dda1ea5d_EOF'
           <github-context>
           The following GitHub context information is available for this workflow:
           {{#if __GH_AW_GITHUB_ACTOR__ }}
@@ -280,17 +280,17 @@ jobs:
           {{/if}}
           </github-context>
           
-          GH_AW_PROMPT_6025cab4cdde803e_EOF
+          GH_AW_PROMPT_39625d81dda1ea5d_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/github_mcp_tools_with_safeoutputs_prompt.md"
           if [ "$GITHUB_EVENT_NAME" = "issue_comment" ] && [ -n "$GH_AW_IS_PR_COMMENT" ] || [ "$GITHUB_EVENT_NAME" = "pull_request_review_comment" ] || [ "$GITHUB_EVENT_NAME" = "pull_request_review" ]; then
             cat "${RUNNER_TEMP}/gh-aw/prompts/pr_context_prompt.md"
           fi
-          cat << 'GH_AW_PROMPT_6025cab4cdde803e_EOF'
+          cat << 'GH_AW_PROMPT_39625d81dda1ea5d_EOF'
           </system>
-          {{#runtime-import .github/aw/imports/pulumi-labs/gh-aw-internal/8a92f53fac170563f7727cacab2dbedb5d5b9e29/.github_workflows_shared_review.md}}
-          {{#runtime-import .github/aw/imports/pulumi-labs/gh-aw-internal/8a92f53fac170563f7727cacab2dbedb5d5b9e29/.github_workflows_shared_plugins_code-review_code-review.md}}
+          {{#runtime-import .github/aw/imports/pulumi-labs/gh-aw-internal/242988150273951aad5f67b008256266bdff6112/.github_workflows_shared_review.md}}
+          {{#runtime-import .github/aw/imports/pulumi-labs/gh-aw-internal/242988150273951aad5f67b008256266bdff6112/.github_workflows_shared_plugins_code-review_code-review.md}}
           {{#runtime-import .github/workflows/terraform-bridge-pr-rereview.md}}
-          GH_AW_PROMPT_6025cab4cdde803e_EOF
+          GH_AW_PROMPT_39625d81dda1ea5d_EOF
           } > "$GH_AW_PROMPT"
       - name: Interpolate variables and render templates
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -427,14 +427,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - env:
-          ESC_ACTION_ENVIRONMENT: imports/github-secrets
+          ESC_ACTION_ENVIRONMENT: github-secrets/pulumi-labs-gh-aw-internal
           ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: "false"
           ESC_ACTION_OIDC_AUTH: "true"
           ESC_ACTION_OIDC_ORGANIZATION: pulumi
           ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
         id: esc-secrets
         name: Fetch secrets from ESC
-        uses: pulumi/esc-action@9eb774255b1a4afb7855678ae8d4a77359da0d9b # 9eb774255b1a4afb7855678ae8d4a77359da0d9b
+        uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # 6cf9520e68354d86f81c455e8d43eabd58f5c9f5
       - env:
           ANTHROPIC_API_KEY_FROM_ESC: ${{ steps.esc-secrets.outputs.ANTHROPIC_API_KEY }}
         name: Validate ESC secret output
@@ -525,9 +525,9 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/gh-aw/safeoutputs"
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
-          cat > "${RUNNER_TEMP}/gh-aw/safeoutputs/config.json" << GH_AW_SAFE_OUTPUTS_CONFIG_8247c59fa175ea4e_EOF
+          cat > "${RUNNER_TEMP}/gh-aw/safeoutputs/config.json" << GH_AW_SAFE_OUTPUTS_CONFIG_ba380ca2399b76d3_EOF
           {"create_pull_request_review_comment":{"max":12,"side":"RIGHT","target":"${{ github.event.pull_request.number || github.event.inputs.pr_number || github.event.issue.number }}","target-repo":"${GITHUB_REPOSITORY}"},"create_report_incomplete_issue":{},"missing_data":{},"missing_tool":{},"noop":{"max":1,"report-as-issue":"true"},"report_incomplete":{},"resolve_pull_request_review_thread":{"max":12,"target":"${{ github.event.pull_request.number || github.event.inputs.pr_number || github.event.issue.number }}","target-repo":"${GITHUB_REPOSITORY}"},"submit_pull_request_review":{"max":1,"target":"${{ github.event.pull_request.number || github.event.inputs.pr_number || github.event.issue.number }}"}}
-          GH_AW_SAFE_OUTPUTS_CONFIG_8247c59fa175ea4e_EOF
+          GH_AW_SAFE_OUTPUTS_CONFIG_ba380ca2399b76d3_EOF
       - name: Generate Safe Outputs Tools
         env:
           GH_AW_TOOLS_META_JSON: |
@@ -759,7 +759,7 @@ jobs:
           export MCP_GATEWAY_DOCKER_COMMAND='docker run -i --rm --network host --add-host host.docker.internal:127.0.0.1 --user '"${MCP_GATEWAY_UID}"':'"${MCP_GATEWAY_GID}"' --group-add '"${DOCKER_SOCK_GID}"' -v /var/run/docker.sock:/var/run/docker.sock -e MCP_GATEWAY_PORT -e MCP_GATEWAY_DOMAIN -e MCP_GATEWAY_API_KEY -e MCP_GATEWAY_PAYLOAD_DIR -e MCP_GATEWAY_PAYLOAD_SIZE_THRESHOLD -e DEBUG -e MCP_GATEWAY_LOG_DIR -e GH_AW_MCP_LOG_DIR -e GH_AW_SAFE_OUTPUTS -e GH_AW_SAFE_OUTPUTS_CONFIG_PATH -e GH_AW_SAFE_OUTPUTS_TOOLS_PATH -e GH_AW_ASSETS_BRANCH -e GH_AW_ASSETS_MAX_SIZE_KB -e GH_AW_ASSETS_ALLOWED_EXTS -e DEFAULT_BRANCH -e GITHUB_MCP_SERVER_TOKEN -e GITHUB_MCP_GUARD_MIN_INTEGRITY -e GITHUB_MCP_GUARD_REPOS -e GITHUB_REPOSITORY -e GITHUB_SERVER_URL -e GITHUB_SHA -e GITHUB_WORKSPACE -e GITHUB_TOKEN -e GITHUB_RUN_ID -e GITHUB_RUN_NUMBER -e GITHUB_RUN_ATTEMPT -e GITHUB_JOB -e GITHUB_ACTION -e GITHUB_EVENT_NAME -e GITHUB_EVENT_PATH -e GITHUB_ACTOR -e GITHUB_ACTOR_ID -e GITHUB_TRIGGERING_ACTOR -e GITHUB_WORKFLOW -e GITHUB_WORKFLOW_REF -e GITHUB_WORKFLOW_SHA -e GITHUB_REF -e GITHUB_REF_NAME -e GITHUB_REF_TYPE -e GITHUB_HEAD_REF -e GITHUB_BASE_REF -e GH_AW_SAFE_OUTPUTS_PORT -e GH_AW_SAFE_OUTPUTS_API_KEY -v /tmp/gh-aw/mcp-payloads:/tmp/gh-aw/mcp-payloads:rw -v /opt:/opt:ro -v /tmp:/tmp:rw -v '"${GITHUB_WORKSPACE}"':'"${GITHUB_WORKSPACE}"':rw ghcr.io/github/gh-aw-mcpg:v0.3.6'
           
           GH_AW_NODE=$(which node 2>/dev/null || command -v node 2>/dev/null || echo node)
-          cat << GH_AW_MCP_CONFIG_f6608019b612eab8_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
+          cat << GH_AW_MCP_CONFIG_a26344e863d34b46_EOF | "$GH_AW_NODE" "${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.cjs"
           {
             "mcpServers": {
               "github": {
@@ -799,7 +799,7 @@ jobs:
               "payloadDir": "${MCP_GATEWAY_PAYLOAD_DIR}"
             }
           }
-          GH_AW_MCP_CONFIG_f6608019b612eab8_EOF
+          GH_AW_MCP_CONFIG_a26344e863d34b46_EOF
       - name: Mount MCP servers as CLIs
         id: mount-mcp-clis
         continue-on-error: true
@@ -1132,8 +1132,8 @@ jobs:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_NOOP_MAX: "1"
           GH_AW_WORKFLOW_NAME: "Internal PR Re-Review (Slash Command)"
-          GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/8a92f53fac170563f7727cacab2dbedb5d5b9e29/.github/workflows/gh-aw-pr-rereview.md"
+          GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@242988150273951aad5f67b008256266bdff6112"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/242988150273951aad5f67b008256266bdff6112/.github/workflows/gh-aw-pr-rereview.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
           GH_AW_NOOP_REPORT_AS_ISSUE: "true"
@@ -1151,8 +1151,8 @@ jobs:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_MISSING_TOOL_CREATE_ISSUE: "true"
           GH_AW_WORKFLOW_NAME: "Internal PR Re-Review (Slash Command)"
-          GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/8a92f53fac170563f7727cacab2dbedb5d5b9e29/.github/workflows/gh-aw-pr-rereview.md"
+          GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@242988150273951aad5f67b008256266bdff6112"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/242988150273951aad5f67b008256266bdff6112/.github/workflows/gh-aw-pr-rereview.md"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
@@ -1167,8 +1167,8 @@ jobs:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_REPORT_INCOMPLETE_CREATE_ISSUE: "true"
           GH_AW_WORKFLOW_NAME: "Internal PR Re-Review (Slash Command)"
-          GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/8a92f53fac170563f7727cacab2dbedb5d5b9e29/.github/workflows/gh-aw-pr-rereview.md"
+          GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@242988150273951aad5f67b008256266bdff6112"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/242988150273951aad5f67b008256266bdff6112/.github/workflows/gh-aw-pr-rereview.md"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
@@ -1183,8 +1183,8 @@ jobs:
         env:
           GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
           GH_AW_WORKFLOW_NAME: "Internal PR Re-Review (Slash Command)"
-          GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29"
-          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/8a92f53fac170563f7727cacab2dbedb5d5b9e29/.github/workflows/gh-aw-pr-rereview.md"
+          GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@242988150273951aad5f67b008256266bdff6112"
+          GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/242988150273951aad5f67b008256266bdff6112/.github/workflows/gh-aw-pr-rereview.md"
           GH_AW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_AW_AGENT_CONCLUSION: ${{ needs.agent.result }}
           GH_AW_WORKFLOW_ID: "terraform-bridge-pr-rereview"
@@ -1229,7 +1229,7 @@ jobs:
             await main();
 
   pre_activation:
-    if: "(github.event_name != 'issue_comment' && github.event_name != 'pull_request_review_comment' || contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association)) && (github.event_name == 'issue_comment' && (startsWith(github.event.comment.body, '/review-again ') || startsWith(github.event.comment.body, '/review-again\n') || github.event.comment.body == '/review-again') && github.event.issue.pull_request != null || github.event_name == 'pull_request_review_comment' && (startsWith(github.event.comment.body, '/review-again ') || startsWith(github.event.comment.body, '/review-again\n') || github.event.comment.body == '/review-again'))"
+    if: "(github.event_name != 'issue_comment' && github.event_name != 'pull_request_review_comment' || contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association)) && (github.event_name == 'issue_comment' && (startsWith(github.event.comment.body, '/review-again ') || startsWith(github.event.comment.body, '/review-again\n') || github.event.comment.body == '/review-again' || startsWith(github.event.comment.body, '/review ') || startsWith(github.event.comment.body, '/review\n') || github.event.comment.body == '/review') && github.event.issue.pull_request != null || github.event_name == 'pull_request_review_comment' && (startsWith(github.event.comment.body, '/review-again ') || startsWith(github.event.comment.body, '/review-again\n') || github.event.comment.body == '/review-again' || startsWith(github.event.comment.body, '/review ') || startsWith(github.event.comment.body, '/review\n') || github.event.comment.body == '/review'))"
     runs-on: ubuntu-slim
     outputs:
       activated: ${{ steps.check_membership.outputs.is_team_member == 'true' && steps.check_command_position.outputs.command_position_ok == 'true' }}
@@ -1262,7 +1262,7 @@ jobs:
         id: check_command_position
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GH_AW_COMMANDS: "[\"review-again\"]"
+          GH_AW_COMMANDS: "[\"review-again\",\"review\"]"
         with:
           script: |
             const { setupGlobals } = require('${{ runner.temp }}/gh-aw/actions/setup_globals.cjs');
@@ -1288,8 +1288,8 @@ jobs:
       GH_AW_SAFE_OUTPUT_MESSAGES: "{\"footer\":\"\\u003e Reviewed by [{workflow_name}]({run_url})\",\"runStarted\":\"Started automated PR review for #${{ github.event.pull_request.number || github.event.inputs.pr_number || github.event.issue.number }}.\",\"runSuccess\":\"Finished automated PR review for #${{ github.event.pull_request.number || github.event.inputs.pr_number || github.event.issue.number }}.\",\"runFailure\":\"Automated PR review failed for #${{ github.event.pull_request.number || github.event.inputs.pr_number || github.event.issue.number }} ({status}).\"}"
       GH_AW_WORKFLOW_ID: "terraform-bridge-pr-rereview"
       GH_AW_WORKFLOW_NAME: "Internal PR Re-Review (Slash Command)"
-      GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@8a92f53fac170563f7727cacab2dbedb5d5b9e29"
-      GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/8a92f53fac170563f7727cacab2dbedb5d5b9e29/.github/workflows/gh-aw-pr-rereview.md"
+      GH_AW_WORKFLOW_SOURCE: "pulumi-labs/gh-aw-internal/.github/workflows/gh-aw-pr-rereview.md@242988150273951aad5f67b008256266bdff6112"
+      GH_AW_WORKFLOW_SOURCE_URL: "${{ github.server_url }}/pulumi-labs/gh-aw-internal/blob/242988150273951aad5f67b008256266bdff6112/.github/workflows/gh-aw-pr-rereview.md"
     outputs:
       code_push_failure_count: ${{ steps.process_safe_outputs.outputs.code_push_failure_count }}
       code_push_failure_errors: ${{ steps.process_safe_outputs.outputs.code_push_failure_errors }}
