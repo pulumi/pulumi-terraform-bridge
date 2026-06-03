@@ -22,6 +22,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	tflist "github.com/hashicorp/terraform-plugin-framework/list"
+	lschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -73,6 +75,35 @@ func TestShimSchemaOnlyProviderDefersResourceAndDataSourceSchemas(t *testing.T) 
 	dataSources.Get("test_lookup").Schema()
 	dataSources.Get("test_lookup").Schema()
 	require.Equal(t, int32(1), prov.dataSourceSchemaCalls("lookup"))
+}
+
+func TestShimSchemaOnlyProviderDefersListResourceSchemas(t *testing.T) {
+	t.Parallel()
+
+	prov := newCountingProvider("test", nil, nil)
+	prov.addListResources("one", "two")
+
+	shimmed := ShimSchemaOnlyProvider(t.Context(), prov).(*SchemaOnlyProvider)
+	require.Zero(t, prov.listResourceSchemaCalls("one"))
+	require.Zero(t, prov.listResourceSchemaCalls("two"))
+
+	listResources := shimmed.ListResourcesMap()
+	require.Equal(t, 2, listResources.Len())
+	require.NotNil(t, listResources.Get("test_one"))
+	_, ok := listResources.GetOk("test_two")
+	require.True(t, ok)
+	listResources.Range(func(_ string, r shim.Resource) bool {
+		require.NotNil(t, r)
+		return true
+	})
+
+	require.Zero(t, prov.listResourceSchemaCalls("one"))
+	require.Zero(t, prov.listResourceSchemaCalls("two"))
+
+	listResources.Get("test_one").Schema()
+	listResources.Get("test_one").Schema()
+	require.Equal(t, int32(1), prov.listResourceSchemaCalls("one"))
+	require.Zero(t, prov.listResourceSchemaCalls("two"))
 }
 
 func TestLazySchemaLoadsOnceUnderConcurrentAccess(t *testing.T) {
@@ -157,8 +188,9 @@ func TestLazySchemaPanicsWithStableContextualError(t *testing.T) {
 type countingProvider struct {
 	typeName string
 
-	resources   map[string]*atomic.Int32
-	dataSources map[string]*atomic.Int32
+	resources     map[string]*atomic.Int32
+	dataSources   map[string]*atomic.Int32
+	listResources map[string]*atomic.Int32
 
 	resourceSchemaFailsOnCanceledContext map[string]bool
 	resourceSchemaPanics                 map[string]bool
@@ -171,6 +203,7 @@ func newCountingProvider(typeName string, resources, dataSources []string) *coun
 		typeName:                             typeName,
 		resources:                            map[string]*atomic.Int32{},
 		dataSources:                          map[string]*atomic.Int32{},
+		listResources:                        map[string]*atomic.Int32{},
 		resourceSchemaFailsOnCanceledContext: map[string]bool{},
 		resourceSchemaPanics:                 map[string]bool{},
 	}
@@ -181,6 +214,12 @@ func newCountingProvider(typeName string, resources, dataSources []string) *coun
 		prov.dataSources[name] = &atomic.Int32{}
 	}
 	return prov
+}
+
+func (p *countingProvider) addListResources(names ...string) {
+	for _, name := range names {
+		p.listResources[name] = &atomic.Int32{}
+	}
 }
 
 func (p *countingProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -225,12 +264,28 @@ func (p *countingProvider) DataSources(context.Context) []func() datasource.Data
 	return dataSources
 }
 
+func (p *countingProvider) ListResources(context.Context) []func() tflist.ListResource {
+	listResources := make([]func() tflist.ListResource, 0, len(p.listResources))
+	for name, calls := range p.listResources {
+		name := name
+		calls := calls
+		listResources = append(listResources, func() tflist.ListResource {
+			return &countingListResource{name: name, schemaCalls: calls}
+		})
+	}
+	return listResources
+}
+
 func (p *countingProvider) resourceSchemaCalls(name string) int32 {
 	return p.resources[name].Load()
 }
 
 func (p *countingProvider) dataSourceSchemaCalls(name string) int32 {
 	return p.dataSources[name].Load()
+}
+
+func (p *countingProvider) listResourceSchemaCalls(name string) int32 {
+	return p.listResources[name].Load()
 }
 
 type countingResource struct {
@@ -276,10 +331,35 @@ func (ds *countingDataSource) Schema(context.Context, datasource.SchemaRequest, 
 
 func (*countingDataSource) Read(context.Context, datasource.ReadRequest, *datasource.ReadResponse) {}
 
+type countingListResource struct {
+	name        string
+	schemaCalls *atomic.Int32
+}
+
+func (r *countingListResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + "_" + r.name
+}
+
+func (r *countingListResource) ListResourceConfigSchema(
+	_ context.Context, _ tflist.ListResourceSchemaRequest, resp *tflist.ListResourceSchemaResponse,
+) {
+	r.schemaCalls.Add(1)
+	resp.Schema = lschema.Schema{
+		Attributes: map[string]lschema.Attribute{
+			"filter": lschema.StringAttribute{Optional: true},
+		},
+	}
+}
+
+func (*countingListResource) List(context.Context, tflist.ListRequest, *tflist.ListResultsStream) {}
+
 var (
 	_ provider.Provider     = (*countingProvider)(nil)
 	_ resource.Resource     = (*countingResource)(nil)
 	_ datasource.DataSource = (*countingDataSource)(nil)
+	_ tflist.ListResource   = (*countingListResource)(nil)
 )
 
 func panicMessage(f func()) (message string) {

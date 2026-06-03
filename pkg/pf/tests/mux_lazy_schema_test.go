@@ -21,6 +21,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	tflist "github.com/hashicorp/terraform-plugin-framework/list"
+	lschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -30,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
+	grpcmetadata "google.golang.org/grpc/metadata"
 
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -67,6 +70,8 @@ func TestMuxedSDKv2OperationsDoNotLoadPFResourceSchemas(t *testing.T) {
 	require.Positive(t, resourceOneCalls)
 	require.Zero(t, pfProvider.resourceSchemaCalls("two"))
 	require.Zero(t, pfProvider.resourceSchemaCalls("alias"))
+	require.Zero(t, pfProvider.listResourceSchemaCalls("one"))
+	require.Zero(t, pfProvider.listResourceSchemaCalls("two"))
 	require.Zero(t, pfProvider.dataSourceSchemaCalls("lookup"))
 
 	_, err = server.Invoke(t.Context(), &pulumirpc.InvokeRequest{
@@ -78,6 +83,40 @@ func TestMuxedSDKv2OperationsDoNotLoadPFResourceSchemas(t *testing.T) {
 	require.Zero(t, pfProvider.resourceSchemaCalls("two"))
 	require.Zero(t, pfProvider.resourceSchemaCalls("alias"))
 	require.Positive(t, pfProvider.dataSourceSchemaCalls("lookup"))
+	dataSourceLookupCalls := pfProvider.dataSourceSchemaCalls("lookup")
+
+	stream := newMuxRecordingListStream(t.Context())
+	err = server.List(&pulumirpc.ListRequest{
+		Token: "muxlazy:index/one:One",
+	}, stream)
+	require.NoError(t, err)
+	require.Len(t, stream.sent, 1)
+	require.Equal(t, "", stream.sent[0].GetContinuation().GetContinuationToken())
+	require.Equal(t, resourceOneCalls, pfProvider.resourceSchemaCalls("one"))
+	require.Zero(t, pfProvider.resourceSchemaCalls("two"))
+	require.Zero(t, pfProvider.resourceSchemaCalls("alias"))
+	require.Positive(t, pfProvider.listResourceSchemaCalls("one"))
+	require.Zero(t, pfProvider.listResourceSchemaCalls("two"))
+	require.Equal(t, dataSourceLookupCalls, pfProvider.dataSourceSchemaCalls("lookup"))
+
+	_, err = server.Check(t.Context(), &pulumirpc.CheckRequest{
+		Urn:  "urn:pulumi:dev::proj::muxlazy:index/aliasNew:AliasNew::alias-new",
+		News: news,
+	})
+	require.NoError(t, err)
+	aliasCalls := pfProvider.resourceSchemaCalls("alias")
+	require.Positive(t, aliasCalls)
+	require.Equal(t, resourceOneCalls, pfProvider.resourceSchemaCalls("one"))
+	require.Zero(t, pfProvider.resourceSchemaCalls("two"))
+	require.Positive(t, pfProvider.listResourceSchemaCalls("one"))
+	require.Zero(t, pfProvider.listResourceSchemaCalls("two"))
+
+	_, err = server.Check(t.Context(), &pulumirpc.CheckRequest{
+		Urn:  "urn:pulumi:dev::proj::muxlazy:index/alias:Alias::alias-legacy",
+		News: news,
+	})
+	require.NoError(t, err)
+	require.Equal(t, aliasCalls, pfProvider.resourceSchemaCalls("alias"))
 }
 
 func muxLazyProviderInfo(pfProvider *muxCountingProvider) tfbridge0.ProviderInfo {
@@ -153,8 +192,9 @@ func newMuxedProviderServerWithSchema(
 }
 
 type muxCountingProvider struct {
-	resources   map[string]*atomic.Int32
-	dataSources map[string]*atomic.Int32
+	resources     map[string]*atomic.Int32
+	dataSources   map[string]*atomic.Int32
+	listResources map[string]*atomic.Int32
 }
 
 func newMuxCountingProvider() *muxCountingProvider {
@@ -166,6 +206,10 @@ func newMuxCountingProvider() *muxCountingProvider {
 		},
 		dataSources: map[string]*atomic.Int32{
 			"lookup": {},
+		},
+		listResources: map[string]*atomic.Int32{
+			"one": {},
+			"two": {},
 		},
 	}
 }
@@ -200,12 +244,28 @@ func (p *muxCountingProvider) DataSources(context.Context) []func() datasource.D
 	}
 }
 
+func (p *muxCountingProvider) ListResources(context.Context) []func() tflist.ListResource {
+	listResources := make([]func() tflist.ListResource, 0, len(p.listResources))
+	for name, calls := range p.listResources {
+		name := name
+		calls := calls
+		listResources = append(listResources, func() tflist.ListResource {
+			return &muxCountingListResource{name: name, schemaCalls: calls}
+		})
+	}
+	return listResources
+}
+
 func (p *muxCountingProvider) resourceSchemaCalls(name string) int32 {
 	return p.resources[name].Load()
 }
 
 func (p *muxCountingProvider) dataSourceSchemaCalls(name string) int32 {
 	return p.dataSources[name].Load()
+}
+
+func (p *muxCountingProvider) listResourceSchemaCalls(name string) int32 {
+	return p.listResources[name].Load()
 }
 
 func (p *muxCountingProvider) requireZeroSchemaCalls(t *testing.T) {
@@ -215,6 +275,9 @@ func (p *muxCountingProvider) requireZeroSchemaCalls(t *testing.T) {
 	}
 	for name := range p.dataSources {
 		require.Zero(t, p.dataSourceSchemaCalls(name))
+	}
+	for name := range p.listResources {
+		require.Zero(t, p.listResourceSchemaCalls(name))
 	}
 }
 
@@ -266,10 +329,62 @@ func (*muxCountingDataSource) Read(ctx context.Context, _ datasource.ReadRequest
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("result"), "ok")...)
 }
 
+type muxCountingListResource struct {
+	name        string
+	schemaCalls *atomic.Int32
+}
+
+func (r *muxCountingListResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + "_" + r.name
+}
+
+func (r *muxCountingListResource) ListResourceConfigSchema(
+	_ context.Context, _ tflist.ListResourceSchemaRequest, resp *tflist.ListResourceSchemaResponse,
+) {
+	r.schemaCalls.Add(1)
+	resp.Schema = muxCountingListResourceSchema
+}
+
+func (*muxCountingListResource) List(
+	_ context.Context, _ tflist.ListRequest, stream *tflist.ListResultsStream,
+) {
+	stream.Results = tflist.NoListResults
+}
+
+type muxRecordingListStream struct {
+	ctx  context.Context
+	sent []*pulumirpc.ListResponse
+}
+
+func newMuxRecordingListStream(ctx context.Context) *muxRecordingListStream {
+	return &muxRecordingListStream{ctx: ctx}
+}
+
+func (s *muxRecordingListStream) Send(resp *pulumirpc.ListResponse) error {
+	s.sent = append(s.sent, resp)
+	return nil
+}
+
+func (s *muxRecordingListStream) SetHeader(grpcmetadata.MD) error { return nil }
+
+func (s *muxRecordingListStream) SendHeader(grpcmetadata.MD) error { return nil }
+
+func (s *muxRecordingListStream) SetTrailer(grpcmetadata.MD) {}
+
+func (s *muxRecordingListStream) Context() context.Context { return s.ctx }
+
+func (s *muxRecordingListStream) SendMsg(any) error { return nil }
+
+func (s *muxRecordingListStream) RecvMsg(any) error { return nil }
+
 var (
-	_ provider.Provider     = (*muxCountingProvider)(nil)
-	_ resource.Resource     = (*muxCountingResource)(nil)
-	_ datasource.DataSource = (*muxCountingDataSource)(nil)
+	_ provider.Provider                  = (*muxCountingProvider)(nil)
+	_ provider.ProviderWithListResources = (*muxCountingProvider)(nil)
+	_ resource.Resource                  = (*muxCountingResource)(nil)
+	_ datasource.DataSource              = (*muxCountingDataSource)(nil)
+	_ tflist.ListResource                = (*muxCountingListResource)(nil)
 )
 
 var (
@@ -283,6 +398,11 @@ var (
 		Attributes: map[string]dschema.Attribute{
 			"query":  dschema.StringAttribute{Optional: true},
 			"result": dschema.StringAttribute{Computed: true},
+		},
+	}
+	muxCountingListResourceSchema = lschema.Schema{
+		Attributes: map[string]lschema.Attribute{
+			"filter": lschema.StringAttribute{Optional: true},
 		},
 	}
 )

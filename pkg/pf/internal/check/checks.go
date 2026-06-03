@@ -30,7 +30,11 @@ import (
 //
 // This function should be called in the generate step, but before schema generation (so
 // as to error as soon as possible).
-func Provider(sink diag.Sink, info tfbridge.ProviderInfo) error {
+func Provider(ctx context.Context, sink diag.Sink, info tfbridge.ProviderInfo) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	// If info.P is not muxed, we assume that all resources are PF based resources and
 	// that all datasources are PF based datasources.
 	isPFResource := func(string) bool { return true }
@@ -40,7 +44,7 @@ func Provider(sink diag.Sink, info tfbridge.ProviderInfo) error {
 		isPFDataSource = p.DataSourceIsPF
 	}
 
-	if err := validateFrameworkSchemas(context.Background(), sink, info, isPFResource, isPFDataSource); err != nil {
+	if err := validateFrameworkSchemas(ctx, sink, info, isPFResource, isPFDataSource); err != nil {
 		return err
 	}
 

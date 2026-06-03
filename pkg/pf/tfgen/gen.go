@@ -41,7 +41,10 @@ type GenerateSchemaResult struct {
 
 // Generates the Pulumi Package Schema and bridge-specific metadata. Most users do not need to call this directly but
 // instead use Main to build a build-time helper CLI tool.
-func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
+func GenerateSchema(ctx context.Context, opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if opts.ProviderInfo.Name == "" {
 		return nil, fmt.Errorf("opts.ProviderInfo.Name cannot be empty")
 	}
@@ -52,7 +55,7 @@ func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSch
 		})
 	}
 
-	if err := check.Provider(sink, opts.ProviderInfo); err != nil {
+	if err := check.Provider(ctx, sink, opts.ProviderInfo); err != nil {
 		return nil, err
 	}
 

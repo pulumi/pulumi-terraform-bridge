@@ -50,7 +50,7 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := check.Provider(g.Sink(), info); err != nil {
+		if err := check.Provider(nil, g.Sink(), info); err != nil {
 			return err
 		}
 		_, err = g.Generate()
@@ -93,7 +93,7 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := check.Provider(g.Sink(), info); err != nil {
+		if err := check.Provider(nil, g.Sink(), info); err != nil {
 			return err
 		}
 

@@ -170,11 +170,11 @@ func (p *provider) startListSession(
 		return nil, "", status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	configSchema, err := p.listConfigSchema(ctx, rh.terraformResourceName)
+	configSchema, err := p.listConfigSchema(rh.terraformResourceName)
 	if err != nil {
 		return nil, "", err
 	}
-	query, config, err := p.listQueryToDynamicValue(req.GetQuery(), configSchema, rh.terraformResourceName)
+	query, config, err := p.listQueryToDynamicValue(ctx, req.GetQuery(), configSchema, rh.terraformResourceName)
 	if err != nil {
 		return nil, "", status.Errorf(codes.InvalidArgument, "invalid list query: %v", err)
 	}
@@ -406,23 +406,21 @@ func (s shimResourceSchema) TFName() runtypes.TypeName {
 	return s.name
 }
 
-func (p *provider) listConfigSchema(ctx context.Context, tfResourceName string) (*tfprotov6.Schema, error) {
-	schemaResp, err := p.tfServer.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{})
-	if err != nil {
-		return nil, err
+func (p *provider) listConfigSchema(tfResourceName string) (runtypes.Schema, error) {
+	listResourcesProvider, ok := p.schemaOnlyProvider.(interface{ ListResourcesMap() shim.ResourceMap })
+	if !ok {
+		return nil, status.Errorf(codes.Unimplemented,
+			"terraform provider does not expose list schemas")
 	}
-	if err := p.processDiagnostics(ctx, schemaResp.Diagnostics); err != nil {
-		return nil, err
+	listResource, ok := listResourcesProvider.ListResourcesMap().GetOk(tfResourceName)
+	if !ok {
+		return nil, status.Errorf(codes.Unimplemented,
+			"terraform provider does not expose a list schema for %q", tfResourceName)
 	}
-
-	if schemaResp.ListResourceSchemas != nil {
-		if schema, ok := schemaResp.ListResourceSchemas[tfResourceName]; ok {
-			return schema, nil
-		}
-	}
-
-	return nil, status.Errorf(codes.Unimplemented,
-		"terraform provider does not expose a list schema for %q", tfResourceName)
+	return shimResourceSchema{
+		name:     runtypes.TypeName(tfResourceName),
+		resource: listResource,
+	}, nil
 }
 
 type listQuery struct {
@@ -431,7 +429,7 @@ type listQuery struct {
 }
 
 func (p *provider) listQueryToDynamicValue(
-	query *structpb.Struct, schema *tfprotov6.Schema, tfResourceName string,
+	ctx context.Context, query *structpb.Struct, schema runtypes.Schema, tfResourceName string,
 ) (listQuery, *tfprotov6.DynamicValue, error) {
 	queryMap, err := unmarshalListQuery(query)
 	if err != nil {
@@ -445,24 +443,12 @@ func (p *provider) listQueryToDynamicValue(
 		return listQuery{fingerprint: fingerprint, computed: true}, nil, nil
 	}
 
-	valueType := schema.ValueType()
-	objectType, ok := valueType.(tftypes.Object)
+	objectType, ok := schema.Type(ctx).(tftypes.Object)
 	if !ok {
 		return listQuery{}, nil, fmt.Errorf("list config schema for %q is not an object", tfResourceName)
 	}
-
-	listResourcesProvider, ok := p.schemaOnlyProvider.(interface{ ListResourcesMap() shim.ResourceMap })
-	if !ok {
-		return listQuery{}, nil, status.Errorf(codes.Unimplemented,
-			"terraform provider does not expose list schemas")
-	}
-	listResource, ok := listResourcesProvider.ListResourcesMap().GetOk(tfResourceName)
-	if !ok {
-		return listQuery{}, nil, status.Errorf(codes.Unimplemented,
-			"terraform provider does not expose a list schema for %q", tfResourceName)
-	}
 	encoder, err := convert.NewObjectEncoder(convert.ObjectSchema{
-		SchemaMap: listResource.Schema(),
+		SchemaMap: schema.Shim(),
 		Object:    &objectType,
 	})
 	if err != nil {

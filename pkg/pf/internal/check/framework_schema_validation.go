@@ -60,7 +60,7 @@ func validateFrameworkSchemas(
 func generatedPFResources(info tfbridge.ProviderInfo, isPFResource func(tfToken string) bool) map[string]bool {
 	generated := map[string]bool{}
 	for name, resInfo := range info.Resources {
-		if resInfo == nil || resInfo.GetTok() == "" || !isPFResource(name) {
+		if resInfo == nil || !isPFResource(name) {
 			continue
 		}
 		generated[name] = true
@@ -71,7 +71,7 @@ func generatedPFResources(info tfbridge.ProviderInfo, isPFResource func(tfToken 
 func generatedPFDataSources(info tfbridge.ProviderInfo, isPFDataSource func(tfToken string) bool) map[string]bool {
 	generated := map[string]bool{}
 	for name, dsInfo := range info.DataSources {
-		if dsInfo == nil || dsInfo.GetTok() == "" || !isPFDataSource(name) {
+		if dsInfo == nil || !isPFDataSource(name) {
 			continue
 		}
 		generated[name] = true
@@ -82,7 +82,7 @@ func generatedPFDataSources(info tfbridge.ProviderInfo, isPFDataSource func(tfTo
 func generatedListResources(info tfbridge.ProviderInfo) map[string]bool {
 	generated := map[string]bool{}
 	for name, resInfo := range info.Resources {
-		if resInfo == nil || resInfo.GetTok() == "" {
+		if resInfo == nil {
 			continue
 		}
 		generated[name] = true

@@ -455,7 +455,7 @@ func validateProvider(t *testing.T, info tfbridge.ProviderInfo) (string, error) 
 		Color: colors.Never,
 	})
 
-	err := Provider(sink, info)
+	err := Provider(t.Context(), sink, info)
 
 	// We should not write diags to stdout
 	assert.Empty(t, stdout.String())
