@@ -16,6 +16,7 @@ package tfbridgetests
 
 import (
 	"context"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -27,7 +28,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -85,9 +88,19 @@ func TestMuxedSDKv2OperationsDoNotLoadPFResourceSchemas(t *testing.T) {
 	require.Positive(t, pfProvider.dataSourceSchemaCalls("lookup"))
 	dataSourceLookupCalls := pfProvider.dataSourceSchemaCalls("lookup")
 
+	query, err := plugin.MarshalProperties(presource.PropertyMap{
+		"filter": presource.NewStringProperty("selected"),
+		"labels": presource.NewArrayProperty([]presource.PropertyValue{
+			presource.NewStringProperty("east"),
+			presource.NewStringProperty("west"),
+		}),
+	}, plugin.MarshalOptions{})
+	require.NoError(t, err)
+
 	stream := newMuxRecordingListStream(t.Context())
 	err = server.List(&pulumirpc.ListRequest{
 		Token: "muxlazy:index/one:One",
+		Query: query,
 	}, stream)
 	require.NoError(t, err)
 	require.Len(t, stream.sent, 1)
@@ -97,6 +110,7 @@ func TestMuxedSDKv2OperationsDoNotLoadPFResourceSchemas(t *testing.T) {
 	require.Zero(t, pfProvider.resourceSchemaCalls("alias"))
 	require.Positive(t, pfProvider.listResourceSchemaCalls("one"))
 	require.Zero(t, pfProvider.listResourceSchemaCalls("two"))
+	require.Equal(t, "selected|east,west", pfProvider.listQuery("one"))
 	require.Equal(t, dataSourceLookupCalls, pfProvider.dataSourceSchemaCalls("lookup"))
 
 	_, err = server.Check(t.Context(), &pulumirpc.CheckRequest{
@@ -195,6 +209,7 @@ type muxCountingProvider struct {
 	resources     map[string]*atomic.Int32
 	dataSources   map[string]*atomic.Int32
 	listResources map[string]*atomic.Int32
+	listQueries   map[string]*atomic.Value
 }
 
 func newMuxCountingProvider() *muxCountingProvider {
@@ -208,6 +223,10 @@ func newMuxCountingProvider() *muxCountingProvider {
 			"lookup": {},
 		},
 		listResources: map[string]*atomic.Int32{
+			"one": {},
+			"two": {},
+		},
+		listQueries: map[string]*atomic.Value{
 			"one": {},
 			"two": {},
 		},
@@ -249,8 +268,9 @@ func (p *muxCountingProvider) ListResources(context.Context) []func() tflist.Lis
 	for name, calls := range p.listResources {
 		name := name
 		calls := calls
+		query := p.listQueries[name]
 		listResources = append(listResources, func() tflist.ListResource {
-			return &muxCountingListResource{name: name, schemaCalls: calls}
+			return &muxCountingListResource{name: name, schemaCalls: calls, lastQuery: query}
 		})
 	}
 	return listResources
@@ -266,6 +286,14 @@ func (p *muxCountingProvider) dataSourceSchemaCalls(name string) int32 {
 
 func (p *muxCountingProvider) listResourceSchemaCalls(name string) int32 {
 	return p.listResources[name].Load()
+}
+
+func (p *muxCountingProvider) listQuery(name string) string {
+	value := p.listQueries[name].Load()
+	if value == nil {
+		return ""
+	}
+	return value.(string)
 }
 
 func (p *muxCountingProvider) requireZeroSchemaCalls(t *testing.T) {
@@ -332,6 +360,7 @@ func (*muxCountingDataSource) Read(ctx context.Context, _ datasource.ReadRequest
 type muxCountingListResource struct {
 	name        string
 	schemaCalls *atomic.Int32
+	lastQuery   *atomic.Value
 }
 
 func (r *muxCountingListResource) Metadata(
@@ -347,9 +376,18 @@ func (r *muxCountingListResource) ListResourceConfigSchema(
 	resp.Schema = muxCountingListResourceSchema
 }
 
-func (*muxCountingListResource) List(
-	_ context.Context, _ tflist.ListRequest, stream *tflist.ListResultsStream,
+func (r *muxCountingListResource) List(
+	ctx context.Context, req tflist.ListRequest, stream *tflist.ListResultsStream,
 ) {
+	var filter string
+	var labels []string
+	diags := req.Config.GetAttribute(ctx, path.Root("filter"), &filter)
+	diags.Append(req.Config.GetAttribute(ctx, path.Root("labels"), &labels)...)
+	if diags.HasError() {
+		stream.Results = tflist.ListResultsStreamDiagnostics(diags)
+		return
+	}
+	r.lastQuery.Store(filter + "|" + strings.Join(labels, ","))
 	stream.Results = tflist.NoListResults
 }
 
@@ -403,6 +441,7 @@ var (
 	muxCountingListResourceSchema = lschema.Schema{
 		Attributes: map[string]lschema.Attribute{
 			"filter": lschema.StringAttribute{Optional: true},
+			"labels": lschema.ListAttribute{ElementType: types.StringType, Optional: true},
 		},
 	}
 )

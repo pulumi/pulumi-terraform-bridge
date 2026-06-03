@@ -16,8 +16,10 @@ package pfutils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -31,15 +33,18 @@ func queryProviderMetadata(ctx context.Context, prov provider.Provider) *provide
 	return &provMetadata
 }
 
-func checkDiagsForErrors(diag diag.Diagnostics) error {
-	if diag.HasError() {
-		errs := diag.Errors()
-		err := fmt.Errorf(
-			"Error 1 of %d: %s",
-			diag.ErrorsCount(),
-			errs[0].Summary(),
-		)
-		return err
+func checkDiagsForErrors(diagnostics diag.Diagnostics) error {
+	if diagnostics.HasError() {
+		errs := diagnostics.Errors()
+		parts := make([]string, 0, len(errs))
+		for i, diagnostic := range errs {
+			part := fmt.Sprintf("Error %d of %d: %s", i+1, diagnostics.ErrorsCount(), diagnostic.Summary())
+			if detail := diagnostic.Detail(); detail != "" {
+				part += ": " + detail
+			}
+			parts = append(parts, part)
+		}
+		return errors.New(strings.Join(parts, "; "))
 	}
 	return nil
 }

@@ -168,6 +168,28 @@ func TestLazySchemaDoesNotUseCanceledConstructionContext(t *testing.T) {
 	require.Equal(t, int32(1), prov.resourceSchemaCalls("thing"))
 }
 
+func TestLazySchemaUsesCallerContextWithoutCachingCancellationFailure(t *testing.T) {
+	t.Parallel()
+
+	prov := newCountingProvider("test", []string{"thing"}, nil)
+	prov.resourceSchemaFailsOnCanceledContext["thing"] = true
+	shimmed := ShimSchemaOnlyProvider(context.Background(), prov).(*SchemaOnlyProvider)
+	resource := shimmed.ResourcesMap().Get("test_thing").(*schemaOnlyResource)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	message := panicMessage(func() { resource.tf.Type(ctx) })
+	require.Contains(t, message, "failed to load Terraform Plugin Framework resource schema test_thing")
+	require.Contains(t, message, context.Canceled.Error())
+	require.Equal(t, int32(1), prov.resourceSchemaCalls("thing"))
+
+	require.NotPanics(t, func() {
+		resource.Schema()
+	})
+	require.Equal(t, int32(2), prov.resourceSchemaCalls("thing"))
+}
+
 func TestLazySchemaPanicsWithStableContextualError(t *testing.T) {
 	t.Parallel()
 

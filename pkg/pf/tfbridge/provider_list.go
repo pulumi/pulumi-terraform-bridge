@@ -417,6 +417,11 @@ func (p *provider) listConfigSchema(tfResourceName string) (runtypes.Schema, err
 		return nil, status.Errorf(codes.Unimplemented,
 			"terraform provider does not expose a list schema for %q", tfResourceName)
 	}
+	if schemaResource, ok := listResource.(interface {
+		TerraformPluginFrameworkSchema() runtypes.Schema
+	}); ok {
+		return schemaResource.TerraformPluginFrameworkSchema(), nil
+	}
 	return shimResourceSchema{
 		name:     runtypes.TypeName(tfResourceName),
 		resource: listResource,

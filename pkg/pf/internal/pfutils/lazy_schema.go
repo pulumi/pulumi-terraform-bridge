@@ -40,7 +40,13 @@ type lazySchema struct {
 func (s *lazySchema) get(ctx context.Context, reason string) Schema {
 	s.mu.Lock()
 	if !s.loaded {
-		s.schema, s.err = s.loadSchema(s.loadContext(ctx))
+		loadCtx := s.loadContext(ctx)
+		schema, err := s.loadSchema(loadCtx)
+		if err != nil && ctx != nil && loadCtx.Err() != nil {
+			s.mu.Unlock()
+			panic(s.loadError(reason, err))
+		}
+		s.schema, s.err = schema, err
 		s.loaded = true
 	}
 	err := s.err
@@ -58,10 +64,10 @@ func (s *lazySchema) get(ctx context.Context, reason string) Schema {
 }
 
 func (s *lazySchema) loadContext(ctx context.Context) context.Context {
-	if ctx == nil {
-		ctx = s.ctx
+	if ctx != nil {
+		return ctx
 	}
-	return withoutCancel(ctx)
+	return withoutCancel(s.ctx)
 }
 
 func (s *lazySchema) loadSchema(ctx context.Context) (schema Schema, err error) {

@@ -46,6 +46,10 @@ func (r *schemaOnlyListResource) Schema() shim.SchemaMap {
 	return r.tf.Shim()
 }
 
+func (r *schemaOnlyListResource) TerraformPluginFrameworkSchema() runtypes.Schema {
+	return r.tf
+}
+
 func (r *schemaOnlyListResource) SchemaVersion() int {
 	panic("list resources do not have schema versions")
 }
