@@ -44,6 +44,13 @@ func checkDiagsForErrors(diag diag.Diagnostics) error {
 	return nil
 }
 
+func withoutCancel(ctx context.Context) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithoutCancel(ctx)
+}
+
 type entry[T any] struct {
 	schema Schema
 	tfName runtypes.TypeName

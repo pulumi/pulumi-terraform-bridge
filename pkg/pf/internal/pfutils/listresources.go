@@ -53,7 +53,8 @@ func GatherListResources[F func(Schema) shim.SchemaMap](
 			schema: &lazySchema{
 				kind:   "list resource",
 				tfName: tfName,
-				load: func() (Schema, error) {
+				ctx:    withoutCancel(ctx),
+				load: func(ctx context.Context) (Schema, error) {
 					listResource := makeListResource()
 					schemaResponse := &tflist.ListResourceSchemaResponse{}
 					listResource.ListResourceConfigSchema(ctx, tflist.ListResourceSchemaRequest{}, schemaResponse)

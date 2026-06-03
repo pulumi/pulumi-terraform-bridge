@@ -23,6 +23,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	tflist "github.com/hashicorp/terraform-plugin-framework/list"
 	lschema "github.com/hashicorp/terraform-plugin-framework/list/schema"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -83,9 +84,22 @@ func TestMaxItemsOne(t *testing.T) {
 }
 
 type schemaTestProvider struct {
-	schema    prschema.Schema
-	resources map[string]rschema.Schema
-	lists     map[string]lschema.Schema
+	schema      prschema.Schema
+	resources   map[string]rschema.Schema
+	dataSources map[string]dschema.Schema
+	lists       map[string]lschema.Schema
+}
+
+type invalidProviderSchemaProvider struct {
+	schemaTestProvider
+}
+
+type invalidDataSourceSchemaProvider struct {
+	schemaTestProvider
+}
+
+type invalidListResourceSchemaProvider struct {
+	schemaTestProvider
 }
 
 func (*schemaTestProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -96,12 +110,31 @@ func (p *schemaTestProvider) Schema(_ context.Context, _ provider.SchemaRequest,
 	resp.Schema = p.schema
 }
 
+func (p *invalidProviderSchemaProvider) Schema(
+	_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse,
+) {
+	resp.Schema = p.schema
+	resp.Diagnostics.AddError("invalid provider schema", "provider schema failed")
+}
+
 func (*schemaTestProvider) Configure(context.Context, provider.ConfigureRequest, *provider.ConfigureResponse) {
 	panic("NOT IMPLEMENTED")
 }
 
-func (*schemaTestProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return nil
+func (p *schemaTestProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	r := make([]func() datasource.DataSource, 0, len(p.dataSources))
+	for k, v := range p.dataSources {
+		r = append(r, makeTestDataSource(k, v))
+	}
+	return r
+}
+
+func (p *invalidDataSourceSchemaProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	r := make([]func() datasource.DataSource, 0, len(p.dataSources))
+	for k, v := range p.dataSources {
+		r = append(r, makeInvalidTestDataSource(k, v))
+	}
+	return r
 }
 
 func (p *schemaTestProvider) Resources(context.Context) []func() resource.Resource {
@@ -120,11 +153,28 @@ func (p *schemaTestProvider) ListResources(context.Context) []func() tflist.List
 	return r
 }
 
+func (p *invalidListResourceSchemaProvider) ListResources(context.Context) []func() tflist.ListResource {
+	r := make([]func() tflist.ListResource, 0, len(p.lists))
+	for k, v := range p.lists {
+		r = append(r, makeInvalidTestListResource(k, v))
+	}
+	return r
+}
+
 func makeTestListResource(name string, schema lschema.Schema) func() tflist.ListResource {
 	return func() tflist.ListResource { return schemaTestListResource{name, schema} }
 }
 
+func makeInvalidTestListResource(name string, schema lschema.Schema) func() tflist.ListResource {
+	return func() tflist.ListResource { return invalidSchemaTestListResource{name, schema} }
+}
+
 type schemaTestListResource struct {
+	name   string
+	schema lschema.Schema
+}
+
+type invalidSchemaTestListResource struct {
 	name   string
 	schema lschema.Schema
 }
@@ -141,7 +191,26 @@ func (r schemaTestListResource) ListResourceConfigSchema(
 	resp.Schema = r.schema
 }
 
+func (r invalidSchemaTestListResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + r.name
+}
+
+func (r invalidSchemaTestListResource) ListResourceConfigSchema(
+	_ context.Context, _ tflist.ListResourceSchemaRequest, resp *tflist.ListResourceSchemaResponse,
+) {
+	resp.Schema = r.schema
+	resp.Diagnostics.AddError("invalid list resource schema", "list resource schema failed")
+}
+
 func (r schemaTestListResource) List(
+	_ context.Context, _ tflist.ListRequest, _ *tflist.ListResultsStream,
+) {
+	panic(r.name)
+}
+
+func (r invalidSchemaTestListResource) List(
 	_ context.Context, _ tflist.ListRequest, _ *tflist.ListResultsStream,
 ) {
 	panic(r.name)
@@ -335,6 +404,57 @@ func TestListInputsOmittedWithoutListResource(t *testing.T) {
 
 func makeTestResource(name string, schema rschema.Schema) func() resource.Resource {
 	return func() resource.Resource { return schemaTestResource{name, schema} }
+}
+
+func makeTestDataSource(name string, schema dschema.Schema) func() datasource.DataSource {
+	return func() datasource.DataSource { return schemaTestDataSource{name, schema} }
+}
+
+func makeInvalidTestDataSource(name string, schema dschema.Schema) func() datasource.DataSource {
+	return func() datasource.DataSource { return invalidSchemaTestDataSource{name, schema} }
+}
+
+type schemaTestDataSource struct {
+	name   string
+	schema dschema.Schema
+}
+
+type invalidSchemaTestDataSource struct {
+	name   string
+	schema dschema.Schema
+}
+
+func (d schemaTestDataSource) Metadata(
+	_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + d.name
+}
+
+func (d schemaTestDataSource) Schema(
+	_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse,
+) {
+	resp.Schema = d.schema
+}
+
+func (d invalidSchemaTestDataSource) Metadata(
+	_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + d.name
+}
+
+func (d invalidSchemaTestDataSource) Schema(
+	_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse,
+) {
+	resp.Schema = d.schema
+	resp.Diagnostics.AddError("invalid data source schema", "data source schema failed")
+}
+
+func (d schemaTestDataSource) Read(context.Context, datasource.ReadRequest, *datasource.ReadResponse) {
+	panic(d.name)
+}
+
+func (d invalidSchemaTestDataSource) Read(context.Context, datasource.ReadRequest, *datasource.ReadResponse) {
+	panic(d.name)
 }
 
 type schemaTestResource struct {
@@ -783,4 +903,100 @@ func TestGenerateSchemaFailsOnInvalidPFResourceSchemaImplementation(t *testing.T
 	})
 	require.ErrorContains(t, err, "Plugin Framework resource test_res ValidateImplementation failed")
 	require.ErrorContains(t, err, `Attribute "a1" must be computed when using default`)
+}
+
+func TestGenerateSchemaFailsOnPFProviderSchemaDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	_, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name:             "testprovider",
+			UpstreamRepoPath: ".", // no invalid mappings warnings
+			P: pftfbridge.ShimProvider(&invalidProviderSchemaProvider{
+				schemaTestProvider: schemaTestProvider{
+					schema: prschema.Schema{},
+				},
+			}),
+		},
+	})
+	require.ErrorContains(t, err, "Plugin Framework provider test_ Schema failed")
+	require.ErrorContains(t, err, "provider schema failed")
+}
+
+func TestGenerateSchemaFailsOnPFDataSourceSchemaDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	_, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name:             "testprovider",
+			UpstreamRepoPath: ".", // no invalid mappings warnings
+			P: pftfbridge.ShimProvider(&invalidDataSourceSchemaProvider{
+				schemaTestProvider: schemaTestProvider{
+					dataSources: map[string]dschema.Schema{
+						"lookup": {},
+					},
+				},
+			}),
+			DataSources: map[string]*tfbridge.DataSourceInfo{
+				"test_lookup": {
+					Tok:  "testprovider:index:getLookup",
+					Docs: &tfbridge.DocInfo{Markdown: []byte{' '}},
+				},
+			},
+		},
+	})
+	require.ErrorContains(t, err, "Plugin Framework data source test_lookup Schema failed")
+	require.ErrorContains(t, err, "data source schema failed")
+}
+
+func TestGenerateSchemaFailsOnPFListResourceSchemaDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	_, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name:             "testprovider",
+			UpstreamRepoPath: ".", // no invalid mappings warnings
+			P: pftfbridge.ShimProvider(&invalidListResourceSchemaProvider{
+				schemaTestProvider: schemaTestProvider{
+					lists: map[string]lschema.Schema{
+						"thing": {},
+					},
+				},
+			}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_thing": {
+					Tok:  "testprovider:index:Thing",
+					Docs: &tfbridge.DocInfo{Markdown: []byte{' '}},
+				},
+			},
+		},
+	})
+	require.ErrorContains(t, err, "Plugin Framework list resource test_thing Schema failed")
+	require.ErrorContains(t, err, "list resource schema failed")
+}
+
+func TestGenerateSchemaIgnoresInvalidUnmappedPFResourceSchemaImplementation(t *testing.T) {
+	t.Parallel()
+
+	_, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name:             "testprovider",
+			UpstreamRepoPath: ".", // no invalid mappings warnings
+			P: pftfbridge.ShimProvider(&schemaTestProvider{
+				resources: map[string]rschema.Schema{
+					"res": {
+						Attributes: map[string]rschema.Attribute{
+							"id": rschema.StringAttribute{Computed: true},
+							"a1": rschema.StringAttribute{
+								Optional: true,
+								Default:  stringdefault.StaticString("default"),
+							},
+						},
+					},
+				},
+			}),
+			IgnoreMappings: []string{"test_res"},
+		},
+	})
+	require.NoError(t, err)
 }

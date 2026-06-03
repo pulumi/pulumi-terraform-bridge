@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -35,12 +36,58 @@ type frameworkProviderShim interface {
 	FrameworkProvider() provider.Provider
 }
 
-func validateFrameworkSchemas(ctx context.Context, sink diag.Sink, p shim.Provider) error {
+func validateFrameworkSchemas(
+	ctx context.Context,
+	sink diag.Sink,
+	info tfbridge.ProviderInfo,
+	isPFResource func(tfToken string) bool,
+	isPFDataSource func(tfToken string) bool,
+) error {
 	var errs []error
-	for _, frameworkProvider := range frameworkProviders(p) {
-		errs = append(errs, validateFrameworkProvider(ctx, sink, frameworkProvider)...)
+	for _, frameworkProvider := range frameworkProviders(info.P) {
+		errs = append(errs, validateFrameworkProvider(
+			ctx,
+			sink,
+			frameworkProvider,
+			generatedPFResources(info, isPFResource),
+			generatedPFDataSources(info, isPFDataSource),
+			generatedListResources(info),
+		)...)
 	}
 	return errors.Join(errs...)
+}
+
+func generatedPFResources(info tfbridge.ProviderInfo, isPFResource func(tfToken string) bool) map[string]bool {
+	generated := map[string]bool{}
+	for name, resInfo := range info.Resources {
+		if resInfo == nil || resInfo.GetTok() == "" || !isPFResource(name) {
+			continue
+		}
+		generated[name] = true
+	}
+	return generated
+}
+
+func generatedPFDataSources(info tfbridge.ProviderInfo, isPFDataSource func(tfToken string) bool) map[string]bool {
+	generated := map[string]bool{}
+	for name, dsInfo := range info.DataSources {
+		if dsInfo == nil || dsInfo.GetTok() == "" || !isPFDataSource(name) {
+			continue
+		}
+		generated[name] = true
+	}
+	return generated
+}
+
+func generatedListResources(info tfbridge.ProviderInfo) map[string]bool {
+	generated := map[string]bool{}
+	for name, resInfo := range info.Resources {
+		if resInfo == nil || resInfo.GetTok() == "" {
+			continue
+		}
+		generated[name] = true
+	}
+	return generated
 }
 
 func frameworkProviders(p shim.Provider) []provider.Provider {
@@ -66,7 +113,14 @@ func frameworkProvider(p shim.Provider) provider.Provider {
 	return nil
 }
 
-func validateFrameworkProvider(ctx context.Context, sink diag.Sink, p provider.Provider) []error {
+func validateFrameworkProvider(
+	ctx context.Context,
+	sink diag.Sink,
+	p provider.Provider,
+	generatedResources map[string]bool,
+	generatedDataSources map[string]bool,
+	generatedListResources map[string]bool,
+) []error {
 	if p == nil {
 		return nil
 	}
@@ -74,9 +128,9 @@ func validateFrameworkProvider(ctx context.Context, sink diag.Sink, p provider.P
 	var errs []error
 	providerTypeName := frameworkProviderTypeName(ctx, p)
 	errs = append(errs, validateFrameworkProviderSchema(ctx, sink, p, providerTypeName))
-	errs = append(errs, validateFrameworkResourceSchemas(ctx, sink, p, providerTypeName)...)
-	errs = append(errs, validateFrameworkDataSourceSchemas(ctx, sink, p, providerTypeName)...)
-	errs = append(errs, validateFrameworkListResourceSchemas(ctx, sink, p, providerTypeName)...)
+	errs = append(errs, validateFrameworkResourceSchemas(ctx, sink, p, providerTypeName, generatedResources)...)
+	errs = append(errs, validateFrameworkDataSourceSchemas(ctx, sink, p, providerTypeName, generatedDataSources)...)
+	errs = append(errs, validateFrameworkListResourceSchemas(ctx, sink, p, providerTypeName, generatedListResources)...)
 	return errs
 }
 
@@ -105,13 +159,20 @@ func validateFrameworkProviderSchema(
 }
 
 func validateFrameworkResourceSchemas(
-	ctx context.Context, sink diag.Sink, p provider.Provider, providerTypeName string,
+	ctx context.Context,
+	sink diag.Sink,
+	p provider.Provider,
+	providerTypeName string,
+	generatedResources map[string]bool,
 ) []error {
 	var errs []error
 	for _, makeResource := range p.Resources(ctx) {
 		r := makeResource()
 		meta := &resource.MetadataResponse{}
 		r.Metadata(ctx, resource.MetadataRequest{ProviderTypeName: providerTypeName}, meta)
+		if !generatedResources[meta.TypeName] {
+			continue
+		}
 
 		resp := &resource.SchemaResponse{}
 		r.Schema(ctx, resource.SchemaRequest{}, resp)
@@ -131,13 +192,20 @@ func validateFrameworkResourceSchemas(
 }
 
 func validateFrameworkDataSourceSchemas(
-	ctx context.Context, sink diag.Sink, p provider.Provider, providerTypeName string,
+	ctx context.Context,
+	sink diag.Sink,
+	p provider.Provider,
+	providerTypeName string,
+	generatedDataSources map[string]bool,
 ) []error {
 	var errs []error
 	for _, makeDataSource := range p.DataSources(ctx) {
 		ds := makeDataSource()
 		meta := &datasource.MetadataResponse{}
 		ds.Metadata(ctx, datasource.MetadataRequest{ProviderTypeName: providerTypeName}, meta)
+		if !generatedDataSources[meta.TypeName] {
+			continue
+		}
 
 		resp := &datasource.SchemaResponse{}
 		ds.Schema(ctx, datasource.SchemaRequest{}, resp)
@@ -157,7 +225,11 @@ func validateFrameworkDataSourceSchemas(
 }
 
 func validateFrameworkListResourceSchemas(
-	ctx context.Context, sink diag.Sink, p provider.Provider, providerTypeName string,
+	ctx context.Context,
+	sink diag.Sink,
+	p provider.Provider,
+	providerTypeName string,
+	generatedListResources map[string]bool,
 ) []error {
 	listProvider, ok := p.(provider.ProviderWithListResources)
 	if !ok {
@@ -169,6 +241,9 @@ func validateFrameworkListResourceSchemas(
 		listResource := makeListResource()
 		meta := &resource.MetadataResponse{}
 		listResource.Metadata(ctx, resource.MetadataRequest{ProviderTypeName: providerTypeName}, meta)
+		if !generatedListResources[meta.TypeName] {
+			continue
+		}
 
 		resp := &tflist.ListResourceSchemaResponse{}
 		listResource.ListResourceConfigSchema(ctx, tflist.ListResourceSchemaRequest{}, resp)

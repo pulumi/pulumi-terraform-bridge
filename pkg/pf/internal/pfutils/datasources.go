@@ -47,7 +47,8 @@ func GatherDatasources[F func(Schema) shim.SchemaMap](
 			schema: &lazySchema{
 				kind:   "datasource",
 				tfName: tfName,
-				load: func() (Schema, error) {
+				ctx:    withoutCancel(ctx),
+				load: func(ctx context.Context) (Schema, error) {
 					dataSource := makeDataSource()
 					schemaResponse := &datasource.SchemaResponse{}
 					dataSource.Schema(ctx, datasource.SchemaRequest{}, schemaResponse)

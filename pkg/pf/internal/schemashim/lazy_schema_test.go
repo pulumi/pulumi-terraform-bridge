@@ -16,6 +16,7 @@ package schemashim
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -31,6 +32,8 @@ import (
 )
 
 func TestShimSchemaOnlyProviderDefersResourceAndDataSourceSchemas(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	prov := newCountingProvider("test", []string{"one", "two"}, []string{"lookup"})
 
@@ -73,6 +76,8 @@ func TestShimSchemaOnlyProviderDefersResourceAndDataSourceSchemas(t *testing.T) 
 }
 
 func TestLazySchemaLoadsOnceUnderConcurrentAccess(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	prov := newCountingProvider("test", []string{"thing"}, nil)
 	shimmed := ShimSchemaOnlyProvider(ctx, prov).(*SchemaOnlyProvider)
@@ -92,6 +97,8 @@ func TestLazySchemaLoadsOnceUnderConcurrentAccess(t *testing.T) {
 }
 
 func TestSchemaOnlyProviderServerDoesNotRequireFullProviderSchemaForResourceNames(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	prov := newCountingProvider("test", []string{"thing"}, nil)
 	shimmed := ShimSchemaOnlyProvider(ctx, prov).(*SchemaOnlyProvider)
@@ -115,20 +122,57 @@ func TestSchemaOnlyProviderServerDoesNotRequireFullProviderSchemaForResourceName
 	require.Equal(t, int32(1), prov.resourceSchemaCalls("thing"))
 }
 
+func TestLazySchemaDoesNotUseCanceledConstructionContext(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	prov := newCountingProvider("test", []string{"thing"}, nil)
+	prov.resourceSchemaFailsOnCanceledContext["thing"] = true
+	shimmed := ShimSchemaOnlyProvider(ctx, prov).(*SchemaOnlyProvider)
+	cancel()
+
+	require.NotPanics(t, func() {
+		shimmed.ResourcesMap().Get("test_thing").Schema()
+	})
+	require.Equal(t, int32(1), prov.resourceSchemaCalls("thing"))
+}
+
+func TestLazySchemaPanicsWithStableContextualError(t *testing.T) {
+	t.Parallel()
+
+	prov := newCountingProvider("test", []string{"boom"}, nil)
+	prov.resourceSchemaPanics["boom"] = true
+	shimmed := ShimSchemaOnlyProvider(context.Background(), prov).(*SchemaOnlyProvider)
+	resource := shimmed.ResourcesMap().Get("test_boom")
+
+	first := panicMessage(func() { resource.Schema() })
+	second := panicMessage(func() { resource.Schema() })
+
+	require.Contains(t, first, "failed to load Terraform Plugin Framework resource schema test_boom")
+	require.Contains(t, first, "panic: schema exploded")
+	require.Equal(t, first, second)
+	require.Equal(t, int32(1), prov.resourceSchemaCalls("boom"))
+}
+
 type countingProvider struct {
 	typeName string
 
 	resources   map[string]*atomic.Int32
 	dataSources map[string]*atomic.Int32
 
+	resourceSchemaFailsOnCanceledContext map[string]bool
+	resourceSchemaPanics                 map[string]bool
+
 	providerSchemaCalls atomic.Int32
 }
 
 func newCountingProvider(typeName string, resources, dataSources []string) *countingProvider {
 	prov := &countingProvider{
-		typeName:    typeName,
-		resources:   map[string]*atomic.Int32{},
-		dataSources: map[string]*atomic.Int32{},
+		typeName:                             typeName,
+		resources:                            map[string]*atomic.Int32{},
+		dataSources:                          map[string]*atomic.Int32{},
+		resourceSchemaFailsOnCanceledContext: map[string]bool{},
+		resourceSchemaPanics:                 map[string]bool{},
 	}
 	for _, name := range resources {
 		prov.resources[name] = &atomic.Int32{}
@@ -155,8 +199,15 @@ func (p *countingProvider) Resources(context.Context) []func() resource.Resource
 	for name, calls := range p.resources {
 		name := name
 		calls := calls
+		failOnCanceledContext := p.resourceSchemaFailsOnCanceledContext[name]
+		panicOnSchema := p.resourceSchemaPanics[name]
 		resources = append(resources, func() resource.Resource {
-			return &countingResource{name: name, schemaCalls: calls}
+			return &countingResource{
+				name:                  name,
+				schemaCalls:           calls,
+				failOnCanceledContext: failOnCanceledContext,
+				panicOnSchema:         panicOnSchema,
+			}
 		})
 	}
 	return resources
@@ -183,16 +234,24 @@ func (p *countingProvider) dataSourceSchemaCalls(name string) int32 {
 }
 
 type countingResource struct {
-	name        string
-	schemaCalls *atomic.Int32
+	name                  string
+	schemaCalls           *atomic.Int32
+	failOnCanceledContext bool
+	panicOnSchema         bool
 }
 
 func (r *countingResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_" + r.name
 }
 
-func (r *countingResource) Schema(context.Context, resource.SchemaRequest, *resource.SchemaResponse) {
+func (r *countingResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	r.schemaCalls.Add(1)
+	if r.panicOnSchema {
+		panic("schema exploded")
+	}
+	if r.failOnCanceledContext && ctx.Err() != nil {
+		resp.Diagnostics.AddError("unexpected canceled context", ctx.Err().Error())
+	}
 }
 
 func (*countingResource) Create(context.Context, resource.CreateRequest, *resource.CreateResponse) {}
@@ -222,3 +281,13 @@ var (
 	_ resource.Resource     = (*countingResource)(nil)
 	_ datasource.DataSource = (*countingDataSource)(nil)
 )
+
+func panicMessage(f func()) (message string) {
+	defer func() {
+		if p := recover(); p != nil {
+			message = fmt.Sprint(p)
+		}
+	}()
+	f()
+	return ""
+}

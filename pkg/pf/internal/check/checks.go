@@ -40,8 +40,11 @@ func Provider(sink diag.Sink, info tfbridge.ProviderInfo) error {
 		isPFDataSource = p.DataSourceIsPF
 	}
 
+	if err := validateFrameworkSchemas(context.Background(), sink, info, isPFResource, isPFDataSource); err != nil {
+		return err
+	}
+
 	return errors.Join(
-		validateFrameworkSchemas(context.Background(), sink, info.P),
 		checkIDProperties(sink, info, isPFResource),
 		notSupported(sink, info, isPFResource, isPFDataSource),
 	)
