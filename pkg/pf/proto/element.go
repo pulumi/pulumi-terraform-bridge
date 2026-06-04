@@ -127,17 +127,46 @@ func (m elementObjectMap) GetOk(key string) (shim.Schema, bool) {
 	if !ok {
 		return nil, false
 	}
-	_, optional := m.OptionalAttributes[key]
-	return newElement(v, optional), true
+	return newElement(v, m.optional(key)), true
 }
 
 func (m elementObjectMap) Range(each func(key string, value shim.Schema) bool) {
 	for k, v := range m.AttributeTypes {
-		_, optional := m.OptionalAttributes[k]
-		if !each(k, newElement(v, optional)) {
+		if !each(k, newElement(v, m.optional(k))) {
 			return
 		}
 	}
+}
+
+// optional reports whether the named attribute of this object type should be
+// treated as optional.
+//
+// The plugin wire protocol expresses per-field optionality of an object type
+// only through [tftypes.Object.OptionalAttributes]. An SDKv2 provider that
+// serializes an attribute-as-blocks shape (a block with
+// ConfigMode: SchemaConfigModeAttr) does not populate it, so the per-field
+// optionality is simply absent from the wire schema. When no attribute is
+// marked optional we cannot distinguish "every field is required" from
+// "optionality is unknown", so we default to optional rather than incorrectly
+// marking every field required.
+//
+// This loss is intentional upstream, not a bug we can fix in SDKv2. SDKv2
+// lowers a ConfigMode: SchemaConfigModeAttr block to a typed attribute whose
+// type is computed by configschema.Block.ImpliedType. That method builds a
+// plain cty.Object from each nested attribute's type and discards its
+// Optional/Required flag (it never emits cty.ObjectWithOptionalAttrs). Terraform
+// itself never relies on the implied type for this: it validates configuration
+// against the block's decoder spec, which retains optionality, while the wire
+// protocol only carries the lossy implied type. The bridge has access only to
+// the wire schema, so defaulting to optional is the closest we can get. The
+// Plugin Framework path is unaffected because it serializes nested objects as
+// NestedType, carrying per-field Optional flags (handled by [object]).
+func (m elementObjectMap) optional(key string) bool {
+	if len(m.OptionalAttributes) == 0 {
+		return true
+	}
+	_, optional := m.OptionalAttributes[key]
+	return optional
 }
 
 func (m elementObjectMap) Validate() error { return nil }
