@@ -417,6 +417,9 @@ func (p *provider) listConfigSchema(tfResourceName string) (runtypes.Schema, err
 		return nil, status.Errorf(codes.Unimplemented,
 			"terraform provider does not expose a list schema for %q", tfResourceName)
 	}
+	// Schema-only PF list resources expose the native lazy Framework schema so
+	// query encoding can use Terraform types from the selected list resource
+	// without forcing full provider schema materialization.
 	if schemaResource, ok := listResource.(interface {
 		TerraformPluginFrameworkSchema() runtypes.Schema
 	}); ok {

@@ -39,8 +39,13 @@ type GenerateSchemaResult struct {
 	ProviderMetadata tfbridge.ProviderMetadata
 }
 
-// Generates the Pulumi Package Schema and bridge-specific metadata. Most users do not need to call this directly but
-// instead use Main to build a build-time helper CLI tool.
+// GenerateSchema generates the Pulumi Package Schema and bridge-specific
+// metadata. Most users do not need to call this directly but instead use Main
+// to build a build-time helper CLI tool.
+//
+// The context is passed to PF build-time validation, including Framework schema
+// methods and ValidateImplementation for generated provider, resource, data
+// source, and list resource schemas. A nil context uses context.Background().
 func GenerateSchema(ctx context.Context, opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
 	if ctx == nil {
 		ctx = context.Background()

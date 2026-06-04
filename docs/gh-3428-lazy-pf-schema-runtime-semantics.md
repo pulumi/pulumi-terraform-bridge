@@ -285,6 +285,14 @@ Dynamic providers have different schema discovery constraints. Do not apply stat
 
 ## Test Plan
 
+The branch proof is split between focused bridge tests and follow-up provider
+measurement. Build-time validation and lazy-loading behavior are covered by
+targeted tests in `pkg/pf/tfgen/tfgen_test.go`,
+`pkg/pf/internal/schemashim/lazy_schema_test.go`, and
+`pkg/pf/tests/mux_lazy_schema_test.go`. The downstream memory measurement is a
+manual provider-level proof to run against the large muxed provider that
+motivated GH-3428.
+
 ### Build-Time Tests
 
 1. **Framework validation canary**
@@ -355,6 +363,10 @@ For representative providers:
 - bridge metadata is unchanged;
 - dispatch table is unchanged;
 - dynamic bridge golden output is unchanged where relevant.
+
+These checks are still expected review/downstream validation. Any generated
+schema or metadata diff from the branch should be treated as suspicious unless
+the implementation intentionally changes build-time validation errors.
 
 ### Downstream Memory Proof
 

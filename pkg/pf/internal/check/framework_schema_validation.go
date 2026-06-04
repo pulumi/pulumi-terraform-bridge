@@ -33,9 +33,21 @@ import (
 )
 
 type frameworkProviderShim interface {
+	// FrameworkProvider returns the original Terraform Plugin Framework provider
+	// behind a schema-only shim. check uses this narrow internal hook for
+	// build-time Framework validation without adding Framework-specific methods
+	// to public shim interfaces.
 	FrameworkProvider() provider.Provider
 }
 
+// validateFrameworkSchemas runs Terraform Plugin Framework implementation
+// validation for the generated PF surface before Pulumi schema generation.
+//
+// Runtime startup no longer calls full GetProviderSchema for static providers,
+// so this is the build-time replacement for Framework provider-wide validation.
+// It unwraps muxed providers, validates each PF sub-provider, and validates
+// only resources, data sources, and list resources that are generated into the
+// Pulumi schema.
 func validateFrameworkSchemas(
 	ctx context.Context,
 	sink diag.Sink,
@@ -57,6 +69,10 @@ func validateFrameworkSchemas(
 	return errors.Join(errs...)
 }
 
+// generatedPFResources returns the Terraform resource type names that belong
+// to PF and are included in the generated Pulumi schema. SDKv2 resources in a
+// muxed provider and nil mapping entries are excluded so validation follows the
+// same ownership boundary as generation.
 func generatedPFResources(info tfbridge.ProviderInfo, isPFResource func(tfToken string) bool) map[string]bool {
 	generated := map[string]bool{}
 	for name, resInfo := range info.Resources {
@@ -68,6 +84,10 @@ func generatedPFResources(info tfbridge.ProviderInfo, isPFResource func(tfToken 
 	return generated
 }
 
+// generatedPFDataSources returns the Terraform data source type names that
+// belong to PF and are included in the generated Pulumi schema. SDKv2 data
+// sources in a muxed provider and nil mapping entries are excluded so
+// validation does not reject provider entries the bridge is not generating.
 func generatedPFDataSources(info tfbridge.ProviderInfo, isPFDataSource func(tfToken string) bool) map[string]bool {
 	generated := map[string]bool{}
 	for name, dsInfo := range info.DataSources {
@@ -79,6 +99,10 @@ func generatedPFDataSources(info tfbridge.ProviderInfo, isPFDataSource func(tfTo
 	return generated
 }
 
+// generatedListResources returns Terraform resource type names that have
+// generated Pulumi resources and may therefore need PF list-resource validation.
+// List resources are keyed by the same Terraform type name as the corresponding
+// CRUD resource.
 func generatedListResources(info tfbridge.ProviderInfo) map[string]bool {
 	generated := map[string]bool{}
 	for name, resInfo := range info.Resources {
@@ -90,6 +114,10 @@ func generatedListResources(info tfbridge.ProviderInfo) map[string]bool {
 	return generated
 }
 
+// frameworkProviders returns the concrete Framework providers hidden behind a
+// direct schema-only shim or behind the PF side of a muxed provider. Providers
+// that do not expose the internal FrameworkProvider hook are ignored because
+// they cannot be Framework-validated here.
 func frameworkProviders(p shim.Provider) []provider.Provider {
 	if p, ok := p.(*muxer.ProviderShim); ok {
 		var providers []provider.Provider
@@ -106,6 +134,8 @@ func frameworkProviders(p shim.Provider) []provider.Provider {
 	return nil
 }
 
+// frameworkProvider unwraps one shim provider into its original Framework
+// provider when the shim was built by the PF schema-only path.
 func frameworkProvider(p shim.Provider) provider.Provider {
 	if p, ok := p.(frameworkProviderShim); ok {
 		return p.FrameworkProvider()
@@ -113,6 +143,10 @@ func frameworkProvider(p shim.Provider) provider.Provider {
 	return nil
 }
 
+// validateFrameworkProvider validates one concrete Framework provider and all
+// generated PF entity schemas reachable from it. It returns every validation
+// error instead of stopping at the first entity so provider upgrades can report
+// all invalid Framework schemas in one tfgen run.
 func validateFrameworkProvider(
 	ctx context.Context,
 	sink diag.Sink,
@@ -134,12 +168,18 @@ func validateFrameworkProvider(
 	return errs
 }
 
+// frameworkProviderTypeName asks the Framework provider for its type name so
+// resource, data source, and list resource Metadata calls compute the same
+// Terraform type names they would use at runtime.
 func frameworkProviderTypeName(ctx context.Context, p provider.Provider) string {
 	resp := &provider.MetadataResponse{}
 	p.Metadata(ctx, provider.MetadataRequest{}, resp)
 	return resp.TypeName
 }
 
+// validateFrameworkProviderSchema checks provider.Schema diagnostics and then
+// runs Framework ValidateImplementation on the provider config schema. Both
+// failures are reported through the Pulumi diagnostics sink before returning.
 func validateFrameworkProviderSchema(
 	ctx context.Context, sink diag.Sink, p provider.Provider, providerTypeName string,
 ) error {
@@ -158,6 +198,10 @@ func validateFrameworkProviderSchema(
 	return nil
 }
 
+// validateFrameworkResourceSchemas validates every generated PF resource schema
+// for a provider. Resource schemas that are present upstream but not generated
+// by this bridge mapping are skipped so optional or unsupported upstream
+// resources do not block schema generation.
 func validateFrameworkResourceSchemas(
 	ctx context.Context,
 	sink diag.Sink,
@@ -191,6 +235,9 @@ func validateFrameworkResourceSchemas(
 	return errs
 }
 
+// validateFrameworkDataSourceSchemas validates every generated PF data source
+// schema for a provider. Data sources that are present upstream but not
+// generated by this bridge mapping are skipped for the same reason as resources.
 func validateFrameworkDataSourceSchemas(
 	ctx context.Context,
 	sink diag.Sink,
@@ -224,6 +271,10 @@ func validateFrameworkDataSourceSchemas(
 	return errs
 }
 
+// validateFrameworkListResourceSchemas validates PF list query schemas for
+// generated resources. Framework list resources are optional, so providers that
+// do not implement ProviderWithListResources have no list-resource validation
+// work to do.
 func validateFrameworkListResourceSchemas(
 	ctx context.Context,
 	sink diag.Sink,
@@ -262,6 +313,9 @@ func validateFrameworkListResourceSchemas(
 	return errs
 }
 
+// frameworkDiagnosticsError converts Framework diagnostics into one bridge
+// error that identifies the entity kind, Terraform type name, and Framework
+// operation that failed. Non-error diagnostics do not block generation.
 func frameworkDiagnosticsError(kind, name, op string, diags fwdiag.Diagnostics) error {
 	if !diags.HasError() {
 		return nil
@@ -282,6 +336,9 @@ func frameworkDiagnosticsError(kind, name, op string, diags fwdiag.Diagnostics) 
 	return fmt.Errorf("Plugin Framework %s %s %s failed: %s", kind, name, op, strings.Join(parts, "; "))
 }
 
+// reportFrameworkValidationError mirrors validation errors into the configured
+// Pulumi diagnostics sink while still allowing callers to aggregate and return
+// the underlying errors.
 func reportFrameworkValidationError(sink diag.Sink, err error) {
 	if sink != nil {
 		sink.Errorf(&diag.Diag{Message: err.Error()})
