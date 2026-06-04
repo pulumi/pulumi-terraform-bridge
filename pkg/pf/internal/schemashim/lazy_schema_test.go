@@ -369,7 +369,9 @@ type countingResource struct {
 	metadataCtxCanceled   *atomic.Bool
 }
 
-func (r *countingResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *countingResource) Metadata(
+	ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
 	if ctx.Err() != nil && r.metadataCtxCanceled != nil {
 		r.metadataCtxCanceled.Store(true)
 	}
