@@ -46,6 +46,9 @@ type GenerateSchemaResult struct {
 // The context is passed to PF build-time validation, including Framework schema
 // methods and ValidateImplementation for generated provider, resource, data
 // source, and list resource schemas. A nil context uses context.Background().
+// This Framework validation guarantee applies when opts.ProviderInfo.P is built
+// with the PF shim or mux helpers, which expose the original Framework provider
+// through the bridge's internal validation hook.
 func GenerateSchema(ctx context.Context, opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
 	if ctx == nil {
 		ctx = context.Background()

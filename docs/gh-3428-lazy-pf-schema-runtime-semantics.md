@@ -13,7 +13,10 @@ Local experiments on a large muxed provider showed provider-process RSS reductio
 5. SDKv2-only programs in muxed providers do not pay the full PF schema cost.
 6. Generated Pulumi schema and bridge metadata remain unchanged.
 
-This is a runtime memory change, not a schema-generation behavior change.
+This is a runtime memory change, not a generated schema output change. The
+intentional build-time behavior change is that invalid generated PF schemas now
+fail Framework implementation validation during tfgen instead of being
+discovered only during runtime full-provider schema loading.
 
 ## Implemented Flow
 
