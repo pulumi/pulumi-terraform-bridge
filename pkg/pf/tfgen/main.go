@@ -34,6 +34,12 @@ import (
 // The resulting binary is able to generate [Pulumi Package Schema] as well as provider SDK sources in various
 // programming languages supported by Pulumi such as TypeScript, Go, and Python.
 //
+// Before generating, Main runs bridge PF checks and Terraform Plugin Framework
+// ValidateImplementation checks for the generated provider, resource, data
+// source, and list resource schemas. Framework validation failures are reported
+// as build-time errors so static providers do not need to call full
+// GetProviderSchema during runtime startup.
+//
 // info.P must be constructed with ShimProvider or ShimProviderWithContext.
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
@@ -65,6 +71,12 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 //
 // The resulting binary is able to generate [Pulumi Package Schema] as well as provider SDK sources in various
 // programming languages supported by Pulumi such as TypeScript, Go, and Python.
+//
+// Before generating, MainWithMuxer runs bridge PF checks and Terraform Plugin
+// Framework ValidateImplementation checks for generated PF provider, resource,
+// data source, and list resource schemas in the muxed provider. Framework
+// validation failures are reported as build-time errors so SDKv2-only runtime
+// operations do not need to materialize the PF provider schema at startup.
 //
 // This is an experimental API.
 //

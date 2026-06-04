@@ -6,7 +6,7 @@ Issue [#3428](https://github.com/pulumi/pulumi-terraform-bridge/issues/3428) tra
 
 Local experiments on a large muxed provider showed provider-process RSS reductions of roughly 120-180 MiB when runtime startup avoided eager full-provider PF schema materialization. The target model is:
 
-1. Build-time schema generation still materializes and validates the full provider schema.
+1. Build-time schema generation still materializes and validates the full generated Pulumi schema surface.
 2. Runtime startup gathers cheap PF metadata needed for dispatch and type-name resolution.
 3. Runtime startup does not call full PF `GetProviderSchema`.
 4. Runtime operations lazily materialize only the PF resource, data source, or list resource schemas they use.
@@ -50,7 +50,7 @@ Current Terraform Plugin Framework versions expose a cheaper metadata path:
 - `GetMetadata` enumerates resource and data source type names and server capabilities.
 - Per-resource server operations can later call `ResourceSchema(typeName)`, which loads and caches only the selected resource schema.
 - Per-data-source operations similarly load only the selected data source schema.
-- List-resource schema loading can be driven from the selected schema-only list-resource map entry without loading the full provider schema.
+- List-resource schema loading can be driven from the selected schema-only list-resource map entry without loading the full Framework `GetProviderSchema` response.
 
 The bridge already has enough local metadata gathering to build resource, data source, and list resource maps without calling schema methods:
 
@@ -108,7 +108,7 @@ The critical GH-3428 case is a muxed provider where the user program touches onl
 
 ## Desired Semantics
 
-1. `tfgen` and build-time helper binaries fully materialize the provider schema and generate the same Pulumi package schema as before.
+1. `tfgen` and build-time helper binaries fully materialize the generated Pulumi schema surface and generate the same Pulumi package schema as before.
 2. Build-time should run bridge PF validation and Framework schema implementation validation so invalid provider schemas fail before release.
 3. Runtime startup should not call PF full `GetProviderSchema` for static generated providers.
 4. Runtime startup may call metadata-only APIs or local provider/resource/data source `Metadata` methods to establish type-name maps.
