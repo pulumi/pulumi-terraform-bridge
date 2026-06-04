@@ -26,10 +26,13 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-// Validate that info is valid as either a PF provider or a PF & SDK based provider.
+// Provider validates info as either a PF provider or a PF & SDK based provider.
 //
-// This function should be called in the generate step, but before schema generation (so
-// as to error as soon as possible).
+// This function should be called in the generate step before schema generation so
+// errors surface as soon as possible. It runs Framework implementation
+// validation for generated PF provider, resource, data source, and list resource
+// schemas before the bridge-specific checks. The context is passed to Framework
+// schema methods and ValidateImplementation; nil uses context.Background().
 func Provider(ctx context.Context, sink diag.Sink, info tfbridge.ProviderInfo) error {
 	if ctx == nil {
 		ctx = context.Background()

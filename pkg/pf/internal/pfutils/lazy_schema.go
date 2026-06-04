@@ -25,6 +25,12 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 )
 
+// lazySchema loads a Framework schema only when a runtime path asks for schema
+// details. Successful loads and non-cancellation failures are cached so later
+// calls see stable behavior. A failure caused by a caller-supplied canceled
+// context is not cached; a later uncanceled call may retry. Calls that do not
+// have an active caller context use the cancellation-detached construction
+// context.
 type lazySchema struct {
 	kind   string
 	tfName runtypes.TypeName
