@@ -25,14 +25,14 @@ import (
 
 // ShimSchemaOnlyProvider gathers cheap PF metadata immediately and defers
 // resource, data source, and list resource schema loading until the selected
-// schema is used. The stored construction context is detached from cancellation
-// so a canceled startup or gather context cannot poison future lazy schema
-// loads.
+// schema is used. Eager metadata gathering uses the caller's context. The
+// stored construction context is detached from cancellation so a canceled
+// startup or gather context cannot poison future lazy schema loads.
 func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) shim.Provider {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx = context.WithoutCancel(ctx)
+	lazyCtx := context.WithoutCancel(ctx)
 	resources, err := pfutils.GatherResources(ctx, provider, NewSchemaMap)
 	if err != nil {
 		panic(err)
@@ -49,7 +49,7 @@ func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) s
 	dataSourceMap := newSchemaOnlyDataSourceMap(dataSources)
 	listResourceMap := newSchemaOnlyListResourceMap(listResources)
 	return &SchemaOnlyProvider{
-		ctx:             ctx,
+		ctx:             lazyCtx,
 		tf:              provider,
 		resourceMap:     resourceMap,
 		dataSourceMap:   dataSourceMap,

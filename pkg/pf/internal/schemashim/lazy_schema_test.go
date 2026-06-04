@@ -153,6 +153,28 @@ func TestSchemaOnlyProviderServerDoesNotRequireFullProviderSchemaForResourceName
 	require.Equal(t, int32(1), prov.resourceSchemaCalls("thing"))
 }
 
+func TestShimSchemaOnlyProviderKeepsCancellationForEagerGathering(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	prov := newCountingProvider("test", []string{"thing"}, []string{"lookup"})
+	prov.addListResources("thing")
+
+	require.NotPanics(t, func() {
+		ShimSchemaOnlyProvider(ctx, prov)
+	})
+
+	require.True(t, prov.providerMetadataSawCancellation.Load())
+	require.True(t, prov.resourcesSawCancellation.Load())
+	require.True(t, prov.resourceMetadataSawCancellation.Load())
+	require.True(t, prov.dataSourcesSawCancellation.Load())
+	require.True(t, prov.dataSourceMetadataSawCancellation.Load())
+	require.True(t, prov.listResourcesSawCancellation.Load())
+	require.True(t, prov.listResourceMetadataSawCancellation.Load())
+}
+
 func TestLazySchemaDoesNotUseCanceledConstructionContext(t *testing.T) {
 	t.Parallel()
 
@@ -218,6 +240,14 @@ type countingProvider struct {
 	resourceSchemaPanics                 map[string]bool
 
 	providerSchemaCalls atomic.Int32
+
+	providerMetadataSawCancellation     atomic.Bool
+	resourcesSawCancellation            atomic.Bool
+	dataSourcesSawCancellation          atomic.Bool
+	listResourcesSawCancellation        atomic.Bool
+	resourceMetadataSawCancellation     atomic.Bool
+	dataSourceMetadataSawCancellation   atomic.Bool
+	listResourceMetadataSawCancellation atomic.Bool
 }
 
 func newCountingProvider(typeName string, resources, dataSources []string) *countingProvider {
@@ -244,7 +274,10 @@ func (p *countingProvider) addListResources(names ...string) {
 	}
 }
 
-func (p *countingProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+func (p *countingProvider) Metadata(ctx context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	if ctx.Err() != nil {
+		p.providerMetadataSawCancellation.Store(true)
+	}
 	resp.TypeName = p.typeName
 }
 
@@ -255,7 +288,10 @@ func (p *countingProvider) Schema(context.Context, provider.SchemaRequest, *prov
 func (*countingProvider) Configure(context.Context, provider.ConfigureRequest, *provider.ConfigureResponse) {
 }
 
-func (p *countingProvider) Resources(context.Context) []func() resource.Resource {
+func (p *countingProvider) Resources(ctx context.Context) []func() resource.Resource {
+	if ctx.Err() != nil {
+		p.resourcesSawCancellation.Store(true)
+	}
 	resources := make([]func() resource.Resource, 0, len(p.resources))
 	for name, calls := range p.resources {
 		name := name
@@ -268,31 +304,46 @@ func (p *countingProvider) Resources(context.Context) []func() resource.Resource
 				schemaCalls:           calls,
 				failOnCanceledContext: failOnCanceledContext,
 				panicOnSchema:         panicOnSchema,
+				metadataCtxCanceled:   &p.resourceMetadataSawCancellation,
 			}
 		})
 	}
 	return resources
 }
 
-func (p *countingProvider) DataSources(context.Context) []func() datasource.DataSource {
+func (p *countingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	if ctx.Err() != nil {
+		p.dataSourcesSawCancellation.Store(true)
+	}
 	dataSources := make([]func() datasource.DataSource, 0, len(p.dataSources))
 	for name, calls := range p.dataSources {
 		name := name
 		calls := calls
 		dataSources = append(dataSources, func() datasource.DataSource {
-			return &countingDataSource{name: name, schemaCalls: calls}
+			return &countingDataSource{
+				name:                name,
+				schemaCalls:         calls,
+				metadataCtxCanceled: &p.dataSourceMetadataSawCancellation,
+			}
 		})
 	}
 	return dataSources
 }
 
-func (p *countingProvider) ListResources(context.Context) []func() tflist.ListResource {
+func (p *countingProvider) ListResources(ctx context.Context) []func() tflist.ListResource {
+	if ctx.Err() != nil {
+		p.listResourcesSawCancellation.Store(true)
+	}
 	listResources := make([]func() tflist.ListResource, 0, len(p.listResources))
 	for name, calls := range p.listResources {
 		name := name
 		calls := calls
 		listResources = append(listResources, func() tflist.ListResource {
-			return &countingListResource{name: name, schemaCalls: calls}
+			return &countingListResource{
+				name:                name,
+				schemaCalls:         calls,
+				metadataCtxCanceled: &p.listResourceMetadataSawCancellation,
+			}
 		})
 	}
 	return listResources
@@ -315,9 +366,13 @@ type countingResource struct {
 	schemaCalls           *atomic.Int32
 	failOnCanceledContext bool
 	panicOnSchema         bool
+	metadataCtxCanceled   *atomic.Bool
 }
 
-func (r *countingResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *countingResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	if ctx.Err() != nil && r.metadataCtxCanceled != nil {
+		r.metadataCtxCanceled.Store(true)
+	}
 	resp.TypeName = req.ProviderTypeName + "_" + r.name
 }
 
@@ -337,13 +392,17 @@ func (*countingResource) Update(context.Context, resource.UpdateRequest, *resour
 func (*countingResource) Delete(context.Context, resource.DeleteRequest, *resource.DeleteResponse) {}
 
 type countingDataSource struct {
-	name        string
-	schemaCalls *atomic.Int32
+	name                string
+	schemaCalls         *atomic.Int32
+	metadataCtxCanceled *atomic.Bool
 }
 
 func (ds *countingDataSource) Metadata(
-	_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse,
+	ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse,
 ) {
+	if ctx.Err() != nil && ds.metadataCtxCanceled != nil {
+		ds.metadataCtxCanceled.Store(true)
+	}
 	resp.TypeName = req.ProviderTypeName + "_" + ds.name
 }
 
@@ -354,13 +413,17 @@ func (ds *countingDataSource) Schema(context.Context, datasource.SchemaRequest, 
 func (*countingDataSource) Read(context.Context, datasource.ReadRequest, *datasource.ReadResponse) {}
 
 type countingListResource struct {
-	name        string
-	schemaCalls *atomic.Int32
+	name                string
+	schemaCalls         *atomic.Int32
+	metadataCtxCanceled *atomic.Bool
 }
 
 func (r *countingListResource) Metadata(
-	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+	ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
 ) {
+	if ctx.Err() != nil && r.metadataCtxCanceled != nil {
+		r.metadataCtxCanceled.Store(true)
+	}
 	resp.TypeName = req.ProviderTypeName + "_" + r.name
 }
 
