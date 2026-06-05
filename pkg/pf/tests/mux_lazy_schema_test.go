@@ -39,6 +39,7 @@ import (
 
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	bridgetokens "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -131,6 +132,25 @@ func TestMuxedSDKv2OperationsDoNotLoadPFResourceSchemas(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, aliasCalls, pfProvider.resourceSchemaCalls("alias"))
+}
+
+func TestMuxedRuntimeComputeTokensDoesNotLoadPFResourceSchemas(t *testing.T) {
+	t.Parallel()
+
+	buildInfo := muxLazyProviderInfo(newMuxCountingProvider())
+	require.NoError(t, buildInfo.ComputeTokens(bridgetokens.SingleModule(
+		buildInfo.GetResourcePrefix(), "index", bridgetokens.MakeStandard(buildInfo.Name),
+	)))
+
+	pfProvider := newMuxCountingProvider()
+	runtimeInfo := muxLazyProviderInfo(pfProvider)
+	runtimeMetadata := tfbridge0.ExtractRuntimeMetadata(buildInfo.MetadataInfo)
+	runtimeInfo.MetadataInfo = tfbridge0.NewProviderMetadata(
+		(*metadata.Data)(runtimeMetadata.Data).Marshal())
+	require.NoError(t, runtimeInfo.ComputeTokens(bridgetokens.SingleModule(
+		runtimeInfo.GetResourcePrefix(), "index", bridgetokens.MakeStandard(runtimeInfo.Name),
+	)))
+	pfProvider.requireZeroSchemaCalls(t)
 }
 
 func muxLazyProviderInfo(pfProvider *muxCountingProvider) tfbridge0.ProviderInfo {
