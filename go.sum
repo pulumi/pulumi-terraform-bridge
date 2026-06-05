@@ -3927,8 +3927,8 @@ github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.106.2 h1:U77T2dS9RW
 github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.106.2/go.mod h1:OcTMxxijNMcL9WfRVIt+vZwSn0jWvCakg+7yCA448Hc=
 github.com/pulumi/pulumi-java v1.28.0 h1:6Ag08R0UtOKPlUrsaRugZ0NJJN7M8wmVo7bqPLsyrs8=
 github.com/pulumi/pulumi-java v1.28.0/go.mod h1:CgvZi5WWQKj84XRRRLXMj8qjQUvrgY2pnmbsJE49hks=
-github.com/pulumi/pulumi-yaml v1.35.0 h1:L+MNKrtX3wTil1f5m5LJ2KQBWWSxdQwC0oeluEskaoU=
-github.com/pulumi/pulumi-yaml v1.35.0/go.mod h1:jQuA54S7Yi7GBM7UtzvsRn9i7FKWEeQG+0l303MH2Xw=
+github.com/pulumi/pulumi-yaml v1.35.1-0.20260605104711-2fb599d00f64 h1:x6/aMflJT+Vo4UxX14JjN05obcz26ZbLbjckGGf+5L4=
+github.com/pulumi/pulumi-yaml v1.35.1-0.20260605104711-2fb599d00f64/go.mod h1:mA55E1beBsk7gAZk5fK0g7kEr7uHYVXMIlxzuTkrjRU=
 github.com/pulumi/pulumi/pkg/v3 v3.245.0 h1:ssZ0nHf6IuKMMnO4pxiC7E4R8OIVltXAf9V3ZN1cLYg=
 github.com/pulumi/pulumi/pkg/v3 v3.245.0/go.mod h1:YpN+v3zDFDtchlBOF7mHK3B+afSnKX/rHSUMhygomCs=
 github.com/pulumi/pulumi/sdk/v3 v3.245.0 h1:HvHDnraVlRm64xJJx38/hPNnTpfkOlfm7fHDSwyJJaE=

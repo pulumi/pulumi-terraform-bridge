@@ -242,3 +242,58 @@ func (prov *provider) GetMappings(
 	k, err := prov.GetMappingsWithContext(ctx, req.Key)
 	return plugin.GetMappingsResponse{Keys: k}, err
 }
+
+func (prov *provider) List(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
+	query, err := plugin.MarshalProperties(req.Query, plugin.MarshalOptions{
+		Label:         "list.query",
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	collector := &listStreamCollector{ctx: ctx}
+	if err := prov.ListWithContext(ctx, &pulumirpc.ListRequest{
+		Token:             string(req.Token),
+		Query:             query,
+		Limit:             req.Limit,
+		PageSize:          req.PageSize,
+		ContinuationToken: req.ContinuationToken,
+	}, collector); err != nil {
+		return nil, err
+	}
+	if collector.computed {
+		return plugin.NewComputedListStream(), nil
+	}
+	results := make([]plugin.ListResult, len(collector.results))
+	for i, r := range collector.results {
+		results[i] = plugin.ListResult{ID: resource.ID(r.GetId()), Name: r.GetName()}
+	}
+	return plugin.NewListStream(results, collector.continuationToken), nil
+}
+
+// listStreamCollector adapts the gRPC server-streaming List response into an in-memory buffer so that
+// ListWithContext can satisfy the high-level plugin.Provider.List contract. ListWithContext only relies on Send.
+type listStreamCollector struct {
+	grpc.ServerStreamingServer[pulumirpc.ListResponse]
+
+	ctx               context.Context
+	results           []*pulumirpc.ListResponse_Result
+	computed          bool
+	continuationToken string
+}
+
+func (c *listStreamCollector) Context() context.Context { return c.ctx }
+
+func (c *listStreamCollector) Send(resp *pulumirpc.ListResponse) error {
+	switch r := resp.GetResponse().(type) {
+	case *pulumirpc.ListResponse_Result_:
+		c.results = append(c.results, r.Result)
+	case *pulumirpc.ListResponse_Computed_:
+		c.computed = true
+	case *pulumirpc.ListResponse_Continuation_:
+		c.continuationToken = r.Continuation.GetContinuationToken()
+	}
+	return nil
+}
