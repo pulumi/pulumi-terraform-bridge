@@ -768,13 +768,8 @@ func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 	if prop.info != nil && prop.info.Secret != nil {
 		secret = *prop.info.Secret
 	}
-	ic := infoContext{
-		language: g.language,
-		pkg:      g.pkg,
-		info:     g.info,
-	}
-
 	propPath := paths.NewProperyPath(prop.parentPath, prop.propertyName)
+	ic := g.propertyDocsInfoContext(prop)
 	return pschema.PropertySpec{
 		TypeSpec:             g.schemaType(propPath, prop.typ, prop.out),
 		Description:          description,
@@ -785,6 +780,35 @@ func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 		Secret:               secret,
 		WillReplaceOnChanges: prop.forceNew(),
 	}
+}
+
+func (g *schemaGenerator) propertyDocsInfoContext(prop *variable) infoContext {
+	ic := infoContext{
+		language: g.language,
+		pkg:      g.pkg,
+		info:     g.info,
+	}
+	switch parent := prop.parentPath.(type) {
+	case *paths.ResourceMemberPath:
+		token := parent.ResourcePath.Token().String()
+		ic.currentToken = token
+		ic.currentKind = ResourceDocs
+		if prop.out || parent.ResourceMemberKind == paths.ResourceOutputs {
+			ic.propertyRefPath = "#/resources/" + token + "/properties"
+		} else {
+			ic.propertyRefPath = "#/resources/" + token + "/inputProperties"
+		}
+	case *paths.DataSourceMemberPath:
+		token := parent.DataSourcePath.Token().String()
+		ic.currentToken = token
+		ic.currentKind = DataSourceDocs
+		if parent.DataSourceMemberKind == paths.DataSourceResults {
+			ic.propertyRefPath = "#/functions/" + token + "/outputs/properties"
+		} else {
+			ic.propertyRefPath = "#/functions/" + token + "/inputs/properties"
+		}
+	}
+	return ic
 }
 
 func (g *schemaGenerator) genConfig(variables []*variable) pschema.ConfigSpec {
