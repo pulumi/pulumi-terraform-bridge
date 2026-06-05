@@ -98,6 +98,15 @@ func (p *SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
 	return p.resourceMap
 }
 
+// ResourceSchemaFixupsMayBePrecomputed reports whether tfToken is a PF
+// schema-only resource and therefore eligible to consume build-time
+// default-fixup metadata at runtime. The caller still requires runtime metadata
+// with an entry for the resource before it skips live schema inspection.
+func (p *SchemaOnlyProvider) ResourceSchemaFixupsMayBePrecomputed(tfToken string) bool {
+	_, ok := p.resourceMap.GetOk(tfToken)
+	return ok
+}
+
 func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
 	return p.dataSourceMap
 }

@@ -17,7 +17,10 @@ package tfbridge
 import (
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/internal/metadatakeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
@@ -40,8 +43,9 @@ var declaredRuntimeMetadata = struct {
 	keys map[string]struct{}
 	m    sync.Mutex
 }{keys: map[string]struct{}{
-	autoSettingsKey: {},
-	"mux":           {},
+	autoSettingsKey:                          {},
+	metadatakeys.DefaultResourceSchemaFixups: {},
+	"mux":                                    {},
 }}
 
 func declareRuntimeMetadata(label string) {
@@ -50,15 +54,22 @@ func declareRuntimeMetadata(label string) {
 	declaredRuntimeMetadata.keys[label] = struct{}{}
 }
 
-// trim the metadata to just the keys required for the runtime phase
-// in the future this method might also substitute compressed contents within some keys
-func ExtractRuntimeMetadata(info *MetadataInfo) *MetadataInfo {
+// ExtractRuntimeMetadata trims provider metadata to the keys needed by runtime
+// provider startup.
+//
+// The returned metadata includes an internal runtime marker in the blob itself.
+// Runtime consumers intentionally key off that marker, not MetadataInfo.Path,
+// because downstream providers may embed these bytes and still load them through
+// NewProviderMetadata.
+func ExtractRuntimeMetadata(metadataInfo *MetadataInfo) *MetadataInfo {
 	data, _ := metadata.New(nil)
 	declaredRuntimeMetadata.m.Lock()
 	defer declaredRuntimeMetadata.m.Unlock()
 	for k := range declaredRuntimeMetadata.keys {
-		metadata.CloneKey(k, info.Data, data)
+		metadata.CloneKey(k, metadataInfo.Data, data)
 	}
+	err := metadata.Set(data, metadatakeys.RuntimeMetadata, true)
+	contract.AssertNoErrorf(err, "failed to write runtime metadata marker")
 
 	return &MetadataInfo{
 		Path: "runtime-bridge-metadata.json",
