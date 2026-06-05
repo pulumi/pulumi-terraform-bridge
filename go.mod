@@ -46,7 +46,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi-labs/pulumi-hcl v0.3.1
 	github.com/pulumi/inflector v0.2.1
-	github.com/pulumi/providertest v0.6.0
+	github.com/pulumi/providertest v0.7.0
 	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.106.2
 	github.com/pulumi/pulumi-java v1.28.0
 	github.com/pulumi/pulumi-yaml v1.35.1-0.20260605104711-2fb599d00f64

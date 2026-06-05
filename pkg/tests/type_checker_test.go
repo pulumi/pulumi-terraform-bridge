@@ -37,7 +37,7 @@ resources:
 			opttest.Env("PULUMI_DEBUG_YAML_DISABLE_TYPE_CHECKING", "true"),
 			opttest.Env("PULUMI_ERROR_TYPE_CHECKER", "true"),
 		)
-		_, err = pt.CurrentStack().Up(pt.Context())
+		_, err = pt.UpErr(t)
 
 		require.ErrorContains(t, err, "Unexpected type at field")
 		require.ErrorContains(t, err, expectedError)

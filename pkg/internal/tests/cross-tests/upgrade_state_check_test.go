@@ -16,7 +16,6 @@ package crosstests
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,6 +28,10 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/providertest/providers"
+	"github.com/pulumi/providertest/pulumitest"
+	"github.com/pulumi/providertest/pulumitest/optrun"
+	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -277,11 +280,23 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) upgradeStateResult 
 	}
 
 	yamlProgram := pd.generateYAML(t, pm1)
-	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
+	// prov2 is the default provider for the test; the initial create runs against prov1 via a
+	// scoped override since providertest attaches a fresh provider per operation.
+	pt := pulcheck.PulCheck(t, prov2, string(yamlProgram))
 
 	t.Logf("#### create")
-	tracker.phase = createPhase
-	createResult := pt.Up(t)
+	var createResult auto.UpResult
+	pt.Run(t, func(test *pulumitest.PulumiTest) {
+		tracker.phase = createPhase
+		createResult = test.Up(t)
+	}, optrun.WithOpts(opttest.AttachProvider(
+		defProviderShortName,
+		func(ctx context.Context, _ providers.PulumiTest) (providers.Port, error) {
+			handle, err := pulcheck.StartPulumiProvider(ctx, prov1)
+			require.NoError(t, err)
+			return providers.Port(handle.Port), nil
+		},
+	)))
 	t.Logf("%s", createResult.StdOut+createResult.StdErr)
 
 	createdState := pt.ExportStack(t)
@@ -302,11 +317,6 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) upgradeStateResult 
 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 	err := os.WriteFile(p, yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
-
-	handle, err := pulcheck.StartPulumiProvider(context.Background(), prov2)
-	require.NoError(t, err)
-	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
-		fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
 
 	var refreshResult auto.RefreshResult
 	if tc.ExperimentalPulumiRefresh {
