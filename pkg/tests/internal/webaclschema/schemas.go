@@ -9,7 +9,7 @@ import (
 	"math"
 	"regexp"
 
-	"github.com/aws/aws-sdk-go/service/wafv2"
+	"github.com/aws/aws-sdk-go/service/wafv2" //nolint:staticcheck // Test code to preserve this behavior
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
