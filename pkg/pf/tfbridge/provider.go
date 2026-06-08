@@ -112,12 +112,24 @@ func NewProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderM
 	return pl.NewProvider(pwc), nil
 }
 
-// Wrap a PF Provider in a shim.Provider.
+// ShimProvider wraps a PF Provider in a shim.Provider.
+//
+// The returned shim gathers provider, resource, data source, and list resource
+// metadata eagerly, but defers individual entity schemas until a runtime path or
+// schema generation asks for that selected schema. Runtime lazy-load failures
+// surface when the schema is first used; static providers should catch invalid
+// Framework schemas earlier through pf/tfgen.GenerateSchema.
 func ShimProvider(p pfprovider.Provider) shim.Provider {
 	return ShimProviderWithContext(context.Background(), p)
 }
 
-// Wrap a PF Provider in a shim.Provider with the given context.Context.
+// ShimProviderWithContext wraps a PF Provider in a shim.Provider with the given
+// context.Context.
+//
+// The construction context is used for initial metadata gathering and provider
+// config schema access. It is detached from cancellation before being stored for
+// future lazy schema loads, so a canceled startup context does not permanently
+// poison resource, data source, or list resource schema loading.
 func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Provider {
 	return schemashim.ShimSchemaOnlyProvider(ctx, p)
 }

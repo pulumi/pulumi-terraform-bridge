@@ -39,19 +39,30 @@ func GatherDatasources[F func(Schema) shim.SchemaMap](
 			ProviderTypeName: provMetadata.TypeName,
 		}, &meta)
 
-		schemaResponse := &datasource.SchemaResponse{}
-		dataSource.Schema(ctx, datasource.SchemaRequest{}, schemaResponse)
-
-		dataSourceSchema := schemaResponse.Schema
-		diag := schemaResponse.Diagnostics
-		if err := checkDiagsForErrors(diag); err != nil {
-			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
-		}
+		makeDataSource := makeDataSource
+		tfName := runtypes.TypeName(meta.TypeName)
 
 		ds[runtypes.TypeOrRenamedEntityName(meta.TypeName)] = entry[func() datasource.DataSource]{
-			t:      makeDataSource,
-			schema: FromDataSourceSchema(dataSourceSchema),
-			tfName: runtypes.TypeName(meta.TypeName),
+			t: makeDataSource,
+			schema: &lazySchema{
+				kind:   "datasource",
+				tfName: tfName,
+				ctx:    withoutCancel(ctx),
+				load: func(ctx context.Context) (Schema, error) {
+					dataSource := makeDataSource()
+					schemaResponse := &datasource.SchemaResponse{}
+					dataSource.Schema(ctx, datasource.SchemaRequest{}, schemaResponse)
+
+					dataSourceSchema := schemaResponse.Schema
+					diag := schemaResponse.Diagnostics
+					if err := checkDiagsForErrors(diag); err != nil {
+						return nil, fmt.Errorf("DataSource %s GetSchema() error: %w", tfName, err)
+					}
+
+					return FromDataSourceSchema(dataSourceSchema), nil
+				},
+			},
+			tfName: tfName,
 		}
 	}
 

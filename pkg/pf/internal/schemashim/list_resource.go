@@ -46,6 +46,14 @@ func (r *schemaOnlyListResource) Schema() shim.SchemaMap {
 	return r.tf.Shim()
 }
 
+// TerraformPluginFrameworkSchema returns the native lazy Framework list schema
+// used by PF List query encoding. This avoids converting through the generic
+// shim schema and avoids forcing a full provider GetProviderSchema call just to
+// obtain the selected list-resource query type.
+func (r *schemaOnlyListResource) TerraformPluginFrameworkSchema() runtypes.Schema {
+	return r.tf
+}
+
 func (r *schemaOnlyListResource) SchemaVersion() int {
 	panic("list resources do not have schema versions")
 }

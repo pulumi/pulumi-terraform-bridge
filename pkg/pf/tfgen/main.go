@@ -34,7 +34,14 @@ import (
 // The resulting binary is able to generate [Pulumi Package Schema] as well as provider SDK sources in various
 // programming languages supported by Pulumi such as TypeScript, Go, and Python.
 //
-// info.P must be constructed with ShimProvider or ShimProviderWithContext.
+// Before generating, Main runs bridge PF checks and Terraform Plugin Framework
+// ValidateImplementation checks for the generated provider, resource, data
+// source, and list resource schemas. Framework validation failures are reported
+// as build-time errors so static providers do not need to call full
+// GetProviderSchema during runtime startup.
+//
+// info.P must be constructed with ShimProvider or ShimProviderWithContext so
+// the validation step can reach the original Framework provider.
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 func Main(provider string, info sdkBridge.ProviderInfo) {
@@ -50,7 +57,7 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := check.Provider(g.Sink(), info); err != nil {
+		if err := check.Provider(nil, g.Sink(), info); err != nil {
 			return err
 		}
 		_, err = g.Generate()
@@ -65,6 +72,14 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 //
 // The resulting binary is able to generate [Pulumi Package Schema] as well as provider SDK sources in various
 // programming languages supported by Pulumi such as TypeScript, Go, and Python.
+//
+// Before generating, MainWithMuxer runs bridge PF checks and Terraform Plugin
+// Framework ValidateImplementation checks for generated PF provider, resource,
+// data source, and list resource schemas in the muxed provider. Framework
+// validation failures are reported as build-time errors so SDKv2-only runtime
+// operations do not need to materialize the PF provider schema at startup.
+// info.P must be constructed with a PF mux helper so the validation step can
+// reach the original Framework provider.
 //
 // This is an experimental API.
 //
@@ -93,7 +108,7 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := check.Provider(g.Sink(), info); err != nil {
+		if err := check.Provider(nil, g.Sink(), info); err != nil {
 			return err
 		}
 
