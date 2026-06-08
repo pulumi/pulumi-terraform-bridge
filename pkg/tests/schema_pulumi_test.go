@@ -230,7 +230,7 @@ resources:
 	  test: "hello"
 `)
 
-	_, err := pt.CurrentStack().Up(pt.Context())
+	_, err := pt.UpErr(t)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "INIT TEST ERROR")
 
@@ -284,7 +284,7 @@ resources:
 	pt.Up(t)
 	pt.WritePulumiYaml(t, fmt.Sprintf(program, "hello2"))
 
-	_, err := pt.CurrentStack().Up(pt.Context())
+	_, err := pt.UpErr(t)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "UPDATE TEST ERROR")
 

@@ -562,7 +562,7 @@ resources:
 	  test: "hello"
 `)
 
-	_, err := pt.CurrentStack().Up(pt.Context())
+	_, err := pt.UpErr(t)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "CREATE FAILURE")
 }

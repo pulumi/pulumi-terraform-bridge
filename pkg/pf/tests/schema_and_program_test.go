@@ -354,7 +354,7 @@ resources:
 			}
 			require.NoError(t, err)
 
-			upres, err := pt.CurrentStack().Up(pt.Context())
+			upres, err := pt.UpErr(t)
 			if tc.expectErrorContains != "" {
 				assert.Contains(t, err.Error(), tc.expectErrorContains)
 			} else {

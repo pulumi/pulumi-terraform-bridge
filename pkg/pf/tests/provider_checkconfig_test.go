@@ -855,7 +855,7 @@ resources:
 		require.NoError(t, err)
 		pt.SetConfig(t, "testprovider:unknown", "value")
 
-		_, err = pt.CurrentStack().Up(pt.Context())
+		_, err = pt.UpErr(t)
 		require.ErrorContains(t, err, "is not a valid configuration key for the testprovider provider")
 	})
 
