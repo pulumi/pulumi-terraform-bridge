@@ -15,12 +15,44 @@
 package convert
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
+
+// Terraform's wire protocol is msgpack-encoded cty, whose strings carry arbitrary bytes,
+// but Pulumi's property protocol uses proto3 string fields that require valid UTF-8.
+// Strings that are not valid UTF-8 cross into Pulumi as base64 with this marker prefix
+// and are decoded back to the original bytes on the way into Terraform, so the provider
+// always observes the exact bytes it produced. The embedded UUID guards against
+// collisions with ordinary user data, in the same spirit as Pulumi's special-value
+// signature keys.
+const nonUTF8StringSig = "__pulumi_non_utf8_string_aebc5fa583744d97a0ee9bb6e0c0e9c2:"
+
+func escapeNonUTF8String(s string) string {
+	if utf8.ValidString(s) && !strings.HasPrefix(s, nonUTF8StringSig) {
+		return s
+	}
+	return nonUTF8StringSig + base64.StdEncoding.EncodeToString([]byte(s))
+}
+
+func unescapeNonUTF8String(s string) (string, error) {
+	rest, ok := strings.CutPrefix(s, nonUTF8StringSig)
+	if !ok {
+		return s, nil
+	}
+	decoded, err := base64.StdEncoding.DecodeString(rest)
+	if err != nil {
+		return "", fmt.Errorf("string starts with the %q marker but is not valid base64: %w",
+			nonUTF8StringSig, err)
+	}
+	return string(decoded), nil
+}
 
 type (
 	stringEncoder struct{}
@@ -79,7 +111,11 @@ func (*stringEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value
 		return tftypes.NewValue(tftypes.String, strconv.FormatFloat(p.NumberValue(), 'f', -1, 64)), nil
 
 	case p.IsString():
-		return tftypes.NewValue(tftypes.String, p.StringValue()), nil
+		s, err := unescapeNonUTF8String(p.StringValue())
+		if err != nil {
+			return tftypes.NewValue(tftypes.String, nil), err
+		}
+		return tftypes.NewValue(tftypes.String, s), nil
 
 	default:
 		return tftypes.NewValue(tftypes.String, nil),
@@ -99,5 +135,5 @@ func (*stringDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, 
 		return resource.PropertyValue{},
 			fmt.Errorf("tftypes.Value.As(string) failed: %w", err)
 	}
-	return resource.NewStringProperty(s), nil
+	return resource.NewStringProperty(escapeNonUTF8String(s)), nil
 }
