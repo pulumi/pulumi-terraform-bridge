@@ -41,7 +41,11 @@ func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.
 	case p.IsNumber():
 		return tftypes.NewValue(tftypes.Number, p.NumberValue()), nil
 	case p.IsString():
-		return tftypes.NewValue(tftypes.String, p.StringValue()), nil
+		s, err := unescapeNonUTF8String(p.StringValue())
+		if err != nil {
+			return tftypes.Value{}, err
+		}
+		return tftypes.NewValue(tftypes.String, s), nil
 	case p.IsArray():
 		var result []tftypes.Value
 		for _, e := range p.ArrayValue() {
@@ -130,7 +134,7 @@ func (dec *dynamicDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyVa
 		if err != nil {
 			return resource.PropertyValue{}, err
 		}
-		return resource.NewStringProperty(s), nil
+		return resource.NewStringProperty(escapeNonUTF8String(s)), nil
 	case v.Type().Is(tftypes.List{}):
 		var elements []tftypes.Value
 		err := v.As(&elements)
