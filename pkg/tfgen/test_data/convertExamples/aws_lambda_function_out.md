@@ -174,7 +174,7 @@ func main() {
 			return err
 		}
 		iamForLambda, err := iam.NewRole(ctx, "iamForLambda", &iam.RoleArgs{
-			AssumeRolePolicy: pulumi.String(pulumi.String(assumeRole.Json)),
+			AssumeRolePolicy: pulumi.String(assumeRole.Json),
 		})
 		if err != nil {
 			return err
@@ -561,7 +561,7 @@ func main() {
 			return err
 		}
 		iamForLambda, err := iam.NewRole(ctx, "iamForLambda", &iam.RoleArgs{
-			AssumeRolePolicy: pulumi.String(pulumi.String(assumeRole.Json)),
+			AssumeRolePolicy: pulumi.String(assumeRole.Json),
 		})
 		if err != nil {
 			return err
@@ -1241,7 +1241,7 @@ func main() {
 		lambdaLoggingPolicy, err := iam.NewPolicy(ctx, "lambdaLoggingPolicy", &iam.PolicyArgs{
 			Path:        pulumi.String("/"),
 			Description: pulumi.String("IAM policy for logging from a lambda"),
-			Policy:      pulumi.String(pulumi.String(lambdaLoggingPolicyDocument.Json)),
+			Policy:      pulumi.String(lambdaLoggingPolicyDocument.Json),
 		})
 		if err != nil {
 			return err
