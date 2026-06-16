@@ -16,6 +16,7 @@ package tokens
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -24,8 +25,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/internal/metadatakeys"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 func TestFixMissingID(t *testing.T) {
@@ -491,4 +494,323 @@ func TestFixMissingIDsWithIgnoredMappings(t *testing.T) {
 	assert.NotContains(t, p.Resources, "test_ignored")
 	assert.Contains(t, p.Resources, "test_processed")
 	assert.NotNil(t, p.Resources["test_processed"].ComputeID)
+}
+
+func TestDefaultFixupsTolerateMetadataInfoWithoutData(t *testing.T) {
+	t.Parallel()
+
+	var schemaCalls atomic.Int32
+	p := info.Provider{
+		Name: "test",
+		P: countingResourceProvider(schema.SchemaMap{
+			"some_property": (&schema.Schema{Type: shim.TypeString}).Shim(),
+		}, &schemaCalls),
+		MetadataInfo: &info.Metadata{Path: "must be non-empty"},
+	}
+	require.NoError(t, applyDefaultFixups(&p))
+	require.Positive(t, schemaCalls.Load())
+	require.NotNil(t, p.Resources["test_res"].ComputeID)
+}
+
+func TestPrecomputedDefaultFixupsAvoidResourceSchema(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		schema schema.SchemaMap
+		verify func(*testing.T, *info.Resource)
+	}{
+		{
+			name: "missing ID",
+			schema: schema.SchemaMap{
+				"some_property": (&schema.Schema{Type: shim.TypeString}).Shim(),
+			},
+			verify: func(t *testing.T, res *info.Resource) {
+				t.Helper()
+				require.NotNil(t, res.ComputeID)
+				got, err := res.ComputeID(context.Background(), resource.PropertyMap{})
+				require.NoError(t, err)
+				assert.Equal(t, resource.ID("missing ID"), got)
+				assert.Empty(t, res.Fields)
+			},
+		},
+		{
+			name: "required ID delegates to renamed field",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeString,
+					Required: true,
+				}).Shim(),
+			},
+			verify: func(t *testing.T, res *info.Resource) {
+				t.Helper()
+				require.Equal(t, "resId", res.Fields["id"].Name)
+				require.NotNil(t, res.ComputeID)
+				got, err := res.ComputeID(context.Background(), resource.PropertyMap{
+					"resId": resource.NewStringProperty("abc"),
+				})
+				require.NoError(t, err)
+				assert.Equal(t, resource.ID("abc"), got)
+			},
+		},
+		{
+			name: "computed non-string ID uses missing ID",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeInt,
+					Computed: true,
+				}).Shim(),
+			},
+			verify: func(t *testing.T, res *info.Resource) {
+				t.Helper()
+				require.Equal(t, "resId", res.Fields["id"].Name)
+				require.NotNil(t, res.ComputeID)
+				got, err := res.ComputeID(context.Background(), resource.PropertyMap{})
+				require.NoError(t, err)
+				assert.Equal(t, resource.ID("missing ID"), got)
+			},
+		},
+		{
+			name: "reserved property names",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeString,
+					Computed: true,
+				}).Shim(),
+				"urn":    (&schema.Schema{Type: shim.TypeString}).Shim(),
+				"pulumi": (&schema.Schema{Type: shim.TypeString}).Shim(),
+			},
+			verify: func(t *testing.T, res *info.Resource) {
+				t.Helper()
+				assert.Equal(t, "testUrn", res.Fields["urn"].Name)
+				assert.Equal(t, "pulumiInfo", res.Fields["pulumi"].Name)
+				assert.Nil(t, res.ComputeID)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			metadataData, err := md.New(nil)
+			require.NoError(t, err)
+			var buildSchemaCalls atomic.Int32
+			build := info.Provider{
+				Name:         "test",
+				P:            precomputedFixupProvider{Provider: countingResourceProvider(tt.schema, &buildSchemaCalls)},
+				MetadataInfo: &info.Metadata{Data: metadataData, Path: "bridge-metadata.json"},
+			}
+			require.NoError(t, applyDefaultFixups(&build))
+			require.Positive(t, buildSchemaCalls.Load(), "build-time fixups should inspect the schema")
+
+			var runtimeSchemaCalls atomic.Int32
+			runtime := info.Provider{
+				Name: "test",
+				P: precomputedFixupProvider{
+					Provider: countingResourceProvider(tt.schema, &runtimeSchemaCalls),
+				},
+				MetadataInfo: info.NewProviderMetadata(
+					runtimeMetadataBytes(t, build.MetadataInfo.Data)),
+			}
+			require.NoError(t, applyDefaultFixups(&runtime))
+			require.Zero(t, runtimeSchemaCalls.Load(), "runtime fixups should use metadata instead of Schema()")
+			require.NotNil(t, runtime.Resources["test_res"])
+			tt.verify(t, runtime.Resources["test_res"])
+
+			buildMapping := info.MarshalProvider(&build)
+			runtimeMapping := info.MarshalProvider(&runtime)
+			require.Contains(t, buildMapping.Resources, "test_res")
+			require.Contains(t, runtimeMapping.Resources, "test_res")
+			assert.Equal(t,
+				buildMapping.Resources["test_res"].Fields,
+				runtimeMapping.Resources["test_res"].Fields,
+				"runtime metadata replay should preserve mapping field metadata")
+		})
+	}
+}
+
+func TestDefaultFixupMetadataPreservesComputeIDAcrossRepeatedBuildPasses(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		schema schema.SchemaMap
+		verify func(*testing.T, *info.Resource)
+	}{
+		{
+			name: "missing ID",
+			schema: schema.SchemaMap{
+				"some_property": (&schema.Schema{Type: shim.TypeString}).Shim(),
+			},
+			verify: func(t *testing.T, res *info.Resource) {
+				t.Helper()
+				require.NotNil(t, res.ComputeID)
+				got, err := res.ComputeID(context.Background(), resource.PropertyMap{})
+				require.NoError(t, err)
+				assert.Equal(t, resource.ID("missing ID"), got)
+			},
+		},
+		{
+			name: "delegate ID",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeString,
+					Required: true,
+				}).Shim(),
+			},
+			verify: func(t *testing.T, res *info.Resource) {
+				t.Helper()
+				require.Equal(t, "resId", res.Fields["id"].Name)
+				require.NotNil(t, res.ComputeID)
+				got, err := res.ComputeID(context.Background(), resource.PropertyMap{
+					"resId": resource.NewStringProperty("abc"),
+				})
+				require.NoError(t, err)
+				assert.Equal(t, resource.ID("abc"), got)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			metadataData, err := md.New(nil)
+			require.NoError(t, err)
+			var buildSchemaCalls atomic.Int32
+			build := info.Provider{
+				Name:         "test",
+				P:            precomputedFixupProvider{Provider: countingResourceProvider(tt.schema, &buildSchemaCalls)},
+				MetadataInfo: &info.Metadata{Data: metadataData, Path: "bridge-metadata.json"},
+			}
+
+			require.NoError(t, applyDefaultFixups(&build))
+			first, found, err := md.Get[defaultResourceSchemaFixups](
+				metadataData, metadatakeys.DefaultResourceSchemaFixups)
+			require.NoError(t, err)
+			require.True(t, found)
+			require.NotNil(t, first.Resources["test_res"].ComputeID)
+
+			require.NoError(t, applyDefaultFixups(&build))
+			second, found, err := md.Get[defaultResourceSchemaFixups](
+				metadataData, metadatakeys.DefaultResourceSchemaFixups)
+			require.NoError(t, err)
+			require.True(t, found)
+			require.NotNil(t, second.Resources["test_res"].ComputeID)
+			assert.Equal(t, *first.Resources["test_res"].ComputeID, *second.Resources["test_res"].ComputeID)
+
+			var runtimeSchemaCalls atomic.Int32
+			runtime := info.Provider{
+				Name: "test",
+				P: precomputedFixupProvider{
+					Provider: countingResourceProvider(tt.schema, &runtimeSchemaCalls),
+				},
+				MetadataInfo: info.NewProviderMetadata(
+					runtimeMetadataBytes(t, metadataData)),
+			}
+			require.NoError(t, applyDefaultFixups(&runtime))
+			require.Zero(t, runtimeSchemaCalls.Load(), "runtime fixups should use metadata instead of Schema()")
+			tt.verify(t, runtime.Resources["test_res"])
+		})
+	}
+}
+
+func TestDefaultFixupMetadataRewritesCurrentResources(t *testing.T) {
+	t.Parallel()
+
+	metadataData, err := md.New(nil)
+	require.NoError(t, err)
+	require.NoError(t, md.Set(metadataData, metadatakeys.DefaultResourceSchemaFixups, defaultResourceSchemaFixups{
+		Resources: map[string]defaultResourceSchemaFixup{
+			"test_stale": {
+				ComputeID: &defaultComputeIDFixup{Kind: defaultComputeIDMissing},
+			},
+		},
+	}))
+
+	var schemaCalls atomic.Int32
+	build := info.Provider{
+		Name: "test",
+		P: precomputedFixupProvider{Provider: countingResourceProvider(schema.SchemaMap{
+			"some_property": (&schema.Schema{Type: shim.TypeString}).Shim(),
+		}, &schemaCalls)},
+		MetadataInfo: &info.Metadata{Data: metadataData, Path: "bridge-metadata.json"},
+	}
+	require.NoError(t, applyDefaultFixups(&build))
+	require.Positive(t, schemaCalls.Load(), "build-time fixups should inspect the schema")
+
+	fixups, found, err := md.Get[defaultResourceSchemaFixups](
+		metadataData, metadatakeys.DefaultResourceSchemaFixups)
+	require.NoError(t, err)
+	require.True(t, found)
+	assert.Contains(t, fixups.Resources, "test_res")
+	assert.NotContains(t, fixups.Resources, "test_stale")
+}
+
+func TestDefaultFixupMetadataClearsWhenNoCurrentResources(t *testing.T) {
+	t.Parallel()
+
+	metadataData, err := md.New(nil)
+	require.NoError(t, err)
+	require.NoError(t, md.Set(metadataData, metadatakeys.DefaultResourceSchemaFixups, defaultResourceSchemaFixups{
+		Resources: map[string]defaultResourceSchemaFixup{
+			"test_stale": {
+				ComputeID: &defaultComputeIDFixup{Kind: defaultComputeIDMissing},
+			},
+		},
+	}))
+
+	build := info.Provider{
+		Name: "test",
+		P: precomputedFixupProvider{
+			Provider: (&schema.Provider{ResourcesMap: schema.ResourceMap{}}).Shim(),
+		},
+		MetadataInfo: &info.Metadata{Data: metadataData, Path: "bridge-metadata.json"},
+	}
+	require.NoError(t, applyDefaultFixups(&build))
+
+	_, found, err := md.Get[defaultResourceSchemaFixups](
+		metadataData, metadatakeys.DefaultResourceSchemaFixups)
+	require.NoError(t, err)
+	assert.False(t, found)
+}
+
+func runtimeMetadataBytes(t *testing.T, data info.ProviderMetadata) []byte {
+	t.Helper()
+	runtimeMetadata := md.Clone((*md.Data)(data))
+	require.NoError(t, md.Set(runtimeMetadata, metadatakeys.RuntimeMetadata, true))
+	return runtimeMetadata.Marshal()
+}
+
+func countingResourceProvider(resourceSchema schema.SchemaMap, calls *atomic.Int32) shim.Provider {
+	return (&schema.Provider{
+		ResourcesMap: schema.ResourceMap{
+			"test_res": countingResource{
+				Resource: (&schema.Resource{Schema: resourceSchema}).Shim(),
+				calls:    calls,
+			},
+		},
+	}).Shim()
+}
+
+type precomputedFixupProvider struct {
+	shim.Provider
+}
+
+func (p precomputedFixupProvider) ResourceSchemaFixupsMayBePrecomputed(tfToken string) bool {
+	_, ok := p.ResourcesMap().GetOk(tfToken)
+	return ok
+}
+
+type countingResource struct {
+	shim.Resource
+	calls *atomic.Int32
+}
+
+func (r countingResource) Schema() shim.SchemaMap {
+	r.calls.Add(1)
+	return r.Resource.Schema()
 }

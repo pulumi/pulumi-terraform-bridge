@@ -118,6 +118,14 @@ func (m *ProviderShim) ResourceIsPF(token string) bool {
 	return false
 }
 
+// ResourceSchemaFixupsMayBePrecomputed reports whether token is PF-owned and
+// therefore eligible to consume build-time default-fixup metadata at runtime.
+// The caller still requires runtime metadata with an entry for the resource
+// before it skips live schema inspection.
+func (m *ProviderShim) ResourceSchemaFixupsMayBePrecomputed(token string) bool {
+	return m.ResourceIsPF(token)
+}
+
 // Check if a DataSource is served via the Plugin Framework.
 func (m *ProviderShim) DataSourceIsPF(token string) bool {
 	// In an augmented shim.Provider, underlying providers are PF providers iff they

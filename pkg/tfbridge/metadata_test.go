@@ -21,6 +21,8 @@ func TestMetadataInfo(t *testing.T) {
 	require.NoError(t, err)
 	err = md.Set(data, autoSettingsKey, []string{"..."})
 	require.NoError(t, err)
+	err = md.Set(data, "default-resource-schema-fixups", []string{"fixups"})
+	require.NoError(t, err)
 	err = md.Set(data, "mux", []string{"a", "b"})
 	require.NoError(t, err)
 
@@ -32,6 +34,9 @@ func TestMetadataInfo(t *testing.T) {
     ],
     "auto-settings": [
         "..."
+    ],
+    "default-resource-schema-fixups": [
+        "fixups"
     ],
     "hi": [
         "hello",
@@ -54,6 +59,9 @@ func TestMetadataInfo(t *testing.T) {
     "auto-settings": [
         "..."
     ],
+    "default-resource-schema-fixups": [
+        "fixups"
+    ],
     "hi": [
         "hello",
         "world"
@@ -71,9 +79,30 @@ func TestMetadataInfo(t *testing.T) {
     "auto-settings": [
         "..."
     ],
+    "default-resource-schema-fixups": [
+        "fixups"
+    ],
     "mux": [
         "a",
         "b"
-    ]
+    ],
+    "runtime-metadata": true
 }`).Equal(t, string(runtimeMarshalled))
+
+	embeddedRuntimeMetadata := NewProviderMetadata((*md.Data)(runtimeMetadata.Data).Marshal())
+	assert.Equal(t, "bridge-metadata.json", embeddedRuntimeMetadata.Path)
+	embeddedRuntimeMarshalled := (*md.Data)(embeddedRuntimeMetadata.Data).MarshalIndent()
+	autogold.Expect(`{
+    "auto-settings": [
+        "..."
+    ],
+    "default-resource-schema-fixups": [
+        "fixups"
+    ],
+    "mux": [
+        "a",
+        "b"
+    ],
+    "runtime-metadata": true
+}`).Equal(t, string(embeddedRuntimeMarshalled))
 }
