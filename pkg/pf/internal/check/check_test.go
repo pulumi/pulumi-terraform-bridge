@@ -21,8 +21,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
@@ -127,6 +129,17 @@ func TestMissingIDUnmapped(t *testing.T) {
 	t.Parallel()
 	stderr, err := test(t, tfbridge.ProviderInfo{
 		P:              pfbridge.ShimProvider(testProvider{missingID: true}),
+		IgnoreMappings: []string{"test_res"},
+	})
+
+	assert.Empty(t, stderr)
+	assert.NoError(t, err)
+}
+
+func TestInvalidFrameworkResourceSchemaUnmapped(t *testing.T) {
+	t.Parallel()
+	stderr, err := test(t, tfbridge.ProviderInfo{
+		P:              pfbridge.ShimProvider(testProvider{invalidSchema: true}),
 		IgnoreMappings: []string{"test_res"},
 	})
 
@@ -442,7 +455,7 @@ func validateProvider(t *testing.T, info tfbridge.ProviderInfo) (string, error) 
 		Color: colors.Never,
 	})
 
-	err := Provider(sink, info)
+	err := Provider(t.Context(), sink, info)
 
 	// We should not write diags to stdout
 	assert.Empty(t, stdout.String())
@@ -455,10 +468,12 @@ type (
 		provider.Provider
 
 		missingID, sensitiveID bool
+		invalidSchema          bool
 		withID                 *idSchema
 	}
 	testMissingIDResource   struct{ resource.Resource }
 	testSensitiveIDResource struct{ resource.Resource }
+	testInvalidResource     struct{ resource.Resource }
 	testIDResource          struct {
 		resource.Resource
 		idSchema
@@ -475,6 +490,9 @@ func (p testProvider) Resources(context.Context) []func() resource.Resource {
 	if p.sensitiveID {
 		resources = append(resources, returnT[resource.Resource](testSensitiveIDResource{}))
 	}
+	if p.invalidSchema {
+		resources = append(resources, returnT[resource.Resource](testInvalidResource{}))
+	}
 	if p.withID != nil {
 		resources = append(resources, returnT[resource.Resource](testIDResource{idSchema: *p.withID}))
 	}
@@ -485,6 +503,10 @@ func (testProvider) DataSources(context.Context) []func() datasource.DataSource 
 
 func (testProvider) Metadata(_ context.Context, _ provider.MetadataRequest, req *provider.MetadataResponse) {
 	req.TypeName = "test"
+}
+
+func (testProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = prschema.Schema{}
 }
 
 func (testMissingIDResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -515,6 +537,24 @@ func (testSensitiveIDResource) Schema(_ context.Context, _ resource.SchemaReques
 }
 
 func (testSensitiveIDResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + "_res"
+}
+
+func (testInvalidResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{Computed: true},
+			"a1": schema.StringAttribute{
+				Optional: true,
+				Default:  stringdefault.StaticString("default"),
+			},
+		},
+	}
+}
+
+func (testInvalidResource) Metadata(
 	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
 ) {
 	resp.TypeName = req.ProviderTypeName + "_res"

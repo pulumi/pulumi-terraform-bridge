@@ -39,9 +39,20 @@ type GenerateSchemaResult struct {
 	ProviderMetadata tfbridge.ProviderMetadata
 }
 
-// Generates the Pulumi Package Schema and bridge-specific metadata. Most users do not need to call this directly but
-// instead use Main to build a build-time helper CLI tool.
-func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
+// GenerateSchema generates the Pulumi Package Schema and bridge-specific
+// metadata. Most users do not need to call this directly but instead use Main
+// to build a build-time helper CLI tool.
+//
+// The context is passed to PF build-time validation, including Framework schema
+// methods and ValidateImplementation for generated provider, resource, data
+// source, and list resource schemas. A nil context uses context.Background().
+// This Framework validation guarantee applies when opts.ProviderInfo.P is built
+// with the PF shim or mux helpers, which expose the original Framework provider
+// through the bridge's internal validation hook.
+func GenerateSchema(ctx context.Context, opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if opts.ProviderInfo.Name == "" {
 		return nil, fmt.Errorf("opts.ProviderInfo.Name cannot be empty")
 	}
@@ -52,7 +63,7 @@ func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSch
 		})
 	}
 
-	if err := check.Provider(sink, opts.ProviderInfo); err != nil {
+	if err := check.Provider(ctx, sink, opts.ProviderInfo); err != nil {
 		return nil, err
 	}
 

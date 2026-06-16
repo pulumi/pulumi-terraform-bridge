@@ -33,6 +33,11 @@ import (
 
 var _ = pf.ShimProvider(&SchemaOnlyProvider{})
 
+// SchemaOnlyProvider adapts a Terraform Plugin Framework provider to the bridge
+// shim interfaces used by schema generation and PF runtime setup. It gathers
+// cheap entity metadata up front and keeps resource, data source, and list
+// resource schemas lazy so runtime startup can avoid a full Framework
+// GetProviderSchema call.
 type SchemaOnlyProvider struct {
 	ctx             context.Context
 	tf              pfprovider.Provider
@@ -42,18 +47,20 @@ type SchemaOnlyProvider struct {
 	internalinter.Internal
 }
 
-func (p *SchemaOnlyProvider) Server(ctx context.Context) (tfprotov6.ProviderServer, error) {
+// FrameworkProvider exposes the original Framework provider to internal bridge
+// packages that need concrete Framework APIs, such as build-time
+// ValidateImplementation checks. It deliberately stays as an internal hook
+// rather than broadening the public shim.Provider surface.
+func (p *SchemaOnlyProvider) FrameworkProvider() pfprovider.Provider {
+	return p.tf
+}
+
+// Server creates the Framework protocol server without calling full
+// GetProviderSchema. Metadata and per-entity schema loading happen through the
+// schema-only maps and Framework per-RPC paths instead.
+func (p *SchemaOnlyProvider) Server(context.Context) (tfprotov6.ProviderServer, error) {
 	newServer6 := providerserver.NewProtocol6(p.tf)
-	server6 := newServer6()
-
-	// Somehow this GetProviderSchema call needs to happen at least once to avoid Resource Type Not Found in the
-	// tfServer, to init it properly to remember provider name and compute correct resource names like
-	// random_integer instead of _integer (unknown provider name).
-	if _, err := server6.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{}); err != nil {
-		return nil, err
-	}
-
-	return server6, nil
+	return newServer6(), nil
 }
 
 func (p *SchemaOnlyProvider) Resources(ctx context.Context) (runtypes.Resources, error) {

@@ -24,27 +24,46 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-// Wrap a PF Provider in a shim.Provider.
+// SchemaOnlyPluginFrameworkProvider wraps a PF Provider in a shim.Provider.
+//
+// The returned shim has the same lazy schema contract as
+// ShimProviderWithContext: PF resource, data source, and list resource metadata
+// is gathered eagerly, but individual schemas load only when selected by schema
+// generation or runtime operations.
 //
 // Deprecated: This function has been renamed ShimProviderWithContext.
 func SchemaOnlyPluginFrameworkProvider(ctx context.Context, p pfprovider.Provider) shim.Provider {
 	return schemashim.ShimSchemaOnlyProvider(ctx, p)
 }
 
-// MuxShimWithPF initializes a shim.Provider that will server resources from both shim and p.
+// MuxShimWithPF initializes a shim.Provider that will serve resources from both
+// shim and p.
 //
 // If shim and p both define the same token, then the value from shim will be used.
 //
 // To create a muxed provider, ProviderInfo.P must be the result of this function.
+//
+// The PF side uses lazy schema loading. Mux dispatch, alias resolution, and
+// SDKv2-only operations should not load PF resource, data source, or list
+// resource schemas. Invalid PF schema implementations should be reported by
+// tfgen/build-time validation for generated static providers, or when a selected
+// PF schema is first used if runtime-only schema construction fails.
 func MuxShimWithPF(ctx context.Context, shim shim.Provider, p pfprovider.Provider) shim.Provider {
 	return muxer.AugmentShimWithPF(ctx, shim, p)
 }
 
-// MuxShimWithDisjointgPF initializes a shim.Provider that will server resources from both shim and p.
+// MuxShimWithDisjointgPF initializes a shim.Provider that will serve resources
+// from both shim and p.
 //
 // This function will panic if shim and p both define the same token.
 //
 // To create a muxed provider, ProviderInfo.P must be the result of this function.
+//
+// The PF side uses lazy schema loading. Mux dispatch, alias resolution, and
+// SDKv2-only operations should not load PF resource, data source, or list
+// resource schemas. Invalid PF schema implementations should be reported by
+// tfgen/build-time validation for generated static providers, or when a selected
+// PF schema is first used if runtime-only schema construction fails.
 func MuxShimWithDisjointgPF(ctx context.Context, shim shim.Provider, p pfprovider.Provider) shim.Provider {
 	return muxer.AugmentShimWithDisjointPF(ctx, shim, p)
 }
