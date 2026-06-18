@@ -118,6 +118,72 @@ resources:
 	pt.Up(t)
 }
 
+// Regression test for the timeouts retention branch added in #3248. When the schema defines a read
+// timeout (the shape produced by terraform-plugin-framework-timeouts with Read enabled) and the
+// program sets other timeouts but omits read, the Terraform state carries timeouts.read=null while
+// the Pulumi outputs do not. The raw state delta must still round-trip.
+func TestTimeoutsWithUnsetReadTimeout(t *testing.T) {
+	t.Parallel()
+	provBuilder := pb.NewProvider(
+		pb.NewProviderArgs{
+			AllResources: []pb.Resource{
+				pb.NewResource(pb.NewResourceArgs{
+					ResourceSchema: rschema.Schema{
+						Attributes: map[string]rschema.Attribute{
+							"name": rschema.StringAttribute{Optional: true},
+							"timeouts": rschema.SingleNestedAttribute{
+								Optional: true,
+								Attributes: map[string]rschema.Attribute{
+									"create": rschema.StringAttribute{Optional: true},
+									"read":   rschema.StringAttribute{Optional: true},
+									"update": rschema.StringAttribute{Optional: true},
+									"delete": rschema.StringAttribute{Optional: true},
+								},
+							},
+						},
+					},
+				}),
+			},
+		})
+
+	prov := provBuilder.ToProviderInfo()
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index:Test
+        properties:
+            name: "v1"
+            timeouts:
+                create: "60m"
+                update: "60m"
+                delete: "60m"
+`
+
+	pt, err := pulcheck.PulCheck(t, prov, program)
+	require.NoError(t, err)
+
+	pt.Up(t)
+
+	pt.WritePulumiYaml(t, `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index:Test
+        properties:
+            name: "v2"
+            timeouts:
+                create: "60m"
+                update: "60m"
+                delete: "60m"
+`)
+
+	pt.Up(t)
+}
+
 func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 	t.Parallel()
 	// Regression test for [pulumi/pulumi-terraform-bridge#2192]
