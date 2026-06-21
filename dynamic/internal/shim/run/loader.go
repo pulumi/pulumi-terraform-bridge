@@ -55,6 +55,17 @@ import (
 // It defaults to `$PULUMI_HOME/dynamic_tf_plugins`.
 const envPluginCache = "PULUMI_DYNAMIC_TF_PLUGIN_CACHE_DIR"
 
+// envNetworkMirror allows users to specify a Terraform network mirror URL.
+// When set, provider downloads will use the mirror protocol instead of the
+// standard registry service discovery. This is useful in air-gapped environments
+// where registry.terraform.io is not accessible.
+//
+// The URL should point to a server implementing the Terraform network mirror protocol:
+// https://developer.hashicorp.com/terraform/internals/provider-network-mirror-protocol
+//
+// Example: PULUMI_TF_NETWORK_MIRROR_URL=https://artifactory.example.com/api/terraform/providers/
+const envNetworkMirror = "PULUMI_TF_NETWORK_MIRROR_URL"
+
 // A loaded and running provider.
 //
 // You must call Close on any Provider that has been created.
@@ -82,6 +93,14 @@ func NamedProvider(ctx context.Context, key, version string) (Provider, error) {
 	v, err := getproviders.ParseVersionConstraints(version)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse version constraint %q: %w", version, err)
+	}
+
+	// Check if a network mirror is configured
+	if mirrorURL := os.Getenv(envNetworkMirror); mirrorURL != "" {
+		slog.InfoContext(ctx, "Using network mirror for provider download",
+			slog.String("mirror", mirrorURL),
+			slog.String("provider", key))
+		return getProviderFromMirror(ctx, p, v, mirrorURL)
 	}
 
 	return getProviderServer(ctx, p, v, disco.New())
@@ -263,6 +282,68 @@ func getProviderServer(
 
 	p := systemCache.ProviderVersion(addr, desiredVersion)
 	contract.Assertf(p != nil, "We just downloaded (%s,%s) so it should be in the cache", addr, desiredVersion)
+
+	return runProvider(ctx, p)
+}
+
+// getProviderFromMirror downloads a provider using the Terraform network mirror protocol.
+// This bypasses service discovery entirely and directly queries the mirror URL.
+func getProviderFromMirror(
+	ctx context.Context, addr addrs.Provider, version getproviders.VersionConstraints,
+	mirrorURL string,
+) (Provider, error) {
+	cacheDir, err := getPluginCache()
+	if err != nil {
+		return nil, err
+	}
+
+	systemCache := providercache.NewDir(cacheDir)
+
+	// Check cache first (same as registry path)
+	if packages, ok := systemCache.AllAvailablePackages()[addr]; ok {
+		acceptable := versions.MeetingConstraints(version)
+		for _, p := range packages {
+			if acceptable.Has(p.Version) {
+				slog.InfoContext(ctx, "Found cached provider (mirror mode)",
+					slog.Any("addr", addr.String()),
+					slog.Any("version", p.Version.String()))
+				p := p
+				return runProvider(ctx, &p)
+			}
+		}
+	}
+
+	// Download from mirror
+	source, err := getproviders.NewMirrorSource(ctx, mirrorURL, nil, getproviders.LocationConfig{})
+	if err != nil {
+		return nil, fmt.Errorf("could not connect to network mirror: %w", err)
+	}
+
+	availableVersions, warnings, err := source.AvailableVersions(ctx, addr)
+	for _, w := range warnings {
+		tfbridge.GetLogger(ctx).Warn(w)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("could not query network mirror for %s: %w", addr, err)
+	}
+
+	desiredVersion := availableVersions.NewestInSet(versions.MeetingConstraints(version))
+	if desiredVersion == versions.Unspecified {
+		return nil, fmt.Errorf("could not resolve a version from mirror for %s: %s", addr, version)
+	}
+
+	meta, err := source.PackageMeta(ctx, addr, desiredVersion, getproviders.CurrentPlatform)
+	if err != nil {
+		return nil, fmt.Errorf("could not get package metadata from mirror for %s@%s: %w", addr, desiredVersion, err)
+	}
+
+	_, err = systemCache.InstallPackage(ctx, meta, nil, true)
+	if err != nil {
+		return nil, fmt.Errorf("could not install provider from mirror: %w", err)
+	}
+
+	p := systemCache.ProviderVersion(addr, desiredVersion)
+	contract.Assertf(p != nil, "We just downloaded (%s,%s) from mirror so it should be in the cache", addr, desiredVersion)
 
 	return runProvider(ctx, p)
 }
