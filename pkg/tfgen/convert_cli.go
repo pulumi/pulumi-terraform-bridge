@@ -68,9 +68,9 @@ func cliConverterEnabled() bool {
 // Note that once examples are converted to PCL, they continue to be processed with in-process
 // target language specific generators to produce TypeScript, YAML, Python etc target code.
 type cliConverter struct {
-	info         tfbridge.ProviderInfo // provider declaration
-	pluginHost   plugin.Host           // the plugin host for PCL conversion
-	packageCache *pcl.PackageCache     // the package cache for PCL conversion
+	info          tfbridge.ProviderInfo // provider declaration
+	pluginContext *plugin.Context       // the plugin context for PCL conversion
+	packageCache  *pcl.PackageCache     // the package cache for PCL conversion
 
 	hcls map[string]struct{} // set of observed HCL snippets
 
@@ -115,15 +115,15 @@ func (g *Generator) cliConverter() *cliConverter {
 		return g.cliConverterState
 	}
 	g.cliConverterState = &cliConverter{
-		generator:    g,
-		hcls:         map[string]struct{}{},
-		info:         g.info,
-		packageCache: g.packageCache,
-		pluginHost:   g.pluginHost,
-		pcls:         map[string]translatedExample{},
+		generator:     g,
+		hcls:          map[string]struct{}{},
+		info:          g.info,
+		packageCache:  g.packageCache,
+		pluginContext: g.pluginContext,
+		pcls:          map[string]translatedExample{},
 	}
-	if g.pluginHost != nil {
-		l := newLoader(g.pluginHost)
+	if g.pluginContext != nil {
+		l := newLoader(g.pluginContext)
 		// Ensure azurerm resolves to azure for example:
 		l.aliasPackage(g.info.Name, string(g.pkg))
 		g.cliConverterState.loader = l
@@ -519,8 +519,8 @@ func (cc *cliConverter) convertPCL(
 		opts = append(opts, pcl.AllowMissingProperties)
 		opts = append(opts, pcl.AllowMissingVariables)
 		opts = append(opts, pcl.SkipResourceTypechecking)
-		if cc.pluginHost != nil {
-			opts = append(opts, pcl.PluginHost(cc.pluginHost))
+		if cc.pluginContext != nil {
+			opts = append(opts, pcl.PluginHost(cc.pluginContext))
 		}
 		if cc.loader != nil {
 			opts = append(opts, pcl.Loader(cc.loader))

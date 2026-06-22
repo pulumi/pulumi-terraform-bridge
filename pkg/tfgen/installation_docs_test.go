@@ -466,7 +466,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 	}
 	generator, err := NewGenerator(GeneratorOptions{
 		Language:     RegistryDocs,
-		PluginHost:   &testPluginHost{},
+		PluginHost:   newTestPluginHost(),
 		ProviderInfo: providerInfo,
 	})
 	assert.NoError(t, err)

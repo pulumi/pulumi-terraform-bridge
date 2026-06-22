@@ -2079,14 +2079,14 @@ func (g *Generator) convert(
 	}()
 
 	files, diags, err = convert.Convert(convert.Options{
-		Loader:                   newLoader(g.pluginHost),
+		Loader:                   newLoader(g.pluginContext),
 		Root:                     input,
 		TargetLanguage:           languageName,
 		AllowMissingProperties:   true,
 		AllowMissingVariables:    true,
 		FilterResourceNames:      true,
 		PackageCache:             g.packageCache,
-		PluginHost:               g.pluginHost,
+		PluginHost:               g.pluginContext,
 		ProviderInfoSource:       g.infoSource,
 		SkipResourceTypechecking: true,
 	})

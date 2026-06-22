@@ -161,8 +161,8 @@ type Options struct {
 	Root afero.Fs
 	// Optional package cache.
 	PackageCache *pcl.PackageCache
-	// Optional plugin host.
-	PluginHost plugin.Host
+	// Optional plugin context.
+	PluginHost *plugin.Context
 	// Optional Loader.
 	Loader schema.Loader
 	// Optional source for provider schema information.

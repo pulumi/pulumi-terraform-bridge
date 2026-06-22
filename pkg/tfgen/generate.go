@@ -34,8 +34,10 @@ import (
 	"github.com/hashicorp/go-multierror"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -66,6 +68,7 @@ type Generator struct {
 	root            afero.Fs              // the output virtual filesystem.
 	providerShim    *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
 	pluginHost      plugin.Host           // the plugin host for tf2pulumi.
+	pluginContext   *plugin.Context       // the plugin context wrapping pluginHost for schema loading.
 	packageCache    *pcl.PackageCache     // the package cache for tf2pulumi.
 	infoSource      il.ProviderInfoSource // the provider info source for tf2pulumi.
 	sink            diag.Sink
@@ -980,22 +983,18 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		sink = diag.DefaultSink(os.Stderr, os.Stderr, diagOpts)
 	}
 
-	pluginHost := opts.PluginHost
-	if pluginHost == nil {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, err
-		}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	ctx := context.Background()
 
-		ctx := context.Background()
-		pluginContext, err := plugin.NewContext(
-			ctx, sink, sink, nil, nil, cwd, nil, false, nil,
-			pschema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled,
-		)
+	baseHost := opts.PluginHost
+	if baseHost == nil {
+		baseHost, err = pkghost.New(ctx, sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled)
 		if err != nil {
 			return nil, err
 		}
-		pluginHost = pluginContext.Host
 	}
 
 	infoSources := append([]il.ProviderInfoSource{}, opts.ProviderInfoSource, il.PluginProviderInfoSource)
@@ -1003,9 +1002,22 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	providerShim := newInMemoryProvider(pkg, nil, info)
 	host := &inmemoryProviderHost{
-		Host:               pluginHost,
+		Host:               baseHost,
 		ProviderInfoSource: infoSource,
 		provider:           providerShim,
+	}
+
+	pluginHost := newCachingProviderHost(host)
+	pluginContext, err := plugin.NewContext(
+		ctx, sink, sink, pluginHost, nil, cwd, nil, false, nil,
+		pschema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+	)
+	if err != nil {
+		// Only close baseHost if we created it; a caller-provided host is owned by the caller.
+		if opts.PluginHost == nil {
+			contract.IgnoreClose(baseHost)
+		}
+		return nil, err
 	}
 
 	return &Generator{
@@ -1015,7 +1027,8 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		info:            info,
 		root:            root,
 		providerShim:    providerShim,
-		pluginHost:      newCachingProviderHost(host),
+		pluginHost:      pluginHost,
+		pluginContext:   pluginContext,
 		packageCache:    pcl.NewPackageCache(),
 		infoSource:      host,
 		sink:            sink,
@@ -1248,7 +1261,8 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		}
 	}
 
-	// Close the plugin host.
+	// Close the plugin context and host.
+	g.pluginContext.Close()
 	g.pluginHost.Close()
 
 	return &GenerateSchemaResult{PackageSpec: pulumiPackageSpec}, nil

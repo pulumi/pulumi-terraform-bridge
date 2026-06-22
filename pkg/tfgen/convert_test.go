@@ -22,7 +22,9 @@ import (
 	"strings"
 	"testing"
 
+	pulumiconvert "github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -43,14 +45,17 @@ func TestConvert(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
+	host, err := pkghost.New(ctx, nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled)
+	require.NoError(t, err)
+	defer contract.IgnoreClose(host)
+
 	pluginContext, err := plugin.NewContext(
-		ctx, nil, nil, nil, nil,
-		cwd, nil, false, nil, schema.NewLoaderServerFromHost, pkgWorkspace.EnsureLanguageInstalled)
+		ctx, nil, nil, host, nil,
+		cwd, nil, false, nil, schema.NewLoaderServerFromContext, pulumiconvert.NewMapperServerFromContext)
 	require.NoError(t, err)
 	defer contract.IgnoreClose(pluginContext)
 
-	host := pluginContext.Host
-	loader := newLoader(host)
+	loader := newLoader(pluginContext)
 	loader.emptyPackages["aws"] = true
 
 	checkErr := func(hcl string) (map[string][]byte, convert.Diagnostics, error) {

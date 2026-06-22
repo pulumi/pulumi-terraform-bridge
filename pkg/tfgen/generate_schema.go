@@ -334,7 +334,8 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 				ObjectTypeSpec: ts,
 			}
 		}
-		spec.Provider = g.genResourceType(indexModToken, pack.provider)
+		provider := g.genResourceType(indexModToken, pack.provider)
+		spec.Provider = &provider
 
 		// For pulumi-terraform-module, we would like to have a Terraform Config method on the provider.
 		// To do so, we Add a Function to this spec, and then add the Function to the provider's Methods,
@@ -1155,7 +1156,10 @@ func (g *Generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.Pa
 		object.ObjectTypeSpec = g.convertExamplesInObjectSpec(path, object.ObjectTypeSpec)
 		spec.Types[token] = object
 	}
-	spec.Provider = g.convertExamplesInResourceSpec(newExamplePathForProvider(), spec.Provider)
+	if spec.Provider != nil {
+		provider := g.convertExamplesInResourceSpec(newExamplePathForProvider(), *spec.Provider)
+		spec.Provider = &provider
+	}
 	for token, resource := range spec.Resources {
 		path := newExamplePathForResource(token)
 		spec.Resources[token] = g.convertExamplesInResourceSpec(path, resource)
