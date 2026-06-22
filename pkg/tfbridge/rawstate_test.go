@@ -443,6 +443,29 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 	}
 }
 
+func Test_rawstate_delta_writeonly_null_string(t *testing.T) {
+	t.Parallel()
+
+	cv := cty.NullVal(cty.String)
+	pv := resource.NewStringProperty("write-only-value")
+
+	ih := rawStateDeltaHelper{}
+	ih.schemaType = valueshim.FromHCtyType(cv.Type())
+
+	delta := ih.delta(pv, valueshim.FromHCtyValue(cv))
+
+	recoveredValue, err := delta.Recover(pv)
+	require.NoError(t, err)
+
+	recoveredValueJSON, err := json.Marshal(recoveredValue)
+	require.NoError(t, err)
+
+	cvJSON, err := ctyjson.Marshal(cv, cv.Type())
+	require.NoError(t, err)
+
+	require.Equal(t, string(cvJSON), string(recoveredValueJSON))
+}
+
 func Test_rawstate_delta_serialization(t *testing.T) {
 	t.Parallel()
 
