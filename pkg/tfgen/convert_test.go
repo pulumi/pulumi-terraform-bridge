@@ -45,13 +45,13 @@ func TestConvert(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	host, err := pkghost.New(ctx, nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled)
+	host, err := pkghost.New(ctx, nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, pulumiconvert.NewMapperServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer contract.IgnoreClose(host)
 
 	pluginContext, err := plugin.NewContext(
-		ctx, nil, nil, host, nil,
-		cwd, nil, false, nil, schema.NewLoaderServerFromContext, pulumiconvert.NewMapperServerFromContext)
+		ctx, nil, nil, host, nil, cwd, nil, false, nil)
 	require.NoError(t, err)
 	defer contract.IgnoreClose(pluginContext)
 
