@@ -46,7 +46,7 @@ func TestConvert(t *testing.T) {
 
 	ctx := context.Background()
 	host, err := pkghost.New(ctx, nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, pulumiconvert.NewMapperServerFromContext, nil, nil)
+		schema.NewLoaderServerFromContext, pulumiconvert.NewMapperServerFromContext, nil)
 	require.NoError(t, err)
 	defer contract.IgnoreClose(host)
 

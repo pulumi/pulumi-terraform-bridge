@@ -992,7 +992,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	baseHost := opts.PluginHost
 	if baseHost == nil {
 		baseHost, err = pkghost.New(ctx, sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled,
-			pschema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, nil, nil)
+			pschema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, nil)
 		if err != nil {
 			return nil, err
 		}
