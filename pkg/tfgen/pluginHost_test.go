@@ -38,10 +38,10 @@ func TestCachingPluginHost(t *testing.T) {
 
 	for _, pkg := range []tokens.Package{"a", "b"} {
 		for _, version := range []*semver.Version{nil, &v1, &v2} {
-			p1, err := h.Provider(workspace.PluginDescriptor{Name: string(pkg), Version: version}, env)
+			p1, err := h.Provider(nil, workspace.PluginDescriptor{Name: string(pkg), Version: version}, env)
 			require.NoError(t, err)
 
-			p2, err := c.Provider(workspace.PluginDescriptor{Name: string(pkg), Version: version}, env)
+			p2, err := c.Provider(nil, workspace.PluginDescriptor{Name: string(pkg), Version: version}, env)
 			require.NoError(t, err)
 
 			require.Equal(t, p1.(*testProvider).pkg, p2.(*testProvider).pkg)
@@ -50,7 +50,7 @@ func TestCachingPluginHost(t *testing.T) {
 	}
 
 	_, err := newCachingProviderHost(&testHost{nil, true}).Provider(
-		workspace.PluginDescriptor{Name: "a", Version: &v1}, env)
+		nil, workspace.PluginDescriptor{Name: "a", Version: &v1}, env)
 	require.Error(t, err)
 }
 
@@ -65,7 +65,9 @@ type testHost struct {
 	fail bool
 }
 
-func (th *testHost) Provider(pkg workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
+func (th *testHost) Provider(
+	_ *plugin.Context, pkg workspace.PluginDescriptor, _ env.Env,
+) (plugin.Provider, error) {
 	if th.fail {
 		return nil, fmt.Errorf("failed")
 	}

@@ -74,7 +74,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 		MetadataInfo: &info.Metadata{Path: "", Data: tfbridge.ProviderMetadata(nil)},
 		SchemaPostProcessor: func(spec *schema.PackageSpec) {
 			spec.Attribution = ""
-			spec.Provider = schema.ResourceSpec{}
+			spec.Provider = &schema.ResourceSpec{}
 			spec.Language = nil
 		},
 	}

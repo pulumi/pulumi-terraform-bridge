@@ -71,9 +71,9 @@ func (l *loader) LoadPackageV2(ctx context.Context, desc *schema.PackageDescript
 // `*schema.Package{}` when `name=”` is requested. In the doc
 // generation context a dummy package seems better than failing in the
 // case.
-func newLoader(host plugin.Host) *loader {
+func newLoader(pctx *plugin.Context) *loader {
 	return &loader{
-		innerLoader: schema.NewPluginLoader(host),
+		innerLoader: schema.NewPluginLoader(pctx),
 		emptyPackages: map[string]bool{
 			"": true,
 		},

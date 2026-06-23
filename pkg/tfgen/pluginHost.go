@@ -118,18 +118,22 @@ type inmemoryProviderHost struct {
 	provider *inmemoryProvider
 }
 
-func (host *inmemoryProviderHost) Provider(pkg workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (host *inmemoryProviderHost) Provider(
+	ctx *plugin.Context, pkg workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	if tokens.Package(pkg.Name) == host.provider.Pkg() {
 		return host.provider, nil
 	}
-	return host.Host.Provider(pkg, e)
+	return host.Host.Provider(ctx, pkg, e)
 }
 
 // ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin
 // to load. inmemoryProviderHost does this by checking if the generating provider is being
 // loaded. If it is, it returns it's provider. Otherwise, we defer
 // inmemoryProviderHost.Host.
-func (host *inmemoryProviderHost) ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+func (host *inmemoryProviderHost) ResolvePlugin(
+	ctx *plugin.Context, spec workspace.PluginDescriptor,
+) (*workspace.PluginInfo, error) {
 	if spec.Name == host.provider.name.String() {
 		info, err := host.provider.GetPluginInfo(context.TODO())
 		if err != nil {
@@ -141,7 +145,7 @@ func (host *inmemoryProviderHost) ResolvePlugin(spec workspace.PluginDescriptor)
 			Version: info.Version,
 		}, nil
 	}
-	return host.Host.ResolvePlugin(spec)
+	return host.Host.ResolvePlugin(ctx, spec)
 }
 
 func (host *inmemoryProviderHost) GetProviderInfo(
@@ -175,7 +179,9 @@ func (host *cachingProviderHost) getProvider(key string) (plugin.Provider, bool)
 	return provider, ok
 }
 
-func (host *cachingProviderHost) Provider(pkg workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (host *cachingProviderHost) Provider(
+	ctx *plugin.Context, pkg workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	key := pkg.String()
 	if provider, ok := host.getProvider(key); ok {
 		return provider, nil
@@ -184,7 +190,7 @@ func (host *cachingProviderHost) Provider(pkg workspace.PluginDescriptor, e env.
 	host.m.Lock()
 	defer host.m.Unlock()
 
-	provider, err := host.Host.Provider(pkg, e)
+	provider, err := host.Host.Provider(ctx, pkg, e)
 	if err != nil {
 		return nil, err
 	}

@@ -31,9 +31,7 @@ import (
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/afero"
@@ -170,7 +168,7 @@ output "someOutput" {
 			Package:      info.Name,
 			Version:      info.Version,
 			Language:     Schema,
-			PluginHost:   &testPluginHost{},
+			PluginHost:   newTestPluginHost(),
 			ProviderInfo: info,
 			Root:         fs,
 			Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -283,7 +281,7 @@ resource "azurerm_web_pubsub_custom_certificate" "test" {
 		g, err := NewGenerator(GeneratorOptions{
 			Package:      "azure",
 			Version:      "0.0.1",
-			PluginHost:   &testPluginHost{},
+			PluginHost:   newTestPluginHost(),
 			Language:     Schema,
 			ProviderInfo: pi,
 			Root:         afero.NewBasePathFs(afero.NewOsFs(), t.TempDir()),
@@ -337,7 +335,7 @@ This is some intentionally broken HCL that should not convert.
 		g, err := NewGenerator(GeneratorOptions{
 			Package:      "azure",
 			Version:      "0.0.1",
-			PluginHost:   &testPluginHost{},
+			PluginHost:   newTestPluginHost(),
 			Language:     Schema,
 			ProviderInfo: pi,
 			Root:         afero.NewBasePathFs(afero.NewOsFs(), t.TempDir()),
@@ -413,7 +411,7 @@ This is some intentionally broken HCL that should not convert.
 		g, err := NewGenerator(GeneratorOptions{
 			Package:      "aws",
 			Version:      "0.0.1",
-			PluginHost:   &testPluginHost{},
+			PluginHost:   newTestPluginHost(),
 			Language:     Schema,
 			ProviderInfo: pi,
 			Root:         afero.NewBasePathFs(afero.NewOsFs(), out),
@@ -493,7 +491,7 @@ output "some_output" {
 			g, err := NewGenerator(GeneratorOptions{
 				Package:      pi.Name,
 				Language:     Schema,
-				PluginHost:   &testPluginHost{},
+				PluginHost:   newTestPluginHost(),
 				ProviderInfo: pi,
 				Root:         afero.NewBasePathFs(afero.NewOsFs(), dir),
 				Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -570,58 +568,19 @@ func TestNotSupportedLifecyleHookErrorHandling(t *testing.T) {
 	require.Equal(t, hcl.DiagError, result[1].Severity)
 }
 
-type testPluginHost struct{}
-
-func (*testPluginHost) ServerAddr() string { panic("Unexpected call") }
-func (*testPluginHost) LoaderAddr() string { panic("Unexpected call") }
-
-func (*testPluginHost) Log(diag.Severity, resource.URN, string, int32) {
-	panic("Unexpected call")
+// newTestPluginHost returns a plugin host that resolves any plugin to a no-op mock provider,
+// avoiding any reach-out to a real plugin or registry during example conversion tests.
+func newTestPluginHost() *plugin.MockHost {
+	return &plugin.MockHost{
+		ProviderF: func(_ *plugin.Context, _ workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
+			return &plugin.MockProvider{}, nil
+		},
+		ResolvePluginF: func(_ *plugin.Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
+			return &workspace.PluginInfo{
+				Name:    spec.Name,
+				Kind:    spec.Kind,
+				Version: spec.Version,
+			}, nil
+		},
+	}
 }
-
-func (*testPluginHost) LogStatus(diag.Severity, resource.URN, string, int32) {
-	panic("Unexpected call")
-}
-
-func (*testPluginHost) Analyzer(tokens.QName) (plugin.Analyzer, error) { panic("Unexpected call") }
-
-func (*testPluginHost) PolicyAnalyzer(
-	tokens.QName, string, *plugin.PolicyAnalyzerOptions,
-) (plugin.Analyzer, error) {
-	panic("Unexpected call")
-}
-
-func (*testPluginHost) ListAnalyzers() []plugin.Analyzer { panic("Unexpected call") }
-
-func (*testPluginHost) Provider(pkg workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
-	return &plugin.MockProvider{}, nil
-}
-
-func (*testPluginHost) StartDebugging(plugin.DebuggingInfo) error {
-	panic("Unexpected call")
-}
-
-func (*testPluginHost) CloseProvider(plugin.Provider) error { panic("Unexpected call") }
-
-func (*testPluginHost) LanguageRuntime(string) (plugin.LanguageRuntime, error) {
-	panic("Unexpected call")
-}
-
-func (*testPluginHost) EnsurePlugins([]workspace.PluginDescriptor, plugin.Flags) error {
-	panic("Unexpected call")
-}
-
-func (*testPluginHost) ResolvePlugin(spec workspace.PluginDescriptor) (*workspace.PluginInfo, error) {
-	return &workspace.PluginInfo{
-		Name:    spec.Name,
-		Kind:    spec.Kind,
-		Version: spec.Version,
-	}, nil
-}
-
-func (*testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin { panic("Unexpected call") }
-func (*testPluginHost) SignalCancellation() error                    { panic("Unexpected call") }
-func (*testPluginHost) Close() error                                 { return nil }
-func (*testPluginHost) AttachDebugger(spec plugin.DebugSpec) bool    { return false }
-
-var _ plugin.Host = (*testPluginHost)(nil)

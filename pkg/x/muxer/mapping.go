@@ -44,7 +44,7 @@ func MergeSchemasAndComputeDispatchTable(schemas []schema.PackageSpec) (Dispatch
 	muxedSchema.Types = map[string]schema.ComplexTypeSpec{}
 	muxedSchema.Functions = map[string]schema.FunctionSpec{}
 	muxedSchema.Config = schema.ConfigSpec{}
-	muxedSchema.Provider = schema.ResourceSpec{}
+	muxedSchema.Provider = &schema.ResourceSpec{}
 
 	for i := range schemas {
 		dispatchTable.layerSchema(muxedSchema, &schemas[i], i)
@@ -114,7 +114,7 @@ func (dispatchTable dispatchTable) layerSchema(dstSchema, srcSchema *schema.Pack
 		func(_ string, t schema.PropertySpec) { m.addType(t.TypeSpec) })
 
 	// layer in the schema.ProviderSpec
-	m.layerProvider(&m.dstSchema.Provider, m.srcSchema.Provider)
+	m.layerProvider(m.dstSchema.Provider, m.srcSchema.Provider)
 }
 
 // A helper function to merge two maps together, accounting for the maps being nil.
@@ -137,11 +137,14 @@ func layerMap[K comparable, V any](dst *map[K]V, src map[K]V, finalize func(k K,
 }
 
 // Layer a provider resource onto another resource.
-func (m *dispatchTableCtx) layerProvider(dst *schema.ResourceSpec, src schema.ResourceSpec) {
+func (m *dispatchTableCtx) layerProvider(dst, src *schema.ResourceSpec) {
 	// As implemented, this could layer an arbitrary resource onto another arbitrary
 	// resource. The only resource where we want to "merge" instead "pick one" is the
 	// provider resource.
 	contract.Assertf(dst != nil, "dst != nil")
+	if src == nil {
+		return
+	}
 
 	addType := func(_ string, t schema.PropertySpec) { m.addType(t.TypeSpec) }
 	layerString := func(dst *string, src string) {

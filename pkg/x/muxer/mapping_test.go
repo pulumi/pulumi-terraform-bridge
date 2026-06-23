@@ -64,7 +64,7 @@ func TestMergeSchemasAndComputeDispatchTable(t *testing.T) {
 			},
 			Required: []string{"var1", "var2"},
 		},
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			InputProperties: map[string]schema.PropertySpec{
 				"typ": {
 					TypeSpec: schema.TypeSpec{
@@ -142,7 +142,7 @@ func TestMergeSchemasAndComputeDispatchTable(t *testing.T) {
 			},
 			Required: []string{"var1", "var2"},
 		},
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			InputProperties: map[string]schema.PropertySpec{
 				"typ": {
 					TypeSpec: schema.TypeSpec{
