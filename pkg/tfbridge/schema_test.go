@@ -2717,9 +2717,8 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 		reservedkeys.Defaults: []interface{}{},
 		"inputA":              "input_a_read",
 		"inputC":              "input_c_read",
-		// With the fix for #2436, inputD is retained because its value
-		// matches the schema default. Previously it was dropped, causing
-		// a spurious diff on next preview.
+		// inputD is retained: its value matches the schema default, and dropping it would
+		// cause a spurious diff when PlanResourceChange re-applies the default on next preview.
 		"inputD": "input_d_default",
 	})
 	assert.Equal(t, expected, ins)
@@ -2792,8 +2791,8 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 	assert.NoError(t, err)
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
 		reservedkeys.Defaults: []interface{}{},
-		// With the fix for #2436, inputC and inputD are retained because
-		// their values match the schema defaults (-1). Previously dropped.
+		// inputC and inputD are retained: their values match the schema defaults (-1),
+		// and dropping them would cause spurious diffs on next preview.
 		"inputC": -1,
 		"inputD": -1,
 	})
@@ -3657,9 +3656,9 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}),
 		},
 		{
-			// With the fix for #2436, fields whose value matches the schema default
-			// are retained rather than dropped. Dropping them caused spurious diffs
-			// when PlanResourceChange re-applied the same default on next preview.
+			// Fields whose value matches the schema default are retained rather than
+			// dropped. Dropping them would cause spurious diffs when PlanResourceChange
+			// re-applies the same default on next preview.
 			name:  "string attribute matching default is retained",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "baz"}),
 			schemaMap: map[string]*schemav2.Schema{
