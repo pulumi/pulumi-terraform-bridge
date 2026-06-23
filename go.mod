@@ -49,7 +49,7 @@ require (
 	github.com/pulumi/providertest v0.7.0
 	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.107.2
 	github.com/pulumi/pulumi-java v1.31.0
-	github.com/pulumi/pulumi-yaml v1.37.0
+	github.com/pulumi/pulumi-yaml v1.37.1-0.20260622185626-83ac6abce5d9
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.15.0
@@ -291,8 +291,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.247.0
-	github.com/pulumi/pulumi/sdk/v3 v3.247.0
+	github.com/pulumi/pulumi/pkg/v3 v3.247.1-0.20260623205855-9fd06c1f63cc
+	github.com/pulumi/pulumi/sdk/v3 v3.247.1-0.20260623205855-9fd06c1f63cc
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect

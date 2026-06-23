@@ -991,7 +991,8 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	baseHost := opts.PluginHost
 	if baseHost == nil {
-		baseHost, err = pkghost.New(ctx, sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled)
+		baseHost, err = pkghost.New(ctx, sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled,
+			pschema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -1010,7 +1011,6 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	pluginHost := newCachingProviderHost(host)
 	pluginContext, err := plugin.NewContext(
 		ctx, sink, sink, pluginHost, nil, cwd, nil, false, nil,
-		pschema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 	)
 	if err != nil {
 		// Only close baseHost if we created it; a caller-provided host is owned by the caller.
