@@ -689,16 +689,16 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	case v.IsNull() && pv.IsNull():
 		return RawStateDelta{}, nil
 
-	case v.Type().IsStringType() && pv.IsString() && pv.StringValue() == v.StringValue():
+	case !v.IsNull() && v.Type().IsStringType() && pv.IsString() && pv.StringValue() == v.StringValue():
 		return RawStateDelta{}, nil
 
-	case v.Type().IsBooleanType() && pv.IsBool() && pv.BoolValue() == v.BoolValue():
+	case !v.IsNull() && v.Type().IsBooleanType() && pv.IsBool() && pv.BoolValue() == v.BoolValue():
 		return RawStateDelta{}, nil
 
-	case v.Type().IsNumberType() && pv.IsNumber() && isSimilarNumber(pv.NumberValue(), v.BigFloatValue()):
+	case !v.IsNull() && v.Type().IsNumberType() && pv.IsNumber() && isSimilarNumber(pv.NumberValue(), v.BigFloatValue()):
 		return RawStateDelta{}, nil
 
-	case v.Type().IsNumberType() && pv.IsString():
+	case !v.IsNull() && v.Type().IsNumberType() && pv.IsString():
 		return RawStateDelta{Num: &numDelta{}}, nil
 
 	case v.Type().IsListType() && !v.IsNull():
