@@ -3858,48 +3858,24 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 		},
 	}
 
-	t.Run("Schema func not called if validate disabled", func(t *testing.T) {
-		schemav2.RunProviderInternalValidation = false
-		testutils.Replay(t, provider, `
-		{
-			"method": "/pulumirpc.ResourceProvider/CheckConfig",
-			"request": {
-				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
-				"olds": {},
-				"news": { "version": "6.18.2" }
-			},
-			"response": {
-				"inputs": {
-					"version": "6.18.2"
-				}
+	// CheckConfig validates the provider config against the schema but must not
+	// run Provider.InternalValidate, which would walk every resource schema and
+	// invoke SchemaFunc. The bridge skips InternalValidate at runtime, so the
+	// panicking SchemaFunc is never called.
+	testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/CheckConfig",
+		"request": {
+			"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+			"olds": {},
+			"news": { "version": "6.18.2" }
+		},
+		"response": {
+			"inputs": {
+				"version": "6.18.2"
 			}
-		}`)
-	})
-
-	t.Run("Schema func panic if validate enabled", func(t *testing.T) {
-		schemav2.RunProviderInternalValidation = true
-		defer func() {
-			r := recover()
-			if r.(string) != "schema func panic" {
-				t.Errorf("Wrong panic: %v", r)
-			}
-		}()
-		testutils.Replay(t, provider, `
-		{
-			"method": "/pulumirpc.ResourceProvider/CheckConfig",
-			"request": {
-				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
-				"olds": {},
-				"news": { "version": "6.18.2" }
-			},
-			"response": {
-				"inputs": {
-					"version": "6.18.2"
-				}
-			}
-		}`)
-		t.Errorf("The code did not panic!")
-	})
+		}
+	}`)
 }
 
 func TestMaxItemsOneConflictsWith(t *testing.T) {

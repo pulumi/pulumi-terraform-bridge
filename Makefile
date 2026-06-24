@@ -59,20 +59,6 @@ generate_builtins_test::
 tidy::
 	find . -name go.mod -execdir go mod tidy \;
 
-# Ideally, we would have `tidy: pin_upstream_sdk`, but `find` doesn't have the same format
-# on windows.
-pin_upstream_sdk: UpstreamPluginSDK=github.com/hashicorp/terraform-plugin-sdk/v2
-pin_upstream_sdk: OurPluginSDK=github.com/pulumi/terraform-plugin-sdk/v2
-pin_upstream_sdk: PluginSDKVersion=v2.0.0-20250530111747-935112552988
-pin_upstream_sdk:
-	# /x/muxer doesn't depend on the rest of the bridge or any TF libraries, so it
-	# doesn't need this replace.
-	#
-	# All other modules depend on the bridge, so need this replace.
-	find . -name go.mod -and \
-	-not -path '*/x/muxer/*' -and \
-	-execdir go mod edit -replace ${UpstreamPluginSDK}=${OurPluginSDK}@${PluginSDKVersion} \;
-
 .PHONY: go.work
 go.work::
 	@cd $(PROJECT_DIR)
