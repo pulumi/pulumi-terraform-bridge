@@ -69,7 +69,8 @@ func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 		tf:           p,
 		opts:         opts,
 		server: &grpcServer{
-			gserver: p.GRPCProvider().(*schema.GRPCProviderServer),
+			gserver:  p.GRPCProvider().(*schema.GRPCProviderServer),
+			provider: p,
 		},
 	}
 }
@@ -89,7 +90,13 @@ func (p v2Provider) InternalValidate() error {
 func (p v2Provider) Validate(
 	_ context.Context, c shim.ResourceConfig,
 ) ([]diagnostics.ValidationWarning, []error) {
-	return warningsAndErrors(p.tf.Validate(configFromShim(c)))
+	// Validate the config against the schema without first running
+	// Provider.InternalValidate. Provider.Validate would run InternalValidate,
+	// which validates the entire provider schema and can be slow for large
+	// providers. The bridge already validates the schema at build time, so it is
+	// skipped here. schema.InternalMap is a type alias for the unexported
+	// schemaMap, so this calls the same validation logic Provider.Validate uses.
+	return warningsAndErrors(schema.InternalMap(p.tf.Schema).Validate(configFromShim(c)))
 }
 
 func (p v2Provider) ValidateResource(

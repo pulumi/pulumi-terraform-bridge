@@ -58,7 +58,7 @@ func (r *v2Resource2) InstanceState(
 	s, err := recoverAndCoerceCtyValueWithSchema(r.tf.CoreConfigSchema(), object)
 	if err != nil {
 		pulumilog.V(9).Infof("failed to coerce config: %v, proceeding with imprecise value", err)
-		original := schema.HCL2ValueFromConfigValue(object)
+		original := hcl2ValueFromConfigValue(object)
 		s = original
 	}
 	s = normalizeBlockCollections(s, r.tf)
@@ -306,7 +306,7 @@ func (p v2Provider) Diff(
 	st := state.stateValue
 	ic := opts.IgnoreChanges
 	priv := state.meta
-	plan, err := p.server.PlanResourceChange(ctx, t, ty, cfg, st, prop, priv, meta, ic)
+	plan, err := p.server.PlanResourceChange(ctx, t, cfg, st, prop, priv, meta, ic)
 	if err != nil {
 		return nil, err
 	}
@@ -556,6 +556,9 @@ func (p v2Provider) UpgradeState(
 // Helper to unwrap gRPC types from GRPCProviderServer.
 type grpcServer struct {
 	gserver *schema.GRPCProviderServer
+	// provider is the same *schema.Provider that gserver wraps. PlanResourceChange
+	// needs direct access to it to look up resources and the configured Meta().
+	provider *schema.Provider
 }
 
 // This will return an error if any of the diagnostics are error-level, or a given err is non-nil.
@@ -584,7 +587,6 @@ func handleDiagnostics(ctx context.Context, diags []*tfprotov5.Diagnostic, err e
 func (s *grpcServer) PlanResourceChange(
 	ctx context.Context,
 	typeName string,
-	ty cty.Type,
 	config, priorState, proposedNewState cty.Value,
 	priorMeta map[string]interface{},
 	providerMeta *cty.Value,
@@ -595,54 +597,13 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedDiff    *terraform.InstanceDiff
 }, error,
 ) {
-	configVal, err := msgpack.Marshal(config, ty)
-	if err != nil {
-		return nil, err
+	res, ok := s.provider.ResourcesMap[typeName]
+	if !ok {
+		return nil, fmt.Errorf("unknown resource type: %s", typeName)
 	}
-	priorStateVal, err := msgpack.Marshal(priorState, ty)
-	if err != nil {
-		return nil, err
-	}
-	proposedNewStateVal, err := msgpack.Marshal(proposedNewState, ty)
-	if err != nil {
-		return nil, err
-	}
-	req := &schema.PlanResourceChangeExtraRequest{
-		PlanResourceChangeRequest: tfprotov5.PlanResourceChangeRequest{
-			TypeName:         typeName,
-			PriorState:       &tfprotov5.DynamicValue{MsgPack: priorStateVal},
-			ProposedNewState: &tfprotov5.DynamicValue{MsgPack: proposedNewStateVal},
-			Config:           &tfprotov5.DynamicValue{MsgPack: configVal},
-		},
-		TransformInstanceDiff: func(d *terraform.InstanceDiff) *terraform.InstanceDiff {
-			dd := &v2InstanceDiff{tf: d}
-			if ignores != nil {
-				dd.processIgnoreChanges(ignores)
-			}
-			return dd.tf
-		},
-	}
-	if len(priorMeta) > 0 {
-		priorPrivate, err := json.Marshal(priorMeta)
-		if err != nil {
-			return nil, err
-		}
-		req.PriorPrivate = priorPrivate
-	}
-	if providerMeta != nil {
-		providerMetaVal, err := msgpack.Marshal(*providerMeta, ty)
-		if err != nil {
-			return nil, err
-		}
-		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
-	}
-	resp, err := s.gserver.PlanResourceChangeExtra(ctx, req)
-	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
-		return nil, err
-	}
-	// Ignore resp.UnsafeToUseLegacyTypeSystem - does not matter for Pulumi bridged providers.
-	// Ignore resp.RequiresReplace - expect replacement to be encoded in resp.InstanceDiff.
-	plannedState, err := msgpack.Unmarshal(resp.PlannedState.MsgPack, ty)
+
+	plannedState, plannedPrivate, diff, err := s.planResourceChange(
+		ctx, res, config, priorState, proposedNewState, priorMeta, providerMeta, ignores)
 	if err != nil {
 		return nil, err
 	}
@@ -653,24 +614,18 @@ func (s *grpcServer) PlanResourceChange(
 	//
 	// See pulumi/pulumi-aws#3880
 	same := plannedState.Equals(priorState)
-	if same.IsKnown() && same.True() {
-		resp.InstanceDiff.Attributes = map[string]*terraform.ResourceAttrDiff{}
+	if same.IsKnown() && same.True() && diff != nil {
+		diff.Attributes = map[string]*terraform.ResourceAttrDiff{}
 	}
 
-	var meta map[string]interface{}
-	if resp.PlannedPrivate != nil {
-		if err := json.Unmarshal(resp.PlannedPrivate, &meta); err != nil {
-			return nil, err
-		}
-	}
 	return &struct {
 		PlannedState   cty.Value
 		PlannedPrivate map[string]interface{}
 		PlannedDiff    *terraform.InstanceDiff
 	}{
 		PlannedState:   plannedState,
-		PlannedPrivate: meta,
-		PlannedDiff:    resp.InstanceDiff,
+		PlannedPrivate: plannedPrivate,
+		PlannedDiff:    diff,
 	}, nil
 }
 

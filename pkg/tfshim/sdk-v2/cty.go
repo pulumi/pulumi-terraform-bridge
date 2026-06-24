@@ -52,10 +52,10 @@ func makeResourceRawConfig(
 }
 
 func makeResourceRawConfigClassic(config *terraform.ResourceConfig, resource *schema.Resource) cty.Value {
-	// Unlike schema.JSONMapToStateValue, schema.HCL2ValueFromConfigValue is an approximate method as it does not
+	// Unlike schema.JSONMapToStateValue, hcl2ValueFromConfigValue is an approximate method as it does not
 	// consult the type of the resource. This causes problems such as lists being decoded as Tuple when the schema
 	// wants a Set. The problems cause CoerceValue to fail.
-	original := schema.HCL2ValueFromConfigValue(config.Raw)
+	original := hcl2ValueFromConfigValue(config.Raw)
 	coerced, err := resource.CoreConfigSchema().CoerceValue(original)
 	if err != nil {
 		// Once more, choosing to proceed with a slightly incorrect value rather than fail fast.
