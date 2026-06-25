@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -43,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/autofill"
 )
@@ -519,19 +521,26 @@ func (cc *cliConverter) convertPCL(
 		opts = append(opts, pcl.AllowMissingProperties)
 		opts = append(opts, pcl.AllowMissingVariables)
 		opts = append(opts, pcl.SkipResourceTypechecking)
-		if cc.pluginContext != nil {
-			opts = append(opts, pcl.PluginHost(cc.pluginContext))
-		}
-		if cc.loader != nil {
-			opts = append(opts, pcl.Loader(cc.loader))
-		}
 		if cc.packageCache != nil {
 			opts = append(opts, pcl.Cache(cc.packageCache))
 		}
 		cc.opts = opts
 	}
 
-	program, programDiags, err := pcl.BindProgram(pulumiParser.Files, cc.opts...)
+	loader := cc.loader
+	if loader == nil && cc.pluginContext != nil {
+		loader = pschema.NewPluginLoader(cc.pluginContext)
+	}
+	if loader == nil {
+		l, closeLoader, err := convert.DefaultLoader(context.TODO())
+		if err != nil {
+			return "", diagnostics, err
+		}
+		defer closeLoader()
+		loader = l
+	}
+
+	program, programDiags, err := pcl.BindProgram(pulumiParser.Files, loader, cc.opts...)
 	if err != nil {
 		return "", diagnostics, fmt.Errorf("pcl.BindProgram failed: %w", err)
 	}

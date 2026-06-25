@@ -49,7 +49,7 @@ require (
 	github.com/pulumi/providertest v0.7.0
 	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.107.2
 	github.com/pulumi/pulumi-java v1.31.0
-	github.com/pulumi/pulumi-yaml v1.37.0
+	github.com/pulumi/pulumi-yaml v1.37.1-0.20260625084641-73f035f3d81f
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.15.0

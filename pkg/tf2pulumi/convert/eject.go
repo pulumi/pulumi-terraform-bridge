@@ -16,6 +16,7 @@ package convert
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -26,6 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -34,6 +37,32 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 )
+
+// DefaultLoader constructs a schema loader backed by a freshly created plugin
+// context. It reproduces the loader that pcl.BindProgram constructed implicitly
+// before the loader became a required argument. Callers must invoke the returned
+// close function to release the underlying plugin host and context.
+func DefaultLoader(ctx context.Context) (schema.Loader, func(), error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, nil, err
+	}
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), nil, nil, nil,
+		pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, cwd, nil, false, nil)
+	if err != nil {
+		contract.IgnoreClose(pluginHost)
+		return nil, nil, err
+	}
+	return schema.NewPluginLoader(pctx), func() {
+		contract.IgnoreClose(pctx)
+		contract.IgnoreClose(pluginHost)
+	}, nil
+}
 
 type EjectOptions struct {
 	// AllowMissingProperties, if true, allows code-gen to continue even if the input configuration does not include.
