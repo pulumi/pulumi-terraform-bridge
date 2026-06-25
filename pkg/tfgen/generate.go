@@ -991,7 +991,8 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	baseHost := opts.PluginHost
 	if baseHost == nil {
-		baseHost, err = pkghost.New(ctx, sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled)
+		baseHost, err = pkghost.New(ctx, sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled,
+			pschema.NewLoaderServerFromContext, convert.NewMapperServerFromContext, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -1010,7 +1011,6 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	pluginHost := newCachingProviderHost(host)
 	pluginContext, err := plugin.NewContext(
 		ctx, sink, sink, pluginHost, nil, cwd, nil, false, nil,
-		pschema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
 	)
 	if err != nil {
 		// Only close baseHost if we created it; a caller-provided host is owned by the caller.
@@ -1124,7 +1124,8 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 	}
 
 	// Convert the package to a Pulumi schema.
-	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.sink)
+	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.sink,
+		pschema.NewPluginLoader(g.pluginContext))
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "failed to create Pulumi schema")
 	}
@@ -1215,7 +1216,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 			allowDanglingRefernces = false
 		}
 		pulumiPackage, diags, err := pschema.BindSpec(
-			pulumiPackageSpec, nil, pschema.ValidationOptions{
+			pulumiPackageSpec, pschema.NewPluginLoader(g.pluginContext), pschema.ValidationOptions{
 				AllowDanglingReferences: allowDanglingRefernces,
 			},
 		)

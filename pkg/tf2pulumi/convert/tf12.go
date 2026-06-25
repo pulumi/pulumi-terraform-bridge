@@ -2,6 +2,7 @@ package convert
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 	"github.com/zclconf/go-cty/cty"
@@ -95,17 +97,24 @@ func convertTF12(files []*syntax.File, opts EjectOptions) ([]*syntax.File, *pcl.
 		hcl2Options = append(hcl2Options, model.AllowMissingVariables)
 		pulumiOptions = append(pulumiOptions, pcl.AllowMissingVariables)
 	}
-	if opts.PluginHost != nil {
-		pulumiOptions = append(pulumiOptions, pcl.PluginHost(opts.PluginHost))
-	}
 	if opts.PackageCache != nil {
 		pulumiOptions = append(pulumiOptions, pcl.Cache(opts.PackageCache))
 	}
 	if opts.SkipResourceTypechecking {
 		pulumiOptions = append(pulumiOptions, pcl.SkipResourceTypechecking)
 	}
-	if opts.Loader != nil {
-		pulumiOptions = append(pulumiOptions, pcl.Loader(opts.Loader))
+
+	loader := opts.Loader
+	if loader == nil && opts.PluginHost != nil {
+		loader = pschema.NewPluginLoader(opts.PluginHost)
+	}
+	if loader == nil {
+		l, closeLoader, err := DefaultLoader(context.TODO())
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		defer closeLoader()
+		loader = l
 	}
 
 	// Bind the files into a module.
@@ -177,7 +186,7 @@ func convertTF12(files []*syntax.File, opts EjectOptions) ([]*syntax.File, *pcl.
 		}
 	}
 
-	program, programDiags, err := pcl.BindProgram(pulumiParser.Files, pulumiOptions...)
+	program, programDiags, err := pcl.BindProgram(pulumiParser.Files, loader, pulumiOptions...)
 	diagnostics = append(diagnostics, programDiags...)
 
 	return pulumiParser.Files, program, diagnostics, err

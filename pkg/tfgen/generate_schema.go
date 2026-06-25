@@ -57,6 +57,7 @@ type schemaGenerator struct {
 	version  string
 	info     tfbridge.ProviderInfo
 	language Language
+	loader   pschema.Loader
 }
 
 type schemaNestedType struct {
@@ -230,13 +231,14 @@ func rawMessage(v interface{}) pschema.RawMessage {
 
 func genPulumiSchema(
 	pack *pkg, name tokens.Package, version string, info tfbridge.ProviderInfo,
-	logSink diag.Sink,
+	logSink diag.Sink, loader pschema.Loader,
 ) (pschema.PackageSpec, error) {
 	g := &schemaGenerator{
 		pkg:      name,
 		version:  version,
 		info:     info,
 		language: pack.language,
+		loader:   loader,
 	}
 	pulumiPackageSpec, err := g.genPackageSpec(pack, logSink)
 	if err != nil {
@@ -451,7 +453,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 	if g.info.NoDanglingReferences {
 		allowDanglingReferences = false
 	}
-	_, diags, err := pschema.BindSpec(spec, nil, pschema.ValidationOptions{
+	_, diags, err := pschema.BindSpec(spec, g.loader, pschema.ValidationOptions{
 		AllowDanglingReferences: allowDanglingReferences,
 	})
 	if err != nil {
