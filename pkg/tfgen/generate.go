@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
+	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -1077,14 +1078,21 @@ type GenerateOptions struct {
 	ModuleFormat string
 }
 
+// tfgenTracer instruments schema generation so the phases of a GetSchema call —
+// gathering the Terraform package and converting it to a Pulumi schema — are
+// visible in traces.
+var tfgenTracer = otel.Tracer("pulumi-terraform-bridge/pkg/tfgen")
+
 // Generate creates Pulumi packages from the information it was initialized with.
-func (g *Generator) Generate() (*GenerateSchemaResult, error) {
+func (g *Generator) Generate(ctx context.Context) (*GenerateSchemaResult, error) {
 	if g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi" {
-		genSchemaResult, err := g.generateSchemaResult(context.Background())
+		genSchemaResult, err := g.generateSchemaResult(ctx)
 		if err != nil {
 			return nil, err
 		}
 		// Now push the schema through the rest of the generator.
+		_, span := tfgenTracer.Start(ctx, "UnstableGenerateFromSchema")
+		defer span.End()
 		return g.UnstableGenerateFromSchema(genSchemaResult)
 	}
 	// Read the provider schema from file
@@ -1112,20 +1120,29 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 }
 
 func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaResult, error) {
-	err := g.info.Validate(ctx)
+	ctx, span := tfgenTracer.Start(ctx, "generateSchemaResult")
+	defer span.End()
+
+	validateCtx, validateSpan := tfgenTracer.Start(ctx, "info.Validate")
+	err := g.info.Validate(validateCtx)
+	validateSpan.End()
 	if err != nil {
 		return nil, err
 	}
 	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
 	// language-specific generators to create the full output.
+	_, gatherSpan := tfgenTracer.Start(ctx, "gatherPackage")
 	pack, err := g.gatherPackage()
+	gatherSpan.End()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "failed to gather package metadata")
 	}
 
 	// Convert the package to a Pulumi schema.
+	_, schemaSpan := tfgenTracer.Start(ctx, "genPulumiSchema")
 	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.sink,
 		pschema.NewPluginLoader(g.pluginContext))
+	schemaSpan.End()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "failed to create Pulumi schema")
 	}
