@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
@@ -39,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -58,6 +60,12 @@ type schemaGenerator struct {
 	info     tfbridge.ProviderInfo
 	language Language
 	loader   pschema.Loader
+
+	// docCommentDur/docCommentN accumulate time spent rendering doc comments, so a
+	// trace can show whether documentation processing is a meaningful share of
+	// schema generation.
+	docCommentDur time.Duration
+	docCommentN   int
 }
 
 type schemaNestedType struct {
@@ -230,6 +238,7 @@ func rawMessage(v interface{}) pschema.RawMessage {
 }
 
 func genPulumiSchema(
+	ctx context.Context,
 	pack *pkg, name tokens.Package, version string, info tfbridge.ProviderInfo,
 	logSink diag.Sink, loader pschema.Loader,
 ) (pschema.PackageSpec, error) {
@@ -240,12 +249,11 @@ func genPulumiSchema(
 		language: pack.language,
 		loader:   loader,
 	}
-	pulumiPackageSpec, err := g.genPackageSpec(pack, logSink)
+	pulumiPackageSpec, err := g.genPackageSpec(ctx, pack, logSink)
 	if err != nil {
 		return pschema.PackageSpec{}, err
 	}
 
-	ctx := context.Background()
 	if len(info.MuxWith) > 0 {
 		md := info.GetMetadata()
 		muxSchemas := make([]pschema.PackageSpec, len(info.MuxWith)+1)
@@ -270,7 +278,12 @@ func genPulumiSchema(
 	return pulumiPackageSpec, nil
 }
 
-func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.PackageSpec, error) {
+func (g *schemaGenerator) genPackageSpec(ctx context.Context, pack *pkg, sink diag.Sink) (pschema.PackageSpec, error) {
+	_, span := tfgenTracer.Start(ctx, "genPackageSpec")
+	defer span.End()
+	var typesDur, resourcesDur, functionsDur, gatherNestedDur, bindDur time.Duration
+	var typesN, resourcesN, functionsN int
+
 	spec := pschema.PackageSpec{
 		Name:              g.pkg.String(),
 		Version:           g.version,
@@ -301,9 +314,15 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 	var config []*variable
 	for _, mod := range pack.modules.values() {
 		// Generate nested types.
-		for _, t := range gatherSchemaNestedTypesForModule(mod) {
+		gn0 := time.Now()
+		nestedTypes := gatherSchemaNestedTypesForModule(mod)
+		gatherNestedDur += time.Since(gn0)
+		for _, t := range nestedTypes {
 			tok := g.genObjectTypeToken(t)
+			t0 := time.Now()
 			ts := g.genObjectType(t, false)
+			typesDur += time.Since(t0)
+			typesN++
 			spec.Types[tok] = pschema.ComplexTypeSpec{
 				ObjectTypeSpec: ts,
 			}
@@ -313,15 +332,33 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 		for _, member := range mod.members {
 			switch t := member.(type) {
 			case *resourceType:
+				t0 := time.Now()
 				spec.Resources[string(t.info.Tok)] = g.genResourceType(mod.name, t)
+				resourcesDur += time.Since(t0)
+				resourcesN++
 			case *resourceFunc:
+				t0 := time.Now()
 				spec.Functions[string(t.info.Tok)] = g.genDatasourceFunc(mod.name, t)
+				functionsDur += time.Since(t0)
+				functionsN++
 			case *variable:
 				contract.Assertf(mod.config(), `mod.config()`)
 				config = append(config, t)
 			}
 		}
 	}
+
+	span.SetAttributes(
+		attribute.Int("resources.count", resourcesN),
+		attribute.Int64("resources.ms", resourcesDur.Milliseconds()),
+		attribute.Int("nestedTypes.count", typesN),
+		attribute.Int64("nestedTypes.ms", typesDur.Milliseconds()),
+		attribute.Int64("gatherNestedTypes.ms", gatherNestedDur.Milliseconds()),
+		attribute.Int("functions.count", functionsN),
+		attribute.Int64("functions.ms", functionsDur.Milliseconds()),
+		attribute.Int("docComment.count", g.docCommentN),
+		attribute.Int64("docComment.ms", g.docCommentDur.Milliseconds()),
+	)
 
 	if len(config) != 0 {
 		spec.Config = g.genConfig(config)
@@ -453,9 +490,12 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 	if g.info.NoDanglingReferences {
 		allowDanglingReferences = false
 	}
+	bind0 := time.Now()
 	_, diags, err := pschema.BindSpec(spec, g.loader, pschema.ValidationOptions{
 		AllowDanglingReferences: allowDanglingReferences,
 	})
+	bindDur += time.Since(bind0)
+	span.SetAttributes(attribute.Int64("bindSpec.ms", bindDur.Milliseconds()))
 	if err != nil {
 		return pschema.PackageSpec{}, err
 	}
@@ -673,6 +713,8 @@ func getDefaultReadme(pulumiPackageName tokens.Package, tfProviderShortName stri
 }
 
 func (g *schemaGenerator) genDocComment(comment string) string {
+	t0 := time.Now()
+	defer func() { g.docCommentDur += time.Since(t0); g.docCommentN++ }()
 	buffer := &bytes.Buffer{}
 	lines := strings.Split(comment, "\n")
 	for i, docLine := range lines {
