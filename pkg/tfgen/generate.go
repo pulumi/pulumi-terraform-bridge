@@ -1137,8 +1137,7 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 
 	// Convert the package to a Pulumi schema.
 	schemaCtx, schemaSpan := tfgenTracer.Start(ctx, "genPulumiSchema")
-	pulumiPackageSpec, err := genPulumiSchema(schemaCtx, pack, g.pkg, g.version, g.info, g.sink,
-		pschema.NewPluginLoader(g.pluginContext))
+	pulumiPackageSpec, err := genPulumiSchema(schemaCtx, pack, g.pkg, g.version, g.info)
 	schemaSpan.End()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "failed to create Pulumi schema")
@@ -1225,13 +1224,9 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 			files[path] = code
 		}
 	default:
-		allowDanglingRefernces := true
-		if g.info.NoDanglingReferences {
-			allowDanglingRefernces = false
-		}
 		pulumiPackage, diags, err := pschema.BindSpec(
 			pulumiPackageSpec, pschema.NewPluginLoader(g.pluginContext), pschema.ValidationOptions{
-				AllowDanglingReferences: allowDanglingRefernces,
+				AllowDanglingReferences: !g.info.NoDanglingReferences,
 			},
 		)
 		if err != nil {

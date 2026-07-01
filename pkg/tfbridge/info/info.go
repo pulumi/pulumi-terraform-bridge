@@ -180,6 +180,10 @@ type Provider struct {
 	DisableRequiredWithDefaultTurningOptional bool
 
 	// Check generated schema for dangling references. Newer providers should opt into this.
+	//
+	// This is not consistently enforced. Providers authors should prefer to run:
+	//
+	//	pulumi schema check ./bin/pulumi-resource-<your-provider> --allow-dangling-references=false
 	NoDanglingReferences bool
 
 	// SkipDefaultFixups temporarily disables the default bridge fixup pass that
