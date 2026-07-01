@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/inflector"
 	csgen "github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -37,7 +36,6 @@ import (
 	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"go.opentelemetry.io/otel/attribute"
@@ -59,7 +57,6 @@ type schemaGenerator struct {
 	version  string
 	info     tfbridge.ProviderInfo
 	language Language
-	loader   pschema.Loader
 
 	// docCommentDur/docCommentN accumulate time spent rendering doc comments, so a
 	// trace can show whether documentation processing is a meaningful share of
@@ -240,16 +237,14 @@ func rawMessage(v interface{}) pschema.RawMessage {
 func genPulumiSchema(
 	ctx context.Context,
 	pack *pkg, name tokens.Package, version string, info tfbridge.ProviderInfo,
-	logSink diag.Sink, loader pschema.Loader,
 ) (pschema.PackageSpec, error) {
 	g := &schemaGenerator{
 		pkg:      name,
 		version:  version,
 		info:     info,
 		language: pack.language,
-		loader:   loader,
 	}
-	pulumiPackageSpec, err := g.genPackageSpec(ctx, pack, logSink)
+	pulumiPackageSpec, err := g.genPackageSpec(ctx, pack)
 	if err != nil {
 		return pschema.PackageSpec{}, err
 	}
@@ -278,10 +273,10 @@ func genPulumiSchema(
 	return pulumiPackageSpec, nil
 }
 
-func (g *schemaGenerator) genPackageSpec(ctx context.Context, pack *pkg, sink diag.Sink) (pschema.PackageSpec, error) {
+func (g *schemaGenerator) genPackageSpec(ctx context.Context, pack *pkg) (pschema.PackageSpec, error) {
 	_, span := tfgenTracer.Start(ctx, "genPackageSpec")
 	defer span.End()
-	var typesDur, resourcesDur, functionsDur, gatherNestedDur, bindDur time.Duration
+	var typesDur, resourcesDur, functionsDur, gatherNestedDur time.Duration
 	var typesN, resourcesN, functionsN int
 
 	spec := pschema.PackageSpec{
@@ -484,90 +479,7 @@ func (g *schemaGenerator) genPackageSpec(ctx context.Context, pack *pkg, sink di
 		spec.Language["java"] = javaLanguageExtensions(&g.info)
 	}
 
-	// Validate the schema.
-
-	allowDanglingReferences := true
-	if g.info.NoDanglingReferences {
-		allowDanglingReferences = false
-	}
-	bind0 := time.Now()
-	_, diags, err := pschema.BindSpec(spec, g.loader, pschema.ValidationOptions{
-		AllowDanglingReferences: allowDanglingReferences,
-	})
-	bindDur += time.Since(bind0)
-	span.SetAttributes(attribute.Int64("bindSpec.ms", bindDur.Milliseconds()))
-	if err != nil {
-		return pschema.PackageSpec{}, err
-	}
-
-	sinkHclDiagnostics(sink, diags)
-
-	if diags.HasErrors() {
-		return pschema.PackageSpec{}, diags
-	}
-
 	return spec, nil
-}
-
-// sinkHclDiagnostics takes a diagnostic sink and writes the diagnostics to it.
-//
-// sinkHclDiagnostics should be called at the end of the diagnostic generation process,
-// with the full list of diagnostics to display. It handles throttling the number of
-// diagnostics displayed to the user so they are not overwhelmed by giant page of
-// diagnostics.
-func sinkHclDiagnostics(sink diag.Sink, diags hcl.Diagnostics) {
-	diagsToDisplay := 6         // The total number of diagnostics to show.
-	var undisplayedErrors int   // The number of errors that were elided.
-	var undisplayedWarnings int // The number of warnings that were elided.
-
-	// log is used to actually write the diagnostic to the sink, or elided it if the
-	// sink has overflown.
-	log := func(sev diag.Severity, d *hcl.Diagnostic) {
-		msg := d.Summary
-		if d.Detail != "" {
-			msg += ": " + d.Detail
-		}
-
-		if diagsToDisplay <= 0 {
-			switch sev {
-			case diag.Error:
-				undisplayedErrors++
-			case diag.Warning:
-				undisplayedWarnings++
-			default:
-				panic("impossible")
-			}
-			return
-		}
-
-		diagsToDisplay--
-		sink.Logf(sev, &diag.Diag{Message: msg})
-	}
-
-	// Iterate the diagnostics and write them. We prioritize errors over warnings.
-
-	for _, d := range diags {
-		if d.Severity == hcl.DiagError {
-			log(diag.Error, d)
-		}
-	}
-
-	for _, d := range diags {
-		if d.Severity == hcl.DiagWarning {
-			log(diag.Warning, d)
-		}
-	}
-
-	// If we have failed to display any number of messages, write a message of the
-	// appropriate type indicating that there is more to display.
-
-	if undisplayedErrors > 0 {
-		sink.Errorf(&diag.Diag{Message: "%d additional errors"}, undisplayedErrors)
-	}
-
-	if undisplayedWarnings > 0 {
-		sink.Warningf(&diag.Diag{Message: "%d additional warnings"}, undisplayedWarnings)
-	}
 }
 
 func javaLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {

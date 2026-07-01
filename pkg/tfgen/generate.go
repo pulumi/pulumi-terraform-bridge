@@ -1137,8 +1137,7 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 
 	// Convert the package to a Pulumi schema.
 	schemaCtx, schemaSpan := tfgenTracer.Start(ctx, "genPulumiSchema")
-	pulumiPackageSpec, err := genPulumiSchema(schemaCtx, pack, g.pkg, g.version, g.info, g.sink,
-		pschema.NewPluginLoader(g.pluginContext))
+	pulumiPackageSpec, err := genPulumiSchema(schemaCtx, pack, g.pkg, g.version, g.info)
 	schemaSpan.End()
 	if err != nil {
 		return nil, pkgerrors.Wrapf(err, "failed to create Pulumi schema")
