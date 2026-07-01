@@ -1078,9 +1078,6 @@ type GenerateOptions struct {
 	ModuleFormat string
 }
 
-// tfgenTracer instruments schema generation so the phases of a GetSchema call —
-// gathering the Terraform package and converting it to a Pulumi schema — are
-// visible in traces.
 var tfgenTracer = otel.Tracer("pulumi-terraform-bridge/pkg/tfgen")
 
 // Generate creates Pulumi packages from the information it was initialized with.
