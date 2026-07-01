@@ -298,15 +298,14 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 // until the schema is actually needed (config/input type checking) because for large providers the
 // unmarshal is expensive and would otherwise run unconditionally on every startup. Returns nil if no
 // schema was provided or if it fails to decode.
-func (p *Provider) schemaSpec() *pschema.PackageSpec {
+func (p *Provider) schemaSpec(ctx context.Context) *pschema.PackageSpec {
 	p.pulumiSchemaOnce.Do(func() {
-		if len(p.pulumiSchema) == 0 {
+		if p.pulumiSchemaSpec != nil || len(p.pulumiSchema) == 0 {
 			return
 		}
 		var schema pschema.PackageSpec
 		if err := json.Unmarshal(p.pulumiSchema, &schema); err != nil {
-			GetLogger(context.Background()).Debug(
-				fmt.Sprintf("unable to unmarshal pulumi package spec: %s", err.Error()))
+			GetLogger(ctx).Debug(fmt.Sprintf("unable to unmarshal pulumi package spec: %s", err.Error()))
 			return
 		}
 		p.pulumiSchemaSpec = &schema
@@ -615,7 +614,7 @@ func (p *Provider) typeCheckConfig(
 
 	// If we don't have a schema, then we don't attempt to type check the config at
 	// all.
-	schemaSpec := p.schemaSpec()
+	schemaSpec := p.schemaSpec(ctx)
 	if schemaSpec == nil {
 		logger.Debug("p.pulumiSchemaSpec == nil, skipping type checking config")
 		return nil
@@ -992,7 +991,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	validateShouldError := cmdutil.IsTruthy(os.Getenv("PULUMI_ERROR_TYPE_CHECKER"))
 	schemaMap, schemaInfos := res.TF.Schema(), res.Schema.GetFields()
 	if p.pulumiSchema != nil {
-		schema := p.schemaSpec()
+		schema := p.schemaSpec(ctx)
 		if schema != nil {
 			typeFailures := typechecker.New(*schema, false).ValidateInputs(t, news)
 			if len(typeFailures) > 0 {
