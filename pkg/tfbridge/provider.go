@@ -22,6 +22,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -98,6 +99,7 @@ type Provider struct {
 	supportsSecrets  bool                               // true if the engine supports secret property values
 	pulumiSchema     []byte                             // the JSON-encoded Pulumi schema.
 	pulumiSchemaSpec *pschema.PackageSpec
+	pulumiSchemaOnce sync.Once // guards lazy decoding of pulumiSchema into pulumiSchemaSpec.
 	memStats         memStatCollector
 	hasTypeErrors    map[resource.URN]struct{}
 	providerOpts     []providerOption
@@ -284,19 +286,32 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 	}
 	ctx = p.loggingContext(ctx, "")
 	p.initResourceMaps()
-	if pulumiSchema != nil || len(pulumiSchema) != 0 {
-		var schema pschema.PackageSpec
-		if err := json.Unmarshal(pulumiSchema, &schema); err != nil {
-			GetLogger(ctx).Debug(fmt.Sprintf("unable to unmarshal pulumi package spec: %s", err.Error()))
-		}
-		p.pulumiSchemaSpec = &schema
-	}
 	return providerserver.NewPanicRecoveringProviderServer(&providerserver.PanicRecoveringProviderServerOptions{
 		Logger:                 host,
 		ResourceProviderServer: p,
 		ProviderName:           module,
 		ProviderVersion:        version,
 	})
+}
+
+// schemaSpec lazily decodes the JSON-encoded Pulumi schema into a PackageSpec. Decoding is deferred
+// until the schema is actually needed (config/input type checking) because for large providers the
+// unmarshal is expensive and would otherwise run unconditionally on every startup. Returns nil if no
+// schema was provided or if it fails to decode.
+func (p *Provider) schemaSpec() *pschema.PackageSpec {
+	p.pulumiSchemaOnce.Do(func() {
+		if len(p.pulumiSchema) == 0 {
+			return
+		}
+		var schema pschema.PackageSpec
+		if err := json.Unmarshal(p.pulumiSchema, &schema); err != nil {
+			GetLogger(context.Background()).Debug(
+				fmt.Sprintf("unable to unmarshal pulumi package spec: %s", err.Error()))
+			return
+		}
+		p.pulumiSchemaSpec = &schema
+	})
+	return p.pulumiSchemaSpec
 }
 
 func newMuxWithProvider(ctx context.Context, host *provider.HostClient,
@@ -600,12 +615,13 @@ func (p *Provider) typeCheckConfig(
 
 	// If we don't have a schema, then we don't attempt to type check the config at
 	// all.
-	if p.pulumiSchemaSpec == nil {
+	schemaSpec := p.schemaSpec()
+	if schemaSpec == nil {
 		logger.Debug("p.pulumiSchemaSpec == nil, skipping type checking config")
 		return nil
 	}
 
-	typeFailures := typechecker.New(*p.pulumiSchemaSpec, true).ValidateConfig(news)
+	typeFailures := typechecker.New(*schemaSpec, true).ValidateConfig(news)
 	if validateShouldError {
 		return p.convertTypeFailures(urn, typeFailures)
 	}
@@ -976,7 +992,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	validateShouldError := cmdutil.IsTruthy(os.Getenv("PULUMI_ERROR_TYPE_CHECKER"))
 	schemaMap, schemaInfos := res.TF.Schema(), res.Schema.GetFields()
 	if p.pulumiSchema != nil {
-		schema := p.pulumiSchemaSpec
+		schema := p.schemaSpec()
 		if schema != nil {
 			typeFailures := typechecker.New(*schema, false).ValidateInputs(t, news)
 			if len(typeFailures) > 0 {
