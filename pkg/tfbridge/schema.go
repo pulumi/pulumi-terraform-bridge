@@ -1998,8 +1998,28 @@ func extractSchemaInputsObject(
 		ev := extractSchemaInputs(e, etfs, eps)
 
 		if allowDrop && !etfs.Required() && isDefaultOrZeroValue(etfs, eps, ev) {
-			pulumilog.V(9).Infof("skipping '%v' (not required + default or zero value)", k)
-			continue
+			// If the field has a schema default, keep it rather than dropping.
+			// Dropping causes spurious diffs on next preview when PlanResourceChange
+			// re-applies the same default.
+			if getDefaultValue(etfs, eps) == nil {
+				pulumilog.V(9).Infof("skipping '%v' (not required + zero value, no schema default)", k)
+				continue
+			}
+			// Fall through to keep ev (which already equals the default).
+		}
+
+		// If ev is null and the field has a schema default, inject the default.
+		// This handles the case where Read didn't populate the field but
+		// PlanResourceChange will apply the default, causing a null → default diff.
+		if ev.IsNull() && allowDrop && !etfs.Required() {
+			if dv := getDefaultValue(etfs, eps); dv != nil {
+				// getDefaultValue may return an error as interface{} on DefaultFunc
+				// failure; skip injection in that case to avoid corrupting state.
+				if _, isErr := dv.(error); !isErr {
+					v[k] = resource.NewPropertyValue(dv)
+					continue
+				}
+			}
 		}
 
 		v[k] = ev
