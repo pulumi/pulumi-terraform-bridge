@@ -1224,13 +1224,9 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 			files[path] = code
 		}
 	default:
-		allowDanglingRefernces := true
-		if g.info.NoDanglingReferences {
-			allowDanglingRefernces = false
-		}
 		pulumiPackage, diags, err := pschema.BindSpec(
 			pulumiPackageSpec, pschema.NewPluginLoader(g.pluginContext), pschema.ValidationOptions{
-				AllowDanglingReferences: allowDanglingRefernces,
+				AllowDanglingReferences: !g.info.NoDanglingReferences,
 			},
 		)
 		if err != nil {
