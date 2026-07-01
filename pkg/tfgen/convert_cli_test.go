@@ -16,6 +16,7 @@ package tfgen
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -178,7 +179,7 @@ output "someOutput" {
 		})
 		assert.NoError(t, err)
 
-		_, err = g.Generate()
+		_, err = g.Generate(context.Background())
 		assert.NoError(t, err)
 
 		d, err := os.ReadFile(filepath.Join(tempdir, "schema.json"))
@@ -291,7 +292,7 @@ resource "azurerm_web_pubsub_custom_certificate" "test" {
 		})
 		require.NoError(t, err)
 
-		_, err = g.Generate()
+		_, err = g.Generate(context.Background())
 		require.NoError(t, err)
 	})
 
@@ -345,7 +346,7 @@ This is some intentionally broken HCL that should not convert.
 		})
 		require.NoError(t, err)
 
-		_, err = g.Generate()
+		_, err = g.Generate(context.Background())
 		require.NoError(t, err)
 
 		autogold.Expect("").Equal(t, stdout.String())
@@ -421,7 +422,7 @@ This is some intentionally broken HCL that should not convert.
 		})
 		require.NoError(t, err)
 
-		_, err = g.Generate()
+		_, err = g.Generate(context.Background())
 		require.NoError(t, err)
 
 		require.NotContains(t, stdout.String(), cliConverterErrUnexpectedHCLSnippet)
@@ -499,7 +500,7 @@ output "some_output" {
 				}),
 			})
 			require.NoError(t, err)
-			_, err = g.Generate()
+			_, err = g.Generate(context.Background())
 			require.NoError(t, err)
 			d, err := os.ReadFile(filepath.Join(dir, "schema.json"))
 			require.NoError(t, err)

@@ -17,6 +17,7 @@ package tfgen
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -2486,7 +2487,7 @@ throw new Exception("!");
 	})
 	assert.NoError(t, err)
 
-	_, err = g.Generate()
+	_, err = g.Generate(context.Background())
 	assert.NoError(t, err)
 
 	f, err := inmem.Open("schema.json")
