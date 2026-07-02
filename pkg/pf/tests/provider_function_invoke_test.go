@@ -143,6 +143,25 @@ func TestProviderFunctionInvoke(t *testing.T) {
 		}`)
 	})
 
+	t.Run("unknown argument value returns unknown without calling", func(t *testing.T) {
+		testutils.Replay(t, server, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/Invoke",
+		  "request": {
+		    "tok": "testbridge:index/concat:concat",
+		    "args": {
+		      "separator": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+		      "parts": ["a"]
+		    }
+		  },
+		  "response": {
+		    "return": {
+		      "result": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+		    }
+		  }
+		}`)
+	})
+
 	t.Run("missing required argument", func(t *testing.T) {
 		testutils.Replay(t, server, `
 		{
