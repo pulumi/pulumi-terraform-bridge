@@ -135,9 +135,6 @@ type PreCheckCallback = info.PreCheckCallback
 // DataSourceInfo can be used to override a data source's standard name mangling and argument/return information.
 type DataSourceInfo = info.DataSource
 
-// FunctionInfo can be used to override the mapping of a Terraform provider-defined function.
-type FunctionInfo = info.Function
-
 // SchemaInfo contains optional name transformations to apply.
 type SchemaInfo = info.Schema
 
@@ -256,14 +253,6 @@ type MarshallableDataSourceInfo = info.MarshallableDataSource
 // MarshalDataSourceInfo converts a Pulumi DataSourceInfo value into a MarshallableDataSourceInfo value.
 func MarshalDataSourceInfo(d *DataSourceInfo) *MarshallableDataSourceInfo {
 	return info.MarshalDataSource(d)
-}
-
-// MarshallableFunctionInfo is the JSON-marshallable form of a Pulumi FunctionInfo value.
-type MarshallableFunctionInfo = info.MarshallableFunction
-
-// MarshalFunctionInfo converts a Pulumi FunctionInfo value into a MarshallableFunctionInfo value.
-func MarshalFunctionInfo(f *FunctionInfo) *MarshallableFunctionInfo {
-	return info.MarshalFunction(f)
 }
 
 // MarshallableProviderInfo is the JSON-marshallable form of a Pulumi ProviderInfo value.

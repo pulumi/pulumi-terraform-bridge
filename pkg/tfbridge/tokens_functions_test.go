@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -36,7 +37,7 @@ func testFunction() shim.Function {
 
 func TestTokensSingleModuleFunctions(t *testing.T) {
 	t.Parallel()
-	info := tfbridge.ProviderInfo{
+	prov := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			Functions: map[string]shim.Function{
 				"parse_arn":     testFunction(),
@@ -45,43 +46,43 @@ func TestTokensSingleModuleFunctions(t *testing.T) {
 		}).Shim(),
 	}
 
-	err := info.ComputeTokens(tokens.SingleModule("foo_", "index", tokens.MakeStandard("foo")))
+	err := prov.ComputeTokens(tokens.SingleModule("foo_", "index", tokens.MakeStandard("foo")))
 	require.NoError(t, err)
 
 	// Functions are unprefixed in Terraform and always map into the top-level module,
 	// with no "get" prefix.
-	assert.Equal(t, map[string]*tfbridge.FunctionInfo{
+	assert.Equal(t, map[string]*info.Function{
 		"parse_arn":     {Tok: "foo:index/parseArn:parseArn"},
 		"trim_prefixes": {Tok: "foo:index/trimPrefixes:trimPrefixes"},
-	}, info.Functions)
+	}, prov.Functions)
 }
 
 func TestTokensFunctionsRespectExistingMappings(t *testing.T) {
 	t.Parallel()
-	info := tfbridge.ProviderInfo{
+	prov := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			Functions: map[string]shim.Function{
 				"parse_arn": testFunction(),
 				"other_fn":  testFunction(),
 			},
 		}).Shim(),
-		Functions: map[string]*tfbridge.FunctionInfo{
+		Functions: map[string]*info.Function{
 			"parse_arn": {Tok: "foo:custom/parseMyArn:parseMyArn"},
 		},
 	}
 
-	err := info.ComputeTokens(tokens.SingleModule("foo_", "index", tokens.MakeStandard("foo")))
+	err := prov.ComputeTokens(tokens.SingleModule("foo_", "index", tokens.MakeStandard("foo")))
 	require.NoError(t, err)
 
-	assert.Equal(t, map[string]*tfbridge.FunctionInfo{
+	assert.Equal(t, map[string]*info.Function{
 		"parse_arn": {Tok: "foo:custom/parseMyArn:parseMyArn"},
 		"other_fn":  {Tok: "foo:index/otherFn:otherFn"},
-	}, info.Functions)
+	}, prov.Functions)
 }
 
 func TestTokensFunctionsRespectIgnoreMappings(t *testing.T) {
 	t.Parallel()
-	info := tfbridge.ProviderInfo{
+	prov := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			Functions: map[string]shim.Function{
 				"parse_arn": testFunction(),
@@ -91,17 +92,17 @@ func TestTokensFunctionsRespectIgnoreMappings(t *testing.T) {
 		IgnoreMappings: []string{"ignored"},
 	}
 
-	err := info.ComputeTokens(tokens.SingleModule("foo_", "index", tokens.MakeStandard("foo")))
+	err := prov.ComputeTokens(tokens.SingleModule("foo_", "index", tokens.MakeStandard("foo")))
 	require.NoError(t, err)
 
-	assert.Equal(t, map[string]*tfbridge.FunctionInfo{
+	assert.Equal(t, map[string]*info.Function{
 		"parse_arn": {Tok: "foo:index/parseArn:parseArn"},
-	}, info.Functions)
+	}, prov.Functions)
 }
 
 func TestTokensMappedModulesFunctions(t *testing.T) {
 	t.Parallel()
-	info := tfbridge.ProviderInfo{
+	prov := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			Functions: map[string]shim.Function{
 				"parse_arn": testFunction(),
@@ -109,13 +110,13 @@ func TestTokensMappedModulesFunctions(t *testing.T) {
 		}).Shim(),
 	}
 
-	err := info.ComputeTokens(tokens.MappedModules("foo_", "idx", map[string]string{
+	err := prov.ComputeTokens(tokens.MappedModules("foo_", "idx", map[string]string{
 		"mod": "module",
 	}, tokens.MakeStandard("foo")))
 	require.NoError(t, err)
 
 	// Module mappings do not apply to functions; they stay in the top-level module.
-	assert.Equal(t, map[string]*tfbridge.FunctionInfo{
+	assert.Equal(t, map[string]*info.Function{
 		"parse_arn": {Tok: "foo:index/parseArn:parseArn"},
-	}, info.Functions)
+	}, prov.Functions)
 }

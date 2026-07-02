@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
@@ -41,13 +42,7 @@ func SchemaOnlyPluginFrameworkProvider(ctx context.Context, provider provider.Pr
 //
 // If there is overlap between shim and pf, shim will dominate.
 func AugmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Provider) *ProviderShim {
-	p, _, _, functions := augmentShimWithPF(ctx, shim, pf)
-	// Unlike resources and data sources, conflicting provider function names cannot be
-	// resolved by letting one provider dominate: Terraform function names are global to
-	// a provider, so a collision is always a configuration error.
-	if len(functions) > 0 {
-		contract.Failf("Provider functions are not disjoint: conflicting names: %s", strings.Join(functions, ", "))
-	}
+	p, _, _, _ := augmentShimWithPF(ctx, shim, pf)
 	return p
 }
 
@@ -246,9 +241,9 @@ func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) (muxer.Dispa
 
 // Resolve provider-defined functions into their originating providers.
 func resolveFunctionDispatch(
-	m *ProviderShim, dispatch map[string]int, info map[string]*tfbridge.FunctionInfo,
+	m *ProviderShim, dispatch map[string]int, functions map[string]*info.Function,
 ) (unbacked []string) {
-	for tfName, fn := range info {
+	for tfName, fn := range functions {
 		if _, ok := m.Functions()[tfName]; !ok {
 			// This function is not in any sub-provider. The bridge will error
 			// later, so we can safely ignore now.
