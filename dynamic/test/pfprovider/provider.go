@@ -103,7 +103,9 @@ func (p *PFProvider) DataSources(ctx context.Context) []func() datasource.DataSo
 }
 
 func (p *PFProvider) Functions(ctx context.Context) []func() function.Function {
-	return []func() function.Function{}
+	return []func() function.Function{
+		NewEchoUpperFunction,
+	}
 }
 
 func New(version string) func() provider.Provider {

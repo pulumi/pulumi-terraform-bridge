@@ -249,6 +249,37 @@ func TestDynamicConfigure(t *testing.T) {
 }`)))(t)
 }
 
+// Provider-defined functions are exposed by the dynamic bridge and are callable without
+// configuring the provider first.
+func TestDynamicProviderFunction(t *testing.T) {
+	t.Parallel()
+	skipWindows(t)
+
+	s := grpcTestServer(context.Background(), t)
+
+	assertGRPCCall(s.Parameterize, &pulumirpc.ParameterizeRequest{
+		Parameters: &pulumirpc.ParameterizeRequest_Args{
+			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+				Args: []string{pfProviderPath(t)},
+			},
+		},
+	}, noParallel, expect(autogold.Expect(`{
+  "name": "pfprovider",
+  "version": "0.0.0"
+}`)))(t)
+
+	assertGRPCCall(s.Invoke, &pulumirpc.InvokeRequest{
+		Tok: "pfprovider:index/echoUpper:echoUpper",
+		Args: marshal(resource.PropertyMap{
+			"input": resource.NewProperty("hello"),
+		}),
+	}, noParallel, expect(autogold.Expect(`{
+  "return": {
+    "result": "HELLO"
+  }
+}`)))(t)
+}
+
 func TestDynamicCheckConfig(t *testing.T) {
 	t.Parallel()
 	skipWindows(t)

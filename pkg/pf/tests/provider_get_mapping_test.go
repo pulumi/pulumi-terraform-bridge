@@ -87,6 +87,32 @@ func TestPFGetMapping(t *testing.T) {
 	}
 }
 
+// Provider-defined functions surface in GetMapping data so converters can translate
+// provider::name::fn(...) calls.
+func TestPFGetMappingFunctions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	info := testprovider.SyntheticTestBridgeProvider()
+
+	gen, err := genMetadata(t, info)
+	require.NoError(t, err)
+	p, err := tfbridge.NewProvider(ctx, info, gen)
+	require.NoError(t, err)
+
+	m, err := p.GetMapping(ctx, plugin.GetMappingRequest{Key: "terraform"})
+	require.NoError(t, err)
+	assert.Equal(t, "testbridge", m.Provider)
+
+	var marshalled tfbridge0.MarshallableProviderInfo
+	require.NoError(t, json.Unmarshal(m.Data, &marshalled))
+
+	assert.Equal(t, map[string]*tfbridge0.MarshallableFunctionInfo{
+		"concat":           {Tok: "testbridge:index/concat:concat"},
+		"parse_id":         {Tok: "testbridge:index/parseId:parseId"},
+		"nullable_default": {Tok: "testbridge:index/nullableDefault:nullableDefault"},
+	}, marshalled.Functions)
+}
+
 func TestMuxedGetMapping(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
