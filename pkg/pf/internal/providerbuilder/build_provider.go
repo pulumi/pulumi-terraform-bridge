@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -38,11 +39,15 @@ type Provider struct {
 	ProviderSchema schema.Schema
 	AllResources   []Resource
 	AllDataSources []DataSource
+	AllFunctions   []func() function.Function
 
 	configureFunc func(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse)
 }
 
-var _ provider.Provider = (*Provider)(nil)
+var (
+	_ provider.Provider              = (*Provider)(nil)
+	_ provider.ProviderWithFunctions = (*Provider)(nil)
+)
 
 func (impl *Provider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = impl.TypeName
@@ -68,6 +73,10 @@ func (impl *Provider) DataSources(ctx context.Context) []func() datasource.DataS
 		}
 	}
 	return d
+}
+
+func (impl *Provider) Functions(ctx context.Context) []func() function.Function {
+	return impl.AllFunctions
 }
 
 func (impl *Provider) Resources(ctx context.Context) []func() resource.Resource {
@@ -106,6 +115,7 @@ type NewProviderArgs struct {
 	ProviderSchema schema.Schema
 	AllResources   []Resource
 	AllDataSources []DataSource
+	AllFunctions   []func() function.Function
 
 	ConfigureFunc func(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse)
 }
@@ -118,6 +128,7 @@ func NewProvider(params NewProviderArgs) *Provider {
 		ProviderSchema: params.ProviderSchema,
 		AllResources:   params.AllResources,
 		AllDataSources: params.AllDataSources,
+		AllFunctions:   params.AllFunctions,
 
 		configureFunc: params.ConfigureFunc,
 	}

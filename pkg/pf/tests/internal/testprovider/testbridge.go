@@ -129,6 +129,12 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 			"testbridge_smac_ds": {Tok: "testbridge:index/smac:SMAC"},
 		},
 
+		Functions: map[string]*tfbridge.FunctionInfo{
+			"concat":           {Tok: "testbridge:index/concat:concat"},
+			"parse_id":         {Tok: "testbridge:index/parseId:parseId"},
+			"nullable_default": {Tok: "testbridge:index/nullableDefault:nullableDefault"},
+		},
+
 		MetadataInfo: tfbridge.NewProviderMetadata(testBridgeMetadata),
 	}
 

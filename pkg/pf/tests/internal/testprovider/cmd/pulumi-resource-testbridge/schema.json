@@ -1060,6 +1060,35 @@
                 "type": "object"
             }
         },
+        "testbridge:index/concat:concat": {
+            "description": "Concatenates strings with a separator.\n",
+            "inputs": {
+                "properties": {
+                    "parts": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Strings to join.\n"
+                    },
+                    "separator": {
+                        "type": "string",
+                        "description": "String placed between each part.\n"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "separator"
+                ]
+            },
+            "multiArgumentInputs": [
+                "separator",
+                "parts"
+            ],
+            "outputs": {
+                "type": "string"
+            }
+        },
         "testbridge:index/echo:Echo": {
             "inputs": {
                 "description": "A collection of arguments for invoking Echo.\n",
@@ -1096,6 +1125,55 @@
                     "output",
                     "sensitive",
                     "id"
+                ],
+                "type": "object"
+            }
+        },
+        "testbridge:index/nullableDefault:nullableDefault": {
+            "description": "Returns the value, or a default when the value is null.\n",
+            "inputs": {
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "multiArgumentInputs": [
+                "value"
+            ],
+            "outputs": {
+                "type": "string"
+            }
+        },
+        "testbridge:index/parseId:parseId": {
+            "description": "Parses a prefix/suffix identifier.\n",
+            "inputs": {
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id"
+                ]
+            },
+            "multiArgumentInputs": [
+                "id"
+            ],
+            "outputs": {
+                "properties": {
+                    "prefix": {
+                        "type": "string"
+                    },
+                    "suffix": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "prefix",
+                    "suffix"
                 ],
                 "type": "object"
             }
