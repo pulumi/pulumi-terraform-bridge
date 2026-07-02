@@ -20,6 +20,11 @@ import (
 func WithCaseInsensitiveDedup(base Strategy, finalize Make, metadata info.ProviderMetadata) Strategy {
 	var result Strategy
 
+	// Provider-defined function tokens pass through undeduplicated: exact token
+	// collisions are rejected during schema generation, and functions have no
+	// auto-alias history to replay.
+	result.Function = base.Function
+
 	if base.Resource != nil {
 		resourceDeduper := newStandardTokenDeduper(finalize, metadata, deduperKindResource)
 		result.Resource = func(tfToken string, elem *info.Resource) error {

@@ -12,6 +12,7 @@ type Provider struct {
 	Schema         shim.SchemaMap
 	ResourcesMap   shim.ResourceMap
 	DataSourcesMap shim.ResourceMap
+	Functions      map[string]shim.Function
 	internalinter.Internal
 }
 
@@ -48,6 +49,10 @@ func (s ProviderShim) ResourcesMap() shim.ResourceMap {
 
 func (s ProviderShim) DataSourcesMap() shim.ResourceMap {
 	return s.V.DataSourcesMap
+}
+
+func (s ProviderShim) Functions() map[string]shim.Function {
+	return s.V.Functions
 }
 
 func (s ProviderShim) InternalValidate() error {

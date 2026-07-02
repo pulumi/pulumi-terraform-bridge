@@ -62,6 +62,10 @@ func (p *FilteringProvider) DataSourcesMap() shim.ResourceMap {
 	return &filteringMap{p.Provider.DataSourcesMap(), p.DataSourceFilter}
 }
 
+func (p *FilteringProvider) Functions() map[string]shim.Function {
+	return p.Provider.Functions()
+}
+
 func (p *FilteringProvider) InternalValidate() error {
 	return p.Provider.InternalValidate()
 }

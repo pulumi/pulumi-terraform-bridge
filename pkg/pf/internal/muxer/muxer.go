@@ -17,6 +17,7 @@ package muxer
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -40,13 +41,19 @@ func SchemaOnlyPluginFrameworkProvider(ctx context.Context, provider provider.Pr
 //
 // If there is overlap between shim and pf, shim will dominate.
 func AugmentShimWithPF(ctx context.Context, shim shim.Provider, pf provider.Provider) *ProviderShim {
-	p, _, _ := augmentShimWithPF(ctx, shim, pf)
+	p, _, _, functions := augmentShimWithPF(ctx, shim, pf)
+	// Unlike resources and data sources, conflicting provider function names cannot be
+	// resolved by letting one provider dominate: Terraform function names are global to
+	// a provider, so a collision is always a configuration error.
+	if len(functions) > 0 {
+		contract.Failf("Provider functions are not disjoint: conflicting names: %s", strings.Join(functions, ", "))
+	}
 	return p
 }
 
 func augmentShimWithPF(
 	ctx context.Context, shim shim.Provider, pf provider.Provider,
-) (*ProviderShim, []string, []string) {
+) (*ProviderShim, []string, []string, []string) {
 	var p ProviderShim
 	if alreadyMerged, ok := shim.(*ProviderShim); ok {
 		p = *alreadyMerged
@@ -54,30 +61,30 @@ func augmentShimWithPF(
 		p = newProviderShim(shim)
 	}
 
-	r, d := p.extend(schemashim.ShimSchemaOnlyProvider(ctx, pf))
-	return &p, r, d
+	r, d, f := p.extend(schemashim.ShimSchemaOnlyProvider(ctx, pf))
+	return &p, r, d, f
 }
 
 // AugmentShimWithDisjointPF augments an existing shim with a PF provider.Provider.
 //
 // This function asserts that there is no overlap between providers.
 func AugmentShimWithDisjointPF(ctx context.Context, shim shim.Provider, pf provider.Provider) *ProviderShim {
-	p, resources, datasources := augmentShimWithPF(ctx, shim, pf)
+	p, resources, datasources, functions := augmentShimWithPF(ctx, shim, pf)
 
-	var rErr, dErr error
-	if len(datasources) > 0 {
-		dErr = fmt.Errorf("DataSourceMap is not disjoint: conflicting keys: %s", strings.Join(datasources, ", "))
-	}
+	var errs []string
 	if len(resources) > 0 {
-		rErr = fmt.Errorf("ResourcesMap is not disjoint: conflicting keys: %s", strings.Join(resources, ", "))
+		errs = append(errs,
+			fmt.Sprintf("ResourcesMap is not disjoint: conflicting keys: %s", strings.Join(resources, ", ")))
 	}
-	switch {
-	case dErr != nil && rErr != nil:
-		contract.Failf("Providers are not disjoint:\n- %s\n- %s", rErr.Error(), dErr.Error())
-	case rErr != nil:
-		contract.Failf("Resources are not disjoint: %s", rErr.Error())
-	case dErr != nil:
-		contract.Failf("Datasources are not disjoint: %s", dErr.Error())
+	if len(datasources) > 0 {
+		errs = append(errs,
+			fmt.Sprintf("DataSourceMap is not disjoint: conflicting keys: %s", strings.Join(datasources, ", ")))
+	}
+	if len(functions) > 0 {
+		errs = append(errs, fmt.Sprintf("Functions are not disjoint: conflicting names: %s", strings.Join(functions, ", ")))
+	}
+	if len(errs) > 0 {
+		contract.Failf("Providers are not disjoint:\n- %s", strings.Join(errs, "\n- "))
 	}
 
 	return p
@@ -143,17 +150,40 @@ func (m *ProviderShim) DataSourceIsPF(token string) bool {
 // Extend the `ProviderShim` with another `shim.Provider`.
 //
 // `provider` will be the `len(m.MuxedProviders)` when mappings are computed.
-func (m *ProviderShim) extend(provider shim.Provider) ([]string, []string) {
+func (m *ProviderShim) extend(provider shim.Provider) ([]string, []string, []string) {
 	res := newUnionMap(m.resources, provider.ResourcesMap())
 	conflictingResources := res.ConflictingKeys()
 	data := newUnionMap(m.dataSources, provider.DataSourcesMap())
 	conflictingDataSources := data.ConflictingKeys()
 	listResources := newUnionMap(m.listResources, listResourcesMap(provider))
+	functions, conflictingFunctions := unionFunctions(m.functions, provider.Functions())
 	m.resources = res
 	m.dataSources = data
 	m.listResources = listResources
+	m.functions = functions
 	m.MuxedProviders = append(m.MuxedProviders, provider)
-	return conflictingResources, conflictingDataSources
+	return conflictingResources, conflictingDataSources, conflictingFunctions
+}
+
+// Union two function maps, preferring baseline on conflict.
+func unionFunctions(baseline, extension map[string]shim.Function) (map[string]shim.Function, []string) {
+	if len(extension) == 0 {
+		return baseline, nil
+	}
+	union := make(map[string]shim.Function, len(baseline)+len(extension))
+	for name, fn := range baseline {
+		union[name] = fn
+	}
+	var conflicts []string
+	for name, fn := range extension {
+		if _, ok := union[name]; ok {
+			conflicts = append(conflicts, name)
+			continue
+		}
+		union[name] = fn
+	}
+	sort.Strings(conflicts)
+	return union, conflicts
 }
 
 func newProviderShim(provider shim.Provider) ProviderShim {
@@ -163,6 +193,7 @@ func newProviderShim(provider shim.Provider) ProviderShim {
 			resources:     provider.ResourcesMap(),
 			dataSources:   provider.DataSourcesMap(),
 			listResources: listResourcesMap(provider),
+			functions:     provider.Functions(),
 		},
 		MuxedProviders: []shim.Provider{provider},
 	}
@@ -183,6 +214,9 @@ func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) (muxer.Dispa
 		func(p shim.Provider) shim.ResourceMap { return p.ResourcesMap() })
 	unbackedDatasources := resolveDispatchMap(m, dispatch.Functions, info.DataSources,
 		func(p shim.Provider) shim.ResourceMap { return p.DataSourcesMap() })
+	// Provider-defined functions share the Pulumi schema's functions section (and the
+	// Invoke RPC) with data sources, so they dispatch through the same table.
+	unbackedFunctions := resolveFunctionDispatch(m, dispatch.Functions, info.Functions)
 	// List ownership is intentionally separate from CRUD ownership. Muxed providers
 	// can expose a Terraform list resource from a PF sidecar for an SDKv2 CRUD resource.
 	unbackedListResources := resolveDispatchMap(m, dispatch.ListResources, info.Resources, listResourcesMap)
@@ -198,6 +232,9 @@ func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) (muxer.Dispa
 	if len(unbackedDatasources) > 0 {
 		errs.Errors = append(errs.Errors, joinErr("DataSources", unbackedDatasources))
 	}
+	if len(unbackedFunctions) > 0 {
+		errs.Errors = append(errs.Errors, joinErr("Functions", unbackedFunctions))
+	}
 	if len(unbackedListResources) > 0 {
 		errs.Errors = append(errs.Errors, joinErr("ListResources", unbackedListResources))
 	}
@@ -205,6 +242,31 @@ func (m *ProviderShim) ResolveDispatch(info *tfbridge.ProviderInfo) (muxer.Dispa
 		return dispatch, &errs
 	}
 	return dispatch, nil
+}
+
+// Resolve provider-defined functions into their originating providers.
+func resolveFunctionDispatch(
+	m *ProviderShim, dispatch map[string]int, info map[string]*tfbridge.FunctionInfo,
+) (unbacked []string) {
+	for tfName, fn := range info {
+		if _, ok := m.Functions()[tfName]; !ok {
+			// This function is not in any sub-provider. The bridge will error
+			// later, so we can safely ignore now.
+			continue
+		}
+		var found bool
+		for i, p := range m.MuxedProviders {
+			if _, ok := p.Functions()[tfName]; ok {
+				dispatch[string(fn.Tok)] = i
+				found = true
+				break
+			}
+		}
+		if !found {
+			unbacked = append(unbacked, tfName)
+		}
+	}
+	return unbacked
 }
 
 // Resolve either resources or datasoruces into their originating providers.
@@ -269,6 +331,7 @@ type simpleSchemaProvider struct {
 	resources     shim.ResourceMap
 	dataSources   shim.ResourceMap
 	listResources shim.ResourceMap
+	functions     map[string]shim.Function
 }
 
 func (p *simpleSchemaProvider) Schema() shim.SchemaMap {
@@ -285,6 +348,10 @@ func (p *simpleSchemaProvider) DataSourcesMap() shim.ResourceMap {
 
 func (p *simpleSchemaProvider) ListResourcesMap() shim.ResourceMap {
 	return p.listResources
+}
+
+func (p *simpleSchemaProvider) Functions() map[string]shim.Function {
+	return p.functions
 }
 
 var _ shim.Provider = (*simpleSchemaProvider)(nil)

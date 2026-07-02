@@ -302,6 +302,13 @@ type Provider interface {
 	ResourcesMap() ResourceMap
 	DataSourcesMap() ResourceMap
 
+	// Functions returns the provider-defined functions, keyed by their unprefixed
+	// Terraform name.
+	//
+	// Only Plugin Framework based providers can define functions; SDK based providers
+	// always return an empty map.
+	Functions() map[string]Function
+
 	InternalValidate() error
 	Validate(ctx context.Context, c ResourceConfig) ([]diagnostics.ValidationWarning, []error)
 	ValidateResource(ctx context.Context, t string, c ResourceConfig) ([]diagnostics.ValidationWarning, []error)

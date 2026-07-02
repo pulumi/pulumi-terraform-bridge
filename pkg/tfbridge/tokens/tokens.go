@@ -164,12 +164,17 @@ func ComputeTokens(info *info.Provider, opts Strategy) error {
 	if err != nil {
 		errs.Errors = append(errs.Errors, fmt.Errorf("datasources:\n%w", err))
 	}
+	err = computeDefaultFunctions(info, opts.Function, ignored)
+	if err != nil {
+		errs.Errors = append(errs.Errors, fmt.Errorf("functions:\n%w", err))
+	}
 	return errs.ErrorOrNil()
 }
 
 type (
 	ResourceStrategy   = info.ResourceStrategy
 	DataSourceStrategy = info.DataSourceStrategy
+	FunctionStrategy   = info.FunctionStrategy
 )
 
 func ignoredTokens(info *info.Provider) map[string]bool {
@@ -190,7 +195,7 @@ func computeDefaultResources(p *info.Provider, strategy ResourceStrategy, ignore
 	if p.Resources == nil {
 		p.Resources = map[string]*info.Resource{}
 	}
-	return applyComputedTokens(p.P.ResourcesMap(), p.Resources, strategy, ignored)
+	return applyComputedTokens(resourceMapKeys(p.P.ResourcesMap()), p.Resources, strategy, ignored)
 }
 
 func computeDefaultDataSources(p *info.Provider, strategy DataSourceStrategy, ignored map[string]bool) error {
@@ -200,20 +205,43 @@ func computeDefaultDataSources(p *info.Provider, strategy DataSourceStrategy, ig
 	if p.DataSources == nil {
 		p.DataSources = map[string]*info.DataSource{}
 	}
-	return applyComputedTokens(p.P.DataSourcesMap(), p.DataSources, strategy, ignored)
+	return applyComputedTokens(resourceMapKeys(p.P.DataSourcesMap()), p.DataSources, strategy, ignored)
 }
 
-// For each key in the info map not present in the result map, compute a result and store
-// it in the result map.
-func applyComputedTokens[T info.Resource | info.DataSource](
-	infoMap shim.ResourceMap, resultMap map[string]*T, tks info.ElementStrategy[T],
-	ignoredMappings map[string]bool,
-) error {
+func computeDefaultFunctions(p *info.Provider, strategy FunctionStrategy, ignored map[string]bool) error {
+	if strategy == nil {
+		return nil
+	}
+	functions := p.P.Functions()
+	if len(functions) == 0 {
+		return nil
+	}
+	if p.Functions == nil {
+		p.Functions = map[string]*info.Function{}
+	}
+	keys := make([]string, 0, len(functions))
+	for k := range functions {
+		keys = append(keys, k)
+	}
+	return applyComputedTokens(keys, p.Functions, strategy, ignored)
+}
+
+func resourceMapKeys(infoMap shim.ResourceMap) []string {
 	keys := make([]string, 0, infoMap.Len())
 	infoMap.Range(func(key string, _ shim.Resource) bool {
 		keys = append(keys, key)
 		return true
 	})
+	return keys
+}
+
+// For each key not present in the result map, compute a result and store it in the result
+// map.
+func applyComputedTokens[T info.Resource | info.DataSource | info.Function](
+	keys []string, resultMap map[string]*T, tks info.ElementStrategy[T],
+	ignoredMappings map[string]bool,
+) error {
+	keys = append([]string(nil), keys...)
 	sort.Strings(keys)
 
 	var errs multierror.Error

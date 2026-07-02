@@ -73,6 +73,7 @@ type Provider struct {
 	ExtraConfig    map[string]*Config                 // a list of Pulumi-only configuration variables.
 	Resources      map[string]*Resource               // a map of TF type or renamed entity name to Pulumi resource info.
 	DataSources    map[string]*DataSource             // a map of TF type or renamed entity name to Pulumi resource info.
+	Functions      map[string]*Function               // a map of unprefixed TF function name to Pulumi function info.
 	ExtraTypes     map[string]pschema.ComplexTypeSpec // a map of Pulumi token to schema type for extra types.
 	ExtraResources map[string]pschema.ResourceSpec    // a map of Pulumi token to schema type for extra resources.
 	ExtraFunctions map[string]pschema.FunctionSpec    // a map of Pulumi token to schema type for extra functions.
@@ -477,6 +478,30 @@ func (info *DataSource) GetDocs() *Doc { return info.Docs }
 
 // ReplaceExamplesSection returns whether to replace the upstream examples with our own source
 func (info *DataSource) ReplaceExamplesSection() bool {
+	return info.Docs != nil && info.Docs.ReplaceExamplesSection
+}
+
+// Function can be used to override the mapping of a Terraform provider-defined function.
+//
+// Provider-defined functions are keyed by their unprefixed Terraform name (e.g.
+// "parse_arn", not "aws_parse_arn") in [Provider.Functions].
+type Function struct {
+	Tok                tokens.ModuleMember // a function token to override the default; "" uses the default.
+	Docs               *Doc                // overrides for finding and mapping TF docs.
+	DeprecationMessage string              // message to use in deprecation warning
+}
+
+// GetTok returns a function token
+func (info *Function) GetTok() tokens.Token { return tokens.Token(info.Tok) }
+
+// GetFields returns nil: provider-defined functions do not have schema field overrides.
+func (info *Function) GetFields() map[string]*Schema { return nil }
+
+// GetDocs returns a function docs override from the Pulumi provider
+func (info *Function) GetDocs() *Doc { return info.Docs }
+
+// ReplaceExamplesSection returns whether to replace the upstream examples with our own source
+func (info *Function) ReplaceExamplesSection() bool {
 	return info.Docs != nil && info.Docs.ReplaceExamplesSection
 }
 
@@ -1293,6 +1318,21 @@ func (m *MarshallableDataSource) Unmarshal() *DataSource {
 	}
 }
 
+// MarshallableFunction is the JSON-marshallable form of a Pulumi FunctionInfo value.
+type MarshallableFunction struct {
+	Tok tokens.ModuleMember `json:"tok"`
+}
+
+// MarshalFunction converts a Pulumi FunctionInfo value into a MarshallableFunction value.
+func MarshalFunction(f *Function) *MarshallableFunction {
+	return &MarshallableFunction{Tok: f.Tok}
+}
+
+// Unmarshal creates a mostly-initialized Pulumi FunctionInfo value from the given MarshallableFunction.
+func (m *MarshallableFunction) Unmarshal() *Function {
+	return &Function{Tok: m.Tok}
+}
+
 // MarshallableProvider is the JSON-marshallable form of a Pulumi ProviderInfo value.
 type MarshallableProvider struct {
 	Provider          *MarshallableProviderShim          `json:"provider"`
@@ -1301,6 +1341,7 @@ type MarshallableProvider struct {
 	Config            map[string]*MarshallableSchema     `json:"config,omitempty"`
 	Resources         map[string]*MarshallableResource   `json:"resources,omitempty"`
 	DataSources       map[string]*MarshallableDataSource `json:"dataSources,omitempty"`
+	Functions         map[string]*MarshallableFunction   `json:"functions,omitempty"`
 	TFProviderVersion string                             `json:"tfProviderVersion,omitempty"`
 	SkipDefaultFixups bool                               `json:"skipDefaultFixups,omitempty"`
 }
@@ -1319,6 +1360,13 @@ func MarshalProvider(p *Provider) *MarshallableProvider {
 	for k, v := range p.DataSources {
 		dataSources[k] = MarshalDataSource(v)
 	}
+	var functions map[string]*MarshallableFunction
+	if len(p.Functions) > 0 {
+		functions = make(map[string]*MarshallableFunction)
+		for k, v := range p.Functions {
+			functions[k] = MarshalFunction(v)
+		}
+	}
 
 	info := MarshallableProvider{
 		Provider:          MarshalProviderShim(p.P),
@@ -1327,6 +1375,7 @@ func MarshalProvider(p *Provider) *MarshallableProvider {
 		Config:            config,
 		Resources:         resources,
 		DataSources:       dataSources,
+		Functions:         functions,
 		TFProviderVersion: p.TFProviderVersion,
 		SkipDefaultFixups: p.SkipDefaultFixups,
 	}
@@ -1348,6 +1397,13 @@ func (m *MarshallableProvider) Unmarshal() *Provider {
 	for k, v := range m.DataSources {
 		dataSources[k] = v.Unmarshal()
 	}
+	var functions map[string]*Function
+	if len(m.Functions) > 0 {
+		functions = make(map[string]*Function)
+		for k, v := range m.Functions {
+			functions[k] = v.Unmarshal()
+		}
+	}
 
 	info := Provider{
 		P:                 m.Provider.Unmarshal(),
@@ -1356,6 +1412,7 @@ func (m *MarshallableProvider) Unmarshal() *Provider {
 		Config:            config,
 		Resources:         resources,
 		DataSources:       dataSources,
+		Functions:         functions,
 		TFProviderVersion: m.TFProviderVersion,
 		SkipDefaultFixups: m.SkipDefaultFixups,
 	}

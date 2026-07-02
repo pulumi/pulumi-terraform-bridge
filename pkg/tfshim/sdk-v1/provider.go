@@ -74,6 +74,11 @@ func (p v1Provider) DataSourcesMap() shim.ResourceMap {
 	return v1ResourceMap(p.tf.DataSourcesMap)
 }
 
+func (p v1Provider) Functions() map[string]shim.Function {
+	// SDK based providers cannot define provider functions.
+	return nil
+}
+
 func (p v1Provider) InternalValidate() error {
 	return p.tf.InternalValidate()
 }
