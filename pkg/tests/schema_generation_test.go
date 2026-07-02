@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -169,7 +170,7 @@ func Test_Generate(t *testing.T) { //nolint:paralleltest // Cannot run in parall
 	})
 	require.NoError(t, err)
 
-	schemaResult, err := schemaGen.Generate()
+	schemaResult, err := schemaGen.Generate(context.Background())
 	require.NoError(t, err)
 
 	// Write the schema to the expected location
@@ -199,7 +200,7 @@ func Test_Generate(t *testing.T) { //nolint:paralleltest // Cannot run in parall
 	})
 	require.NoError(t, err)
 
-	_, err = gen.Generate()
+	_, err = gen.Generate(context.Background())
 	require.NoError(t, err)
 
 	_, err = afero.ReadFile(root, "test.ts")
@@ -427,7 +428,7 @@ func Test_GenerateWithOverlay(t *testing.T) { //nolint:paralleltest // Cannot ru
 			})
 			require.NoError(t, err)
 
-			schemaResult, err := schemaGen.Generate()
+			schemaResult, err := schemaGen.Generate(context.Background())
 			require.NoError(t, err)
 
 			// Write the schema to the expected location
@@ -457,7 +458,7 @@ func Test_GenerateWithOverlay(t *testing.T) { //nolint:paralleltest // Cannot ru
 			})
 			require.NoError(t, err)
 
-			_, err = gen.Generate()
+			_, err = gen.Generate(context.Background())
 			require.NoError(t, err)
 
 			content, err := afero.ReadFile(root, tc.overlayFileName)

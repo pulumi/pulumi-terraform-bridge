@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -60,7 +61,7 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 		if err := check.Provider(nil, g.Sink(), info); err != nil {
 			return err
 		}
-		_, err = g.Generate()
+		_, err = g.Generate(context.Background())
 
 		return err
 	})
@@ -125,7 +126,7 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		_, err = g.Generate()
+		_, err = g.Generate(context.Background())
 		return err
 	})
 }
