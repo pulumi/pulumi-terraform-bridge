@@ -28,6 +28,7 @@ import (
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -79,23 +80,23 @@ func TestMuxedProviderFunctionInvoke(t *testing.T) {
 		},
 	}
 
-	info := tfbridge0.ProviderInfo{
+	prov := tfbridge0.ProviderInfo{
 		Name:         "muxedfn",
 		Version:      "0.0.1",
 		P:            pfbridge.MuxShimWithPF(ctx, sdkv2.NewProvider(sdkProvider), pfProvider),
 		MetadataInfo: tfbridge0.NewProviderMetadata(nil),
 	}
-	info.MustComputeTokens(tokens.SingleModule("muxedfn_", "index", tokens.MakeStandard("muxedfn")))
-	require.Equal(t, map[string]*tfbridge0.FunctionInfo{
+	prov.MustComputeTokens(tokens.SingleModule("muxedfn_", "index", tokens.MakeStandard("muxedfn")))
+	require.Equal(t, map[string]*info.Function{
 		"shout": {Tok: "muxedfn:index/shout:shout"},
-	}, info.Functions)
+	}, prov.Functions)
 
-	schema := genSDKSchema(t, info)
-	dispatch, err := info.P.(*pfmuxer.ProviderShim).ResolveDispatch(&info)
+	schema := genSDKSchema(t, prov)
+	dispatch, err := prov.P.(*pfmuxer.ProviderShim).ResolveDispatch(&prov)
 	require.NoError(t, err)
-	require.NoError(t, metadata.Set(info.GetMetadata(), "mux", dispatch))
+	require.NoError(t, metadata.Set(prov.GetMetadata(), "mux", dispatch))
 
-	server, err := pfbridge.MakeMuxedServer(ctx, "muxedfn", info, schema)(nil)
+	server, err := pfbridge.MakeMuxedServer(ctx, "muxedfn", prov, schema)(nil)
 	require.NoError(t, err)
 
 	testutils.Replay(t, server, `
