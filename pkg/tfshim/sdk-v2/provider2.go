@@ -437,14 +437,13 @@ func (p v2Provider) NewDestroyDiff(
 }
 
 func (p *v2Provider) Importer(t string) shim.ImportFunc {
-	res := p.tf.ResourcesMap[t]
-	ty := res.CoreConfigSchema().ImpliedType()
 	return shim.ImportFunc(func(tt, id string, _ interface{}) ([]shim.InstanceState, error) {
 		// Note: why are we dropping meta (3rd parameter)? Apparently this refers to
 		// provider-level meta and calling ImportResourceState can already locate it in the
 		// provider object, so it is redundant.
 		ctx := context.TODO() // We should probably preserve Context here from the caller.
 		contract.Assertf(tt == t, "Expected Import to be called with %q, got %q", t, tt)
+		ty := p.tf.ResourcesMap[t].CoreConfigSchema().ImpliedType()
 		states, err := p.server.ImportResourceState(ctx, t, ty, id)
 		if err != nil {
 			return nil, nil
