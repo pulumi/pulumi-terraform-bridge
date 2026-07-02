@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -66,7 +67,7 @@ func TestGenerateProviderFunction(t *testing.T) { //nolint:paralleltest // uses 
 				},
 			},
 		}).Shim(),
-		Functions: map[string]*tfbridge.FunctionInfo{
+		Functions: map[string]*info.Function{
 			"parse_arn": {Tok: "test:index/parseArn:parseArn"},
 		},
 	}
@@ -122,7 +123,7 @@ func TestGenerateProviderFunctionVariadic(t *testing.T) { //nolint:paralleltest 
 				},
 			},
 		}).Shim(),
-		Functions: map[string]*tfbridge.FunctionInfo{
+		Functions: map[string]*info.Function{
 			"join": {Tok: "test:index/join:join"},
 		},
 	}
@@ -168,7 +169,7 @@ func TestGenerateProviderFunctionNamingEdgeCases(t *testing.T) { //nolint:parall
 				},
 			},
 		}).Shim(),
-		Functions: map[string]*tfbridge.FunctionInfo{
+		Functions: map[string]*info.Function{
 			"weird": {Tok: "test:index/weird:weird"},
 		},
 	}
@@ -207,7 +208,7 @@ func TestGenerateProviderFunctionObjectParameter(t *testing.T) { //nolint:parall
 				},
 			},
 		}).Shim(),
-		Functions: map[string]*tfbridge.FunctionInfo{
+		Functions: map[string]*info.Function{
 			"describe": {Tok: "test:index/describe:describe"},
 		},
 	}
@@ -247,7 +248,7 @@ func TestGenerateProviderFunctionTupleError(t *testing.T) { //nolint:paralleltes
 				},
 			},
 		}).Shim(),
-		Functions: map[string]*tfbridge.FunctionInfo{
+		Functions: map[string]*info.Function{
 			"tuple_fn": {Tok: "test:index/tupleFn:tupleFn"},
 		},
 	}
@@ -269,7 +270,7 @@ func TestGenerateProviderFunctionDataSourceTokenCollision(t *testing.T) { //noli
 		DataSources: map[string]*tfbridge.DataSourceInfo{
 			"test_ds": {Tok: "test:index/foo:foo"},
 		},
-		Functions: map[string]*tfbridge.FunctionInfo{
+		Functions: map[string]*info.Function{
 			"foo": {Tok: "test:index/foo:foo"},
 		},
 	}
@@ -312,7 +313,7 @@ func TestGenerateProviderFunctionMappingErrors(t *testing.T) { //nolint:parallel
 		_, err := generateFunctionSchema(t, tfbridge.ProviderInfo{
 			Name: "test",
 			P:    provider(),
-			Functions: map[string]*tfbridge.FunctionInfo{
+			Functions: map[string]*info.Function{
 				"real_fn": {Tok: "test:index/realFn:realFn"},
 				"gone_fn": {Tok: "test:index/goneFn:goneFn"},
 			},

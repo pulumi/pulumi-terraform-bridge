@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/functions"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -38,7 +39,7 @@ type providerFunc struct {
 	tok                tokens.ModuleMember
 	tfName             string
 	fn                 shim.Function
-	info               *tfbridge.FunctionInfo
+	info               *info.Function
 	doc                string
 	deprecationMessage string
 }
@@ -157,9 +158,9 @@ func (g *Generator) checkFunctionTokenCollisions() error {
 
 // gatherFunction returns the module member for a single provider-defined function.
 func (g *Generator) gatherFunction(rawname string,
-	fn shim.Function, info *tfbridge.FunctionInfo,
+	fn shim.Function, fninfo *info.Function,
 ) (*providerFunc, error) {
-	name, moduleName := functionName(rawname, info)
+	name, moduleName := functionName(rawname, fninfo)
 	mod := tokens.NewModuleToken(g.pkg, moduleName)
 	tok := tokens.NewModuleMemberToken(mod, name)
 
@@ -167,7 +168,7 @@ func (g *Generator) gatherFunction(rawname string,
 	var entityDocs entityDocs
 	if !g.noDocsRepo {
 		source := NewGitRepoDocsSource(g)
-		docs, err := getDocsForResource(g, source, FunctionDocs, rawname, info)
+		docs, err := getDocsForResource(g, source, FunctionDocs, rawname, fninfo)
 		if err == nil {
 			entityDocs = docs
 		} else if !g.checkNoDocsError(err) {
@@ -188,7 +189,7 @@ func (g *Generator) gatherFunction(rawname string,
 		}
 	}
 
-	deprecationMessage := info.DeprecationMessage
+	deprecationMessage := fninfo.DeprecationMessage
 	if deprecationMessage == "" {
 		deprecationMessage = fn.DeprecationMessage
 	}
@@ -199,7 +200,7 @@ func (g *Generator) gatherFunction(rawname string,
 		tok:                tok,
 		tfName:             rawname,
 		fn:                 fn,
-		info:               info,
+		info:               fninfo,
 		doc:                doc,
 		deprecationMessage: deprecationMessage,
 	}, nil
@@ -207,14 +208,14 @@ func (g *Generator) gatherFunction(rawname string,
 
 // functionName translates a Terraform function name into its Pulumi name equivalent,
 // plus a module name.
-func functionName(tfName string, info *tfbridge.FunctionInfo) (tokens.ModuleMemberName, tokens.ModuleName) {
-	if info == nil || info.Tok == "" {
+func functionName(tfName string, fninfo *info.Function) (tokens.ModuleMemberName, tokens.ModuleName) {
+	if fninfo == nil || fninfo.Tok == "" {
 		// Terraform function names are unprefixed; functions map into the top-level
 		// module by default.
 		name := tfbridge.TerraformToPulumiNameV2(tfName, nil, nil)
 		return tokens.ModuleMemberName(name), tokens.ModuleName(string(indexMod) + "/" + name)
 	}
-	return info.Tok.Name(), info.Tok.Module().Name()
+	return fninfo.Tok.Name(), fninfo.Tok.Module().Name()
 }
 
 // genProviderFunc generates the Pulumi schema for a provider-defined function.
@@ -380,8 +381,14 @@ func (c *functionTypeGen) objectSpec(t tftypes.Object, nameHint string) (pschema
 		Type:       "object",
 		Properties: map[string]pschema.PropertySpec{},
 	}
+	// Attributes are named with the standard bridge rules, driven by a schema map
+	// synthesized from the object type. The runtime decoder derives the same names.
+	syntheticSchema, err := functions.SchemaMapFromObject(t)
+	if err != nil {
+		return pschema.ObjectTypeSpec{}, err
+	}
 	for _, attr := range functions.SortedAttributeNames(t) {
-		name := functions.PropertyName(attr)
+		name := tfbridge.TerraformToPulumiNameV2(attr, syntheticSchema, nil)
 		if _, conflict := spec.Properties[name]; conflict {
 			return pschema.ObjectTypeSpec{}, fmt.Errorf(
 				"attribute %q: property name %q is already taken by another attribute", attr, name)
