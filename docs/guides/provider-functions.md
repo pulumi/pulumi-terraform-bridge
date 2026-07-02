@@ -40,6 +40,12 @@ Functions: map[string]*tfbridge.FunctionInfo{
 },
 ```
 
+The `functions` section of the marshaled mapping (`GetMapping`) also records whether the
+function's final Terraform parameter is variadic. The Pulumi schema cannot carry this: a
+variadic parameter projects as a trailing, optional array argument, indistinguishable
+from a genuine trailing list parameter, yet the two take different Terraform call syntax
+(spread arguments vs. a list value).
+
 `MustComputeTokens` fills missing entries automatically. Missing and extra mappings are
 validated with the same semantics as resources and data sources
 (`PULUMI_SKIP_MISSING_MAPPING_ERROR`, `PULUMI_SKIP_EXTRA_MAPPING_ERROR`,

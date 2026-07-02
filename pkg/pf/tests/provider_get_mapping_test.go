@@ -108,7 +108,7 @@ func TestPFGetMappingFunctions(t *testing.T) {
 	require.NoError(t, json.Unmarshal(m.Data, &marshalled))
 
 	assert.Equal(t, map[string]*info.MarshallableFunction{
-		"concat":           {Tok: "testbridge:index/concat:concat"},
+		"concat":           {Tok: "testbridge:index/concat:concat", Variadic: true},
 		"parse_id":         {Tok: "testbridge:index/parseId:parseId"},
 		"nullable_default": {Tok: "testbridge:index/nullableDefault:nullableDefault"},
 	}, marshalled.Functions)
