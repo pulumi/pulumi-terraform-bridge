@@ -17,7 +17,7 @@ package tfbridge
 import (
 	"context"
 
-	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	rprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"

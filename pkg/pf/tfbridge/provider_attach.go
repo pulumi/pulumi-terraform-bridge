@@ -15,7 +15,7 @@
 package tfbridge
 
 import (
-	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	rprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 )
 
 func (p *provider) Attach(address string) error {
