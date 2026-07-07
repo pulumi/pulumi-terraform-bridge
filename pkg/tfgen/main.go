@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -49,7 +50,7 @@ func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
 		}
 
 		// Let's generate some code!
-		_, err = g.Generate()
+		_, err = g.Generate(context.Background())
 		return err
 	})
 }

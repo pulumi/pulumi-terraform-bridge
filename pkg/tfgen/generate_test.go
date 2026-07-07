@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -875,7 +876,7 @@ func TestExtraMappingError(t *testing.T) {
 			require.NoError(t, err)
 
 			// Generate schema
-			_, err = g.Generate()
+			_, err = g.Generate(context.Background())
 
 			if tc.expectError {
 				require.Error(t, err)

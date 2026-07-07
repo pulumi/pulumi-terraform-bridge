@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
+	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/run"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/parameterize"
@@ -44,6 +45,9 @@ const (
 	// The name of this *unparameterized* provider.
 	baseProviderName = "terraform-provider"
 )
+
+// getSchemaTracer instruments the dynamic provider's GetSchema handler.
+var getSchemaTracer = otel.Tracer("pulumi-terraform-bridge/dynamic")
 
 func main() {
 	ctx := context.Background()
@@ -84,21 +88,25 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 	var indexDocOutDir string
 	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
+			ctx, span := getSchemaTracer.Start(ctx, "XGetSchema")
+			defer span.End()
 			// Create a custom generator for schema. Examples will only be generated if `fullDocs` is set.
+			newGenCtx, newGenSpan := getSchemaTracer.Start(ctx, "NewGenerator")
 			g, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
 				Package:       info.Name,
 				Version:       info.Version,
 				Language:      tfgen.Schema,
 				ProviderInfo:  info,
 				Root:          afero.NewMemMapFs(),
-				Sink:          loggerSink{tfbridge.GetLogger(ctx)},
+				Sink:          loggerSink{tfbridge.GetLogger(newGenCtx)},
 				XInMemoryDocs: !fullDocs,
 				SkipExamples:  !fullDocs,
 			})
+			newGenSpan.End()
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to create generator")
 			}
-			packageSchema, err := g.Generate()
+			packageSchema, err := g.Generate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -123,7 +131,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				if err != nil {
 					return nil, errors.Wrapf(err, "failed to create generator")
 				}
-				_, err = indexGenerator.Generate()
+				_, err = indexGenerator.Generate(ctx)
 				if err != nil {
 					return nil, err
 				}
