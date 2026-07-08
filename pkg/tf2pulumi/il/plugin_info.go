@@ -57,7 +57,7 @@ func (mapper *mapperProviderInfoSource) GetProviderInfo(
 ) (*tfbridge.ProviderInfo, error) {
 	data, err := mapper.mapper.GetMapping(context.TODO(), name, &convert.MapperPackageHint{
 		PluginName: GetPulumiProviderName(name),
-	})
+	}, "terraform")
 	if err != nil {
 		return nil, err
 	}
