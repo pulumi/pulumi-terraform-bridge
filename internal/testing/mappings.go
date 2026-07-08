@@ -30,6 +30,7 @@ func (l *TestFileMapper) GetMapping(
 	_ context.Context,
 	provider string,
 	hint *convert.MapperPackageHint,
+	_ string, // ecosystem
 ) ([]byte, error) {
 	pulumiProvider := provider
 	if hint != nil {
