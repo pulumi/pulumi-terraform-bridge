@@ -27,6 +27,12 @@ import (
 var _ provider.ProviderWithFunctions = (*syntheticProvider)(nil)
 
 func (p *syntheticProvider) Functions(context.Context) []func() function.Function {
+	return SyntheticTestBridgeFunctions()
+}
+
+// SyntheticTestBridgeFunctions returns the provider-defined functions of the synthetic
+// testbridge provider, for reuse in tests that build ad-hoc providers.
+func SyntheticTestBridgeFunctions() []func() function.Function {
 	return []func() function.Function{
 		func() function.Function { return concatFunction{} },
 		func() function.Function { return parseIDFunction{} },
