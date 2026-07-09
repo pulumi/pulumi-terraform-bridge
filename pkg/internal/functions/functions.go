@@ -26,7 +26,6 @@ package functions
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -67,16 +66,6 @@ func ArgumentNames(fn shim.Function) []string {
 		assign(v.Name, len(fn.Parameters))
 	}
 	return names
-}
-
-// SortedAttributeNames returns the attribute names of t in a stable order.
-func SortedAttributeNames(t tftypes.Object) []string {
-	attrs := make([]string, 0, len(t.AttributeTypes))
-	for attr := range t.AttributeTypes {
-		attrs = append(attrs, attr)
-	}
-	sort.Strings(attrs)
-	return attrs
 }
 
 // SchemaFromType synthesizes a shim schema mirroring the given type constraint, so that

@@ -386,7 +386,7 @@ func (c *functionTypeGen) objectSpec(t tftypes.Object, nameHint string) (pschema
 	if err != nil {
 		return pschema.ObjectTypeSpec{}, err
 	}
-	for _, attr := range functions.SortedAttributeNames(t) {
+	for _, attr := range sortedAttributeNames(t) {
 		name := tfbridge.TerraformToPulumiNameV2(attr, syntheticSchema, nil)
 		if _, conflict := spec.Properties[name]; conflict {
 			return pschema.ObjectTypeSpec{}, fmt.Errorf(
@@ -402,4 +402,14 @@ func (c *functionTypeGen) objectSpec(t tftypes.Object, nameHint string) (pschema
 		}
 	}
 	return spec, nil
+}
+
+// sortedAttributeNames returns the attribute names of t in a stable order.
+func sortedAttributeNames(t tftypes.Object) []string {
+	attrs := make([]string, 0, len(t.AttributeTypes))
+	for attr := range t.AttributeTypes {
+		attrs = append(attrs, attr)
+	}
+	sort.Strings(attrs)
+	return attrs
 }
