@@ -29,9 +29,10 @@ type UnimplementedProvider struct {
 	internalinter.Internal
 }
 
-func (UnimplementedProvider) Schema() shim.SchemaMap           { panic("unimplemented") }
-func (UnimplementedProvider) ResourcesMap() shim.ResourceMap   { panic("unimplemented") }
-func (UnimplementedProvider) DataSourcesMap() shim.ResourceMap { panic("unimplemented") }
+func (UnimplementedProvider) Schema() shim.SchemaMap              { panic("unimplemented") }
+func (UnimplementedProvider) ResourcesMap() shim.ResourceMap      { panic("unimplemented") }
+func (UnimplementedProvider) DataSourcesMap() shim.ResourceMap    { panic("unimplemented") }
+func (UnimplementedProvider) Functions() map[string]shim.Function { panic("unimplemented") }
 
 func (UnimplementedProvider) InternalValidate() error { panic("unimplemented") }
 

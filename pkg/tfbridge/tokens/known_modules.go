@@ -75,6 +75,7 @@ func KnownModules(
 			knownResource(finalize), camelCase),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, modules,
 			knownDataSource(finalize), camelCase),
+		Function: topLevelFunction(finalize),
 	}
 }
 

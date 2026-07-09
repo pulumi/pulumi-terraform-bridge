@@ -125,3 +125,49 @@ func (p Provider) DataSourcesMap() shim.ResourceMap {
 	}
 	return resourceMap(v.DataSourceSchemas)
 }
+
+func (p Provider) Functions() map[string]shim.Function {
+	v, err := p.getSchema()
+	if err != nil {
+		tfbridge.GetLogger(p.ctx).Error(err.Error())
+		return nil
+	}
+	functions := make(map[string]shim.Function, len(v.Functions))
+	for name, fn := range v.Functions {
+		functions[name] = fromProtoFunction(fn)
+	}
+	return functions
+}
+
+func fromProtoFunction(fn *tfprotov6.Function) shim.Function {
+	parameters := make([]shim.FunctionParameter, len(fn.Parameters))
+	for i, p := range fn.Parameters {
+		parameters[i] = fromProtoFunctionParameter(p)
+	}
+	var variadic *shim.FunctionParameter
+	if fn.VariadicParameter != nil {
+		v := fromProtoFunctionParameter(fn.VariadicParameter)
+		variadic = &v
+	}
+	var ret tftypes.Type
+	if fn.Return != nil {
+		ret = fn.Return.Type
+	}
+	return shim.Function{
+		Parameters:         parameters,
+		VariadicParameter:  variadic,
+		Return:             ret,
+		Summary:            fn.Summary,
+		Description:        fn.Description,
+		DeprecationMessage: fn.DeprecationMessage,
+	}
+}
+
+func fromProtoFunctionParameter(p *tfprotov6.FunctionParameter) shim.FunctionParameter {
+	return shim.FunctionParameter{
+		Name:           p.Name,
+		Type:           p.Type,
+		AllowNullValue: p.AllowNullValue,
+		Description:    p.Description,
+	}
+}

@@ -50,5 +50,6 @@ func MappedModules(
 			knownResource(finalize), transform),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, mods,
 			knownDataSource(finalize), transform),
+		Function: topLevelFunction(finalize),
 	}
 }

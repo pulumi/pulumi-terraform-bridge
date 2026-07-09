@@ -49,6 +49,7 @@ func (info *Provider) ApplyAutoAliases() error { return applyAutoAliases(info) }
 type Strategy struct {
 	Resource   ResourceStrategy
 	DataSource DataSourceStrategy
+	Function   FunctionStrategy
 }
 
 // A strategy for generating missing resources.
@@ -57,12 +58,18 @@ type ResourceStrategy = ElementStrategy[Resource]
 // A strategy for generating missing datasources.
 type DataSourceStrategy = ElementStrategy[DataSource]
 
+// A strategy for generating missing provider-defined functions.
+type FunctionStrategy = ElementStrategy[Function]
+
 // A generic remapping strategy.
-type ElementStrategy[T Resource | DataSource] func(tfToken string, elem *T) error
+type ElementStrategy[T Resource | DataSource | Function] func(tfToken string, elem *T) error
 
 func (ts Strategy) Ignore(substring string) Strategy {
 	ts.DataSource = ts.DataSource.Ignore(substring)
 	ts.Resource = ts.Resource.Ignore(substring)
+	if ts.Function != nil {
+		ts.Function = ts.Function.Ignore(substring)
+	}
 	return ts
 }
 

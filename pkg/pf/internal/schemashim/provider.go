@@ -44,6 +44,7 @@ type SchemaOnlyProvider struct {
 	resourceMap     schemaOnlyResourceMap
 	dataSourceMap   schemaOnlyDataSourceMap
 	listResourceMap schemaOnlyListResourceMap
+	functions       map[string]shim.Function
 	internalinter.Internal
 }
 
@@ -113,6 +114,10 @@ func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
 
 func (p *SchemaOnlyProvider) ListResourcesMap() shim.ResourceMap {
 	return p.listResourceMap
+}
+
+func (p *SchemaOnlyProvider) Functions() map[string]shim.Function {
+	return p.functions
 }
 
 func (p *SchemaOnlyProvider) InternalValidate() error {
