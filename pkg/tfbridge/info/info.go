@@ -23,6 +23,7 @@ package info
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -1083,11 +1084,135 @@ func (m *MarshallableElemShim) Unmarshal() interface{} {
 	}
 }
 
+// MarshallableTFType is the JSON-marshallable form of a tftypes.Type. It uses
+// Terraform's type-signature encoding, the same encoding the plugin protocol uses for
+// provider-defined function parameter and return types.
+type MarshallableTFType struct {
+	Type tftypes.Type
+}
+
+// MarshalJSON implements json.Marshaler.
+func (t MarshallableTFType) MarshalJSON() ([]byte, error) {
+	if t.Type == nil {
+		return []byte("null"), nil
+	}
+	//nolint:staticcheck // This method isn't really deprecated, but it is supposed to be private.
+	return t.Type.MarshalJSON()
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (t *MarshallableTFType) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		t.Type = nil
+		return nil
+	}
+	//nolint:staticcheck // This function isn't really deprecated, but it is supposed to be private.
+	parsed, err := tftypes.ParseJSONType(data)
+	if err != nil {
+		return err
+	}
+	t.Type = parsed
+	return nil
+}
+
+// MarshallableFunctionParameterShim is the JSON-marshallable form of a provider-defined
+// function parameter.
+type MarshallableFunctionParameterShim struct {
+	Name           string             `json:"name,omitempty"`
+	Type           MarshallableTFType `json:"type"`
+	AllowNullValue bool               `json:"allowNullValue,omitempty"`
+	Description    string             `json:"description,omitempty"`
+}
+
+// MarshalFunctionParameterShim converts a provider-defined function parameter into a
+// MarshallableFunctionParameterShim.
+func MarshalFunctionParameterShim(p shim.FunctionParameter) MarshallableFunctionParameterShim {
+	return MarshallableFunctionParameterShim{
+		Name:           p.Name,
+		Type:           MarshallableTFType{Type: p.Type},
+		AllowNullValue: p.AllowNullValue,
+		Description:    p.Description,
+	}
+}
+
+// Unmarshal creates a provider-defined function parameter from the given
+// MarshallableFunctionParameterShim.
+func (m MarshallableFunctionParameterShim) Unmarshal() shim.FunctionParameter {
+	return shim.FunctionParameter{
+		Name:           m.Name,
+		Type:           m.Type.Type,
+		AllowNullValue: m.AllowNullValue,
+		Description:    m.Description,
+	}
+}
+
+// MarshallableFunctionShim is the JSON-marshallable form of a provider-defined function
+// signature.
+type MarshallableFunctionShim struct {
+	Parameters         []MarshallableFunctionParameterShim `json:"parameters,omitempty"`
+	VariadicParameter  *MarshallableFunctionParameterShim  `json:"variadicParameter,omitempty"`
+	Return             MarshallableTFType                  `json:"return"`
+	Summary            string                              `json:"summary,omitempty"`
+	Description        string                              `json:"description,omitempty"`
+	DeprecationMessage string                              `json:"deprecationMessage,omitempty"`
+}
+
+// MarshalFunctionShim converts a provider-defined function signature into a
+// MarshallableFunctionShim.
+func MarshalFunctionShim(f shim.Function) MarshallableFunctionShim {
+	var parameters []MarshallableFunctionParameterShim
+	if len(f.Parameters) > 0 {
+		parameters = make([]MarshallableFunctionParameterShim, len(f.Parameters))
+		for i, p := range f.Parameters {
+			parameters[i] = MarshalFunctionParameterShim(p)
+		}
+	}
+	var variadic *MarshallableFunctionParameterShim
+	if f.VariadicParameter != nil {
+		v := MarshalFunctionParameterShim(*f.VariadicParameter)
+		variadic = &v
+	}
+	return MarshallableFunctionShim{
+		Parameters:         parameters,
+		VariadicParameter:  variadic,
+		Return:             MarshallableTFType{Type: f.Return},
+		Summary:            f.Summary,
+		Description:        f.Description,
+		DeprecationMessage: f.DeprecationMessage,
+	}
+}
+
+// Unmarshal creates a provider-defined function signature from the given
+// MarshallableFunctionShim.
+func (m MarshallableFunctionShim) Unmarshal() shim.Function {
+	var parameters []shim.FunctionParameter
+	if len(m.Parameters) > 0 {
+		parameters = make([]shim.FunctionParameter, len(m.Parameters))
+		for i, p := range m.Parameters {
+			parameters[i] = p.Unmarshal()
+		}
+	}
+	var variadic *shim.FunctionParameter
+	if m.VariadicParameter != nil {
+		v := m.VariadicParameter.Unmarshal()
+		variadic = &v
+	}
+	return shim.Function{
+		Parameters:         parameters,
+		VariadicParameter:  variadic,
+		Return:             m.Return.Type,
+		Summary:            m.Summary,
+		Description:        m.Description,
+		DeprecationMessage: m.DeprecationMessage,
+	}
+}
+
 // MarshallableProviderShim is the JSON-marshallable form of a Terraform provider schema.
 type MarshallableProviderShim struct {
 	Schema      map[string]*MarshallableSchemaShim  `json:"schema,omitempty"`
 	Resources   map[string]MarshallableResourceShim `json:"resources,omitempty"`
 	DataSources map[string]MarshallableResourceShim `json:"dataSources,omitempty"`
+	Functions   map[string]MarshallableFunctionShim `json:"functions,omitempty"`
 }
 
 // MarshalProviderShim converts a Terraform provider schema into a MarshallableProviderShim.
@@ -1111,10 +1236,18 @@ func MarshalProviderShim(p shim.Provider) *MarshallableProviderShim {
 		dataSources[k] = MarshalResourceShim(v)
 		return true
 	})
+	var functions map[string]MarshallableFunctionShim
+	if fns := p.Functions(); len(fns) > 0 {
+		functions = make(map[string]MarshallableFunctionShim, len(fns))
+		for k, v := range fns {
+			functions[k] = MarshalFunctionShim(v)
+		}
+	}
 	return &MarshallableProviderShim{
 		Schema:      config,
 		Resources:   resources,
 		DataSources: dataSources,
+		Functions:   functions,
 	}
 }
 
@@ -1136,10 +1269,18 @@ func (m *MarshallableProviderShim) Unmarshal() shim.Provider {
 	for k, v := range m.DataSources {
 		dataSources[k] = v.Unmarshal()
 	}
+	var functions map[string]shim.Function
+	if len(m.Functions) > 0 {
+		functions = make(map[string]shim.Function, len(m.Functions))
+		for k, v := range m.Functions {
+			functions[k] = v.Unmarshal()
+		}
+	}
 	return (&schema.Provider{
 		Schema:         config,
 		ResourcesMap:   resources,
 		DataSourcesMap: dataSources,
+		Functions:      functions,
 	}).Shim()
 }
 
@@ -1325,8 +1466,6 @@ func (m *MarshallableDataSource) Unmarshal() *DataSource {
 // MarshallableFunction is the JSON-marshallable form of a Pulumi FunctionInfo value.
 type MarshallableFunction struct {
 	Tok tokens.ModuleMember `json:"tok"`
-	// Variadic is true when the function's final Terraform parameter is variadic.
-	Variadic bool `json:"variadic,omitempty"`
 }
 
 // MarshalFunction converts a Pulumi FunctionInfo value into a MarshallableFunction value.
@@ -1335,9 +1474,6 @@ func MarshalFunction(f *Function) *MarshallableFunction {
 }
 
 // Unmarshal creates a mostly-initialized Pulumi FunctionInfo value from the given MarshallableFunction.
-//
-// Variadic is wire-only and is dropped: consumers that need it read the
-// MarshallableFunction form directly.
 func (m *MarshallableFunction) Unmarshal() *Function {
 	return &Function{Tok: m.Tok}
 }
@@ -1371,19 +1507,9 @@ func MarshalProvider(p *Provider) *MarshallableProvider {
 	}
 	var functions map[string]*MarshallableFunction
 	if len(p.Functions) > 0 {
-		var shimFunctions map[string]shim.Function
-		if p.P != nil {
-			shimFunctions = p.P.Functions()
-		}
 		functions = make(map[string]*MarshallableFunction)
 		for k, v := range p.Functions {
-			mf := MarshalFunction(v)
-			// The provider's signature is authoritative for variadic-ness; the info
-			// value is author-provided and does not carry it.
-			if fn, ok := shimFunctions[k]; ok {
-				mf.Variadic = fn.VariadicParameter != nil
-			}
-			functions[k] = mf
+			functions[k] = MarshalFunction(v)
 		}
 	}
 
