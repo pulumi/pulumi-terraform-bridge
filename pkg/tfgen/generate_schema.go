@@ -276,8 +276,8 @@ func genPulumiSchema(
 func (g *schemaGenerator) genPackageSpec(ctx context.Context, pack *pkg) (pschema.PackageSpec, error) {
 	_, span := tfgenTracer.Start(ctx, "genPackageSpec")
 	defer span.End()
-	var typesDur, resourcesDur, functionsDur, gatherNestedDur time.Duration
-	var typesN, resourcesN, functionsN int
+	var typesDur, resourcesDur, functionsDur, providerFunctionsDur, gatherNestedDur time.Duration
+	var typesN, resourcesN, functionsN, providerFunctionsN int
 
 	spec := pschema.PackageSpec{
 		Name:              g.pkg.String(),
@@ -336,6 +336,20 @@ func (g *schemaGenerator) genPackageSpec(ctx context.Context, pack *pkg) (pschem
 				spec.Functions[string(t.info.Tok)] = g.genDatasourceFunc(mod.name, t)
 				functionsDur += time.Since(t0)
 				functionsN++
+			case *providerFunc:
+				t0 := time.Now()
+				tok := string(t.tok)
+				if _, defined := spec.Functions[tok]; defined {
+					return pschema.PackageSpec{}, fmt.Errorf(
+						"provider function %q: token %q is already defined", t.tfName, tok)
+				}
+				fspec, err := g.genProviderFunc(t, spec.Types)
+				if err != nil {
+					return pschema.PackageSpec{}, err
+				}
+				spec.Functions[tok] = fspec
+				providerFunctionsDur += time.Since(t0)
+				providerFunctionsN++
 			case *variable:
 				contract.Assertf(mod.config(), `mod.config()`)
 				config = append(config, t)
@@ -351,6 +365,8 @@ func (g *schemaGenerator) genPackageSpec(ctx context.Context, pack *pkg) (pschem
 		attribute.Int64("gatherNestedTypes.ms", gatherNestedDur.Milliseconds()),
 		attribute.Int("functions.count", functionsN),
 		attribute.Int64("functions.ms", functionsDur.Milliseconds()),
+		attribute.Int("providerFunctions.count", providerFunctionsN),
+		attribute.Int64("providerFunctions.ms", providerFunctionsDur.Milliseconds()),
 		attribute.Int("docComment.count", g.docCommentN),
 		attribute.Int64("docComment.ms", g.docCommentDur.Milliseconds()),
 	)

@@ -1316,6 +1316,14 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 		pack.addModuleMap(dsmods)
 	}
 
+	// Gather up all provider-defined functions and merge them in.
+	fnmods, err := g.gatherFunctions()
+	if err != nil {
+		return nil, pkgerrors.Wrapf(err, "problem gathering provider functions")
+	} else if fnmods != nil {
+		pack.addModuleMap(fnmods)
+	}
+
 	// Now go ahead and merge in any overlays into the modules if there are any.
 	olaymods, err := g.gatherOverlays()
 	if err != nil {

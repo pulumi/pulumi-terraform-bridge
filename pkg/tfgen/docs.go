@@ -151,6 +151,8 @@ const (
 	ResourceDocs DocKind = "resources"
 	// DataSourceDocs indicates documentation pertaining to data source entities.
 	DataSourceDocs DocKind = "data-sources"
+	// FunctionDocs indicates documentation pertaining to provider-defined functions.
+	FunctionDocs DocKind = "functions"
 	// InstallationDocs indicates documentation pertaining to provider configuration and installation.
 	InstallationDocs DocKind = "installation"
 )
@@ -161,6 +163,8 @@ func (k DocKind) String() string {
 		return "data source"
 	case ResourceDocs:
 		return "resource"
+	case FunctionDocs:
+		return "function"
 	default:
 		return ""
 	}
@@ -197,6 +201,8 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 		docFile, err = source.getResource(rawname, docInfo)
 	case DataSourceDocs:
 		docFile, err = source.getDatasource(rawname, docInfo)
+	case FunctionDocs:
+		docFile, err = source.getFunction(rawname, docInfo)
 	default:
 		panic("unknown docs kind")
 	}

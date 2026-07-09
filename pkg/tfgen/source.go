@@ -35,6 +35,9 @@ type DocsSource interface {
 	// Get the bytes for a datasource with TF token rawname.
 	getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error)
 
+	// Get the bytes for a provider-defined function with unprefixed TF name rawname.
+	getFunction(rawname string, info *tfbridge.DocInfo) (*DocFile, error)
+
 	// Get the bytes for the provider installation doc.
 	getInstallation(info *tfbridge.DocInfo) (*DocFile, error)
 }
@@ -74,6 +77,10 @@ func (gh *gitRepoSource) getDatasource(rawname string, info *tfbridge.DocInfo) (
 	return gh.getFile(rawname, info, DataSourceDocs)
 }
 
+func (gh *gitRepoSource) getFunction(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
+	return gh.getFile(rawname, info, FunctionDocs)
+}
+
 func (gh *gitRepoSource) getInstallation(info *tfbridge.DocInfo) (*DocFile, error) {
 	// The installation docs do not have a rawname.
 	return gh.getFile("", info, InstallationDocs)
@@ -99,7 +106,7 @@ func (gh *gitRepoSource) getFile(
 	switch kind {
 	case InstallationDocs:
 		possibleMarkdownNames = append(possibleMarkdownNames, "index.md", "index.html.markdown")
-	case ResourceDocs, DataSourceDocs:
+	case ResourceDocs, DataSourceDocs, FunctionDocs:
 		possibleMarkdownNames = getMarkdownNames(gh.resourcePrefix, rawname, gh.docRules)
 		if info != nil && info.Source != "" {
 			possibleMarkdownNames = append(possibleMarkdownNames, info.Source)
@@ -269,7 +276,14 @@ func getDocsPath(repo string, kind DocKind) ([]string, error) {
 	// ${repo}/website/docs/r
 	//
 	// This is the legacy way to describe docs.
-	if p := filepath.Join(repo, "website", "docs", string(kind)[:1]); exists(p) {
+	//
+	// Function docs never used single-letter directories: the legacy location is
+	// website/docs/functions.
+	legacyDir := string(kind)[:1]
+	if kind == FunctionDocs {
+		legacyDir = string(kind)
+	}
+	if p := filepath.Join(repo, "website", "docs", legacyDir); exists(p) {
 		paths = append(paths, p)
 	}
 
