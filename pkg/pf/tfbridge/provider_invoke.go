@@ -40,6 +40,14 @@ func (p *provider) InvokeWithContext(
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, "")
 
+	// Provider-defined functions share the invoke surface with data sources but call
+	// the Terraform CallFunction RPC instead of ReadDataSource.
+	if fnHandle, ok, err := p.functionHandle(tok); err != nil {
+		return nil, nil, err
+	} else if ok {
+		return p.callFunction(ctx, fnHandle, args)
+	}
+
 	handle, err := p.datasourceHandle(ctx, tok)
 	if err != nil {
 		return nil, nil, err
