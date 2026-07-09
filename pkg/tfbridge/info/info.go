@@ -493,15 +493,6 @@ type Function struct {
 	Tok                tokens.ModuleMember // a function token to override the default; "" uses the default.
 	Docs               *Doc                // overrides for finding and mapping TF docs.
 	DeprecationMessage string              // message to use in deprecation warning
-
-	// Variadic records whether the function's final Terraform parameter is variadic.
-	// The schema projects such a parameter as a trailing array argument, which is
-	// otherwise indistinguishable from a genuine trailing list parameter — but the two
-	// take different Terraform call syntax (spread arguments vs. a list value), so
-	// mapping consumers need the distinction. It is derived from the provider's
-	// function signature when the mapping payload is marshaled and is not meant to be
-	// set by provider authors.
-	Variadic bool
 }
 
 // GetTok returns a function token
@@ -1334,19 +1325,27 @@ func (m *MarshallableDataSource) Unmarshal() *DataSource {
 // MarshallableFunction is the JSON-marshallable form of a Pulumi FunctionInfo value.
 type MarshallableFunction struct {
 	Tok tokens.ModuleMember `json:"tok"`
-	// Variadic is true when the function's final Terraform parameter is variadic. See
-	// [Function.Variadic].
+	// Variadic is true when the function's final Terraform parameter is variadic.
+	// The Pulumi schema projects such a parameter as a trailing array argument,
+	// which is otherwise indistinguishable from a genuine trailing list parameter —
+	// but the two take different Terraform call syntax (spread arguments vs. a list
+	// value), so mapping consumers need the distinction. It is derived from the
+	// provider's function signature when the mapping payload is marshaled and is
+	// deliberately not carried by [Function], which is author-facing.
 	Variadic bool `json:"variadic,omitempty"`
 }
 
 // MarshalFunction converts a Pulumi FunctionInfo value into a MarshallableFunction value.
 func MarshalFunction(f *Function) *MarshallableFunction {
-	return &MarshallableFunction{Tok: f.Tok, Variadic: f.Variadic}
+	return &MarshallableFunction{Tok: f.Tok}
 }
 
 // Unmarshal creates a mostly-initialized Pulumi FunctionInfo value from the given MarshallableFunction.
+//
+// Variadic is wire-only and is dropped: consumers that need it read the
+// MarshallableFunction form directly.
 func (m *MarshallableFunction) Unmarshal() *Function {
-	return &Function{Tok: m.Tok, Variadic: m.Variadic}
+	return &Function{Tok: m.Tok}
 }
 
 // MarshallableProvider is the JSON-marshallable form of a Pulumi ProviderInfo value.
