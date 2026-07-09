@@ -154,6 +154,35 @@ func TestGenerateProviderFunctionVariadic(t *testing.T) { //nolint:paralleltest 
 	}, spec.Functions["test:index/join:join"])
 }
 
+func TestGenerateProviderFunctionRequiredOrder(t *testing.T) { //nolint:paralleltest // uses t.Setenv
+	info := tfbridge.ProviderInfo{
+		Name: "test",
+		P: (&shimschema.Provider{
+			Functions: map[string]shim.Function{
+				"lookup": {
+					Parameters: []shim.FunctionParameter{
+						{Name: "zone", Type: tftypes.String},
+						{Name: "address", Type: tftypes.String},
+					},
+					Return: tftypes.String,
+				},
+			},
+		}).Shim(),
+		Functions: map[string]*info.Function{
+			"lookup": {Tok: "test:index/lookup:lookup"},
+		},
+	}
+
+	spec, err := generateFunctionSchema(t, info)
+	require.NoError(t, err)
+
+	fn := spec.Functions["test:index/lookup:lookup"]
+	// Required keeps parameter order, matching multiArgumentInputs, rather than
+	// sorting by Pulumi name.
+	assert.Equal(t, []string{"zone", "address"}, fn.Inputs.Required)
+	assert.Equal(t, []string{"zone", "address"}, fn.MultiArgumentInputs)
+}
+
 func TestGenerateProviderFunctionNamingEdgeCases(t *testing.T) { //nolint:paralleltest // uses t.Setenv
 	info := tfbridge.ProviderInfo{
 		Name: "test",
