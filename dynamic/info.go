@@ -135,6 +135,12 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 				ignoreMappings = append(ignoreMappings, key)
 			}
 		}
+		// Also check provider-defined functions
+		for key := range provider.Functions() {
+			if shouldIgnore(key) {
+				ignoreMappings = append(ignoreMappings, key)
+			}
+		}
 
 		prov.IgnoreMappings = ignoreMappings
 	}

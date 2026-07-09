@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestPFGetMapping(t *testing.T) {
@@ -85,6 +86,32 @@ func TestPFGetMapping(t *testing.T) {
 				string(info.Resources["random_integer"].Tok))
 		}
 	}
+}
+
+// Provider-defined functions surface in GetMapping data so converters can translate
+// provider::name::fn(...) calls.
+func TestPFGetMappingFunctions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	prov := testprovider.SyntheticTestBridgeProvider()
+
+	gen, err := genMetadata(t, prov)
+	require.NoError(t, err)
+	p, err := tfbridge.NewProvider(ctx, prov, gen)
+	require.NoError(t, err)
+
+	m, err := p.GetMapping(ctx, plugin.GetMappingRequest{Key: "terraform"})
+	require.NoError(t, err)
+	assert.Equal(t, "testbridge", m.Provider)
+
+	var marshalled tfbridge0.MarshallableProviderInfo
+	require.NoError(t, json.Unmarshal(m.Data, &marshalled))
+
+	assert.Equal(t, map[string]*info.MarshallableFunction{
+		"concat":           {Tok: "testbridge:index/concat:concat", Variadic: true},
+		"parse_id":         {Tok: "testbridge:index/parseId:parseId"},
+		"nullable_default": {Tok: "testbridge:index/nullableDefault:nullableDefault"},
+	}, marshalled.Functions)
 }
 
 func TestMuxedGetMapping(t *testing.T) {

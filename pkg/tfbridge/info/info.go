@@ -1325,6 +1325,8 @@ func (m *MarshallableDataSource) Unmarshal() *DataSource {
 // MarshallableFunction is the JSON-marshallable form of a Pulumi FunctionInfo value.
 type MarshallableFunction struct {
 	Tok tokens.ModuleMember `json:"tok"`
+	// Variadic is true when the function's final Terraform parameter is variadic.
+	Variadic bool `json:"variadic,omitempty"`
 }
 
 // MarshalFunction converts a Pulumi FunctionInfo value into a MarshallableFunction value.
@@ -1333,6 +1335,9 @@ func MarshalFunction(f *Function) *MarshallableFunction {
 }
 
 // Unmarshal creates a mostly-initialized Pulumi FunctionInfo value from the given MarshallableFunction.
+//
+// Variadic is wire-only and is dropped: consumers that need it read the
+// MarshallableFunction form directly.
 func (m *MarshallableFunction) Unmarshal() *Function {
 	return &Function{Tok: m.Tok}
 }
@@ -1366,9 +1371,19 @@ func MarshalProvider(p *Provider) *MarshallableProvider {
 	}
 	var functions map[string]*MarshallableFunction
 	if len(p.Functions) > 0 {
+		var shimFunctions map[string]shim.Function
+		if p.P != nil {
+			shimFunctions = p.P.Functions()
+		}
 		functions = make(map[string]*MarshallableFunction)
 		for k, v := range p.Functions {
-			functions[k] = MarshalFunction(v)
+			mf := MarshalFunction(v)
+			// The provider's signature is authoritative for variadic-ness; the info
+			// value is author-provided and does not carry it.
+			if fn, ok := shimFunctions[k]; ok {
+				mf.Variadic = fn.VariadicParameter != nil
+			}
+			functions[k] = mf
 		}
 	}
 
