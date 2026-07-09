@@ -1326,12 +1326,6 @@ func (m *MarshallableDataSource) Unmarshal() *DataSource {
 type MarshallableFunction struct {
 	Tok tokens.ModuleMember `json:"tok"`
 	// Variadic is true when the function's final Terraform parameter is variadic.
-	// The Pulumi schema projects such a parameter as a trailing array argument,
-	// which is otherwise indistinguishable from a genuine trailing list parameter —
-	// but the two take different Terraform call syntax (spread arguments vs. a list
-	// value), so mapping consumers need the distinction. It is derived from the
-	// provider's function signature when the mapping payload is marshaled and is
-	// deliberately not carried by [Function], which is author-facing.
 	Variadic bool `json:"variadic,omitempty"`
 }
 
