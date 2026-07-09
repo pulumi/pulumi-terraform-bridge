@@ -291,7 +291,6 @@ func (g *schemaGenerator) genProviderFunc(
 			multiArgs = append(multiArgs, name)
 		}
 
-		sort.Strings(inputs.Required)
 		spec.Inputs = inputs
 		spec.MultiArgumentInputs = multiArgs
 	}
