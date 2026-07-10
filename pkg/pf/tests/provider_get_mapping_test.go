@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 func TestPFGetMapping(t *testing.T) {
@@ -89,7 +91,8 @@ func TestPFGetMapping(t *testing.T) {
 }
 
 // Provider-defined functions surface in GetMapping data so converters can translate
-// provider::name::fn(...) calls.
+// provider::name::fn(...) calls: the functions section maps Terraform names to Pulumi
+// tokens, and the provider schema section carries the Terraform signatures.
 func TestPFGetMappingFunctions(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -108,10 +111,27 @@ func TestPFGetMappingFunctions(t *testing.T) {
 	require.NoError(t, json.Unmarshal(m.Data, &marshalled))
 
 	assert.Equal(t, map[string]*info.MarshallableFunction{
-		"concat":           {Tok: "testbridge:index/concat:concat", Variadic: true},
+		"concat":           {Tok: "testbridge:index/concat:concat"},
 		"parse_id":         {Tok: "testbridge:index/parseId:parseId"},
 		"nullable_default": {Tok: "testbridge:index/nullableDefault:nullableDefault"},
 	}, marshalled.Functions)
+
+	unmarshalled := marshalled.Unmarshal()
+	require.NotNil(t, unmarshalled.P)
+	assert.Equal(t, shim.Function{
+		Parameters: []shim.FunctionParameter{{
+			Name:        "separator",
+			Type:        tftypes.String,
+			Description: "String placed between each part.",
+		}},
+		VariadicParameter: &shim.FunctionParameter{
+			Name:        "parts",
+			Type:        tftypes.String,
+			Description: "Strings to join.",
+		},
+		Return:  tftypes.String,
+		Summary: "Concatenates strings with a separator.",
+	}, unmarshalled.P.Functions()["concat"])
 }
 
 func TestMuxedGetMapping(t *testing.T) {
