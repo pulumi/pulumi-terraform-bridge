@@ -22,13 +22,12 @@ import (
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/require"
 
-	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	pftfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
-	sdkv2shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	sdkv2shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 // These tests exercise Main and MainWithMuxer end to end, including the
@@ -41,7 +40,9 @@ const helperEnvVar = "PFTFGEN_MAIN_TEST_HELPER"
 func runMainHelperSubprocess(t *testing.T, testName string, env ...string) (stdout, stderr string, exitErr error) {
 	t.Helper()
 
-	cmd := exec.Command(os.Args[0], "-test.run=^"+testName+"$", "-test.v=false")
+	// The test binary itself is re-executed with a test-selector flag; testName is
+	// always a hardcoded literal from a call site in this file, not external input.
+	cmd := exec.Command(os.Args[0], "-test.run=^"+testName+"$", "-test.v=false") //nolint:gosec
 	cmd.Env = append(os.Environ(), env...)
 	cmd.Env = append(cmd.Env, helperEnvVar+"=1")
 

@@ -40,7 +40,9 @@ const mainHelperEnvVar = "PFTFBRIDGE_MAIN_TEST_HELPER"
 func runMainHelperSubprocess(t *testing.T, testName string, env ...string) (stdout, stderr string, exitErr error) {
 	t.Helper()
 
-	cmd := exec.Command(os.Args[0], "-test.run=^"+testName+"$")
+	// The test binary itself is re-executed with a test-selector flag; testName is
+	// always a hardcoded literal from a call site in this file, not external input.
+	cmd := exec.Command(os.Args[0], "-test.run=^"+testName+"$") //nolint:gosec
 	cmd.Env = append(os.Environ(), env...)
 	cmd.Env = append(cmd.Env, mainHelperEnvVar+"=1")
 
@@ -52,7 +54,7 @@ func runMainHelperSubprocess(t *testing.T, testName string, env ...string) (stdo
 	return outBuf.String(), errBuf.String(), exitErr
 }
 
-func TestMainRejectsEmptyVersion(t *testing.T) {
+func TestRuntimeMainRejectsEmptyVersion(t *testing.T) {
 	t.Parallel()
 
 	if os.Getenv(mainHelperEnvVar) == "1" {
@@ -64,14 +66,14 @@ func TestMainRejectsEmptyVersion(t *testing.T) {
 		return
 	}
 
-	stdout, stderr, err := runMainHelperSubprocess(t, "TestMainRejectsEmptyVersion")
+	stdout, stderr, err := runMainHelperSubprocess(t, "TestRuntimeMainRejectsEmptyVersion")
 	require.Error(t, err, "Main should exit with a non-zero status for an empty version")
 	require.Contains(t, stderr,
 		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
 	require.Empty(t, stdout, "Main should not reach --version handling for an invalid version")
 }
 
-func TestMainRejectsInvalidVersion(t *testing.T) {
+func TestRuntimeMainRejectsInvalidVersion(t *testing.T) {
 	t.Parallel()
 
 	if os.Getenv(mainHelperEnvVar) == "1" {
@@ -83,7 +85,7 @@ func TestMainRejectsInvalidVersion(t *testing.T) {
 		return
 	}
 
-	stdout, stderr, err := runMainHelperSubprocess(t, "TestMainRejectsInvalidVersion")
+	stdout, stderr, err := runMainHelperSubprocess(t, "TestRuntimeMainRejectsInvalidVersion")
 	require.Error(t, err, "Main should exit with a non-zero status for an invalid version")
 	require.Contains(t, stderr,
 		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
@@ -91,7 +93,7 @@ func TestMainRejectsInvalidVersion(t *testing.T) {
 	require.Empty(t, stdout, "Main should not reach --version handling for an invalid version")
 }
 
-func TestMainAcceptsValidVersionForVersionFlag(t *testing.T) {
+func TestRuntimeMainAcceptsValidVersionForVersionFlag(t *testing.T) {
 	t.Parallel()
 
 	if os.Getenv(mainHelperEnvVar) == "1" {
@@ -103,12 +105,12 @@ func TestMainAcceptsValidVersionForVersionFlag(t *testing.T) {
 		return
 	}
 
-	stdout, stderr, err := runMainHelperSubprocess(t, "TestMainAcceptsValidVersionForVersionFlag")
+	stdout, stderr, err := runMainHelperSubprocess(t, "TestRuntimeMainAcceptsValidVersionForVersionFlag")
 	require.NoError(t, err, "Main should succeed for a valid version: stdout=%s stderr=%s", stdout, stderr)
 	require.Contains(t, stdout, "1.2.3")
 }
 
-func TestMainWithMuxerRejectsEmptyVersion(t *testing.T) {
+func TestRuntimeMainWithMuxerRejectsEmptyVersion(t *testing.T) {
 	t.Parallel()
 
 	if os.Getenv(mainHelperEnvVar) == "1" {
@@ -120,14 +122,14 @@ func TestMainWithMuxerRejectsEmptyVersion(t *testing.T) {
 		return
 	}
 
-	stdout, stderr, err := runMainHelperSubprocess(t, "TestMainWithMuxerRejectsEmptyVersion")
+	stdout, stderr, err := runMainHelperSubprocess(t, "TestRuntimeMainWithMuxerRejectsEmptyVersion")
 	require.Error(t, err, "MainWithMuxer should exit with a non-zero status for an empty version")
 	require.Contains(t, stderr,
 		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
 	require.Empty(t, stdout, "MainWithMuxer should not reach --version handling for an invalid version")
 }
 
-func TestMainWithMuxerRejectsInvalidVersion(t *testing.T) {
+func TestRuntimeMainWithMuxerRejectsInvalidVersion(t *testing.T) {
 	t.Parallel()
 
 	if os.Getenv(mainHelperEnvVar) == "1" {
@@ -139,7 +141,7 @@ func TestMainWithMuxerRejectsInvalidVersion(t *testing.T) {
 		return
 	}
 
-	stdout, stderr, err := runMainHelperSubprocess(t, "TestMainWithMuxerRejectsInvalidVersion")
+	stdout, stderr, err := runMainHelperSubprocess(t, "TestRuntimeMainWithMuxerRejectsInvalidVersion")
 	require.Error(t, err, "MainWithMuxer should exit with a non-zero status for an invalid version")
 	require.Contains(t, stderr,
 		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
@@ -147,7 +149,7 @@ func TestMainWithMuxerRejectsInvalidVersion(t *testing.T) {
 	require.Empty(t, stdout, "MainWithMuxer should not reach --version handling for an invalid version")
 }
 
-func TestMainWithMuxerAcceptsValidVersionForVersionFlag(t *testing.T) {
+func TestRuntimeMainWithMuxerAcceptsValidVersionForVersionFlag(t *testing.T) {
 	t.Parallel()
 
 	if os.Getenv(mainHelperEnvVar) == "1" {
@@ -159,7 +161,7 @@ func TestMainWithMuxerAcceptsValidVersionForVersionFlag(t *testing.T) {
 		return
 	}
 
-	stdout, stderr, err := runMainHelperSubprocess(t, "TestMainWithMuxerAcceptsValidVersionForVersionFlag")
+	stdout, stderr, err := runMainHelperSubprocess(t, "TestRuntimeMainWithMuxerAcceptsValidVersionForVersionFlag")
 	require.NoError(t, err, "MainWithMuxer should succeed for a valid version: stdout=%s stderr=%s", stdout, stderr)
 	require.Contains(t, stdout, "1.2.3")
 }
