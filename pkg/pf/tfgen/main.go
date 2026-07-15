@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/check"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
+	pfversion "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/version"
 	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -44,11 +45,18 @@ import (
 // info.P must be constructed with ShimProvider or ShimProviderWithContext so
 // the validation step can reach the original Framework provider.
 //
+// info.Version is required and must be semver-compatible; Main rejects an
+// empty or invalid version before generating any artifacts.
+//
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 func Main(provider string, info sdkBridge.ProviderInfo) {
 	version := info.Version
 
 	tfgen.MainWithCustomGenerate(provider, version, info, func(opts tfgen.GeneratorOptions) error {
+		if err := pfversion.Validate(info.Version); err != nil {
+			return err
+		}
+
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
@@ -82,6 +90,9 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 // info.P must be constructed with a PF mux helper so the validation step can
 // reach the original Framework provider.
 //
+// info.Version is required and must be semver-compatible; MainWithMuxer
+// rejects an empty or invalid version before generating any artifacts.
+//
 // This is an experimental API.
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
@@ -104,6 +115,10 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	}
 
 	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
+		if err := pfversion.Validate(info.Version); err != nil {
+			return err
+		}
+
 		g, err := tfgen.NewGenerator(opts)
 		if err != nil {
 			return err
