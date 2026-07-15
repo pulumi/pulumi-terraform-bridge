@@ -1,110 +1,159 @@
 # Upgrading a Bridged Provider to Plugin Framework
 
-Follow these steps if you have a Pulumi provider that was bridged from a Terraform provider built against
-[Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) and you want to upgrade it to a version that has migrated to the Plugin Framework.
+Follow these steps when an upstream Terraform provider has migrated all of the
+resources and data sources used by the Pulumi provider from Terraform Plugin SDKv2
+to [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework).
+If the upstream provider has migrated only part of its surface, follow the
+[muxed-provider guide](./upgrade-sdk-to-mux.md) instead.
 
-1. Ensure you have access to the [`github.com/hashicorp/terraform-plugin-framework/provider.Provider`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework@v1.16.0/provider#Provider) from
-   the upstream provider.  Make sure the module is now depending on
-   `"github.com/hashicorp/terraform-plugin-framework"` instead of
-   `"github.com/hashicorp/terraform-plugin-sdk/v2"`.  If the provider is shimmed (or needs to be), update the
-   source code accordingly. For example, a `shim.go` that looked like this:
+1. Obtain the upstream
+   [`provider.Provider`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework/provider#Provider).
 
-    ```go
-    package shim
+   Add `github.com/hashicorp/terraform-plugin-framework` to the module that exposes
+   the upstream provider. Once that module no longer imports SDKv2 directly, `go mod
+   tidy` can remove its direct `github.com/hashicorp/terraform-plugin-sdk/v2`
+   dependency.
 
-    import (
-        "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-        "github.com/hashicorp/terraform-provider-tls/internal/provider"
-    )
+   When the upstream constructor is in a Go `internal` package, a small shim module
+   can expose it. For example, an SDKv2 shim such as:
 
-    func NewProvider() *schema.Provider {
-        p, _ := provider.New()
-        return p
-    }
-    ```
+   ```go
+   package shim
 
-   Becomes:
+   import (
+       "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+       "github.com/hashicorp/terraform-provider-tls/internal/provider"
+   )
 
-    ```go
-    package shim
+   func NewProvider() *schema.Provider {
+       p, _ := provider.New()
+       return p
+   }
+   ```
 
-    import (
-        "github.com/hashicorp/terraform-plugin-framework/provider"
-        p "github.com/hashicorp/terraform-provider-tls/internal/provider"
-    )
+   becomes:
 
-    func NewProvider() provider.Provider {
-        return p.New()
-    }
-    ```
+   ```go
+   package shim
 
-   Make sure the module builds:
+   import (
+       "github.com/hashicorp/terraform-plugin-framework/provider"
+       tlsprovider "github.com/hashicorp/terraform-provider-tls/internal/provider"
+   )
 
-     ```
-     cd provider/shim
-     go mod tidy
-     go build
-     ```
+   func NewProvider() provider.Provider {
+       return tlsprovider.New()
+   }
+   ```
 
-2. Find tfgen binary `main` that calls `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen`
-   and update it to call `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen`.
+   Providers that already export a Framework constructor do not need a separate
+   shim module. Provider constructors also commonly require a version or a
+   `context.Context`; preserve those arguments when exposing the constructor.
 
-   Note that the extra verson parameter is removed from `tfgen.Main`, so this code:
+   From the repository root, make sure the shim module builds:
 
-    ```go
-    tfgen.Main("tls", version.Version, tls.Provider())
-    ```
+   ```sh
+   (cd provider/shim && go mod tidy && go build ./...)
+   ```
 
-   Becomes:
+2. Set up provider metadata.
 
-    ```
-    tfgen.Main("tls", tls.Provider())
-    ```
+   Plugin Framework providers require generated bridge metadata. Bootstrap the file
+   before adding a `go:embed` directive, otherwise the provider package cannot
+   compile and tfgen cannot run:
 
-3. Find the provider binary `main` that calls `tfbridge.Main` from
-   `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge` and update it to `Main` from
-   `github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge`. Note the signature changes: version parameter is removed,
-   `Context` is now required, and there is a new `bridge-metadata.json` blob that needs to be embedded:
+   ```sh
+   echo '{}' > provider/cmd/pulumi-resource-myprovider/bridge-metadata.json
+   ```
 
-     ```go
-     ...
+   Adjust the path if running from the `provider` directory. See
+   [Provider Metadata](./metadata.md) for the complete setup.
 
-     func main() {
-         meta := tfbridge.ProviderMetadata{PackageSchema: schema}
-         tfbridge.Main(context.Background(), "myprovider", myprovider.MyProvider(), meta)
-     }
-     ```
+3. Update the code that declares `tfbridge.ProviderInfo`, typically
+   `provider/resources.go`:
 
-4. Update code declaring `tfbridge.ProviderInfo` (typically in `provider/resources.go`):
+   ```go
+   package myprovider
 
-    ```go
+   import (
+       _ "embed"
 
-    //go:embed cmd/pulumi-resource-myprovider/bridge-metadata.json
-    var bridgeMetadata []byte
+       pftfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
+       "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 
-    func Provider() tfbridge.ProviderInfo {
-        info := tfbridge.ProviderInfo{
-            // Replace P (abbreviated for Provider):
-            P: pf.ShimProvider(shim.NewProvider()).
+       "github.com/pulumi/pulumi-myprovider/provider/pkg/version"
+       "github.com/pulumi/pulumi-myprovider/provider/shim"
+   )
 
-            // Make sure Version is set, as it is now required.
-            Version: ...,
+   //go:embed cmd/pulumi-resource-myprovider/bridge-metadata.json
+   var bridgeMetadata []byte
 
-            // This is now required.
-            MetadataInfo: tfbridge.NewProviderMetadata(bridgeMetadata),
+   func Provider() tfbridge.ProviderInfo {
+       return tfbridge.ProviderInfo{
+           // Replace the SDKv2 shim with the Plugin Framework shim.
+           P: pftfbridge.ShimProvider(shim.NewProvider()),
 
-            // Keep the rest of the code as before.
-        }
-        return info
-    }
-    ```
+           // The PF entrypoints read the version from ProviderInfo rather than
+           // receiving it as a separate argument.
+           Version: version.Version,
 
-5. From this point the update proceeds as a typical upstream provider update. Build and run the tfgen binary to compute
-   the Pulumi Package Schema. It will now also compute a new metadata file `bridge-metadata.json`, build the provider
-   binary, re-generate language-specific SDKs and run tests.
+           MetadataInfo: tfbridge.NewProviderMetadata(bridgeMetadata),
 
-    ```
-    make tfgen
-    make provider
-    make build_sdks
-    ```
+           // Keep the rest of the provider mapping as before.
+       }
+   }
+   ```
+
+4. Update the tfgen binary to use `pkg/pf/tfgen`. The PF entrypoint reads the
+   version from `ProviderInfo`, so remove the separate version argument:
+
+   ```go
+   import pftfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
+
+   func main() {
+       pftfgen.Main("myprovider", myprovider.Provider())
+   }
+   ```
+
+   This replaces the SDKv2 form:
+
+   ```go
+   tfgen.Main("myprovider", version.Version, myprovider.Provider())
+   ```
+
+5. Update the provider binary to use `pkg/pf/tfbridge.Main`. It requires a
+   `context.Context` and `ProviderMetadata` containing the generated Pulumi package
+   schema:
+
+   ```go
+   import (
+       "context"
+       _ "embed"
+
+       pftfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
+   )
+
+   //go:embed schema-embed.json
+   var pulumiSchema []byte
+
+   func main() {
+       meta := pftfbridge.ProviderMetadata{PackageSchema: pulumiSchema}
+       pftfbridge.Main(context.Background(), "myprovider", myprovider.Provider(), meta)
+   }
+   ```
+
+   `bridge-metadata.json` is supplied through `ProviderInfo.MetadataInfo` from step
+   3. Do not add it to `ProviderMetadata.BridgeMetadata`; that field is deprecated.
+
+6. Continue with the normal upstream-provider update. Generate the schema and bridge
+   metadata, build the provider and SDKs, and run tests:
+
+   ```sh
+   make tfgen
+   make provider
+   make build_sdks
+   make test
+   ```
+
+   Review the generated `bridge-metadata.json` and schema changes before committing
+   them.

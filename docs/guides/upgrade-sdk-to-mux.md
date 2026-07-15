@@ -1,153 +1,157 @@
-# How to Upgrade a provider that has partially migrated to the Plugin Framework
+# Upgrading a Partially Migrated Provider with the PF Muxer
 
-Follow these steps if you have a Pulumi provider that was bridged from a Terraform
-provider built against [Terraform Plugin
-SDK](https://github.com/hashicorp/terraform-plugin-sdk) and you want to upgrade it to a
-version that has migrated some but not all resources/datasources to the [Plugin
-Framework](https://github.com/hashicorp/terraform-plugin-framework?tab=readme).
+Follow these steps when an upstream Terraform provider has migrated some, but not
+all, resources or data sources from Terraform Plugin SDKv2 to
+[Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework).
+The resulting Pulumi provider dispatches each Terraform token to either the SDKv2
+or Framework implementation.
 
-1. Ensure you have access to the
-   `github.com/hashicorp/terraform-plugin-framework/provider.Provider` from the upstream
-   provider.  If the provider is shimmed (or needs to be), you can follow step (1) from
-   ["How to Upgrade a Bridged Provider to Plugin
-   Framework"](./upgrade-sdk-to-pf.md).
+The examples below use SDKv2. Providers still using Terraform Plugin SDKv1 can
+follow the same structure with
+`github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1` in place of the
+SDKv2 shim.
 
-1. Find the tfgen binary `main` that calls `tfgen.Main` from
-   `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen` and update it to call
-   `tfgen.MainWithMuxer` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen`.
+1. Obtain both upstream provider implementations:
 
-   Note that the extra version parameter is removed from `tfgen.Main`, so this code:
+   - an SDK provider, normally a
+     `*github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema.Provider`; and
+   - a `github.com/hashicorp/terraform-plugin-framework/provider.Provider`.
+
+   If either constructor is in a Go `internal` package, expose it through a small
+   shim module as described in step 1 of the
+   [PF-only migration guide](./upgrade-sdk-to-pf.md). Real providers commonly pass
+   a version or `context.Context` to these constructors, or construct the Framework
+   provider from the SDK provider so both share configuration. Preserve that
+   upstream initialization rather than assuming the constructors are independent.
+
+2. Set up provider metadata.
+
+   Muxed providers require generated bridge metadata for their dispatch table.
+   Bootstrap the file before adding a `go:embed` directive:
+
+   ```sh
+   echo '{}' > provider/cmd/pulumi-resource-myprovider/bridge-metadata.json
+   ```
+
+   Adjust the path if running from the `provider` directory. See
+   [Provider Metadata](./metadata.md) for the complete setup.
+
+3. Update the code that declares `tfbridge.ProviderInfo`, typically
+   `provider/resources.go`, to combine the two implementations:
 
    ```go
-   import "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+   package myprovider
 
-   ...
+   import (
+       "context"
+       _ "embed"
 
-   tfgen.Main("cloudflare", version.Version, tls.Provider())
+       pftfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
+       "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+       shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+
+       "github.com/pulumi/pulumi-myprovider/provider/pkg/version"
+       "github.com/pulumi/pulumi-myprovider/provider/upstream"
+   )
+
+   //go:embed cmd/pulumi-resource-myprovider/bridge-metadata.json
+   var bridgeMetadata []byte
+
+   func Provider() tfbridge.ProviderInfo {
+       ctx := context.Background()
+       sdkProvider := upstream.SDKProvider()
+       frameworkProvider := upstream.PFProvider()
+
+       p := pftfbridge.MuxShimWithPF(
+           ctx,
+           shimv2.NewProvider(sdkProvider),
+           frameworkProvider,
+       )
+
+       return tfbridge.ProviderInfo{
+           P: p,
+
+           // The mux entrypoints read the version from ProviderInfo rather than
+           // receiving it as a separate argument.
+           Version: version.Version,
+
+           MetadataInfo: tfbridge.NewProviderMetadata(bridgeMetadata),
+
+           // Keep the rest of the provider mapping as before.
+       }
+   }
    ```
 
-   Becomes:
+   Replace `upstream.SDKProvider()` and `upstream.PFProvider()` with the constructors
+   exposed by the upstream provider or its shim. It is also reasonable for
+   `Provider` to accept a `context.Context` and pass it to both constructors.
 
-   ``` go
-   import "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
+   Choose the mux helper according to the upstream ownership model:
 
-   ...
+   - `MuxShimWithPF` permits overlapping Terraform tokens. When both providers expose
+     a token, the SDK implementation wins.
+   - `MuxShimWithDisjointgPF` requires disjoint token sets and panics on overlap. Use
+     it when the upstream migration is expected to have exactly one owner for every
+     token; it catches ownership mistakes early. `DisjointgPF` is the current
+     exported spelling.
 
-   tfgen.MainWithMuxer("cloudflare", cloudflare.Provider())
+4. Update the tfgen binary to use `pkg/pf/tfgen.MainWithMuxer`. Remove the separate
+   version argument because it now comes from `ProviderInfo.Version`:
+
+   ```go
+   import pftfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
+
+   func main() {
+       pftfgen.MainWithMuxer("myprovider", myprovider.Provider())
+   }
    ```
 
-1. Find the provider binary `main` that calls
-   [`"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge".Main`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge#Main)
-   and update it to
-   [`"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge".MainWithMuxer`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge#MainWithMuxer).
+   This replaces the SDK form:
 
-   Note the signature changes: version parameter is removed, and `Context` is now required, so this
-   code:
+   ```go
+   tfgen.Main("myprovider", version.Version, myprovider.Provider())
+   ```
 
-     ```go
-    import "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+5. Update the provider binary to use
+   `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MainWithMuxer`.
+   It requires a `context.Context`, takes the version from `ProviderInfo`, and
+   receives the generated Pulumi schema directly:
 
-    ...
+   ```go
+   import (
+       "context"
+       _ "embed"
 
-     tfbridge.Main("cloudflare", version.Version, cloudflare.Provider(), pulumiSchema)
-     ```
+       pftfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
+   )
 
-     Becomes:
+   //go:embed schema-embed.json
+   var pulumiSchema []byte
 
-    ```go
-    import "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
+   func main() {
+       pftfbridge.MainWithMuxer(
+           context.Background(),
+           "myprovider",
+           myprovider.Provider(),
+           pulumiSchema,
+       )
+   }
+   ```
 
-    ...
+   `MainWithMuxer` and the corresponding tfgen entrypoint are currently
+   experimental bridge APIs, although they are used by production providers.
 
-    tfbridge.MainWithMuxer(context.Background(), "cloudflare", cloudflare.Provider(), pulumiSchema)
-    ```
+6. Continue with the normal upstream-provider update. Tfgen computes the Pulumi
+   package schema and mux dispatch metadata. Build the provider and SDKs and run
+   tests:
 
-1. Update code declaring
-   [`ProviderInfo`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge#ProviderInfo)
-   (typically in `provider/resources.go`), changing the embedded
-   `"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge".ProviderInfo.P` to the
-   result of calling
-   [`"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge".MuxShimWithPF`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge#MuxShimWithPF).
+   ```sh
+   make tfgen
+   make provider
+   make build_sdks
+   make test
+   ```
 
-   This function combines the original SDK based provider with the new PF based provider, so this code:
-
-    ```go
-    import (
-		"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-		shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-
-		"github.com/${PROVIDER_ORG}/terraform-provider-${PROVIDER_NAME}"
-	)
-
-    ...
-
-    func Provider() tfbridge.ProviderInfo {
-	    p := shimv2.NewProvider(${PROVIDER_NAME}.SDKProvider())
-
-	    prov := tfbridge.ProviderInfo{
-			P: p,
-	        ...
-	    }
-
-		...
-
-		return prov
-    }
-    ```
-
-    > You should replace
-    > `github.com/${PROVIDER_ORG}/terraform-provider-${PROVIDER_NAME}.SDKProvider()` with
-    > whatever function is necessary to produce the
-    > `*github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema.Provider` used by the
-    > upstream provider.
-
-    Becomes:
-
-    ```go
-    import (
-    	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-       	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
-       	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-
-        "github.com/${PROVIDER_ORG}/terraform-provider-${PROVIDER_NAME}"
-    )
-
-    ...
-
-    func Provider() tfbridge.ProviderInfo {
-        p := pfbridge.MuxShimWithPF(context.Background(),
-			shimv2.NewProvider(${PROVIDER_NAME}.SDKProvider()),
-			${PROVIDER_NAME}.PFProvider(),
-	    )
-
-	    prov := tfbridge.ProviderInfo{
-			P: p,
-	        ...
-	    }
-
-        ...
-
-        return prov
-    }
-    ```
-
-    > You should replace
-    > `github.com/${PROVIDER_ORG}/terraform-provider-${PROVIDER_NAME}.PFProvider()` with
-    > whatever function is necessary to produce the
-    > `github.com/hashicorp/terraform-plugin-framework/provider.Provider` used by the
-    > upstream provider.
-
-1. Ensure that `tfbridge.ProviderInfo.MetadataInfo` is set.
-
-   For details on setting this up, see [here](./metadata.md#setup).
-
-1. From this point the update proceeds as a typical upstream provider update. Build and
-   run the tfgen binary to compute the Pulumi Package Schema. It will now also compute a
-   new metadata file `bridge-metadata.json`, build the provider binary, re-generate
-   language-specific SDKs and run tests.
-
-    ```
-    make tfgen
-    make provider
-    make build_sdks
-    ```
+   Review the generated `bridge-metadata.json` and schema changes before committing
+   them. In particular, confirm that resources and data sources moved upstream are
+   dispatched to the Framework side and unchanged tokens remain on the SDK side.
