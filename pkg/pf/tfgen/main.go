@@ -52,11 +52,18 @@ import (
 func Main(provider string, info sdkBridge.ProviderInfo) {
 	version := info.Version
 
-	tfgen.MainWithCustomGenerate(provider, version, info, func(opts tfgen.GeneratorOptions) error {
-		if err := pfversion.Validate(info.Version); err != nil {
-			return err
-		}
+	// Validate the version before invoking MainWithCustomGenerate so an empty or
+	// invalid version fails fast, before any generation is attempted. This must
+	// not run inside the gen callback: MainWithCustomGenerate discards the
+	// callback's error when COVERAGE_OUTPUT_DIR is set (it overwrites err with the
+	// coverage export result), which would let a bad version pass silently.
+	if err := pfversion.Validate(version); err != nil {
+		_, fmterr := fmt.Fprintln(os.Stderr, err.Error())
+		contract.IgnoreError(fmterr)
+		os.Exit(-1)
+	}
 
+	tfgen.MainWithCustomGenerate(provider, version, info, func(opts tfgen.GeneratorOptions) error {
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
@@ -101,6 +108,17 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 		panic("mixin providers via tfbridge.ProviderInfo.MuxWith is currently not supported")
 	}
 
+	// Validate the version before invoking MainWithCustomGenerate so an empty or
+	// invalid version fails fast, before any generation is attempted. This must
+	// not run inside the gen callback: MainWithCustomGenerate discards the
+	// callback's error when COVERAGE_OUTPUT_DIR is set (it overwrites err with the
+	// coverage export result), which would let a bad version pass silently.
+	if err := pfversion.Validate(info.Version); err != nil {
+		_, fmterr := fmt.Fprintln(os.Stderr, err.Error())
+		contract.IgnoreError(fmterr)
+		os.Exit(-1)
+	}
+
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
 
@@ -115,10 +133,6 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	}
 
 	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
-		if err := pfversion.Validate(info.Version); err != nil {
-			return err
-		}
-
 		g, err := tfgen.NewGenerator(opts)
 		if err != nil {
 			return err

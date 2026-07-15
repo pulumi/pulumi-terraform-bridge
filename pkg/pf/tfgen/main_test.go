@@ -190,3 +190,69 @@ func TestMainWithMuxerRejectsInvalidVersion(t *testing.T) {
 		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
 	require.Contains(t, stderr, "not-a-version")
 }
+
+func TestMainWithMuxerAcceptsValidVersion(t *testing.T) {
+	t.Parallel()
+
+	if os.Getenv(helperEnvVar) == "1" {
+		outDir, err := os.MkdirTemp("", "pftfgen-muxer-main-test")
+		if err != nil {
+			panic(err)
+		}
+		defer os.RemoveAll(outDir)
+
+		os.Args = []string{
+			"pulumi-tfgen-test", "schema",
+			"--out", outDir,
+			"--skip-docs",
+			"--skip-examples",
+		}
+		ctx := context.Background()
+		sdkProvider := &sdkschema.Provider{
+			Schema:       map[string]*sdkschema.Schema{},
+			ResourcesMap: map[string]*sdkschema.Resource{},
+		}
+		MainWithMuxer("testprovider", tfbridge.ProviderInfo{
+			Name:         "testprovider",
+			P:            pftfbridge.MuxShimWithPF(ctx, sdkv2shim.NewProvider(sdkProvider), minimalPFResourceProvider()),
+			Version:      "1.2.3",
+			MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_thing": {Tok: "testprovider:index:Thing"},
+			},
+		})
+		return
+	}
+
+	stdout, stderr, err := runMainHelperSubprocess(t, "TestMainWithMuxerAcceptsValidVersion")
+	require.NoError(t, err, "MainWithMuxer should succeed for a valid version: stdout=%s stderr=%s", stdout, stderr)
+	require.NotContains(t, stderr, "ProviderInfo.Version is required")
+}
+
+// TestMainRejectsInvalidVersionWithCoverageTracking guards against a regression
+// where placing the version check inside the MainWithCustomGenerate callback
+// caused the error to be swallowed when COVERAGE_OUTPUT_DIR is set (the coverage
+// export result overwrites the callback's error). The validation must run before
+// MainWithCustomGenerate so it fails fast regardless of coverage tracking.
+func TestMainRejectsInvalidVersionWithCoverageTracking(t *testing.T) {
+	t.Parallel()
+
+	if os.Getenv(helperEnvVar) == "1" {
+		os.Args = []string{"pulumi-tfgen-test", "schema"}
+		Main("testprovider", tfbridge.ProviderInfo{
+			Name:         "testprovider",
+			P:            pftfbridge.ShimProvider(minimalPFResourceProvider()),
+			Version:      "not-a-version",
+			MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
+		})
+		return
+	}
+
+	covDir := t.TempDir()
+	_, stderr, err := runMainHelperSubprocess(t,
+		"TestMainRejectsInvalidVersionWithCoverageTracking", "COVERAGE_OUTPUT_DIR="+covDir)
+	require.Error(t, err,
+		"Main should exit non-zero for an invalid version even when coverage tracking is enabled")
+	require.Contains(t, stderr,
+		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
+}

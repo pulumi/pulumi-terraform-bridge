@@ -33,6 +33,12 @@ import (
 // validation for generated PF provider, resource, data source, and list resource
 // schemas before the bridge-specific checks. The context is passed to Framework
 // schema methods and ValidateImplementation; nil uses context.Background().
+//
+// Note: ProviderInfo.Version is intentionally NOT validated here. Version
+// validation is enforced by the PF entrypoints (pkg/pf/tfgen.Main/MainWithMuxer
+// and pkg/pf/tfbridge.Main/MainWithMuxer) rather than in this shared schema-gen
+// path, because GenerateSchema and check.Provider are exercised by many tests
+// and internal callers that legitimately omit Version.
 func Provider(ctx context.Context, sink diag.Sink, info tfbridge.ProviderInfo) error {
 	if ctx == nil {
 		ctx = context.Background()
