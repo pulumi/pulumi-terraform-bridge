@@ -17,4 +17,5 @@
 /docs/guides/sets
 /docs/guides/testing
 /docs/guides/upgrade-sdk-to-mux
+/docs/guides/upgrade-sdk-to-pf
 :::
