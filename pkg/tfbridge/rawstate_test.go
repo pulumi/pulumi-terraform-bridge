@@ -466,6 +466,53 @@ func Test_rawstate_delta_writeonly_null_string(t *testing.T) {
 	require.Equal(t, string(cvJSON), string(recoveredValueJSON))
 }
 
+// When the outputs include timeouts, the raw state retains the full Terraform timeouts value,
+// which contains every schema-defined timeout; unset ones appear as null. Keys like read=null are
+// absent from the Pulumi property bag, so the delta must re-materialize them on Recover or the
+// turnaround check fails. This is a follow-up to the timeouts retention branch added in #3248.
+func Test_rawstate_delta_timeouts_with_null_read(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	schemaMap := sdkv2.NewSchemaMap(map[string]*schema.Schema{
+		"name": {Type: schema.TypeString, Optional: true},
+	})
+
+	cv := cty.ObjectVal(map[string]cty.Value{
+		"name": cty.StringVal("v1"),
+		"timeouts": cty.ObjectVal(map[string]cty.Value{
+			"create": cty.StringVal("60m"),
+			"delete": cty.StringVal("60m"),
+			"read":   cty.NullVal(cty.String),
+			"update": cty.StringVal("60m"),
+		}),
+	})
+
+	outMap := resource.PropertyMap{
+		"name": resource.NewStringProperty("v1"),
+		"timeouts": resource.NewObjectProperty(resource.PropertyMap{
+			"create": resource.NewStringProperty("60m"),
+			"delete": resource.NewStringProperty("60m"),
+			"update": resource.NewStringProperty("60m"),
+		}),
+	}
+
+	schemaType := valueshim.FromHCtyType(cv.Type())
+	delta, err := RawStateComputeDelta(ctx, schemaMap, nil, outMap, schemaType, valueshim.FromHCtyValue(cv))
+	require.NoError(t, err)
+
+	recovered, err := delta.Recover(resource.NewObjectProperty(outMap))
+	require.NoError(t, err)
+
+	recoveredJSON, err := json.Marshal(recovered)
+	require.NoError(t, err)
+
+	cvJSON, err := ctyjson.Marshal(cv, cv.Type())
+	require.NoError(t, err)
+
+	require.Equal(t, string(cvJSON), string(recoveredJSON))
+}
+
 func Test_rawstate_delta_serialization(t *testing.T) {
 	t.Parallel()
 

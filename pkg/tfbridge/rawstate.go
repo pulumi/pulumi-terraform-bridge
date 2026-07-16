@@ -652,12 +652,15 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	isUnknown := pv.IsComputed() || pv.IsOutput() && !pv.OutputValue().Known
 	contract.Assertf(!isUnknown, "rawStateDeltaHelper cannot process unknown PropertyValue values")
 
-	// Timeouts are a special property that accidentally gets pushed here for historical reasons; it is not
-	// relevant for the permanent RawState storage. Ignore it for now.
+	// Timeouts are a special property injected by Terraform. When the outputs do not carry
+	// timeouts, [RawStateComputeDelta] strips this delta, so its contents do not matter. When they
+	// do, the raw state retains the full Terraform timeouts value, which includes schema-defined
+	// timeouts that were never configured and appear as null (e.g. read); such keys are absent from
+	// the Pulumi value and must be encoded so that Recover re-materializes them.
 	if len(path) == 1 {
 		if step, ok := path[0].(walk.GetAttrStep); ok {
 			if step.Name == "timeouts" {
-				return RawStateDelta{Obj: &objDelta{PropertyDeltas: map[resource.PropertyKey]RawStateDelta{}}}, nil
+				return ih.timeoutsDeltaAt(path, pv, v), nil
 			}
 		}
 	}
@@ -876,6 +879,53 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	default:
 		return RawStateDelta{}, fmt.Errorf("no efficient delta for type %s", v.Type().GoString())
 	}
+}
+
+// Computes the delta for the timeouts property. Mirrors the generic object handling in
+// [computeDeltaAt] but uses default property naming for the timeouts sub-keys, since they are not
+// routed through the resource schema's name-mapping context here (timeouts may be schema-defined,
+// e.g. via terraform-plugin-framework-timeouts in the Plugin Framework path). Keys present in the
+// Terraform value but missing from the Pulumi value (typically schema-defined timeouts left
+// unconfigured, which Terraform stores as null) are encoded as replace deltas so that Recover
+// reproduces them.
+func (ih *rawStateDeltaHelper) timeoutsDeltaAt(
+	path walk.SchemaPath,
+	pv resource.PropertyValue,
+	v valueshim.Value,
+) RawStateDelta {
+	oDelta := objDelta{PropertyDeltas: map[resource.PropertyKey]RawStateDelta{}}
+	if v.IsNull() || (!v.Type().IsObjectType() && !v.Type().IsMapType()) {
+		return RawStateDelta{Obj: &oDelta}
+	}
+	if !pv.IsObject() {
+		return ih.replaceDeltaAt(path, pv, v, errors.New("expected an Object PropertyValue for timeouts"))
+	}
+
+	pvElements := pv.ObjectValue()
+	elements := v.AsValueMap()
+
+	for k, ev := range elements {
+		key := resource.PropertyKey(k)
+		var d RawStateDelta
+		if subPV, ok := pvElements[key]; ok {
+			d = ih.deltaAt(path.GetAttr(k), subPV, ev)
+		} else {
+			d = ih.replaceDeltaAt(path.GetAttr(k), resource.NewNullProperty(), ev,
+				fmt.Errorf("No PropertyValue at timeouts key %q", k))
+		}
+		oDelta.set(k, key, d)
+	}
+
+	for k := range pvElements {
+		if reservedkeys.IsBridgeReservedKey(string(k)) {
+			continue
+		}
+		if _, ok := elements[string(k)]; !ok {
+			oDelta.ignore(k)
+		}
+	}
+
+	return RawStateDelta{Obj: &oDelta}
 }
 
 func newRawStateFromValue(schemaType valueshim.Type, v valueshim.Value) rawstate.RawState {
