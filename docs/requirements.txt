@@ -5,7 +5,7 @@ Babel==2.15.0
 beautifulsoup4==4.12.3
 certifi==2024.7.4
 charset-normalizer==3.3.2
-click==8.1.7
+click==8.3.3
 colorama==0.4.6
 commonmark==0.9.1
 docutils==0.20.1
