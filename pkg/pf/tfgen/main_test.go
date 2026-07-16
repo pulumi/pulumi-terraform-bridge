@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -31,27 +32,53 @@ import (
 )
 
 // These tests exercise Main and MainWithMuxer end to end, including the
-// os.Exit(-1) path, by re-executing the current test binary as a subprocess.
-// The subprocess overrides os.Args itself before invoking Main/MainWithMuxer,
-// so there is no interference from `go test` flags.
+// os.Exit(-1) path, by re-executing the current test binary as a subprocess
+// that runs TestTFGenMainHelperProcess. The scenario (which entrypoint to
+// call, what version to pass, and any extra environment such as
+// COVERAGE_OUTPUT_DIR) is selected entirely through environment variables set
+// by the parent, so there is only one child-mode branch for the whole file
+// instead of one per scenario.
+//
+// Each subprocess is bounded by tfgenSubprocessTimeout: if a regression makes
+// Main/MainWithMuxer block (e.g. validation stops happening before generation
+// and something downstream hangs), the test fails fast with a clear timeout
+// message instead of blocking until the repository's overall test timeout.
+const (
+	tfgenHelperEntrypointEnvVar = "PFTFGEN_MAIN_TEST_ENTRYPOINT" // "main" or "muxer"
+	tfgenHelperVersionEnvVar    = "PFTFGEN_MAIN_TEST_VERSION"
+	tfgenHelperOutDirEnvVar     = "PFTFGEN_MAIN_TEST_OUTDIR"
+	tfgenSubprocessTimeout      = 30 * time.Second
+)
 
-const helperEnvVar = "PFTFGEN_MAIN_TEST_HELPER"
+// TestTFGenMainHelperProcess is not a real test on its own; it is invoked as a
+// subprocess by TestTFGenMainAndMainWithMuxerVersionValidation below, with
+// tfgenHelperEntrypointEnvVar set to select which entrypoint to call. Running
+// it directly (e.g. via `go test -run`) without that variable set is a no-op.
+// It intentionally does not call t.Parallel(): it is only ever run in
+// isolation by runTFGenHelperProcess via -test.run, never alongside sibling
+// tests in the same process.
+func TestTFGenMainHelperProcess(t *testing.T) { //nolint:paralleltest
+	entrypoint := os.Getenv(tfgenHelperEntrypointEnvVar)
+	if entrypoint == "" {
+		t.Skip("only runs as a subprocess helper selected by " + tfgenHelperEntrypointEnvVar)
+	}
 
-func runMainHelperSubprocess(t *testing.T, testName string, env ...string) (stdout, stderr string, exitErr error) {
-	t.Helper()
+	os.Args = []string{
+		"pulumi-tfgen-test", "schema",
+		"--out", os.Getenv(tfgenHelperOutDirEnvVar),
+		"--skip-docs",
+		"--skip-examples",
+	}
+	version := os.Getenv(tfgenHelperVersionEnvVar)
 
-	// The test binary itself is re-executed with a test-selector flag; testName is
-	// always a hardcoded literal from a call site in this file, not external input.
-	cmd := exec.Command(os.Args[0], "-test.run=^"+testName+"$", "-test.v=false") //nolint:gosec
-	cmd.Env = append(os.Environ(), env...)
-	cmd.Env = append(cmd.Env, helperEnvVar+"=1")
-
-	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
-
-	exitErr = cmd.Run()
-	return outBuf.String(), errBuf.String(), exitErr
+	switch entrypoint {
+	case "main":
+		Main("testprovider", pfProviderInfo(version))
+	case "muxer":
+		MainWithMuxer("testprovider", muxedProviderInfo(version))
+	default:
+		t.Fatalf("unknown %s: %q", tfgenHelperEntrypointEnvVar, entrypoint)
+	}
 }
 
 func minimalPFResourceProvider() *schemaTestProvider {
@@ -66,193 +93,170 @@ func minimalPFResourceProvider() *schemaTestProvider {
 	}
 }
 
-func TestMainRejectsEmptyVersion(t *testing.T) {
-	t.Parallel()
-
-	if os.Getenv(helperEnvVar) == "1" {
-		os.Args = []string{"pulumi-tfgen-test", "schema"}
-		Main("testprovider", tfbridge.ProviderInfo{
-			Name:         "testprovider",
-			P:            pftfbridge.ShimProvider(minimalPFResourceProvider()),
-			Version:      "",
-			MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
-		})
-		return
+// pfProviderInfo builds a PF-only ProviderInfo with the given version. It is
+// valid enough to complete generation when the version is valid, and lets the
+// reject-version tests exercise Main all the way from a realistic call site.
+func pfProviderInfo(version string) tfbridge.ProviderInfo {
+	return tfbridge.ProviderInfo{
+		Name:         "testprovider",
+		P:            pftfbridge.ShimProvider(minimalPFResourceProvider()),
+		Version:      version,
+		MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"test_thing": {Tok: "testprovider:index:Thing"},
+		},
 	}
-
-	_, stderr, err := runMainHelperSubprocess(t, "TestMainRejectsEmptyVersion")
-	require.Error(t, err, "Main should exit with a non-zero status for an empty version")
-	require.Contains(t, stderr,
-		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
 }
 
-func TestMainRejectsInvalidVersion(t *testing.T) {
-	t.Parallel()
-
-	if os.Getenv(helperEnvVar) == "1" {
-		os.Args = []string{"pulumi-tfgen-test", "schema"}
-		Main("testprovider", tfbridge.ProviderInfo{
-			Name:         "testprovider",
-			P:            pftfbridge.ShimProvider(minimalPFResourceProvider()),
-			Version:      "not-a-version",
-			MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
-		})
-		return
+// muxedProviderInfo builds a muxed (SDKv2 + PF) ProviderInfo with the given
+// version, valid enough to complete generation when the version is valid.
+func muxedProviderInfo(version string) tfbridge.ProviderInfo {
+	ctx := context.Background()
+	sdkProvider := &sdkschema.Provider{
+		Schema:       map[string]*sdkschema.Schema{},
+		ResourcesMap: map[string]*sdkschema.Resource{},
 	}
-
-	_, stderr, err := runMainHelperSubprocess(t, "TestMainRejectsInvalidVersion")
-	require.Error(t, err, "Main should exit with a non-zero status for an invalid version")
-	require.Contains(t, stderr,
-		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
-	require.Contains(t, stderr, "not-a-version")
+	return tfbridge.ProviderInfo{
+		Name:         "testprovider",
+		P:            pftfbridge.MuxShimWithPF(ctx, sdkv2shim.NewProvider(sdkProvider), minimalPFResourceProvider()),
+		Version:      version,
+		MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"test_thing": {Tok: "testprovider:index:Thing"},
+		},
+	}
 }
 
-func TestMainAcceptsValidVersion(t *testing.T) {
+// tfgenScenario is one row of the table driving TestTFGenMainAndMainWithMuxerVersionValidation.
+type tfgenScenario struct {
+	name       string
+	entrypoint string // "main" or "muxer"
+	version    string
+	// extraEnv, if set, is called once per test run to compute additional
+	// subprocess environment variables (e.g. a fresh COVERAGE_OUTPUT_DIR).
+	extraEnv func(t *testing.T) []string
+
+	wantErr        bool
+	stderrContains []string
+}
+
+func TestTFGenMainAndMainWithMuxerVersionValidation(t *testing.T) {
 	t.Parallel()
 
-	if os.Getenv(helperEnvVar) == "1" {
-		outDir, err := os.MkdirTemp("", "pftfgen-main-test")
-		if err != nil {
-			panic(err)
-		}
-		defer os.RemoveAll(outDir)
+	const versionErrMsg = "ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible"
 
-		os.Args = []string{
-			"pulumi-tfgen-test", "schema",
-			"--out", outDir,
-			"--skip-docs",
-			"--skip-examples",
-		}
-		Main("testprovider", tfbridge.ProviderInfo{
-			Name:         "testprovider",
-			P:            pftfbridge.ShimProvider(minimalPFResourceProvider()),
-			Version:      "1.2.3",
-			MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_thing": {Tok: "testprovider:index:Thing"},
+	scenarios := []tfgenScenario{
+		{
+			name:           "Main rejects an empty version",
+			entrypoint:     "main",
+			version:        "",
+			wantErr:        true,
+			stderrContains: []string{versionErrMsg},
+		},
+		{
+			name:           "Main rejects an invalid version",
+			entrypoint:     "main",
+			version:        "not-a-version",
+			wantErr:        true,
+			stderrContains: []string{versionErrMsg, "not-a-version"},
+		},
+		{
+			name:       "Main accepts a valid version",
+			entrypoint: "main",
+			version:    "1.2.3",
+			wantErr:    false,
+		},
+		{
+			// Regression test: placing the version check inside the
+			// MainWithCustomGenerate callback let the error be swallowed when
+			// COVERAGE_OUTPUT_DIR is set, because MainWithCustomGenerate
+			// overwrites the callback's error with the coverage export
+			// result. The validation must run before MainWithCustomGenerate
+			// so it fails fast regardless of coverage tracking.
+			name:           "Main rejects an invalid version even with coverage tracking enabled",
+			entrypoint:     "main",
+			version:        "not-a-version",
+			wantErr:        true,
+			stderrContains: []string{versionErrMsg},
+			extraEnv: func(t *testing.T) []string {
+				return []string{"COVERAGE_OUTPUT_DIR=" + t.TempDir()}
 			},
-		})
-		return
+		},
+		{
+			name:           "MainWithMuxer rejects an empty version",
+			entrypoint:     "muxer",
+			version:        "",
+			wantErr:        true,
+			stderrContains: []string{versionErrMsg},
+		},
+		{
+			name:           "MainWithMuxer rejects an invalid version",
+			entrypoint:     "muxer",
+			version:        "not-a-version",
+			wantErr:        true,
+			stderrContains: []string{versionErrMsg, "not-a-version"},
+		},
+		{
+			name:       "MainWithMuxer accepts a valid version",
+			entrypoint: "muxer",
+			version:    "1.2.3",
+			wantErr:    false,
+		},
 	}
 
-	stdout, stderr, err := runMainHelperSubprocess(t, "TestMainAcceptsValidVersion")
-	require.NoError(t, err, "Main should succeed for a valid version: stdout=%s stderr=%s", stdout, stderr)
-	require.NotContains(t, stderr, "ProviderInfo.Version is required")
+	for _, tc := range scenarios {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			env := []string{
+				tfgenHelperEntrypointEnvVar + "=" + tc.entrypoint,
+				tfgenHelperVersionEnvVar + "=" + tc.version,
+				tfgenHelperOutDirEnvVar + "=" + t.TempDir(),
+			}
+			if tc.extraEnv != nil {
+				env = append(env, tc.extraEnv(t)...)
+			}
+
+			stdout, stderr, err := runTFGenHelperProcess(t, env...)
+
+			if tc.wantErr {
+				require.Error(t, err, "expected a non-zero exit status: stdout=%s stderr=%s", stdout, stderr)
+			} else {
+				require.NoError(t, err, "expected success: stdout=%s stderr=%s", stdout, stderr)
+			}
+			for _, want := range tc.stderrContains {
+				require.Contains(t, stderr, want)
+			}
+		})
+	}
 }
 
-func TestMainWithMuxerRejectsEmptyVersion(t *testing.T) {
-	t.Parallel()
+// runTFGenHelperProcess re-executes the current test binary, running only
+// TestTFGenMainHelperProcess, with env applied on top of the current
+// environment. The subprocess is bounded by tfgenSubprocessTimeout so a
+// hanging child (e.g. Main/MainWithMuxer unexpectedly blocking) fails fast
+// with a clear diagnostic instead of running until the suite-wide timeout.
+func runTFGenHelperProcess(t *testing.T, env ...string) (stdout, stderr string, exitErr error) {
+	t.Helper()
 
-	if os.Getenv(helperEnvVar) == "1" {
-		os.Args = []string{"pulumi-tfgen-test", "schema"}
-		ctx := context.Background()
-		sdkProvider := &sdkschema.Provider{
-			Schema:       map[string]*sdkschema.Schema{},
-			ResourcesMap: map[string]*sdkschema.Resource{},
-		}
-		MainWithMuxer("testprovider", tfbridge.ProviderInfo{
-			Name:         "testprovider",
-			P:            pftfbridge.MuxShimWithPF(ctx, sdkv2shim.NewProvider(sdkProvider), minimalPFResourceProvider()),
-			Version:      "",
-			MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
-		})
-		return
+	ctx, cancel := context.WithTimeout(context.Background(), tfgenSubprocessTimeout)
+	defer cancel()
+
+	// The test binary itself is re-executed selecting TestTFGenMainHelperProcess;
+	// scenario selection happens entirely through the fixed env vars set by the
+	// caller above, not through any externally-influenced argument.
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestTFGenMainHelperProcess$", "-test.v=false") //nolint:gosec
+	cmd.Env = append(os.Environ(), env...)
+
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	exitErr = cmd.Run()
+	if ctx.Err() != nil {
+		t.Fatalf("subprocess timed out after %s (stdout=%s stderr=%s): %v",
+			tfgenSubprocessTimeout, outBuf.String(), errBuf.String(), ctx.Err())
 	}
-
-	_, stderr, err := runMainHelperSubprocess(t, "TestMainWithMuxerRejectsEmptyVersion")
-	require.Error(t, err, "MainWithMuxer should exit with a non-zero status for an empty version")
-	require.Contains(t, stderr,
-		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
-}
-
-func TestMainWithMuxerRejectsInvalidVersion(t *testing.T) {
-	t.Parallel()
-
-	if os.Getenv(helperEnvVar) == "1" {
-		os.Args = []string{"pulumi-tfgen-test", "schema"}
-		ctx := context.Background()
-		sdkProvider := &sdkschema.Provider{
-			Schema:       map[string]*sdkschema.Schema{},
-			ResourcesMap: map[string]*sdkschema.Resource{},
-		}
-		MainWithMuxer("testprovider", tfbridge.ProviderInfo{
-			Name:         "testprovider",
-			P:            pftfbridge.MuxShimWithPF(ctx, sdkv2shim.NewProvider(sdkProvider), minimalPFResourceProvider()),
-			Version:      "not-a-version",
-			MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
-		})
-		return
-	}
-
-	_, stderr, err := runMainHelperSubprocess(t, "TestMainWithMuxerRejectsInvalidVersion")
-	require.Error(t, err, "MainWithMuxer should exit with a non-zero status for an invalid version")
-	require.Contains(t, stderr,
-		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
-	require.Contains(t, stderr, "not-a-version")
-}
-
-func TestMainWithMuxerAcceptsValidVersion(t *testing.T) {
-	t.Parallel()
-
-	if os.Getenv(helperEnvVar) == "1" {
-		outDir, err := os.MkdirTemp("", "pftfgen-muxer-main-test")
-		if err != nil {
-			panic(err)
-		}
-		defer os.RemoveAll(outDir)
-
-		os.Args = []string{
-			"pulumi-tfgen-test", "schema",
-			"--out", outDir,
-			"--skip-docs",
-			"--skip-examples",
-		}
-		ctx := context.Background()
-		sdkProvider := &sdkschema.Provider{
-			Schema:       map[string]*sdkschema.Schema{},
-			ResourcesMap: map[string]*sdkschema.Resource{},
-		}
-		MainWithMuxer("testprovider", tfbridge.ProviderInfo{
-			Name:         "testprovider",
-			P:            pftfbridge.MuxShimWithPF(ctx, sdkv2shim.NewProvider(sdkProvider), minimalPFResourceProvider()),
-			Version:      "1.2.3",
-			MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_thing": {Tok: "testprovider:index:Thing"},
-			},
-		})
-		return
-	}
-
-	stdout, stderr, err := runMainHelperSubprocess(t, "TestMainWithMuxerAcceptsValidVersion")
-	require.NoError(t, err, "MainWithMuxer should succeed for a valid version: stdout=%s stderr=%s", stdout, stderr)
-	require.NotContains(t, stderr, "ProviderInfo.Version is required")
-}
-
-// TestMainRejectsInvalidVersionWithCoverageTracking guards against a regression
-// where placing the version check inside the MainWithCustomGenerate callback
-// caused the error to be swallowed when COVERAGE_OUTPUT_DIR is set (the coverage
-// export result overwrites the callback's error). The validation must run before
-// MainWithCustomGenerate so it fails fast regardless of coverage tracking.
-func TestMainRejectsInvalidVersionWithCoverageTracking(t *testing.T) {
-	t.Parallel()
-
-	if os.Getenv(helperEnvVar) == "1" {
-		os.Args = []string{"pulumi-tfgen-test", "schema"}
-		Main("testprovider", tfbridge.ProviderInfo{
-			Name:         "testprovider",
-			P:            pftfbridge.ShimProvider(minimalPFResourceProvider()),
-			Version:      "not-a-version",
-			MetadataInfo: tfbridge.NewProviderMetadata([]byte("{}")),
-		})
-		return
-	}
-
-	covDir := t.TempDir()
-	_, stderr, err := runMainHelperSubprocess(t,
-		"TestMainRejectsInvalidVersionWithCoverageTracking", "COVERAGE_OUTPUT_DIR="+covDir)
-	require.Error(t, err,
-		"Main should exit non-zero for an invalid version even when coverage tracking is enabled")
-	require.Contains(t, stderr,
-		"ProviderInfo.Version is required for Plugin Framework providers and must be semver-compatible")
+	return outBuf.String(), errBuf.String(), exitErr
 }
