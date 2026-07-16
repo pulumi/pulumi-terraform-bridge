@@ -26,7 +26,7 @@
   {
     "name": "github.com/hashicorp/terraform-plugin-mux/tf5to6server.v5tov6Server.ConfigureProvider",
     "call": "/home/runner/go/pkg/mod/github.com/hashicorp/terraform-plugin-mux@v0.16.0/tf5to6server/tf5to6server.go:60",
-    "request": "terraform_version:\"pulumi-terraform-bridge\" config:{msgpack:\"\\x86\\xa6app_id\\xa6pulumi\\xa8endpoint\\xd9(https://phpipam.space.voided.network/api\\xa8insecure\\xc0\\xb2nest_custom_fields\\xc0\\xa8password\\xbeRrS94KVOZHbQnHEOhl0joqEM8MumxN\\xa8username\\xa6pulumi\"}",
+    "request": "terraform_version:\"1.0.0+pulumi-terraform-bridge\" config:{msgpack:\"\\x86\\xa6app_id\\xa6pulumi\\xa8endpoint\\xd9(https://phpipam.space.voided.network/api\\xa8insecure\\xc0\\xb2nest_custom_fields\\xc0\\xa8password\\xbeRrS94KVOZHbQnHEOhl0joqEM8MumxN\\xa8username\\xa6pulumi\"}",
     "response": "{}"
   },
   {
