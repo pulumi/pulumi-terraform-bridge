@@ -13,6 +13,7 @@
 /docs/guides/muxwith
 /docs/guides/new-provider
 /docs/guides/overlays
+/docs/guides/package-api-design
 /docs/guides/resource-ids
 /docs/guides/sets
 /docs/guides/testing
