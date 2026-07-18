@@ -1105,10 +1105,6 @@
             "outputs": {
                 "description": "A collection of values returned by Echo.\n",
                 "properties": {
-                    "id": {
-                        "description": "The provider-assigned unique ID for this managed resource.",
-                        "type": "string"
-                    },
                     "input": {
                         "type": "string"
                     },
@@ -1123,8 +1119,7 @@
                 "required": [
                     "input",
                     "output",
-                    "sensitive",
-                    "id"
+                    "sensitive"
                 ],
                 "type": "object"
             }
@@ -1182,17 +1177,12 @@
             "outputs": {
                 "description": "A collection of values returned by SMAC.\n",
                 "properties": {
-                    "id": {
-                        "description": "The provider-assigned unique ID for this managed resource.",
-                        "type": "string"
-                    },
                     "skipMetadataApiCheck": {
                         "type": "string"
                     }
                 },
                 "required": [
-                    "skipMetadataApiCheck",
-                    "id"
+                    "skipMetadataApiCheck"
                 ],
                 "type": "object"
             }
@@ -1211,10 +1201,6 @@
             "outputs": {
                 "description": "A collection of values returned by TestDefaultInfoDataSource.\n",
                 "properties": {
-                    "id": {
-                        "description": "The provider-assigned unique ID for this managed resource.",
-                        "type": "string"
-                    },
                     "input": {
                         "default": "DEFAULT",
                         "type": "string"
@@ -1225,8 +1211,7 @@
                 },
                 "required": [
                     "input",
-                    "output",
-                    "id"
+                    "output"
                 ],
                 "type": "object"
             }

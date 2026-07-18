@@ -841,6 +841,52 @@ func TestGenerateSchemaFailsOnPFProviderSchemaImplementation(t *testing.T) {
 	require.ErrorContains(t, err, "missing the CustomType or ElementType field")
 }
 
+// Regression test: the SDKv1/v2 runtime backfills an implicit "id" for data sources, so
+// tfgen synthesizes an "id" output when the TF schema lacks one. The Plugin Framework
+// runtime never returns an undeclared "id", so PF data sources must not advertise it.
+func TestGenerateSchemaOmitsSyntheticIDForPFDataSource(t *testing.T) {
+	t.Parallel()
+
+	res, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name:             "testprovider",
+			UpstreamRepoPath: ".", // no invalid mappings warnings
+			P: pftfbridge.ShimProvider(&schemaTestProvider{
+				dataSources: map[string]dschema.Schema{
+					"lookup": {
+						Attributes: map[string]dschema.Attribute{
+							"value": dschema.StringAttribute{Computed: true},
+						},
+					},
+				},
+			}),
+			DataSources: map[string]*tfbridge.DataSourceInfo{
+				"test_lookup": {
+					Tok:  "testprovider:index:getLookup",
+					Docs: &tfbridge.DocInfo{Markdown: []byte{' '}},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	var schema puschema.PackageSpec
+	require.NoError(t, json.Unmarshal(res.ProviderMetadata.PackageSchema, &schema))
+
+	fn, ok := schema.Functions["testprovider:index:getLookup"]
+	require.True(t, ok)
+	require.NotNil(t, fn.ReturnType)
+	require.NotNil(t, fn.ReturnType.ObjectTypeSpec)
+	require.Equal(t, puschema.ObjectTypeSpec{
+		Type:        "object",
+		Description: "A collection of values returned by getLookup.\n",
+		Properties: map[string]puschema.PropertySpec{
+			"value": {TypeSpec: puschema.TypeSpec{Type: "string"}},
+		},
+		Required: []string{"value"},
+	}, *fn.ReturnType.ObjectTypeSpec)
+}
+
 func TestGenerateSchemaFailsOnPFDataSourceSchemaImplementation(t *testing.T) {
 	t.Parallel()
 

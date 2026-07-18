@@ -30,7 +30,10 @@ type schemaOnlyDataSource struct {
 	internalinter.Internal
 }
 
-var _ shim.Resource = (*schemaOnlyDataSource)(nil)
+var _ shim.ResourceWithoutImplicitID = (*schemaOnlyDataSource)(nil)
+
+// Plugin Framework data sources have no implicit "id" attribute.
+func (r *schemaOnlyDataSource) NoImplicitID() {}
 
 func (r *schemaOnlyDataSource) SchemaType() valueshim.Type {
 	protoSchema, err := r.tf.ResourceProtoSchema(context.Background())

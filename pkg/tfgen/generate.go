@@ -1802,8 +1802,10 @@ func (g *Generator) gatherDataSource(rawname string,
 	}
 
 	// If the data source's schema doesn't expose an id property, make one up since we'd like to expose it for data
-	// sources.
-	if id, has := ds.Schema().GetOk("id"); !has || id.Removed() != "" {
+	// sources. The SDKv1/v2 runtime backfills a value for it. Plugin Framework data sources have no implicit id, so
+	// synthesizing one there would advertise a property the provider can never return.
+	_, noImplicitID := ds.(shim.ResourceWithoutImplicitID)
+	if id, has := ds.Schema().GetOk("id"); !noImplicitID && (!has || id.Removed() != "") {
 		cust := map[string]*tfbridge.SchemaInfo{"id": {}}
 		rawdoc := "The provider-assigned unique ID for this managed resource."
 		idSchema := schema.SchemaMap(map[string]shim.Schema{

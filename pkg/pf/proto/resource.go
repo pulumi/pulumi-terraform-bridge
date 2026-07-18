@@ -25,7 +25,7 @@ import (
 
 var (
 	_ = shim.ResourceMap(resourceMap{})
-	_ = shim.Resource(resource{})
+	_ = shim.ResourceWithoutImplicitID(resource{})
 )
 
 type resourceMap map[string]*tfprotov6.Schema
@@ -70,6 +70,10 @@ type resource struct {
 func newResource(r *tfprotov6.Schema) *resource {
 	return &resource{r, internalinter.Internal{}}
 }
+
+// The wire schema carries every attribute explicitly: SDKv2-based servers surface their
+// implicit "id" in it, and Plugin Framework servers have no implicit "id" at all.
+func (r resource) NoImplicitID() {}
 
 func (r resource) SchemaType() valueshim.Type {
 	ty := r.r.Block.ValueType()

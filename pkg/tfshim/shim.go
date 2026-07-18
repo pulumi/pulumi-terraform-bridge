@@ -269,6 +269,16 @@ type Resource interface {
 	internalinter.InternalInterface
 }
 
+// ResourceWithoutImplicitID marks a data source whose runtime never produces a value for
+// an undeclared "id" attribute. The SDKv1/v2 runtimes inject an implicit "id" into every
+// data source result; the Plugin Framework has no such concept. Schema generation
+// consults this interface to avoid advertising an "id" output that the provider can
+// never return.
+type ResourceWithoutImplicitID interface {
+	Resource
+	NoImplicitID()
+}
+
 type ResourceMap interface {
 	Len() int
 	Get(key string) Resource
