@@ -3839,10 +3839,6 @@
                     "code": {
                         "type": "string"
                     },
-                    "id": {
-                        "type": "string",
-                        "description": "The provider-assigned unique ID for this managed resource."
-                    },
                     "name": {
                         "type": "string"
                     },
@@ -3862,8 +3858,7 @@
                     "name",
                     "supportPlayerTranslation",
                     "supportTranscribing",
-                    "transcribingAccuracy",
-                    "id"
+                    "transcribingAccuracy"
                 ]
             }
         },
