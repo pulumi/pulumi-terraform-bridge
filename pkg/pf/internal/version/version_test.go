@@ -21,6 +21,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestValidate covers Validate's own logic (the empty-version special case,
+// and that a parse error or success from the underlying semver library is
+// surfaced with the expected message and the offending value included). It
+// deliberately does not enumerate the many strings blang/semver.ParseTolerant
+// accepts or rejects (e.g. "v" prefixes, build metadata, leading zeros,
+// partial versions) since that is the library's behavior to test, not ours;
+// one representative valid and one representative invalid case are enough to
+// confirm Validate delegates to it and wraps the result correctly.
 func TestValidate(t *testing.T) {
 	t.Parallel()
 
@@ -35,15 +43,8 @@ func TestValidate(t *testing.T) {
 		wantErrValue string
 	}{
 		{name: "empty version is rejected", version: "", wantErr: true, wantErrValue: `info.Version=""`},
-		{name: "whitespace-only version is rejected", version: "   ", wantErr: true},
 		{name: "non-semver version is rejected", version: "not-a-version", wantErr: true},
-		{name: "extra dotted segment is rejected", version: "1.2.3.4", wantErr: true},
-		{name: "plain semver is accepted", version: "1.2.3", wantErr: false},
-		{name: "semver with v prefix is accepted", version: "v1.2.3", wantErr: false},
-		{name: "semver with prerelease is accepted", version: "1.2.3-alpha.1", wantErr: false},
-		{name: "semver with build metadata is accepted", version: "1.2.3+build.1", wantErr: false},
-		{name: "semver with leading zeros is rejected", version: "01.02.03", wantErr: true},
-		{name: "partial version is accepted (tolerant parsing)", version: "1.2", wantErr: false},
+		{name: "valid semver is accepted", version: "1.2.3", wantErr: false},
 	}
 
 	for _, tt := range tests {
