@@ -196,6 +196,16 @@ func (d *TFDriver) GetOutput(t pulcheck.T, outputName string) string {
 	return res
 }
 
+// GetOutputJSON returns the value of the named output, decoded from
+// `terraform output -json`, preserving the value's structure and types.
+func (d *TFDriver) GetOutputJSON(t pulcheck.T, outputName string) any {
+	resB, err := d.execTf(t, "output", "-json", outputName)
+	require.NoError(t, err)
+	var v any
+	require.NoError(t, json.Unmarshal(resB, &v))
+	return v
+}
+
 func (d *TFDriver) formatReattachEnvVar() string {
 	name := d.providerName
 	pluginReattachConfig := d.reattachConfig
