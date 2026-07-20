@@ -15,11 +15,13 @@
 package tfbridgetests
 
 import (
+	"context"
 	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/pulumi/providertest/replay"
@@ -27,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
@@ -215,6 +218,36 @@ func TestPFConfigure(t *testing.T) {
 			},
 		))
 	})
+}
+
+func TestConfigureSendsCompatibleTerraformVersion(t *testing.T) {
+	t.Parallel()
+
+	var terraformVersion string
+	testProvider := pb.NewProvider(pb.NewProviderArgs{
+		ConfigureFunc: func(
+			_ context.Context,
+			req provider.ConfigureRequest,
+			_ *provider.ConfigureResponse,
+		) {
+			terraformVersion = req.TerraformVersion
+		},
+	})
+	server, err := newProviderServer(t, testProvider.ToProviderInfo())
+	require.NoError(t, err)
+
+	replay.Replay(t, server, `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Configure",
+	  "request": {},
+	  "response": {
+	    "supportsPreview": true,
+	    "acceptResources": true,
+	    "supportsAutonamingConfiguration": true
+	  }
+	}`)
+
+	require.Equal(t, "1.0.0+pulumi-terraform-bridge", terraformVersion)
 }
 
 func TestConfigureNameOverrides(t *testing.T) {

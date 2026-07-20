@@ -20,7 +20,7 @@
   {
     "name": "github.com/hashicorp/terraform-plugin-mux/tf5to6server.v5tov6Server.ConfigureProvider",
     "call": "/Users/guin/go/pkg/mod/github.com/hashicorp/terraform-plugin-mux@v0.20.0/tf5to6server/tf5to6server.go:71",
-    "request": "terraform_version:\"pulumi-terraform-bridge\"  config:{msgpack:\"\\x80\"}  client_capabilities:{write_only_attributes_allowed:true}",
+    "request": "terraform_version:\"1.0.0+pulumi-terraform-bridge\"  config:{msgpack:\"\\x80\"}  client_capabilities:{write_only_attributes_allowed:true}",
     "response": "{}"
   },
   {
@@ -56,7 +56,7 @@
   {
     "name": "github.com/hashicorp/terraform-plugin-mux/tf5to6server.v5tov6Server.ConfigureProvider",
     "call": "/Users/guin/go/pkg/mod/github.com/hashicorp/terraform-plugin-mux@v0.20.0/tf5to6server/tf5to6server.go:71",
-    "request": "terraform_version:\"pulumi-terraform-bridge\"  config:{msgpack:\"\\x80\"}  client_capabilities:{write_only_attributes_allowed:true}",
+    "request": "terraform_version:\"1.0.0+pulumi-terraform-bridge\"  config:{msgpack:\"\\x80\"}  client_capabilities:{write_only_attributes_allowed:true}",
     "response": "{}"
   },
   {

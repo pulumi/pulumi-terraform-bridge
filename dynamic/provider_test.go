@@ -790,6 +790,9 @@ func TestSDKv1Provider(t *testing.T) {
 
 	server := parameterizedTestServer(t, sdkv1ProviderPath)
 
+	_, err := server.Configure(t.Context(), &pulumirpc.ConfigureRequest{})
+	require.NoError(t, err)
+
 	const typ = "sdkv1:index/res:Res"
 	urn := string(resource.NewURN(
 		"test", "test", "", typ, "res",

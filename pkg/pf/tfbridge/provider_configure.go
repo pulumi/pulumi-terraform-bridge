@@ -27,6 +27,14 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
+// terraformVersionToImpersonate is the stable Terraform-compatible version reported to providers.
+// TerraformVersion is intended for logging, analytics, and User-Agent purposes, but some providers
+// parse it as semantic versioning or use it for compatibility checks. Version 1.0.0 is a conservative
+// floor for the protocol versions the bridge uses, while the build metadata identifies the actual
+// caller without affecting version precedence. Keep this independent of Pulumi, bridge, and upstream
+// provider versions. Only increase the base version after auditing the associated Terraform behavior.
+const terraformVersionToImpersonate = "1.0.0+pulumi-terraform-bridge"
+
 // This function iterates over the diagnostics and replaces the names of tf config properties
 // with their corresponding Pulumi names.
 func replaceConfigInDiagnostics(
@@ -86,7 +94,7 @@ func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.Pro
 
 	req := &tfprotov6.ConfigureProviderRequest{
 		Config:           config,
-		TerraformVersion: "pulumi-terraform-bridge",
+		TerraformVersion: terraformVersionToImpersonate,
 	}
 
 	resp, err := p.tfServer.ConfigureProvider(ctx, req)
