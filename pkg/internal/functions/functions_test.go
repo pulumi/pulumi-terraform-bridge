@@ -180,6 +180,52 @@ func TestArgumentsSchemaRoundTrip(t *testing.T) {
 	assert.Equal(t, args, decoded)
 }
 
+// A variadic `dynamic` parameter collects arguments of differing types, so it
+// must be modeled as a dynamic attribute rather than a homogeneous list:
+// encoding heterogeneous arguments into a List panics on the mismatched element
+// types, whereas a dynamic attribute accepts the resulting Tuple.
+func TestArgumentsSchemaVariadicDynamic(t *testing.T) {
+	t.Parallel()
+
+	fn := shim.Function{
+		VariadicParameter: &shim.FunctionParameter{Name: "maps", Type: tftypes.DynamicPseudoType},
+		Return:            tftypes.DynamicPseudoType,
+	}
+	argNames := ArgumentNames(fn)
+	require.Equal(t, []string{"maps"}, argNames)
+
+	os, err := ArgumentsSchema(fn, argNames)
+	require.NoError(t, err)
+	assert.Equal(t, tftypes.DynamicPseudoType, os.Type.AttributeTypes["maps"],
+		"a dynamic variadic argument must be a dynamic attribute, not a list")
+
+	enc, err := convert.NewObjectEncoder(convert.ObjectSchema{
+		SchemaMap:   os.SchemaMap,
+		SchemaInfos: os.SchemaInfos,
+		Object:      &os.Type,
+	})
+	require.NoError(t, err)
+
+	// Two arguments of differing shapes, as in deepmerge's mergo(defaults, {}).
+	args := resource.PropertyMap{
+		"maps": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewObjectProperty(resource.PropertyMap{
+				"a":      resource.NewNumberProperty(1),
+				"nested": resource.NewObjectProperty(resource.PropertyMap{"x": resource.NewStringProperty("y")}),
+			}),
+			resource.NewObjectProperty(resource.PropertyMap{"b": resource.NewStringProperty("two")}),
+		}),
+	}
+
+	encoded, err := convert.EncodePropertyMap(enc, args)
+	require.NoError(t, err)
+
+	var attrs map[string]tftypes.Value
+	require.NoError(t, encoded.As(&attrs))
+	assert.True(t, attrs["maps"].Type().Is(tftypes.Tuple{}),
+		"heterogeneous variadic arguments must encode to a tuple, got %s", attrs["maps"].Type())
+}
+
 func TestResultSchema(t *testing.T) {
 	t.Parallel()
 

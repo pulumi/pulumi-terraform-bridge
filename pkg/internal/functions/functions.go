@@ -168,7 +168,15 @@ func ArgumentsSchema(fn shim.Function, argNames []string) (ObjectSchema, error) 
 		}
 	}
 	if v := fn.VariadicParameter; v != nil {
-		if err := add(argNames[len(fn.Parameters)], tftypes.List{ElementType: v.Type}); err != nil {
+		// A variadic `dynamic` parameter collects arguments of differing types,
+		// which a List — requiring one element type — cannot represent. Model it
+		// as a dynamic attribute so the encoder can emit a Tuple and the object
+		// accepts it; a concretely-typed variadic parameter stays a List.
+		argType := tftypes.Type(tftypes.List{ElementType: v.Type})
+		if v.Type.Is(tftypes.DynamicPseudoType) {
+			argType = tftypes.DynamicPseudoType
+		}
+		if err := add(argNames[len(fn.Parameters)], argType); err != nil {
 			return ObjectSchema{}, err
 		}
 	}
