@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
+	pfversion "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/version"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -40,7 +41,14 @@ import (
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 //
 // info.P must be constructed with ShimProvider or ShimProviderWithContext.
+//
+// prov.Version is required and must be semver-compatible; Main rejects an
+// empty or invalid version before serving the provider or handling --version.
 func Main(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta ProviderMetadata) {
+	if err := pfversion.Validate(prov.Version); err != nil {
+		cmdutil.ExitError(err.Error())
+	}
+
 	handleFlags(ctx, prov.Version,
 		func() (*tfbridge.MarshallableProviderInfo, error) {
 			pp, err := newProviderWithContext(ctx, prov, meta)
@@ -105,11 +113,19 @@ func handleFlags(
 
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.
 //
+// info.Version is required and must be semver-compatible; MainWithMuxer
+// rejects an empty or invalid version before serving the provider or handling
+// --version.
+//
 // This is an experimental API.
 func MainWithMuxer(ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte) {
 	if len(info.MuxWith) > 0 {
 		panic("mixin providers via tfbridge.ProviderInfo.MuxWith is currently not supported")
 	}
+	if err := pfversion.Validate(info.Version); err != nil {
+		cmdutil.ExitError(err.Error())
+	}
+
 	handleFlags(ctx, info.Version, func() (*tfbridge.MarshallableProviderInfo, error) {
 		info := info
 		return tfbridge.MarshalProviderInfo(&info), nil

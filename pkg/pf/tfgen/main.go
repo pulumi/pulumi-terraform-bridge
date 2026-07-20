@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/check"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
+	pfversion "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/version"
 	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -44,9 +45,23 @@ import (
 // info.P must be constructed with ShimProvider or ShimProviderWithContext so
 // the validation step can reach the original Framework provider.
 //
+// info.Version is required and must be semver-compatible; Main rejects an
+// empty or invalid version before generating any artifacts.
+//
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 func Main(provider string, info sdkBridge.ProviderInfo) {
 	version := info.Version
+
+	// Validate the version before invoking MainWithCustomGenerate so an empty or
+	// invalid version fails fast, before any generation is attempted. This must
+	// not run inside the gen callback: MainWithCustomGenerate discards the
+	// callback's error when COVERAGE_OUTPUT_DIR is set (it overwrites err with the
+	// coverage export result), which would let a bad version pass silently.
+	if err := pfversion.Validate(version); err != nil {
+		_, fmterr := fmt.Fprintln(os.Stderr, err.Error())
+		contract.IgnoreError(fmterr)
+		os.Exit(-1)
+	}
 
 	tfgen.MainWithCustomGenerate(provider, version, info, func(opts tfgen.GeneratorOptions) error {
 		if info.MetadataInfo == nil {
@@ -82,12 +97,26 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 // info.P must be constructed with a PF mux helper so the validation step can
 // reach the original Framework provider.
 //
+// info.Version is required and must be semver-compatible; MainWithMuxer
+// rejects an empty or invalid version before generating any artifacts.
+//
 // This is an experimental API.
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	if len(info.MuxWith) > 0 {
 		panic("mixin providers via tfbridge.ProviderInfo.MuxWith is currently not supported")
+	}
+
+	// Validate the version before invoking MainWithCustomGenerate so an empty or
+	// invalid version fails fast, before any generation is attempted. This must
+	// not run inside the gen callback: MainWithCustomGenerate discards the
+	// callback's error when COVERAGE_OUTPUT_DIR is set (it overwrites err with the
+	// coverage export result), which would let a bad version pass silently.
+	if err := pfversion.Validate(info.Version); err != nil {
+		_, fmterr := fmt.Fprintln(os.Stderr, err.Error())
+		contract.IgnoreError(fmterr)
+		os.Exit(-1)
 	}
 
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
