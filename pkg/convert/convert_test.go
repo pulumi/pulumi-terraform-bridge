@@ -25,6 +25,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 type convertTurnaroundTestCase struct {
@@ -424,4 +427,22 @@ func byType(typ tftypes.Type) (Encoder, Decoder, error) {
 
 		return nil, nil, fmt.Errorf("Yet to support type: %v", typ.String())
 	}
+}
+
+// A provider is free to answer with an unset DynamicValue, meaning Not Found.
+//
+// The provider should error, not panic.
+func TestDecodePropertyMapFromDynamicNilValue(t *testing.T) {
+	t.Parallel()
+
+	os := ObjectSchema{SchemaMap: schema.SchemaMap{
+		"x": (&schema.Schema{Type: shim.TypeString}).Shim(),
+	}}
+	dec, err := NewObjectDecoder(os)
+	require.NoError(t, err)
+
+	objectType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{"x": tftypes.String}}
+
+	_, err = DecodePropertyMapFromDynamic(t.Context(), dec, objectType, nil)
+	require.ErrorContains(t, err, "the provider returned no value where one was expected")
 }

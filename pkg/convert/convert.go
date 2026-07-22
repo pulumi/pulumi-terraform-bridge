@@ -164,6 +164,13 @@ func DecodePropertyMapFromDynamic(
 	objectType tftypes.Object,
 	dv *tfprotov6.DynamicValue,
 ) (resource.PropertyMap, error) {
+	// A response may leave its DynamicValue unset — a ReadDataSource that found
+	// nothing and returned neither state nor diagnostics is the common case.
+	// Unmarshal dereferences its receiver, so report the empty response rather
+	// than crashing on it.
+	if dv == nil {
+		return nil, fmt.Errorf("the provider returned no value where one was expected")
+	}
 	v, err := dv.Unmarshal(objectType)
 	if err != nil {
 		return nil, fmt.Errorf("DynamicValue.Unmarshal failed: %w", err)
