@@ -72,7 +72,7 @@ return await Deployment.RunAsync(() =>
         Lifetime = "300s",
     });
 
-    var impersonated = new Pulumi.Providers.Google("impersonated", new()
+    var impersonated = new Google.Provider("impersonated", new()
     {
         AccessToken = impersonatedAccountAccessToken.Apply(getAccountAccessTokenResult => getAccountAccessTokenResult.AccessToken),
     });
