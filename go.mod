@@ -47,7 +47,7 @@ require (
 	github.com/pulumi-labs/pulumi-hcl v0.3.1
 	github.com/pulumi/inflector v0.2.1
 	github.com/pulumi/providertest v0.7.0
-	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.107.4-0.20260720135410-6a2eb2585b50
+	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.107.4-0.20260722101159-b0b7958174fc
 	github.com/pulumi/pulumi-java v1.32.0
 	github.com/pulumi/pulumi-yaml v1.37.1-0.20260717123218-294c561f47f4
 	github.com/pulumi/terraform-diff-reader v0.0.2
