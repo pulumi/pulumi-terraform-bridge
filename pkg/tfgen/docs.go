@@ -29,7 +29,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -473,9 +472,11 @@ func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 		rawname:          rawname,
 
 		infoCtx: infoContext{
-			language: g.language,
-			pkg:      g.pkg,
-			info:     g.info,
+			language:     g.language,
+			pkg:          g.pkg,
+			info:         g.info,
+			currentToken: currentDocsToken(info),
+			currentKind:  kind,
 		},
 		editRules: g.editRules,
 	}
@@ -2387,6 +2388,8 @@ func cleanupDoc(
 	footerLinks map[string]string,
 ) (entityDocs, bool) {
 	newargs := make(map[docsPath]*argumentDocs, len(doc.Arguments))
+	inputPropertyRefs := docsPropertyRefNames(doc.Arguments)
+	outputPropertyRefs := docsAttributeRefNames(doc.Attributes)
 
 	for k, v := range doc.Arguments {
 		if k.nested() {
@@ -2394,7 +2397,7 @@ func cleanupDoc(
 		} else {
 			g.debug("Cleaning up text for argument [%v] in [%v]", k, name)
 		}
-		cleanedText := reformatText(infoCtx, v.description, footerLinks)
+		cleanedText := reformatText(infoCtx.withInputPropertyRefs(inputPropertyRefs), v.description, footerLinks)
 
 		newargs[k] = &argumentDocs{description: cleanedText}
 	}
@@ -2402,16 +2405,16 @@ func cleanupDoc(
 	newattrs := make(map[string]string, len(doc.Attributes))
 	for k, v := range doc.Attributes {
 		g.debug("Cleaning up text for attribute [%v] in [%v]", k, name)
-		cleanedText := reformatText(infoCtx, v, footerLinks)
+		cleanedText := reformatText(infoCtx.withOutputPropertyRefs(outputPropertyRefs), v, footerLinks)
 		newattrs[k] = cleanedText
 	}
 
 	g.debug("Cleaning up description text for [%v]", name)
-	cleanupText := reformatText(infoCtx, doc.Description, footerLinks)
+	cleanupText := reformatText(infoCtx.withInputPropertyRefs(inputPropertyRefs), doc.Description, footerLinks)
 
 	importText := doc.Import
 	if importText != "" {
-		importText = reformatImportText(infoCtx, importText, footerLinks)
+		importText = reformatImportText(infoCtx.withInputPropertyRefs(inputPropertyRefs), importText, footerLinks)
 	}
 
 	return entityDocs{
@@ -2441,28 +2444,102 @@ var (
 var markdownPageReferenceLink = regexp.MustCompile(`\[[1-9]+\]: /docs/providers(?:/[a-z1-9_]+)+\.[a-z]+`)
 
 type infoContext struct {
-	language Language
-	pkg      tokens.Package
-	info     tfbridge.ProviderInfo
+	language        Language
+	pkg             tokens.Package
+	info            tfbridge.ProviderInfo
+	currentToken    string
+	currentKind     DocKind
+	propertyRefPath string
+	propertyRefs    map[string]struct{}
 }
 
-type spanValues struct {
-	node, dotnet, golang, python, yaml, java, hcl, defaultDisplay string
+func currentDocsToken(info tfbridge.ResourceOrDataSourceInfo) string {
+	if info == nil {
+		return ""
+	}
+	return info.GetTok().String()
 }
 
-func buildSpan(values spanValues) string {
-	//nolint:lll
-	spanFormat := `<span pulumi-lang-nodejs="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s" pulumi-lang-hcl="%s">%s</span>`
-	return fmt.Sprintf(
-		spanFormat,
-		values.node,
-		values.dotnet,
-		values.golang,
-		values.python,
-		values.yaml,
-		values.java,
-		values.hcl,
-		values.defaultDisplay)
+func (c infoContext) withPropertyRefPath(path string) infoContext {
+	c.propertyRefPath = path
+	return c
+}
+
+func docsPropertyRefNames(args map[docsPath]*argumentDocs) map[string]struct{} {
+	names := map[string]struct{}{}
+	for path := range args {
+		if path.nested() {
+			continue
+		}
+		names[propertyName(string(path), nil, nil)] = struct{}{}
+	}
+	return names
+}
+
+func docsAttributeRefNames(attrs map[string]string) map[string]struct{} {
+	names := map[string]struct{}{}
+	for name := range attrs {
+		names[propertyName(name, nil, nil)] = struct{}{}
+	}
+	return names
+}
+
+func (c infoContext) withInputPropertyRefs(propertyRefs map[string]struct{}) infoContext {
+	c.propertyRefs = propertyRefs
+	if c.currentToken == "" {
+		return c
+	}
+	switch c.currentKind {
+	case ResourceDocs:
+		return c.withPropertyRefPath("#/resources/" + c.currentToken + "/inputProperties")
+	case DataSourceDocs:
+		return c.withPropertyRefPath("#/functions/" + c.currentToken + "/inputs/properties")
+	default:
+		return c
+	}
+}
+
+func (c infoContext) withOutputPropertyRefs(propertyRefs map[string]struct{}) infoContext {
+	c.propertyRefs = propertyRefs
+	if c.currentToken == "" {
+		return c
+	}
+	switch c.currentKind {
+	case ResourceDocs:
+		return c.withPropertyRefPath("#/resources/" + c.currentToken + "/properties")
+	case DataSourceDocs:
+		return c.withPropertyRefPath("#/functions/" + c.currentToken + "/outputs/properties")
+	default:
+		return c
+	}
+}
+
+func schemaRef(path string) string {
+	return fmt.Sprintf("{{%% ref %s %%}}", path)
+}
+
+func wrapSchemaRef(open, path, close string) string {
+	ref := schemaRef(path)
+	if (open == "`" && close == "`") || (open == `"` && close == `"`) {
+		return ref
+	}
+	return open + ref + close
+}
+
+func resourceRefToken(pkg tokens.Package, provider, rawname string, info *tfbridge.ResourceInfo) string {
+	if info != nil && info.Tok != "" {
+		return info.Tok.String()
+	}
+	resname, mod := resourceName(provider, rawname, info, false)
+	return fmt.Sprintf("%s:%s:%s", pkg, mod, resname)
+}
+
+func functionRefToken(pkg tokens.Package, provider, rawname string, info *tfbridge.DataSourceInfo) string {
+	if info != nil && info.Tok != "" {
+		return info.Tok.String()
+	}
+	getname, mod := dataSourceName(provider, rawname, info)
+	return fmt.Sprintf("%s:%s:%s", pkg, mod, getname)
 }
 
 func (c infoContext) fixupPropertyReference(text string) string {
@@ -2489,73 +2566,46 @@ func (c infoContext) fixupPropertyReference(text string) string {
 
 		if resInfo, hasResourceInfo := c.info.Resources[name]; hasResourceInfo {
 			// This is a resource name
+			token := resourceRefToken(c.pkg, c.info.GetResourcePrefix(), name, resInfo)
+			if token != "" {
+				return wrapSchemaRef(open, "#/resources/"+token, close)
+			}
+
 			resname, mod := resourceName(c.info.GetResourcePrefix(), name, resInfo, false)
 			modname := formatModulePrefix(parentModuleName(mod))
 
-			// Use `ec2.Instance` format for Go and Python
-			goAndPyFormat := open + modname + resname.String() + close
 			// Use `aws.ec2.Instance` format for all other languages
-			allOtherLangs := open + c.pkg.String() + "." + modname + resname.String() + close
-
-			// We use the NodeJS default for registry docs.
-			if c.language == RegistryDocs {
-				return allOtherLangs
-			}
-			return buildSpan(spanValues{
-				node:           allOtherLangs,
-				dotnet:         allOtherLangs,
-				golang:         goAndPyFormat,
-				python:         goAndPyFormat,
-				yaml:           allOtherLangs,
-				java:           allOtherLangs,
-				hcl:            open + name + close,
-				defaultDisplay: allOtherLangs,
-			})
+			return open + c.pkg.String() + "." + modname + resname.String() + close
 		} else if dataInfo, hasDatasourceInfo := c.info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
+			token := functionRefToken(c.pkg, c.info.GetResourcePrefix(), name, dataInfo)
+			if token != "" {
+				return wrapSchemaRef(open, "#/functions/"+token, close)
+			}
+
 			getname, mod := dataSourceName(c.info.GetResourcePrefix(), name, dataInfo)
 			modname := formatModulePrefix(parentModuleName(mod))
 
-			goFormat := open + modname + getname.String() + close
-			pyFormat := open + python.PyName(modname+getname.String()) + close
 			// Use `aws.ec2.Instance` format
-			allOtherLangs := open + c.pkg.String() + "." + modname + getname.String() + close
-			if c.language == RegistryDocs {
-				return allOtherLangs
-			}
-			return buildSpan(spanValues{
-				node:           allOtherLangs,
-				dotnet:         allOtherLangs,
-				golang:         goFormat,
-				python:         pyFormat,
-				yaml:           allOtherLangs,
-				java:           allOtherLangs,
-				hcl:            open + "data." + name + close,
-				defaultDisplay: allOtherLangs,
-			})
+			return open + c.pkg.String() + "." + modname + getname.String() + close
 		}
 		// Else just treat as a property name
 		pname := propertyName(name, nil, nil)
 		camelCaseFormat := open + pname + close
 
-		// Capitalize dotnet properties
-		firstLetter := string(pname[0])
-		dotnetFormat := open + strings.ToUpper(firstLetter) + pname[1:] + close
-
-		if c.language == RegistryDocs {
-			return camelCaseFormat
+		if c.currentToken != "" && c.propertyRefPath != "" && c.isKnownPropertyRef(pname) {
+			return wrapSchemaRef(open, fmt.Sprintf("%s/%s", c.propertyRefPath, pname), close)
 		}
-		return buildSpan(spanValues{
-			node:           camelCaseFormat,
-			dotnet:         dotnetFormat,
-			golang:         camelCaseFormat,
-			python:         match,
-			yaml:           camelCaseFormat,
-			java:           camelCaseFormat,
-			hcl:            match,
-			defaultDisplay: camelCaseFormat,
-		})
+		return camelCaseFormat
 	})
+}
+
+func (c infoContext) isKnownPropertyRef(name string) bool {
+	if c.propertyRefs == nil {
+		return true
+	}
+	_, ok := c.propertyRefs[name]
+	return ok
 }
 
 // extractExamples attempts to separate the description proper from the "Example Usage" section of an entity's

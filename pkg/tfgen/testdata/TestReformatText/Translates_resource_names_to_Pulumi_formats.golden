@@ -1,1 +1,1 @@
-See<span pulumi-lang-nodejs=" google.container.NodePool " pulumi-lang-dotnet=" google.container.NodePool " pulumi-lang-go=" container.NodePool " pulumi-lang-python=" container.NodePool " pulumi-lang-yaml=" google.container.NodePool " pulumi-lang-java=" google.container.NodePool " pulumi-lang-hcl=" google_container_node_pool "> google.container.NodePool </span>for schema.
+See {{% ref #/resources/google:container/nodePool:NodePool %}} for schema.
