@@ -19,14 +19,16 @@ This document defines a **target architecture** and a **phased plan** to support
 | Phase | Capability | Primary outcome |
 |-------|------------|-----------------|
 | **0** | `PULUMI_TF_NETWORK_MIRROR_URL` | Unblock air-gapped installs via env (PR #3463) |
-| **1** | `--provider-mirror` + persist in parameterized `Value` | Durable per-package config; closes #3334 |
-| **2** | `TF_TOKEN_*` auth for mirror HTTP | Enterprise Artifactory / authenticated mirrors |
-| **3** | Hash verification; include/exclude routing | Closer to TF `provider_installation` semantics |
-| **4** | Optional later: `filesystem_mirror`, `.terraformrc` parsing | Only if demand justifies the surface |
+| **1** | `--provider-mirror` + persist in `Value` + D10 same-host skip | Durable per-package config; closes #3334 |
+| **2** | Auth: `TF_TOKEN_*` + optional Pulumi credentials store | Authenticated mirrors without secrets in yaml |
+| **3** | Host/pattern routing (TF `include`/`exclude` parity via Pulumi-native overrides) | Same outcomes as `.terraformrc` `provider_installation` |
+| **4** | Optional: `filesystem_mirror`, hash verify polish | Only if demand |
 
-**Recommended approach:** ship Phase 0, then Phase 1 as a follow-up PR. Phases 2–4 are documented targets, not blockers for the first durable close of #3334.
+**Config philosophy:** achieve **behavioral parity** with Terraform `provider_installation` / `network_mirror`, using **Pulumi-native** surfaces (env, package parameters, `~/.pulumi/credentials.json`). **Do not parse** `.terraformrc` / `.tofurc` (see §22).
 
-For a concrete catalog of scenarios that work vs fail (including Artifactory mirror + private packages on the same host), see **§8A**.
+**Recommended approach:** ship Phase 0, then Phase 1. Phases 2–3 deliver enterprise parity. Phase 4 uncommitted.
+
+For works/doesn't catalog see **§8A**. For Terraform → Pulumi mapping examples see **§22**.
 
 ---
 
@@ -116,10 +118,12 @@ These decisions were made during design review. They constrain implementation.
 | D4 | Routing | v1 applies the configured mirror to **all** remote provider downloads | Simplest correct air-gap behavior |
 | D5 | Flag shape | Single `--provider-mirror <URL>` (`string`) | Matches iwahbe’s example; multi-mirror later if needed |
 | D6 | Hash verification | Trust mirror for v1; verify later | Mirror is already a trusted distribution channel |
-| D7 | Config end-state | Flag + env are the permanent public API unless demand proves `.terraformrc` needed | Avoid large CLI-config parser surface |
+| D7 | Config end-state | Pulumi-native surfaces permanent; **no** `.terraformrc` parser | Match Pulumi plugin override style; avoid dual sources of truth |
 | D8 | Precedence | **flag > env > default registry** | Per-package intent wins over machine default |
 | D9 | Delivery | Phase 0 = current PR; Phase 1 = follow-up PR based on Phase 0 | Keep reviews focused; complementary features |
 | D10 | Same-host mirror vs private registry | If `provider.Hostname == mirrorURL.Host`, **silently skip mirror** and use registry discovery (direct) for that address | Avoids forcing private Artifactory packages through network-mirror paths; no warning spam |
+| D11 | TF parity approach | Support same *outcomes* as `provider_installation` via Pulumi env/params/credentials — not by reading TF CLI files | Users migrating from TF need equivalent power, not file reuse |
+| D12 | Routing shape (Phase 3) | **`PULUMI_TF_NETWORK_MIRROR_OVERRIDES` only** — keys are address patterns (host or `host/ns/*` / regex); value = mirror base. Match → mirror protocol + skip `.well-known`. No match → direct (unless catch-all URL / per-package flag). **No separate INCLUDE env.** | One map = TF include+direct exclude; avoids two competing knobs |
 
 ---
 
@@ -709,16 +713,18 @@ Mirror needs a password?
 
 **Goal:** Enterprise mirrors that return 401/403 without a bearer token work.
 
-**Proposed mechanism (aligned with D2):**
+**Mechanisms (D2 + §22.5):**
 
-1. When performing mirror HTTP requests, resolve credentials for the **mirror request host** using Terraform-compatible `TF_TOKEN_<host>` encoding.
-2. Attach `Authorization: Bearer <token>` when present.
-3. Optionally consult netrc as a secondary source (if low-cost and consistent with vendored HTTP helpers).
+1. **`TF_TOKEN_<host>`** (MUST) — Terraform-compatible env; CI-native.
+2. **Optional Pulumi credentials object** (SHOULD) — `terraformProviderCredentials` in `~/.pulumi/credentials.json` (requires `pulumi/pulumi` change). Precedence: env > credentials file.
+
+Attach `Authorization: Bearer <token>` on mirror **metadata** requests (index/version). Follow TF protocol notes for archive URLs (may be pre-signed; may not send token).
 
 **Non-goals for Phase 2:**
 
 - `--provider-mirror-token` flag (would leak into `Pulumi.yaml`)
 - Storing tokens in parameterized `Value`
+- Parsing `.terraformrc` `credentials` blocks (use Pulumi store instead)
 
 **Success criteria:**
 
@@ -730,14 +736,18 @@ Mirror needs a password?
 
 ---
 
-### Phase 3 — Hardening toward `provider_installation`
+### Phase 3 — TF `include`/`exclude` parity (Pulumi-native overrides)
 
-Two independent improvements:
+See **§22** for full Terraform examples (T1–T6) and mapping.
 
-1. **Hash verification:** when mirror `version.json` includes hashes, populate package authentication instead of `Authentication: nil`.
-2. **include/exclude routing:** see §12.
+**Goal:** same outcomes as `.terraformrc` `provider_installation` without reading that file.
 
-Either can ship without the other.
+1. **`PULUMI_TF_NETWORK_MIRROR_OVERRIDES`** (or final bikeshed name): map registry host (or `host/ns/*` pattern) → mirror base URL.
+2. On match: **network mirror protocol**, **skip `.well-known`**.
+3. On no match: direct registry disco (unless catch-all `PULUMI_TF_NETWORK_MIRROR_URL` / per-package flag).
+4. Optional: hash verification when mirror returns hashes.
+
+**Success criteria:** examples T2–T5 in §22 work end-to-end with tests.
 
 ---
 
@@ -873,46 +883,27 @@ provider_installation {
 
 Some orgs mirror only a subset of providers and still need direct registry access for others. Phase 1’s “all or nothing” mirror is insufficient for that.
 
-### 12.2 Proposed Pulumi shape (strawman)
+### 12.2 Proposed Pulumi shape (superseded by §22.4)
 
-Keep bridge-only flags, still opaque to the CLI:
+**Prefer Phase 3 `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` with pattern/regex keys** over a separate include env or only CLI include flags.
 
-```bash
-pulumi package add terraform-provider -- \
-  registry.terraform.io/hashicorp/random 3.6.0 \
-  --provider-mirror https://mirror.example/providers/ \
-  --provider-mirror-include 'registry.terraform.io/hashicorp/*'
-```
-
-Or exclude-from-mirror (fall back to direct):
+Per-package optional sugar (if needed later) can store a single `--provider-mirror` URL; selective routing belongs in the overrides map, not a second `INCLUDE` variable.
 
 ```bash
-  --provider-mirror https://mirror.example/providers/ \
-  --provider-mirror-exclude 'registry.opentofu.org/*'
+export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
+'registry.terraform.io/hashicorp/*=https://mirror.example.com/providers/'
 ```
 
-Persisted fields on `Value` (illustrative):
+### 12.3 Resolution algorithm
 
-```go
-Mirror        string
-MirrorInclude []string `json:"mirrorInclude,omitempty"`
-MirrorExclude []string `json:"mirrorExclude,omitempty"`
-```
-
-Matching should use provider source address patterns familiar to TF (`hostname/namespace/type` globs). Exact glob syntax should follow Terraform’s `include` / `exclude` semantics where practical.
-
-**Note:** Phase 1 **D10** already covers the common case where the private registry hostname equals the mirror URL host (silent direct). Phase 3 remains for splits across **different** hostnames (e.g. mirror at `terraform-mirror.corp.com`, private registry at `artifactory.corp.com`).
-
-### 12.3 Resolution algorithm (strawman)
+See §22.4. Strawman:
 
 ```text
-if no mirror URL → registry path
-else if address matches exclude → registry path
-else if include list non-empty and address does not match include → registry path
-else → mirror path
+if per-package mirror set (and not D10) → mirror
+else if address matches an OVERRIDES pattern → that mirror base
+else if catch-all PULUMI_TF_NETWORK_MIRROR_URL set (and not D10) → that mirror
+else → registry disco
 ```
-
-Env var remains a global default URL without include/exclude unless we later add companion env vars (not recommended; prefer parameters for selective routing).
 
 ### 12.4 Why defer
 
@@ -1069,6 +1060,9 @@ Suggested PR #3463 description note (when updating, if desired):
 8. Precedence: flag > env > registry.
 9. Phase 0 then Phase 1 as separate PRs.
 10. Same-host rule (D10): if provider hostname equals mirror URL host, silently use registry discovery instead of network mirror.
+11. Behavioral TF parity via Pulumi-native surfaces; do not parse `.terraformrc` (D11).
+12. Phase 3 routing via `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` only (pattern/regex keys); no separate INCLUDE env; mirrored hosts skip `.well-known` (D12).
+13. Auth: `TF_TOKEN_*` first; optional `credentials.json` terraform provider object (Phase 2+).
 
 ---
 
@@ -1077,5 +1071,359 @@ Suggested PR #3463 description note (when updating, if desired):
 - [ ] Design approved for Phase 0 merge criteria
 - [ ] Design approved to implement Phase 1 against this spec
 - [ ] Phase 2+ accepted as roadmap (not blocking Phase 1)
+- [ ] §22 TF-parity mapping (no `.terraformrc` reuse) accepted
 
-**Reviewers:** please comment on §4 decisions, §7 data model, and §12 future routing if those should change before Phase 1 starts.
+**Reviewers:** please comment on §4 decisions (esp. D10–D12), §7 data model, §8A examples, and §22 if those should change before Phase 1 starts.
+
+---
+
+## 22. Terraform feature parity without reusing `.terraformrc`
+
+### 22.1 Opinion: do **not** parse Terraform/OpenTofu CLI config files
+
+**Recommendation: agree with “don’t start by reading `.terraformrc` / `.tofurc`.”**
+
+Reasons:
+
+1. **Pulumi already solved a similar problem differently.** Plugin download routing uses `PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES` / `PULUMI_PLUGIN_HOST_OVERRIDES` (env), not a Terraform-style rc file.
+2. **Dual sources of truth are painful.** If both `.terraformrc` and Pulumi env/params apply, precedence bugs and “works in terraform / fails in pulumi” support load explode.
+3. **Dynamic providers already have a project-native config channel** (`packages.*.parameters` + embedded `Value`). That is the right place for *project* mirror intent.
+4. **Machine-wide defaults** fit env vars (and later credentials store), matching CI practice.
+
+We still want users to achieve the **same outcomes** as Terraform’s `provider_installation` block. We map those outcomes onto Pulumi-native knobs (§22.3–22.5).
+
+Parsing `.terraformrc` remains a possible Phase 4+ escape hatch if customers demand drop-in reuse — **not** the primary design.
+
+### 22.2 What Terraform actually supports (facts)
+
+| Concern | Terraform / OpenTofu |
+|---------|----------------------|
+| `network_mirror` URL, `include`, `exclude`, `direct`, `filesystem_mirror` | **CLI config file only** (`.terraformrc` / `.tofurc`) |
+| Env var for mirror URL | **None** |
+| Env related to config | `TF_CLI_CONFIG_FILE` → path to a `*.tfrc` **file** |
+| Auth for mirror/registry host | `TF_TOKEN_<host>` (env, wins) → `credentials` blocks in CLI config → `credentials_helper` |
+| When mirror is used | Skip origin registry discovery; use [network mirror protocol](https://developer.hashicorp.com/terraform/internals/provider-network-mirror-protocol) |
+
+Important: **host rewrite ≠ network mirror.**  
+`PULUMI_PLUGIN_HOST_OVERRIDES` rewrites `https://api.github.com/foo` → `https://proxy/.../foo` but keeps path semantics.  
+A Terraform **network mirror** does **not** pretend to be `registry.terraform.io`; it serves:
+
+```text
+{mirrorBase}/{originalHostname}/{namespace}/{type}/index.json
+```
+
+and **never** calls `{originalHostname}/.well-known/terraform.json`.
+
+So for TF providers, “override host and skip well-known” must mean: **select a mirror base for that registry hostname and speak the mirror protocol** — not a naive HTTP host rewrite of the registry API.
+
+### 22.3 Terraform examples we should support (behavioral parity)
+
+Below: canonical `.terraformrc` snippets → intended Pulumi-native equivalents.
+
+---
+
+#### Example T1 — Air-gap: everything from one mirror
+
+**Terraform:**
+
+```hcl
+provider_installation {
+  network_mirror {
+    url = "https://myartifactory.example.com/artifactory/api/terraform/providers/"
+  }
+}
+```
+
+(With no `direct` method, installation is mirror-only for matching providers.)
+
+**Pulumi (Phase 0/1):**
+
+```bash
+export PULUMI_TF_NETWORK_MIRROR_URL=https://myartifactory.example.com/artifactory/api/terraform/providers/
+# and/or per package:
+pulumi package add terraform-provider -- \
+  registry.terraform.io/hashicorp/random 3.6.0 \
+  --provider-mirror https://myartifactory.example.com/artifactory/api/terraform/providers/
+```
+
+**Behavior:** skip `.well-known`; mirror protocol; D10 still protects same-host private providers.
+
+---
+
+#### Example T2 — Mirror only the public Terraform registry; everything else direct
+
+**Terraform:**
+
+```hcl
+provider_installation {
+  network_mirror {
+    url     = "https://myartifactory.example.com/artifactory/api/terraform/providers/"
+    include = ["registry.terraform.io/*/*"]
+  }
+  direct {
+    exclude = ["registry.terraform.io/*/*"]
+  }
+}
+```
+
+**Pulumi (Phase 3 — host overrides, preferred):**
+
+```bash
+# Format sketch (final name TBD): originalRegistryHost=mirrorBaseURL
+export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
+registry.terraform.io=https://myartifactory.example.com/artifactory/api/terraform/providers/
+```
+
+Semantics:
+
+| Provider address | Action |
+|------------------|--------|
+| `registry.terraform.io/hashicorp/random` | Mirror protocol at override base; **no** `.well-known` on terraform.io |
+| `registry.opentofu.org/hashicorp/random` | **Direct** registry disco (not in map) |
+| `myartifactory.example.com/myorg/custom` | **Direct** (and D10 if someone also set a catch-all mirror) |
+
+This is the Pulumi analogue of `include` on `network_mirror` + `exclude` on `direct`.
+
+---
+
+#### Example T3 — Mirror both public registries; private host stays direct
+
+**Terraform:**
+
+```hcl
+provider_installation {
+  network_mirror {
+    url     = "https://myartifactory.example.com/artifactory/api/terraform/providers/"
+    include = [
+      "registry.terraform.io/*/*",
+      "registry.opentofu.org/*/*",
+    ]
+  }
+  direct {
+    exclude = [
+      "registry.terraform.io/*/*",
+      "registry.opentofu.org/*/*",
+    ]
+  }
+}
+```
+
+**Pulumi (Phase 3):**
+
+```bash
+export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
+registry.terraform.io=https://myartifactory.example.com/artifactory/api/terraform/providers/,\
+registry.opentofu.org=https://myartifactory.example.com/artifactory/api/terraform/providers/
+```
+
+One physical Artifactory mirror, two registry host prefixes in the path — same as TF.
+
+---
+
+#### Example T4 — Namespace allowlist (only HashiCorp from mirror)
+
+**Terraform:**
+
+```hcl
+provider_installation {
+  network_mirror {
+    url     = "https://mirror.example.com/providers/"
+    include = ["registry.terraform.io/hashicorp/*"]
+  }
+  direct {
+    exclude = ["registry.terraform.io/hashicorp/*"]
+  }
+}
+```
+
+**Pulumi (Phase 3) — pattern key in overrides alone (no separate INCLUDE var):**
+
+```bash
+export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
+'registry.terraform.io/hashicorp/*=https://mirror.example.com/providers/'
+```
+
+Or regex-style keys (same idea as `PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES`’s `regexp=URL`):
+
+```bash
+export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
+'^registry\.terraform\.io/hashicorp/=https://mirror.example.com/providers/'
+```
+
+| Address | Result |
+|---------|--------|
+| `registry.terraform.io/hashicorp/random` | Mirror |
+| `registry.terraform.io/alekc/kubectl` | Direct (no override match) |
+| `registry.opentofu.org/hashicorp/random` | Direct |
+
+**Do not introduce `PULUMI_TF_NETWORK_MIRROR_INCLUDE`.** The override key *is* the include rule; absence from the map is `direct`.
+
+---
+
+#### Example T5 — Multiple mirrors (different bases)
+
+**Terraform:**
+
+```hcl
+provider_installation {
+  network_mirror {
+    url     = "https://mirror-a.example.com/providers/"
+    include = ["registry.terraform.io/hashicorp/*"]
+  }
+  network_mirror {
+    url     = "https://mirror-b.example.com/providers/"
+    include = ["registry.terraform.io/alekc/*"]
+  }
+  direct {
+    exclude = [
+      "registry.terraform.io/hashicorp/*",
+      "registry.terraform.io/alekc/*",
+    ]
+  }
+}
+```
+
+**Pulumi (Phase 3):**
+
+```bash
+export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
+'registry.terraform.io/hashicorp/*=https://mirror-a.example.com/providers/',\
+'registry.terraform.io/alekc/*=https://mirror-b.example.com/providers/'
+```
+
+---
+
+#### Example T6 — Filesystem mirror (parity note)
+
+**Terraform:**
+
+```hcl
+provider_installation {
+  filesystem_mirror {
+    path    = "/usr/share/terraform/providers"
+    include = ["registry.terraform.io/*/*"]
+  }
+  direct {
+    exclude = ["registry.terraform.io/*/*"]
+  }
+}
+```
+
+**Pulumi:** Phase 4 / later (`filesystem_mirror`). Not required to close #3334. Document as known gap until then.
+
+---
+
+### 22.4 Proposed Pulumi routing model (Phase 3 detail)
+
+**Resolution order:**
+
+```text
+1. Per-package --provider-mirror (Args/Value)     → mirror that package (unless D10)
+2. First matching entry in PULUMI_TF_NETWORK_MIRROR_OVERRIDES
+      (pattern/regex key → mirror base)            → mirror protocol; skip .well-known
+3. PULUMI_TF_NETWORK_MIRROR_URL (catch-all)         → mirror protocol; skip .well-known; D10 applies
+4. Default                                         → registry disco (.well-known)
+```
+
+**Override entry shape** (single env, comma-separated pairs — align with plugin override style):
+
+```text
+pattern=https://mirror-base/path/,pattern2=https://other-mirror/
+```
+
+- **Key** = provider address pattern (exact host, TF-style `host/ns/*`, or regex). This *is* the include filter.
+- **Value** = network mirror base URL (trailing slash normalized).
+- **No match** = not mirrored by overrides (= Terraform `direct` for that address).
+
+**When a mirror base is selected:** `MirrorSource` paths `{base}/{hostname}/{namespace}/{type}/…`. **Never** call origin `.well-known`.
+
+**Why one overrides map (no INCLUDE companion):**
+
+| Approach | Verdict |
+|----------|---------|
+| `OVERRIDES` + separate `INCLUDE` | Confusing; two knobs for one decision |
+| Pattern/regex keys on `OVERRIDES` alone | **Chosen** — match ⇒ mirror, else direct |
+
+Multi-mirror (T5) = multiple pattern→base pairs in the same env.
+
+### 22.5 Auth: env tokens + Pulumi credentials file (idea)
+
+#### What we support first (Phase 2)
+
+1. **`TF_TOKEN_<host>`** — Terraform-compatible; best for CI; never in `Pulumi.yaml`.
+2. Precedence aligned with TF: env token wins when set.
+
+#### Idea — store TF provider tokens in Pulumi credentials (Phase 2+)
+
+Pulumi already keeps cloud login tokens in `~/.pulumi/credentials.json` (override via `PULUMI_CREDENTIALS_PATH`). Download auth for plugins uses env (`GITHUB_TOKEN`, …). For Terraform mirrors/registries we can add an **optional** first-class object so interactive users are not forced to export `TF_TOKEN_*` forever.
+
+**Strawman shape** (illustrative — exact schema needs a small pulumi/pulumi change):
+
+```json
+{
+  "accounts": { "...": "existing pulumi cloud accounts" },
+  "terraformProviderCredentials": {
+    "myartifactory.example.com": {
+      "token": "****"
+    },
+    "registry.terraform.io": {
+      "token": "****"
+    }
+  }
+}
+```
+
+**Lookup precedence (proposed):**
+
+```text
+TF_TOKEN_<host>  >  credentials.json terraformProviderCredentials[host]  >  (none)
+```
+
+**CLI UX (future, pulumi/pulumi):**
+
+```bash
+pulumi auth terraform-provider myartifactory.example.com
+# or
+pulumi config-set style helper that writes credentials.json only (not stack config)
+```
+
+**Non-goals:**
+
+- Do **not** put tokens in stack `Pulumi.<stack>.yaml` / `pulumi config --secret` for download auth (wrong lifetime; wrong sharing model).
+- Do **not** put tokens in package `parameters` / parameterized `Value`.
+
+**Where code lives:**
+
+| Piece | Repo |
+|-------|------|
+| Read `TF_TOKEN_*` + attach bearer on mirror/registry HTTP | `pulumi-terraform-bridge` |
+| Schema + read/write `terraformProviderCredentials` in credentials store | `pulumi/pulumi` (`sdk/go/common/workspace/creds.go`) |
+| Optional CLI to set them | `pulumi/pulumi` |
+
+This matches Pulumi’s “env for CI, credentials file for interactive login” pattern (`PULUMI_ACCESS_TOKEN` > `credentials.json`).
+
+### 22.6 Mapping summary table
+
+| TF capability | Pulumi surface | Phase |
+|---------------|----------------|-------|
+| Catch-all `network_mirror { url }` | `PULUMI_TF_NETWORK_MIRROR_URL` / `--provider-mirror` | 0 / 1 |
+| `include` host on mirror + `direct` exclude | `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` | 3 |
+| Namespace/`*` or regex patterns | Pattern/regex **keys** on `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` | 3 |
+| Multiple `network_mirror` blocks | Multiple override entries | 3 |
+| Separate `INCLUDE` env | **Not used** — redundant with override keys | — |
+| Skip `.well-known` when mirrored | Always when mirror base selected | 0+ |
+| Same-host private registry | D10 silent direct | 1 |
+| `TF_TOKEN_*` | Env | 2 |
+| `credentials "host"` in `.terraformrc` | `credentials.json` `terraformProviderCredentials` | 2+ |
+| `filesystem_mirror` | Later | 4 |
+| Read `.terraformrc` itself | **Out of primary scope** | maybe never |
+
+### 22.7 Open points for Phase 3 pattern syntax
+
+Env name locked: **`PULUMI_TF_NETWORK_MIRROR_OVERRIDES`**.
+
+Still to decide at implement time (not blockers for Phase 0/1):
+
+1. Key syntax: TF globs (`registry.terraform.io/hashicorp/*`) vs Go regex (`^registry\.terraform\.io/hashicorp/`) vs both.
+2. Match order when multiple keys hit (first-wins vs most-specific-wins).
+3. Whether per-package params need a way to embed the same override map (probably rare if env/CI covers machine policy).
