@@ -96,38 +96,37 @@ Would you rather a first-class package field (for example `providerMirror:`) ins
 
 ## 3. Routing and Terraform `include` / `exclude` parity
 
-Proposed overrides shape (one env). **Phase 1** ships exact-host keys, literal `*`, and `!pattern` deny. TF path globs (`host/ns/*`) are **Phase 4**.
+Proposed overrides shape (one env). **Phase 1** includes exact-host, `*`, TF path globs/shorthands, and `!pattern` deny:
 
 ```bash
-# Phase 1 — include host → mirror protocol, skip .well-known
+# include host
 registry.terraform.io=https://mirror.example/providers/
 
-# Phase 1 — deny host → direct (evaluated in code; Go RE2 has no negative lookahead)
+# TF glob
+registry.terraform.io/hashicorp/*=https://mirror.example/providers/
+
+# deny
 !myartifactory.example.com
 
-# Phase 1 — catch-all
+# catch-all
 *=https://mirror.example/providers/
-
-# Phase 4 — path glob include / deny
-# registry.terraform.io/hashicorp/*=https://mirror.example/providers/
-# !registry.terraform.io/evil/*
 ```
 
 No match → direct registry discovery.
 
 Patterns match the **regaddr-resolved** address `hostname/namespace/type` (so bare `hashicorp/random` is `registry.opentofu.org/hashicorp/random`).
 
-### Q7. Pattern syntax (Phase 4 richness)
+### Q7. Pattern syntax
 
-Phase 1 proposes exact-host + `*` + `!`. For **Phase 4**, prefer override keys as:
+Phase 1 proposes exact-host + `*` + TF globs/shorthands + `!`. Prefer:
 
 | Option | Description |
 |--------|-------------|
-| **A** | Terraform-style globs (`registry.terraform.io/hashicorp/*`), including TF shorthands (`hashicorp/*` → `registry.terraform.io/hashicorp/*`) |
-| **B** | RE2 regex only |
-| **C** | Both |
+| **A** | Terraform-style globs only (incl. shorthands like `hashicorp/*`) |
+| **B** | Also allow RE2 regex keys in Phase 1 |
+| **C** | Globs in Phase 1; RE2 only later if needed |
 
-**Our lean:** **A** or **C**, with TF glob shorthands if we claim glob parity.
+**Our lean:** **C** (or **A** if you want zero regex surface).
 
 ### Q8. Match order
 
@@ -142,13 +141,11 @@ When multiple positive patterns match, prefer:
 
 ### Q9. Deny syntax
 
-Is `!pattern` in the same overrides string acceptable for Terraform `exclude`-style behavior?
+Is `!pattern` in the same overrides string acceptable for Terraform `exclude`-style behavior (Phase 1)?
 
-We plan to ship `!` deny in **Phase 1** (exact-host / `*` forms). Path-glob denies wait for Phase 4 with globs.
+Alternatives considered: a second env var, or Perl-style negative lookahead (rejected — Go RE2 has no lookaround).
 
-Alternatives we considered: a second env var, or Perl-style negative lookahead in regex (rejected — Go RE2 does not support lookaround).
-
-**Our lean:** `!pattern` in the same env (Phase 1).
+**Our lean:** `!pattern` in the same env, Phase 1.
 
 ### Q10. Multi-method “newest version”
 
@@ -193,15 +190,15 @@ Do you prefer this explicit model, or do you want automatic same-host rescue (wa
 
 ### Q12. `TF_TOKEN_*`
 
-Should mirror/registry HTTP auth use Terraform-compatible `TF_TOKEN_<host>` environment variables?
+Should Phase 1 include Terraform-compatible `TF_TOKEN_<host>` for mirror HTTP auth?
 
-**Our lean:** yes (Phase 3).
+**Our lean:** yes — Artifactory-style mirrors usually need it; ship with the overrides feature.
 
 ### Q13. Pulumi credentials file
 
-Later, should we allow storing tokens in `~/.pulumi/credentials.json` under something like `terraformProviderCredentials` (precedence: env > file), similar to how `PULUMI_ACCESS_TOKEN` relates to stored cloud credentials?
+Later (Phase 3), should we allow storing tokens in `~/.pulumi/credentials.json` under something like `terraformProviderCredentials` (precedence: env > file)?
 
-**Our lean:** worth considering for interactive use; not required for the first auth milestone. Tokens must never live in `Pulumi.yaml` or stack config.
+**Our lean:** optional follow-up; not required for Phase 1. Tokens must never live in `Pulumi.yaml` or stack config.
 
 ### Q14. No token parameterization flag
 
@@ -215,16 +212,16 @@ Please confirm we should **not** support `--provider-mirror-token` (or similar) 
 
 ### Q15. Priority of deferred items
 
-Which of these should move earlier than we planned?
+Which of these should move earlier than Phase 3?
 
 | Item | Current plan |
 |------|----------------|
-| `filesystem_mirror` (local directory layout) | Later |
+| Pulumi `credentials.json` token store | Phase 3 |
+| Hash verification of mirror archives | Phase 3 |
+| Optional RE2 regex keys | Phase 3 |
+| `filesystem_mirror` | Phase 3+ |
 | Parsing `.terraformrc` / `.tofurc` | Out of primary scope |
 | OpenTofu `oci_mirror` | Out of scope unless demanded |
-| OpenTofu `download_retry_count` / `trust_all_hashes` | Out of scope |
-| Hash verification of mirror archives in v1 | Later (trust mirror initially) |
-| Implied Terraform plugin dirs (`~/.terraform.d/plugins`, etc.) | Out of scope |
 
 ### Q16. `dev_overrides`
 
@@ -240,16 +237,15 @@ Leave Terraform-style `dev_overrides` out for dynamic providers?
 
 Is this phasing acceptable?
 
-1. **Phase 1:** `MirrorSource` + `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` (exact-host / `*` / `!pattern` deny)
-2. **Phase 2:** `--provider-mirror` + persist in `Value` → address #3334
-3. **Phase 3:** Auth (`TF_TOKEN_*`, maybe credentials store)
-4. **Phase 4+:** TF path globs / optional RE2, hash verification, optional filesystem mirror
+1. **Phase 1 (one PR, multi-commit OK):** `MirrorSource` + `OVERRIDES` (exact-host / `*` / TF globs / `!`) + `TF_TOKEN_*`
+2. **Phase 2 (follow-up PR):** `--provider-mirror` + persist in `Value` → address #3334
+3. **Phase 3+:** credentials.json, hash verify, optional RE2 / filesystem
 
 ### Q18. Closing #3334
 
-Should #3334 be closed when durable `--provider-mirror` + Phase 1 overrides land, or only once Phase 4 globs land?
+Should #3334 be closed after Phase 2 (durable flag + Value), given Phase 1 already delivers env-based mirror+exclude+auth?
 
-**Our lean:** close (or largely close) after Phase 2; Phase 1 already covers env-based exclude via `!`; keep follow-ups for glob polish.
+**Our lean:** yes — close (or largely close) after Phase 2; keep Phase 3 items as follow-ups.
 
 ### Q19. “Behavioral parity” framing
 
@@ -278,10 +274,10 @@ For the first user-facing docs, is `dynamic/README.md` enough, or should pulumi.
 | Topic | Lean |
 |-------|------|
 | Surfaces | `OVERRIDES` + `--provider-mirror`; no `.terraformrc`; no single `MIRROR_URL` |
-| Phase 1 grammar | Exact-host, `*`, `!pattern` deny |
-| Durability | Mirror URL in parameterized `Value` (Phase 2) |
+| Phase 1 | MirrorSource + OVERRIDES (globs + `!`) + `TF_TOKEN_*` — one PR |
+| Phase 2 | `--provider-mirror` + `Value` — follow-up PR |
 | Routing | Match resolved `host/ns/type`; flag > overrides; no same-host auto-skip |
-| Auth | `TF_TOKEN_*` first; optional credentials.json later |
-| Later | TF path globs (Phase 4); filesystem mirror (Phase 5); no rc parse |
+| Auth | `TF_TOKEN_*` in Phase 1; credentials.json optional Phase 3 |
+| Later | Hash verify, RE2, filesystem; no rc parse |
 
 We're happy to revise the design from your answers before more implementation. Thank you!
