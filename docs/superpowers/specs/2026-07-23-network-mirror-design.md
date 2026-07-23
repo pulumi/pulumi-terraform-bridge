@@ -1531,4 +1531,57 @@ Still to decide at implement time:
 3. Match order for multiple positive hits: **first-wins** (document; put specific before `*`).
 4. Ship `!pattern` deny in Phase 0 (if cheap) vs Phase 3.
 5. Whether per-package params ever embed an overrides map (probably rare).
+6. TF glob shorthands: `hashicorp/*` ≡ `registry.terraform.io/hashicorp/*`, `*/*` ≡ `registry.terraform.io/*/*` — implement if we claim TF glob parity.
+
+### 22.8 Audit: Terraform `network_mirror` coverage
+
+Scope note: Terraform’s **`network_mirror` block** is only one method inside `provider_installation`. Real setups almost always combine it with **`direct`** (and sometimes `filesystem_mirror`). This audit separates those layers.
+
+#### A. Features of the `network_mirror` block itself
+
+| TF `network_mirror` capability | Covered by design? | How / gap |
+|--------------------------------|--------------------|-----------|
+| `url` (HTTPS mirror base, trailing slash) | **Yes** | Value of `pattern=url` or `--provider-mirror`; `NewMirrorSource` also allows `http` (tests / lax) — TF docs say `https` only |
+| Network mirror protocol (`{base}/{host}/{ns}/{type}/…`) | **Yes** | `MirrorSource` |
+| Skip origin `.well-known` when using mirror | **Yes** | Explicit in resolve path |
+| Serve providers for **any** registry hostname via path prefix | **Yes** | `provider.Hostname` in path |
+| `include` patterns on the mirror method | **Yes** | Positive `pattern=url` keys |
+| `exclude` patterns on the mirror method (exclude wins over include) | **Yes** | `!pattern` checked before positives (§22.4) |
+| Multiple `network_mirror` blocks (different URLs / includes) | **Yes** | Multiple `pattern=url` pairs |
+| Credentials for mirror hostname | **Yes (Phase 2)** | `TF_TOKEN_*` + optional credentials.json |
+| `download_retry_count` (OpenTofu) | **No** | Not planned; retryablehttp may retry already |
+| `trust_all_hashes` (OpenTofu lockfile behavior) | **No** | Pulumi has no TF lockfile; N/A / different trust model |
+| HTTPS-only enforcement | **Partial** | We allow http; can tighten later |
+
+#### B. `network_mirror` + `direct` pairing (what users actually configure)
+
+| TF outcome | Covered? | How |
+|------------|----------|-----|
+| Mirror some addresses, direct for the rest | **Yes** | No override match → direct |
+| Mirror public registries, direct for private registry host | **Yes** | Host-scoped overrides; **or** catch-all + **D10** |
+| `include` on mirror + matching `exclude` on `direct` | **Yes** | Absence from overrides = direct (no separate `direct` block needed) |
+| TF glob shorthands (`hashicorp/*`, `*/*` → terraform.io) | **Must implement** | Call out in Phase 0/3 pattern matcher (§22.7 item 6) |
+
+#### C. Broader `provider_installation` (not `network_mirror`, but often expected)
+
+| Capability | Covered? | Notes |
+|------------|----------|-------|
+| `filesystem_mirror` | **No (Phase 4)** | Explicit gap |
+| Implied local mirror dirs (`~/.terraform.d/plugins`, etc.) | **No** | TF-only convenience; out of scope |
+| `dev_overrides` | **No (WON'T)** | |
+| `oci_mirror` (OpenTofu) | **No** | Out of scope unless demanded |
+| `plugin_cache_dir` / `TF_PLUGIN_CACHE_DIR` | **Partial** | We have `PULUMI_DYNAMIC_TF_PLUGIN_CACHE_DIR` — different cache, similar idea |
+| Multi-method “try all matching methods, pick **newest** version” | **No** | We pick **one** source (flag / first override) and stop. Rare for air-gap; document |
+| Reading `.terraformrc` / `TF_CLI_CONFIG_FILE` | **No (intentional)** | Re-express as `OVERRIDES` / `--provider-mirror` |
+
+#### D. Verdict
+
+| Question | Answer |
+|----------|--------|
+| Can we handle **all typical `network_mirror` + `direct` enterprise setups**? | **Yes**, with `OVERRIDES` (`pattern=url`, `!pattern`, `*=url`) + `--provider-mirror` + D10 + Phase 2 tokens |
+| Can we claim **100% `network_mirror` block option parity** including OpenTofu extras? | **No** — missing `download_retry_count`, `trust_all_hashes`; http vs https strictness |
+| Can we claim **full `provider_installation` parity**? | **No** — no `filesystem_mirror` / `dev_overrides` / `oci_mirror` / multi-source version racing / rc file |
+
+**Bottom line for #3334 / air-gap Artifactory:** design is sufficient.  
+**Bottom line for “every TF CLI install knob”:** not the goal; gaps above are documented, not accidental.
 
