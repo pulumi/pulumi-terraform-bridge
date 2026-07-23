@@ -4,7 +4,8 @@ Design and plans for Terraform-style **network mirrors** in the dynamic TF provi
 
 | File | Role |
 |------|------|
-| [design.md](./design.md) | Architecture, decisions, grammar, phases |
+| [design-concise.md](./design-concise.md) | Human-readable overview (same design, shortened) |
+| [design.md](./design.md) | Full design — agents/implementers should read this |
 | [maintainer-questions.md](./maintainer-questions.md) | Questions to post for maintainer feedback |
 | [plan-phase-1-overrides-auth.md](./plan-phase-1-overrides-auth.md) | Impl plan: `MirrorSource` + `OVERRIDES` + `TF_TOKEN_*` |
 | [plan-phase-2-provider-mirror-flag.md](./plan-phase-2-provider-mirror-flag.md) | Impl plan: `--provider-mirror` + `Value` (closes #3334) |

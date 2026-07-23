@@ -4,7 +4,9 @@
 **Date:** 2026-07-23  
 **Related:** [#3334](https://github.com/pulumi/pulumi-terraform-bridge/issues/3334), [pulumi-terraform-provider#106](https://github.com/pulumi/pulumi-terraform-provider/issues/106), discussion on [#3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463)  
 **Scope:** Dynamic `terraform-provider` path in `pulumi-terraform-bridge`  
-**Audience:** Maintainers and contributors reviewing design before / during implementation
+**Audience:** Maintainers and contributors reviewing design before / during implementation  
+
+> Human-readable short version: [`design-concise.md`](./design-concise.md). Agents/implementers should keep using this full document.
 
 ---
 
