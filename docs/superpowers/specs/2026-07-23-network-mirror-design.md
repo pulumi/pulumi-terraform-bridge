@@ -19,7 +19,7 @@ This document defines a **target architecture** and a **phased plan** to support
 | Phase | Capability | Primary outcome |
 |-------|------------|-----------------|
 | **0** | `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` (incl. `*=url` catch-all) + `MirrorSource` | Unblock air-gap via env; **retarget PR #3463** (nothing merged — drop `MIRROR_URL`) |
-| **1** | `--provider-mirror` + persist in `Value` + D10 same-host skip | Durable per-package config; closes #3334 |
+| **1** | `--provider-mirror` + persist in `Value` | Durable per-package config; closes #3334 |
 | **2** | Auth: `TF_TOKEN_*` + optional Pulumi credentials store | Authenticated mirrors without secrets in yaml |
 | **3** | Optional `!pattern` deny rules; hash verify; pattern polish | Full TF include/exclude outcomes |
 | **4** | Optional: `filesystem_mirror` | Only if demand |
@@ -118,8 +118,8 @@ These decisions were made during design review. They constrain implementation.
 | D6 | Hash verification | Trust mirror for v1; verify later | Mirror is already a trusted distribution channel |
 | D7 | Config end-state | Pulumi-native only; **no** `.terraformrc` parser; **no** `PULUMI_TF_NETWORK_MIRROR_URL` | One overrides env; nothing merged to preserve |
 | D8 | Precedence | **`--provider-mirror` > `OVERRIDES` match > default registry** | Package flag clearest; env for machine policy |
-| D9 | Delivery | Retarget PR #3463 to `OVERRIDES`; Phase 1 adds flag + Value + D10 | |
-| D10 | Same-host | `provider.Hostname == mirrorURL.Host` → **silent** direct | Artifactory private pkgs |
+| D9 | Delivery | Retarget PR #3463 to `OVERRIDES`; Phase 1 adds flag + Value | |
+| D10 | Same-host auto-skip | **Removed** — no silent magic | With `OVERRIDES`, users must not use `*=` if private pkgs share the mirror host; scope patterns instead |
 | D11 | TF parity | Same *outcomes*, not file reuse | |
 | D12 | Overrides shape | `pattern=mirrorBase` pairs; optional `!pattern` deny; RE2 only (no lookaround) | See §22.4 |
 
@@ -360,13 +360,13 @@ if base == "" {
     base = resolveOverrides(os.Getenv("PULUMI_TF_NETWORK_MIRROR_OVERRIDES"), providerAddr)
     // resolveOverrides: apply !denies then pattern=url; "" if none
 }
-if base != "" && !sameHost(provider.Hostname, base) {
+if base != "" {
     return getProviderFromMirror(..., base)
 }
 return getProviderServer(... disco ...)
 ```
 
-**Same-host rule (D10):** if provider hostname equals the selected mirror base host, silently use registry discovery instead.
+**No same-host magic (D10 removed):** if the user sets a catch-all `*=mirror` and also installs `myartifactory…/myorg/pkg`, that address is mirrored too. Correct config scopes public hosts only, e.g. `registry.terraform.io=…,registry.opentofu.org=…`, or uses `!myartifactory.example.com/*`.
 
 ### 7.5 Local providers
 
@@ -526,10 +526,10 @@ See also §10A.
 | # | Setup | Public TF provider | Private `myartifactory…/myorg/custom` | P1 |
 |---|-------|--------------------|----------------------------------------|----|
 | 16 | `--provider-mirror` **only** on the public package; private package has **no** mirror flag | ✅ via mirror | ✅ via registry disco on `myartifactory…` | ✅ **Recommended** |
-| 17 | Global `OVERRIDES='*=MIRROR'` for the whole process | ✅ | ✅ (P1+ with D10) | Same-host rule: private addr hostname == mirror host → **silent** direct; public hosts still mirrored |
-| 18 | `--provider-mirror` also set on the private package | ✅ | ✅ (P1+ with D10) | Same as #17 — flag/env mirror ignored for that hostname |
-| 19 | Private providers also published **only** in mirror layout under hostname `myartifactory.example.com` (no registry protocol) | ✅ | ❌ with D10 | Rare; D10 would skip mirror. Use a different mirror host / publish via registry protocol / Phase 3 escape later |
-| 20 | Phase 3: explicit include/exclude | ✅ | ✅ | Still useful for non-same-host splits; D10 covers the common same-host case earlier |
+| 17 | Global `OVERRIDES='*=MIRROR'` + private `myartifactory…/pkg` | ✅ public | ❌ private (typical) | User error if private pkgs aren't in mirror layout — scope overrides or use `!myartifactory…/*` |
+| 18 | `--provider-mirror` on the private package | ✅ | ❌ / ⚠️ | Forces mirror protocol for private addr — only OK if published in mirror layout |
+| 19 | Private providers published in mirror layout under `myartifactory…` | ✅ | ✅ | Then `*=` or explicit host override works |
+| 20 | Scoped overrides / `!` deny for private host | ✅ | ✅ | Preferred: don't use `*=` when private registry shares mirror host |
 
 **Works (Phase 1 mixed project):**
 
@@ -553,16 +553,17 @@ packages:
 
 **Does not work (global env + private package, typical Artifactory):**
 
-~~Before D10~~ this failed. **With D10 (Phase 1):** global env is OK for mixed hosts — private package silently uses registry disco.
+**Wrong (catch-all + private same host):** `*=…` also mirrors `myartifactory…/myorg/custom` → often 404.
+
+**Right — scope public hosts only:**
 
 ```bash
 export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
-'*=https://myartifactory.example.com/artifactory/api/terraform/providers/'
-pulumi package add terraform-provider myartifactory.example.com/myorg/custom 1.2.3
-# D10: provider host == mirror host → skip MirrorSource, use .well-known on myartifactory.example.com
+'registry.terraform.io=https://myartifactory.example.com/artifactory/api/terraform/providers/,registry.opentofu.org=https://myartifactory.example.com/artifactory/api/terraform/providers/'
+# or: '*=https://…/providers/,!myartifactory.example.com/*'
+pulumi package add terraform-provider myartifactory.example.com/myorg/custom 1.2.3   # direct
 pulumi package add terraform-provider -- \
-  registry.terraform.io/hashicorp/random 3.6.0
-# still uses network mirror (registry.terraform.io ≠ myartifactory.example.com)
+  registry.terraform.io/hashicorp/random 3.6.0   # mirror
 ```
 
 ### 8A.5 Authentication
@@ -618,9 +619,8 @@ Mirror is TF-registry layout?
   → Always pass registry.terraform.io/... (don't rely on bare names)
 
 Same Artifactory host also serves private providers?
-  → Phase 1+ D10: same hostname as mirror → silent direct (safe with global env)
-  → Still fine to put --provider-mirror only on public packages
-  → Phase 3 include/exclude for non-same-host routing
+  → Scope OVERRIDES to public registry hosts (or `!private-host/*`) — no auto-magic
+  → Or put --provider-mirror only on public packages
 
 Mirror needs a password?
   → Phase 2 + TF_TOKEN_<host> (never put token in Pulumi.yaml)
@@ -635,7 +635,6 @@ Mirror needs a password?
 | Single mirror via env | **MUST** | 0 | PR #3463 |
 | Single mirror via `--provider-mirror` | **MUST** | 1 | Closes #3334 |
 | Persist mirror in `Value` | **MUST** | 1 | Runtime durability |
-| Same-host silent skip (D10) | **MUST** | 1 | `provider.Hostname == mirror.Host` → direct disco |
 | Precedence flag > env > default | **MUST** | 1 | |
 | TF + OpenTofu host paths on one mirror | **MUST** | 0/1 | Already in `providerURL`; add tests |
 | Docs for qualified hosts | **MUST** | 1 | Avoid silent 404 confusion |
@@ -687,8 +686,8 @@ Mirror needs a password?
 | `dynamic/parameterize/value.go` | `Value.Mirror`; `IntoArgs` round-trip |
 | `dynamic/parameterize/*_test.go` | Parse / marshal / IntoArgs tests |
 | `dynamic/main.go` | Copy `Mirror` into `Value`; pass into `getProvider` |
-| `dynamic/internal/shim/run/loader.go` | Precedence resolution API + **D10 same-host silent skip** |
-| `dynamic/README.md` | User docs + host qualification + future include/exclude note |
+| `dynamic/internal/shim/run/loader.go` | Precedence: flag → OVERRIDES → registry |
+| `dynamic/README.md` | User docs + host qualification + scoped overrides for mixed Artifactory |
 | This design doc | Link from README if useful |
 
 **Implementation sketch:**
@@ -697,12 +696,11 @@ Mirror needs a password?
    - cobra parsing of `--provider-mirror`
    - `Value` JSON round-trip including `mirror`
    - loader precedence (flag beats env)
-   - **D10:** provider hostname equals mirror host → registry path (no mirror HTTP), silent
    - **regression:** `ParameterizeValue` path with env unset still uses embedded mirror
 2. Implement flag + model fields.
-3. Thread mirror through `getProvider` / `NamedProvider`; implement same-host compare after `url.Parse` (D10).
-4. Update docs with examples for TF-hosted and OpenTofu-hosted addresses + same-host Artifactory case.
-5. Document Phase 3 include/exclude as future work for non-same-host splits (see §12).
+3. Thread mirror through `getProvider` / `NamedProvider`.
+4. Update docs with examples for TF-hosted and OpenTofu-hosted addresses + mixed Artifactory (scoped overrides / `!` deny — no auto-skip).
+5. Document pattern/`!` routing details (see §12 / §22).
 
 **Success criteria:**
 
@@ -710,9 +708,8 @@ Mirror needs a password?
 - [ ] Generated / embedded `Value` contains `mirror`
 - [ ] Fresh cache + no env → runtime still uses mirror
 - [ ] Flag overrides env when both set
-- [ ] D10: same host as mirror → silent direct (no mirror requests)
 - [ ] Local path + `--provider-mirror` errors clearly
-- [ ] README documents host qualification + same-host behavior
+- [ ] README documents host qualification + scoped overrides for mixed Artifactory
 
 **Issue linking:** `Fixes #3334` (and references Phase 0 / #106 as related).
 
@@ -805,31 +802,24 @@ That only works if the mirror repo **also** publishes private providers in netwo
 
 | Config style | Public providers via mirror | Custom provider on same host | Conflict? |
 |--------------|----------------------------|------------------------------|-----------|
-| **Per-package `--provider-mirror` only on public packages** | Yes | No flag → registry disco to `myartifactory…` | **No** (still fine) |
-| **Global `OVERRIDES='*=…'` + D10** | Yes | Same host → **silent direct** (D10) | **No** (Phase 1+) |
-| **Global env without D10 (Phase 0 only)** | Yes | Forced through mirror path | **Yes**, unless private pkgs exist in mirror layout |
-| **`--provider-mirror` on the custom package + D10** | n/a | Same host → silent direct | **No** for typical registry-protocol private pkgs |
-| **Phase 3 include/exclude** | Mirror only selected public hosts | `direct` for private host | **No** (explicit; still useful when hosts differ) |
+| **Per-package `--provider-mirror` only on public packages** | Yes | No flag → registry disco | **No** |
+| **Scoped `OVERRIDES`** (`registry.terraform.io=…`, …) | Yes | Unmatched → direct | **No** (recommended) |
+| **`OVERRIDES='*=…,!myartifactory…/*'`** | Yes | Deny → direct | **No** |
+| **`OVERRIDES='*=…'` alone** | Yes | Also forced through mirror | **Yes** — user misconfig unless private pkgs are in mirror layout |
+| **`--provider-mirror` on the custom package** | n/a | Mirror protocol | **Yes** unless published in mirror layout |
 
-### 10A.3 Phase 1 guidance (with D10)
+### 10A.3 Guidance (no auto-skip)
 
 For mixed Artifactory hosts:
 
-1. **D10 is the safety net:** if the provider address hostname equals the mirror URL host, the bridge silently uses registry discovery instead of the network mirror protocol.
-2. Prefer **per-package** `--provider-mirror` on packages that come from public registries (clearest intent).
-3. Global `OVERRIDES='*=…'` is acceptable on mixed machines **once D10 ships** (Phase 1).
-4. Phase 0 alone (env without D10) still has the conflict — do not rely on global env for private same-host providers until Phase 1.
-5. Rare escape: if private packages exist *only* in network-mirror layout under the Artifactory hostname, D10 will not fetch them via mirror; publish via registry protocol or use a distinct mirror hostname.
+1. **Do not use catch-all `*=`** if private providers share the mirror hostname and use registry protocol.
+2. Prefer scoped overrides for public registries, or `!private-host/*` deny.
+3. Prefer **per-package** `--provider-mirror` on public packages when policy is project-local.
+4. Misconfiguration is a user error — we do **not** silently rewrite same-host downloads.
 
 ### 10A.4 Implications for the roadmap
 
-This use case **strengthens** the rationale for:
-
-- Phase 1 per-package flag **and** D10 same-host silent skip
-- Documenting Phase 0 limitation (env without D10 is blunt)
-- Keeping §12 include/exclude for **non-same-host** routing (different DNS names for mirror vs private registry)
-
-Phase 0 remains shippable; D10 lands with Phase 1.
+This use case strengthens the need for clear docs/examples (scoped overrides + `!` deny), not for magic hostname checks.
 
 ---
 
@@ -908,9 +898,9 @@ export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
 See §22.4. Strawman:
 
 ```text
-if per-package mirror set (and not D10) → mirror
-else if address matches an OVERRIDES pattern → that mirror base
-else if OVERRIDES catch-all/pattern matches (and not D10) → that mirror
+if per-package mirror set → mirror
+else if address matches an OVERRIDES !deny → direct
+else if address matches an OVERRIDES pattern=url → that mirror base
 else → registry disco
 ```
 
@@ -991,7 +981,7 @@ Suggested README outline addition:
 | Marketing “enterprise ready” before auth | User frustration | Phase 2 before claiming authenticated Artifactory support |
 | Scope creep into full `.terraformrc` | Slow delivery | D7; Phase 4 uncommitted |
 | Absolute archive URLs on another host | Auth host mismatch | Phase 2 design note; follow redirects carefully |
-| Same host = mirror + private registry | Wrong protocol / 404 for private pkgs | **D10** silent skip when hosts equal; see §8A.4 / §10A |
+| Same host = mirror + private registry | Wrong protocol / 404 if user uses `*=` | Document scoped overrides / `!host/*`; see §8A.4 / §10A |
 
 ---
 
@@ -1067,8 +1057,8 @@ Suggested PR #3463 description note (when updating, if desired):
 6. Trust mirror hashes in v1.
 7. Flag + env are permanent API; `.terraformrc` uncommitted later.
 8. Precedence: flag > env > registry.
-9. Retarget PR #3463 to `OVERRIDES` (no `MIRROR_URL`); then Phase 1 flag+Value+D10.
-10. Same-host rule (D10): silent direct when provider host == mirror host.
+9. Retarget PR #3463 to `OVERRIDES` (no `MIRROR_URL`); then Phase 1 flag+Value.
+10. No same-host magic — users scope OVERRIDES / use `!` deny (D10 removed).
 11. Behavioral TF parity via Pulumi-native surfaces; do not parse `.terraformrc` (D11).
 12. `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` only (`pattern=url`, optional `!pattern`); no `MIRROR_URL` / INCLUDE (D12).
 13. Auth: `TF_TOKEN_*` first; optional `credentials.json` terraform provider object (Phase 2+).
@@ -1082,7 +1072,7 @@ Suggested PR #3463 description note (when updating, if desired):
 - [ ] Phase 2+ accepted as roadmap (not blocking Phase 1)
 - [ ] §22 TF-parity mapping (no `.terraformrc` reuse) accepted
 
-**Reviewers:** please comment on §4 decisions (esp. D10–D12), §7 data model, §8A examples, and §22 if those should change before Phase 1 starts.
+**Reviewers:** please comment on §4 decisions (esp. D7–D12), §7 data model, §8A examples, and §22 if those should change before Phase 1 starts.
 
 ---
 
@@ -1150,7 +1140,7 @@ export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
 '*=https://myartifactory.example.com/artifactory/api/terraform/providers/'
 ```
 
-And/or per package `--provider-mirror` (Phase 1). D10 still protects same-host private providers.
+And/or per package `--provider-mirror` (Phase 1). For mixed same-host private pkgs, scope overrides (not `*=`).
 
 ---
 
@@ -1221,7 +1211,7 @@ Semantics:
 |------------------|--------|
 | `registry.terraform.io/hashicorp/random` | Mirror protocol at override base; **no** `.well-known` on terraform.io |
 | `registry.opentofu.org/hashicorp/random` | **Direct** registry disco (not in map) |
-| `myartifactory.example.com/myorg/custom` | **Direct** (and D10 if someone also set a catch-all mirror) |
+| `myartifactory.example.com/myorg/custom` | **Direct** (not in map — do not use `*=` if this host is private registry) |
 
 This is the Pulumi analogue of `include` on `network_mirror` + `exclude` on `direct`.
 
@@ -1407,9 +1397,7 @@ Evaluated in **code**, not via regex lookaround:
 ```text
 function resolveMirror(addr, packageFlag, overrides):
   if packageFlag != "":
-    base = packageFlag
-    if sameHost(addr, base): return DIRECT   # D10
-    return MIRROR(base)
+    return MIRROR(packageFlag)
 
   // 1) Deny rules win over broader includes
   for each entry in overrides where entry is "!pattern":
@@ -1419,9 +1407,7 @@ function resolveMirror(addr, packageFlag, overrides):
   // 2) First matching positive pattern=url
   for each entry in overrides where entry is "pattern=url":
     if match(pattern, addr):
-      base = url
-      if sameHost(addr, base): return DIRECT  # D10
-      return MIRROR(base)
+      return MIRROR(url)
 
   return DIRECT  // registry disco + .well-known
 ```
@@ -1430,7 +1416,7 @@ Notes:
 
 - Order among **positive** entries: **first-match wins** (document; users put specific patterns before `*`).
 - Deny (`!`) is checked **before** positives so `*=url,!evil/*` works.
-- Per-package `--provider-mirror` still wins over env (including denies) — package author opted in; D10 still applies.
+- Per-package `--provider-mirror` still wins over env (including denies) — package author opted in.
 - Empty deny value forms like `!pattern=` are treated the same as `!pattern`.
 
 This gives TF `include` + `exclude` outcomes without a second env var and without RE2 lookaround.
@@ -1438,9 +1424,9 @@ This gives TF `include` + `exclude` outcomes without a second env var and withou
 #### Resolution order (summary)
 
 ```text
-1. --provider-mirror (Args/Value)     → mirror (unless D10)
+1. --provider-mirror (Args/Value)     → mirror
 2. OVERRIDES: !pattern match         → direct
-3. OVERRIDES: pattern=url match      → mirror (unless D10)
+3. OVERRIDES: pattern=url match      → mirror
 4. Default                           → registry disco
 ```
 
@@ -1513,7 +1499,7 @@ This matches Pulumi’s “env for CI, credentials file for interactive login”
 | Separate `INCLUDE` / `MIRROR_URL` env | **Not used** | — |
 | `exclude` on network_mirror | `!pattern` deny entries in `OVERRIDES` | 0/3 |
 | Skip `.well-known` when mirrored | Always when mirror base selected | 0+ |
-| Same-host private registry | D10 silent direct | 1 |
+| Same-host private registry | Scoped overrides or `!host/*` (no auto-skip) | 0+ |
 | `TF_TOKEN_*` | Env | 2 |
 | `credentials "host"` in `.terraformrc` | `credentials.json` `terraformProviderCredentials` | 2+ |
 | `filesystem_mirror` | Later | 4 |
@@ -1558,7 +1544,7 @@ Scope note: Terraform’s **`network_mirror` block** is only one method inside `
 | TF outcome | Covered? | How |
 |------------|----------|-----|
 | Mirror some addresses, direct for the rest | **Yes** | No override match → direct |
-| Mirror public registries, direct for private registry host | **Yes** | Host-scoped overrides; **or** catch-all + **D10** |
+| Mirror public registries, direct for private registry host | **Yes** | Host-scoped overrides or `*=…,!private-host/*` |
 | `include` on mirror + matching `exclude` on `direct` | **Yes** | Absence from overrides = direct (no separate `direct` block needed) |
 | TF glob shorthands (`hashicorp/*`, `*/*` → terraform.io) | **Must implement** | Call out in Phase 0/3 pattern matcher (§22.7 item 6) |
 
@@ -1578,7 +1564,7 @@ Scope note: Terraform’s **`network_mirror` block** is only one method inside `
 
 | Question | Answer |
 |----------|--------|
-| Can we handle **all typical `network_mirror` + `direct` enterprise setups**? | **Yes**, with `OVERRIDES` (`pattern=url`, `!pattern`, `*=url`) + `--provider-mirror` + D10 + Phase 2 tokens |
+| Can we handle **all typical `network_mirror` + `direct` enterprise setups**? | **Yes**, with `OVERRIDES` (`pattern=url`, `!pattern`, `*=url`) + `--provider-mirror` + Phase 2 tokens |
 | Can we claim **100% `network_mirror` block option parity** including OpenTofu extras? | **No** — missing `download_retry_count`, `trust_all_hashes`; http vs https strictness |
 | Can we claim **full `provider_installation` parity**? | **No** — no `filesystem_mirror` / `dev_overrides` / `oci_mirror` / multi-source version racing / rc file |
 
