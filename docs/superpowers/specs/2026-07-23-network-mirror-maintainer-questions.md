@@ -2,7 +2,8 @@
 
 **Status:** Questions for Pulumi maintainers  
 **Design draft:** [`docs/superpowers/specs/2026-07-23-network-mirror-design.md`](./2026-07-23-network-mirror-design.md)  
-**Related:** [#3334](https://github.com/pulumi/pulumi-terraform-bridge/issues/3334), [pulumi-terraform-provider#106](https://github.com/pulumi/pulumi-terraform-provider/issues/106), draft PR [#3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463) (will be retargeted to match the design)
+**Baseline:** Clean `main` (greenfield — no mirror code landed yet). Discussion branch: `docs/disussion-issue3334`.  
+**Related:** [#3334](https://github.com/pulumi/pulumi-terraform-bridge/issues/3334), [pulumi-terraform-provider#106](https://github.com/pulumi/pulumi-terraform-provider/issues/106). Prior exploration [#3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463) is **not** the implementation baseline.
 
 ## Why we’re asking
 
@@ -52,7 +53,7 @@ export PULUMI_TF_NETWORK_MIRROR_OVERRIDES='*=https://mirror.example/providers/'
 
 Is that enough, or do you still want a dedicated one-URL env for short CI one-liners?
 
-**Our lean:** overrides only (nothing merged yet, so no deprecation cost).
+**Our lean:** overrides only (greenfield — no legacy single-URL env to preserve).
 
 ---
 
@@ -96,24 +97,30 @@ Would you rather a first-class package field (for example `providerMirror:`) ins
 
 ## 3. Routing and Terraform `include` / `exclude` parity
 
-Proposed overrides shape (one env):
+Proposed overrides shape (one env). **Phase 0** ships exact-host keys, literal `*`, and `!pattern` deny. TF path globs (`host/ns/*`) are **Phase 3**.
 
 ```bash
-# include → mirror protocol, skip .well-known
+# Phase 0 — include host → mirror protocol, skip .well-known
 registry.terraform.io=https://mirror.example/providers/
 
-# deny → direct (evaluated in code; Go RE2 has no negative lookahead)
-!registry.terraform.io/evil/*
+# Phase 0 — deny host → direct (evaluated in code; Go RE2 has no negative lookahead)
+!myartifactory.example.com
 
-# catch-all
+# Phase 0 — catch-all
 *=https://mirror.example/providers/
+
+# Phase 3 — path glob include / deny
+# registry.terraform.io/hashicorp/*=https://mirror.example/providers/
+# !registry.terraform.io/evil/*
 ```
 
 No match → direct registry discovery.
 
-### Q7. Pattern syntax
+Patterns match the **regaddr-resolved** address `hostname/namespace/type` (so bare `hashicorp/random` is `registry.opentofu.org/hashicorp/random`).
 
-Prefer override keys as:
+### Q7. Pattern syntax (Phase 3 richness)
+
+Phase 0 is locked to exact-host + `*` + `!`. For **Phase 3**, prefer override keys as:
 
 | Option | Description |
 |--------|-------------|
@@ -138,9 +145,11 @@ When multiple positive patterns match, prefer:
 
 Is `!pattern` in the same overrides string acceptable for Terraform `exclude`-style behavior?
 
+We plan to ship `!` deny in **Phase 0** (exact-host / `*` forms). Path-glob denies wait for Phase 3 with globs.
+
 Alternatives we considered: a second env var, or Perl-style negative lookahead in regex (rejected — Go RE2 does not support lookaround).
 
-**Our lean:** `!pattern` in the same env.
+**Our lean:** `!pattern` in the same env, Phase 0.
 
 ### Q10. Multi-method “newest version”
 
@@ -169,8 +178,8 @@ Users should configure explicitly, for example:
 # scoped (recommended)
 PULUMI_TF_NETWORK_MIRROR_OVERRIDES='registry.terraform.io=https://myartifactory…/providers/'
 
-# or catch-all with deny
-PULUMI_TF_NETWORK_MIRROR_OVERRIDES='*=https://myartifactory…/providers/,!myartifactory.example.com/*'
+# or catch-all with deny (Phase 0: deny exact host)
+PULUMI_TF_NETWORK_MIRROR_OVERRIDES='*=https://myartifactory…/providers/,!myartifactory.example.com'
 ```
 
 If they use bare `*=…` and also install private providers on that host, failure is treated as user misconfiguration.
@@ -232,16 +241,16 @@ Leave Terraform-style `dev_overrides` out for dynamic providers?
 
 Is this phasing acceptable?
 
-1. `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` + `MirrorSource` (retarget #3463; no `PULUMI_TF_NETWORK_MIRROR_URL`)
-2. `--provider-mirror` + persist in `Value` → close / substantially address #3334
-3. Auth (`TF_TOKEN_*`, maybe credentials store)
-4. Optional polish (globs, `!` deny if not in step 1, filesystem mirror, …)
+1. **Phase 0 (greenfield):** `MirrorSource` + `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` with exact-host / `*` / `!pattern` deny (no separate `MIRROR_URL` env)
+2. **Phase 1:** `--provider-mirror` + persist in `Value` → close / substantially address #3334
+3. **Phase 2:** Auth (`TF_TOKEN_*`, maybe credentials store)
+4. **Phase 3+:** TF path globs / optional RE2, hash verification, optional filesystem mirror
 
 ### Q18. Closing #3334
 
-Should #3334 be closed when durable `--provider-mirror` + env overrides land, or only once overrides/`!` deny cover most `provider_installation` examples?
+Should #3334 be closed when durable `--provider-mirror` + Phase 0 overrides land, or only once Phase 3 globs land?
 
-**Our lean:** close (or largely close) after phase 2; keep follow-ups for polish.
+**Our lean:** close (or largely close) after Phase 1; Phase 0 already covers env-based exclude via `!`; keep follow-ups for glob polish.
 
 ### Q19. “Behavioral parity” framing
 
@@ -270,9 +279,11 @@ For the first user-facing docs, is `dynamic/README.md` enough, or should pulumi.
 | Topic | Lean |
 |-------|------|
 | Surfaces | `OVERRIDES` + `--provider-mirror`; no `.terraformrc`; no single `MIRROR_URL` |
-| Durability | Mirror URL in parameterized `Value` |
-| Routing | `pattern=url`, optional `!pattern`; no same-host auto-skip |
+| Baseline | Greenfield from clean `main` |
+| Phase 0 grammar | Exact-host, `*`, `!pattern` deny |
+| Durability | Mirror URL in parameterized `Value` (Phase 1) |
+| Routing | Match resolved `host/ns/type`; flag > overrides; no same-host auto-skip |
 | Auth | `TF_TOKEN_*` first; optional credentials.json later |
-| Not in v1 | filesystem mirror, oci_mirror, rc parse, multi-source newest-version racing |
+| Not in v1 | filesystem mirror, oci_mirror, rc parse, multi-source newest-version racing; TF path globs wait for Phase 3 |
 
 We’re happy to revise the design from your answers before more implementation. Thank you!

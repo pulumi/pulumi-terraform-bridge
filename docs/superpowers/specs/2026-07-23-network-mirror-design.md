@@ -1,8 +1,9 @@
 # Network Mirror Support for Dynamic Terraform Providers
 
-**Status:** Draft for review  
+**Status:** Draft for review (discussion branch `docs/disussion-issue3334`)  
 **Date:** 2026-07-23  
-**Authors:** Discussion on PR [#3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463), issues [#3334](https://github.com/pulumi/pulumi-terraform-bridge/issues/3334) and [pulumi-terraform-provider#106](https://github.com/pulumi/pulumi-terraform-provider/issues/106)  
+**Baseline:** Clean `main` — **no** network-mirror code landed yet. Design assumes greenfield implementation.  
+**Related:** issues [#3334](https://github.com/pulumi/pulumi-terraform-bridge/issues/3334), [pulumi-terraform-provider#106](https://github.com/pulumi/pulumi-terraform-provider/issues/106); prior draft exploration [#3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463) (not the baseline)  
 **Scope:** Dynamic `terraform-provider` path in `pulumi-terraform-bridge`  
 **Audience:** Maintainers and contributors reviewing design before / during implementation
 
@@ -18,13 +19,15 @@ This document defines a **target architecture** and a **phased plan** to support
 
 | Phase | Capability | Primary outcome |
 |-------|------------|-----------------|
-| **0** | `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` (incl. `*=url` catch-all) + `MirrorSource` | Unblock air-gap via env; **retarget PR #3463** (nothing merged — drop `MIRROR_URL`) |
+| **0** | `MirrorSource` + `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` (`*=url`, exact-host keys, **`!pattern` deny**) | Unblock air-gap / selective mirror via env |
 | **1** | `--provider-mirror` + persist in `Value` | Durable per-package config; closes #3334 |
 | **2** | Auth: `TF_TOKEN_*` + optional Pulumi credentials store | Authenticated mirrors without secrets in yaml |
-| **3** | Optional `!pattern` deny rules; hash verify; pattern polish | Full TF include/exclude outcomes |
+| **3** | TF-style globs / shorthands (and optional RE2); hash verification polish | Richer pattern parity |
 | **4** | Optional: `filesystem_mirror` | Only if demand |
 
-**Config philosophy:** behavioral parity with Terraform `provider_installation`, via **Pulumi-native** surfaces only. **Do not parse** `.terraformrc`. **Ship one env:** `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` (not `PULUMI_TF_NETWORK_MIRROR_URL`). Keep **`--provider-mirror`** for clear per-package config.
+**Config philosophy:** behavioral parity with Terraform `provider_installation`, via **Pulumi-native** surfaces only. **Do not parse** `.terraformrc`. **One env:** `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` (no separate catch-all URL env). Keep **`--provider-mirror`** for clear per-package config.
+
+**Phase 0 pattern grammar (locked):** exact hostname keys, literal catch-all `*`, and `!pattern` deny. TF path globs (`host/ns/*`) and RE2 regex are **Phase 3**.
 
 For works/doesn't see **§8A**. For TF → Pulumi mapping see **§22**.
 
@@ -76,8 +79,8 @@ Member guidance on #3334:
 |------|------|
 | [pulumi-terraform-provider#106](https://github.com/pulumi/pulumi-terraform-provider/issues/106) | Air-gap / mirror motivation (user report) |
 | [bridge#3334](https://github.com/pulumi/pulumi-terraform-bridge/issues/3334) | Feature request for `network_mirror` / `provider_installation` |
-| [PR #3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463) | Phase 0: env-var mirror support |
-| iwahbe on #3463 | Env var and `--provider-mirror` are **complementary** |
+| [PR #3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463) | Prior exploration only — **not** baseline; do not assume its code |
+| iwahbe on #3463 / #3334 | Env and `--provider-mirror` are complementary; parameterization flag preferred for durability |
 
 ---
 
@@ -118,16 +121,16 @@ These decisions were made during design review. They constrain implementation.
 | D6 | Hash verification | Trust mirror for v1; verify later | Mirror is already a trusted distribution channel |
 | D7 | Config end-state | Pulumi-native only; **no** `.terraformrc` parser; **no** `PULUMI_TF_NETWORK_MIRROR_URL` | One overrides env; nothing merged to preserve |
 | D8 | Precedence | **`--provider-mirror` > `OVERRIDES` match > default registry** | Package flag clearest; env for machine policy |
-| D9 | Delivery | Retarget PR #3463 to `OVERRIDES`; Phase 1 adds flag + Value | |
+| D9 | Delivery | Greenfield PRs from clean `main`: Phase 0 then Phase 1 | |
 | D10 | Same-host auto-skip | **Removed** — no silent magic | With `OVERRIDES`, users must not use `*=` if private pkgs share the mirror host; scope patterns instead |
 | D11 | TF parity | Same *outcomes*, not file reuse | |
-| D12 | Overrides shape | `pattern=mirrorBase` pairs; optional `!pattern` deny; RE2 only (no lookaround) | See §22.4 |
+| D12 | Overrides shape | Phase 0: exact-host / `*` / `!pattern`; Phase 3: TF globs (+ optional RE2). No lookaround | See §22.4 |
 
 ---
 
-## 5. Background: how resolution works today
+## 5. Background: baseline (clean main) and durability gap
 
-### 5.1 Parameterization entry points
+### 5.1 Parameterization entry points (today)
 
 Dynamic provider parameterization lives in `dynamic/main.go` (`XParamaterize`) and has two input shapes:
 
@@ -136,25 +139,25 @@ Dynamic provider parameterization lives in `dynamic/main.go` (`XParamaterize`) a
 | `ParameterizeArgs` | `pulumi package add`, `pulumi install` replaying `packages.*.parameters` | Raw CLI / YAML string args |
 | `ParameterizeValue` | Program runtime (`preview` / `up`) via generated SDK | JSON bytes embedded by `SchemaPostProcessor` |
 
-Relevant code:
+Relevant code **on clean main** (no mirror support yet):
 
 - Args parsing: `dynamic/parameterize/args.go`
 - Value (SDK embed): `dynamic/parameterize/value.go`
 - Embed into schema: `dynamic/info.go` (`Parameter: value.Marshal()`)
-- Provider download: `dynamic/internal/shim/run/loader.go` (`NamedProvider`, `getProviderServer`, `getProviderFromMirror`)
+- Provider download: `dynamic/internal/shim/run/loader.go` (`NamedProvider` → registry discovery via `getProviderServer`)
 
-### 5.2 Critical durability gap (Phase 0 alone)
+### 5.2 Why Phase 0 alone is not durable
 
-Phase 0 wires the mirror only through:
+**Target** Phase 0 wires mirrors only through process env:
 
 ```text
-PULUMI_TF_NETWORK_MIRROR_OVERRIDES → resolveOverrides → getProviderFromMirror(...)
+PULUMI_TF_NETWORK_MIRROR_OVERRIDES → resolveOverrides → MirrorSource / getProviderFromMirror
 ```
 
-That works when the env var is set. It is **not** enough for a durable project config:
+That works while the env var is set. It is **not** enough for durable project config:
 
 1. `package add` with only env set does not record the mirror in `parameters` or `Value`.
-2. Later, on another machine (or CI job) with empty plugin cache and no env var, runtime `ParameterizeValue` reconstructs args **without** a mirror and falls back to registry discovery.
+2. Later, on another machine with empty plugin cache and no env var, runtime `ParameterizeValue` reconstructs args **without** a mirror and falls back to registry discovery.
 3. Air-gap failure returns.
 
 **Therefore Phase 1 must round-trip the mirror URL through both `Args` and `Value`.**
@@ -199,7 +202,7 @@ Given mirror base URL `M` and provider address `hostname/namespace/type`:
 | Package metadata | `GET {M}/{hostname}/{namespace}/{type}/{version}.json` |
 | Archive | URL(s) returned in version JSON (absolute or relative) |
 
-Implementation: `pkg/vendored/opentofu/getproviders/mirror_source.go` (`MirrorSource.providerURL`).
+Implementation target: new `pkg/vendored/opentofu/getproviders/mirror_source.go` (`MirrorSource`; greenfield — file does not exist on clean main yet).
 
 ### 6.2 Terraform vs OpenTofu addresses
 
@@ -393,7 +396,7 @@ Behavior when a pattern matches:
 3. Install into the existing dynamic TF plugin cache.
 4. Run the provider as today.
 
-PR #3463 must be **retargeted** to this env (replace `PULUMI_TF_NETWORK_MIRROR_URL`) before merge.
+Phase 0 also ships `!pattern` deny (see §22.4). Prefer scoped host keys over `*=` when private registries share the mirror hostname.
 
 ### 8.2 Phase 1 — per-package flag
 
@@ -451,7 +454,7 @@ Assumptions used below (unless a row says otherwise):
 | Private provider | `myartifactory.example.com/myorg/custom` available via **registry protocol** on that host, **not** under the mirror repo layout |
 | Phases | ✅ = supported in that phase · ❌ = fails / unsupported · ⚠️ = works only with caveats · 🔜 = planned later |
 
-Legend for result columns: **P0** = env only (PR #3463), **P1** = `--provider-mirror` + `Value` persistence, **P2** = `TF_TOKEN_*`, **P3** = include/exclude.
+Legend for result columns: **P0** = `OVERRIDES` + `MirrorSource`, **P1** = `--provider-mirror` + `Value`, **P2** = `TF_TOKEN_*`, **P3** = TF globs / hash polish.
 
 ### 8A.1 Public providers from a network mirror
 
@@ -603,7 +606,7 @@ pulumi package add terraform-provider -- \
 | 32 | Encoding the mirror into the provider source string (e.g. fake host paths) | ❌ | Invalid / wrong layer; use `--provider-mirror` or env |
 | 33 | Reading `.terraformrc` / `.tofurc` `provider_installation` automatically | ❌ today · 🔜 Phase 4 maybe | Not committed (D7) |
 | 34 | `filesystem_mirror` directories | ❌ today · 🔜 Phase 4 | |
-| 35 | include/exclude on mirror vs direct | ❌ today · 🔜 Phase 3 | Needed for env-wide mirror + private host (§8A.4 #20) |
+| 35 | `!pattern` deny / scoped hosts | ✅ Phase 0 | Prefer scoped hosts or `!private-host` over magic |
 | 36 | Static (non-dynamic) bridged providers via this mirror | ❌ | Those ship as Pulumi plugins; different pipeline |
 
 ### 8A.8 Quick decision guide
@@ -632,7 +635,7 @@ Mirror needs a password?
 
 | Capability | Tier | Phase | Notes |
 |------------|------|-------|-------|
-| Single mirror via env | **MUST** | 0 | PR #3463 |
+| Catch-all / host overrides via env | **MUST** | 0 | `OVERRIDES` `*=` / exact-host |
 | Single mirror via `--provider-mirror` | **MUST** | 1 | Closes #3334 |
 | Persist mirror in `Value` | **MUST** | 1 | Runtime durability |
 | Precedence flag > env > default | **MUST** | 1 | |
@@ -640,7 +643,7 @@ Mirror needs a password?
 | Docs for qualified hosts | **MUST** | 1 | Avoid silent 404 confusion |
 | `TF_TOKEN_*` (and optionally netrc) | **SHOULD** | 2 | Enterprise auth; no secrets in yaml |
 | Archive hash verification | **SHOULD** | 3 | Populate `Authentication` from mirror hashes |
-| include/exclude mirror vs direct | **SHOULD** | 3 | See §12 detailed design |
+| `!pattern` deny (exclude) | **MUST** | 0 | Same env as includes |
 | Multiple ordered mirrors | **LATER** | 4+ | Needs richer config model |
 | `filesystem_mirror` | **LATER** | 4+ | Vendored search helpers exist |
 | Parse `.terraformrc` / `.tofurc` | **LATER** | 4+ | Not committed (D7) |
@@ -650,29 +653,33 @@ Mirror needs a password?
 
 ## 10. Phased implementation plan
 
-### Phase 0 — Overrides env + MirrorSource (retarget PR #3463)
+### Phase 0 — Overrides env + MirrorSource (greenfield)
 
-**Status:** PR #3463 exists with `PULUMI_TF_NETWORK_MIRROR_URL` — **change before merge** to `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` (nothing merged; no deprecation path).
+**Baseline:** clean `main` (no prior mirror code). Implement from scratch.
 
-**Minimum Phase 0 behavior:**
+**Phase 0 ships:**
 
-- Parse `PULUMI_TF_NETWORK_MIRROR_OVERRIDES`
-- Support at least: `*=https://…/` catch-all and exact-host keys (`registry.terraform.io=https://…/`)
-- Optional in Phase 0: `!pattern` deny (nice-to-have; can wait for Phase 3 if it slows the PR)
-- On match: `MirrorSource`, skip `.well-known`
-- Unit tests for `MirrorSource` + override parsing
+1. **`MirrorSource`** implementing the network mirror protocol (new file under `pkg/vendored/opentofu/getproviders/`).
+2. **`PULUMI_TF_NETWORK_MIRROR_OVERRIDES`** parser + resolver wired into provider download.
+3. **Pattern grammar (Phase 0 only):**
+   - Exact hostname: `registry.terraform.io=https://…/`
+   - Catch-all token: `*=https://…/` (literal `*`, not a glob metachar yet)
+   - Deny: `!pattern` (exact host or `*` form as above), checked **before** positives
+4. On positive match: use mirror protocol; **skip** `.well-known`.
+5. Matching is against the **regaddr-resolved** address `hostname/namespace/type` (see §22.4).
+6. Unit tests for `MirrorSource`, parser, and resolve matrix.
 
-**Files:** `mirror_source.go`, `loader.go`, tests, `dynamic/README.md`
+**Files (new/changed):** `mirror_source.go` (+ tests), `loader.go`, `dynamic/README.md`.
 
 **Success criteria:**
 
 - [ ] `OVERRIDES='*=URL'` downloads via mirror, skips disco
-- [ ] Host-scoped override works
-- [ ] Unmatched address uses registry disco
-- [ ] No `PULUMI_TF_NETWORK_MIRROR_URL` in code or docs
-- [ ] Tests for TF + OpenTofu host path prefixes on the mirror
+- [ ] Exact-host override works; unmatched → registry disco
+- [ ] `!pattern` deny forces direct even when `*=url` is present
+- [ ] TF and OpenTofu host prefixes both work in mirror paths
+- [ ] No separate `PULUMI_TF_NETWORK_MIRROR_URL` env
 
-**Out of scope for Phase 0:** `--provider-mirror`, `Value` persistence, auth, full glob/`!` (unless cheap).
+**Out of scope for Phase 0:** `--provider-mirror`, `Value` persistence, auth, TF path globs (`host/ns/*`), RE2 regex keys, `filesystem_mirror`.
 
 ### Phase 1 — Durable `--provider-mirror` (follow-up PR)
 
@@ -700,7 +707,7 @@ Mirror needs a password?
 2. Implement flag + model fields.
 3. Thread mirror through `getProvider` / `NamedProvider`.
 4. Update docs with examples for TF-hosted and OpenTofu-hosted addresses + mixed Artifactory (scoped overrides / `!` deny — no auto-skip).
-5. Document pattern/`!` routing details (see §12 / §22).
+5. Document pattern/`!` routing details (see §22.4).
 
 **Success criteria:**
 
@@ -742,20 +749,19 @@ Attach `Authorization: Bearer <token>` on mirror **metadata** requests (index/ve
 
 ---
 
-### Phase 3 — TF `include`/`exclude` parity (Pulumi-native overrides)
+### Phase 3 — Richer patterns + hash polish
 
-See **§22** for full Terraform examples (T1–T6) and mapping.
+See **§22** for Terraform examples and mapping.
 
-**Goal:** same outcomes as `.terraformrc` `provider_installation` without reading that file.
+**Goal:** TF-style path globs / shorthands (and optional RE2), plus hash verification when mirrors return hashes.
 
-1. **`PULUMI_TF_NETWORK_MIRROR_OVERRIDES`** (or final bikeshed name): map registry host (or `host/ns/*` pattern) → mirror base URL.
-2. On match: **network mirror protocol**, **skip `.well-known`**.
-3. On no match: direct registry disco (unless catch-all `OVERRIDES='*=…'` / per-package flag).
-4. Optional: hash verification when mirror returns hashes.
+1. Extend OVERRIDES keys: `registry.terraform.io/hashicorp/*`, TF shorthands (`hashicorp/*` → `registry.terraform.io/hashicorp/*`), optional RE2.
+2. Populate package authentication from mirror hashes when present.
+3. Keep Phase 0 deny/`*`/exact-host behavior unchanged.
 
-**Success criteria:** examples T2–T5 in §22 work end-to-end with tests.
+**Note:** `!pattern` deny and basic include/exclude outcomes already ship in **Phase 0**.
 
----
+**Success criteria:** examples T2–T5 (glob forms) in §22 work; hash mismatch fails install when verification enabled.
 
 ### Phase 4 — Optional native-config parity
 
@@ -860,66 +866,21 @@ Prefer actionable errors:
 
 ---
 
-## 12. Future detail: include / exclude routing (Phase 3)
+## 12. Routing reference
 
-This section is a **design placeholder** so #3334-style `provider_installation` expectations have a documented target. **Not in Phase 1.**
+Routing, `!pattern` deny, and OVERRIDES grammar are specified in **§22.4** (Phase 0).
 
-### 12.1 Motivation
+Phase 3 only adds richer pattern forms (TF globs / optional RE2) and hash verification — see §10 Phase 3 and §22.8.
 
-Terraform CLI config can express:
-
-```hcl
-provider_installation {
-  network_mirror {
-    url     = "https://mirror.example/providers/"
-    include = ["registry.terraform.io/hashicorp/*"]
-  }
-  direct {
-    exclude = ["registry.terraform.io/hashicorp/*"]
-  }
-}
-```
-
-Some orgs mirror only a subset of providers and still need direct registry access for others. Phase 1’s “all or nothing” mirror is insufficient for that.
-
-### 12.2 Proposed Pulumi shape (superseded by §22.4)
-
-**Prefer Phase 3 `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` with pattern/regex keys** over a separate include env or only CLI include flags.
-
-Per-package optional sugar (if needed later) can store a single `--provider-mirror` URL; selective routing belongs in the overrides map, not a second `INCLUDE` variable.
-
-```bash
-export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
-'registry.terraform.io/hashicorp/*=https://mirror.example.com/providers/'
-```
-
-### 12.3 Resolution algorithm
-
-See §22.4. Strawman:
-
-```text
-if per-package mirror set → mirror
-else if address matches an OVERRIDES !deny → direct
-else if address matches an OVERRIDES pattern=url → that mirror base
-else → registry disco
-```
-
-### 12.4 Why defer
-
-- Most air-gap setups want **everything** mirrored (Phase 1).
-- Glob semantics and testing cost are non-trivial.
-- Avoid blocking durable mirror URL support on routing complexity.
-
----
 
 ## 13. Testing strategy
 
 ### 13.1 Unit tests (required per phase)
 
-**Phase 0 (existing):**
+**Phase 0:**
 
 - `MirrorSource` version listing, package meta, relative/absolute archive URLs, URL validation
-- Loader uses env when set
+- OVERRIDES parse + resolve matrix (`*`, exact-host, `!deny`, unmatched)
 
 **Phase 1 (new):**
 
@@ -1013,13 +974,11 @@ Unnecessary: CLI already stores opaque args. Bridge-owned flag keeps semantics n
 
 | Deliverable | Tracking |
 |-------------|----------|
-| Phase 0 | PR #3463 → helps #106 |
-| Phase 1 | New PR based on #3463 → **Fixes #3334** |
+| Phase 0 | New PR from clean `main` → helps #106 |
+| Phase 1 | Follow-up PR → **Fixes #3334** |
 | Phase 2+ | Separate issues/PRs referencing this spec |
 
-Suggested PR #3463 description note (when updating, if desired):
-
-> This PR implements Phase 0 (`PULUMI_TF_NETWORK_MIRROR_OVERRIDES` + MirrorSource) per `docs/superpowers/specs/2026-07-23-network-mirror-design.md`. Per-package `--provider-mirror` (Phase 1) follows and closes #3334.
+Prior draft [#3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463) is exploratory only; do not treat it as the implementation baseline.
 
 ---
 
@@ -1057,11 +1016,12 @@ Suggested PR #3463 description note (when updating, if desired):
 6. Trust mirror hashes in v1.
 7. Flag + env are permanent API; `.terraformrc` uncommitted later.
 8. Precedence: flag > env > registry.
-9. Retarget PR #3463 to `OVERRIDES` (no `MIRROR_URL`); then Phase 1 flag+Value.
+9. Greenfield Phase 0 then Phase 1 from clean `main` (D9).
 10. No same-host magic — users scope OVERRIDES / use `!` deny (D10 removed).
 11. Behavioral TF parity via Pulumi-native surfaces; do not parse `.terraformrc` (D11).
-12. `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` only (`pattern=url`, optional `!pattern`); no `MIRROR_URL` / INCLUDE (D12).
+12. Phase 0: exact-host / `*` / `!pattern`; Phase 3: TF globs (+ optional RE2); no `MIRROR_URL` / INCLUDE (D12).
 13. Auth: `TF_TOKEN_*` first; optional `credentials.json` terraform provider object (Phase 2+).
+14. Match resolved `host/ns/type`; first `=` split; flag beats `!deny`; http+https OK in Phase 0.
 
 ---
 
@@ -1163,18 +1123,23 @@ provider_installation {
 }
 ```
 
-**Pulumi (`!pattern` deny — no lookaround):**
+**Pulumi (`!pattern` deny — Phase 0 for exact-host / `*`; path globs Phase 3):**
 
 ```bash
+# Phase 0 — deny whole host (or use scoped positives instead of *=)
+export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
+'*=https://mirror.example.com/providers/,!registry.opentofu.org'
+
+# Phase 3 — namespace deny with TF globs
 export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
 'registry.terraform.io/*/*=https://mirror.example.com/providers/,!registry.terraform.io/evil/*'
 ```
 
-Or catch-all + deny:
+Or catch-all + deny host (Phase 0):
 
 ```bash
 export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
-'*=https://mirror.example.com/providers/,!registry.terraform.io/evil/*'
+'*=https://mirror.example.com/providers/,!myartifactory.example.com'
 ```
 
 Algorithm: if any `!pattern` matches → **direct**; else first `pattern=url` match → **mirror**. See §22.4.
@@ -1347,79 +1312,103 @@ provider_installation {
 ### 22.4 Proposed Pulumi routing model
 
 **Ship one machine-wide env: `PULUMI_TF_NETWORK_MIRROR_OVERRIDES`.**  
-Do **not** ship `PULUMI_TF_NETWORK_MIRROR_URL` (nothing merged; no alias/deprecation needed).
+Do **not** ship `PULUMI_TF_NETWORK_MIRROR_URL`.
 
-**Also ship** per-package `--provider-mirror` (Phase 1) — clearest project-local intent; durable in `parameters` + `Value`.
+**Also ship** per-package `--provider-mirror` (Phase 1) — durable in `parameters` + `Value`.
 
-#### Entry syntax
+#### Phase 0 vs Phase 3 pattern grammar (locked)
+
+| Pattern form | Phase | Notes |
+|--------------|-------|-------|
+| Exact hostname `registry.terraform.io` | **0** | Match if resolved address hostname equals key |
+| Literal catch-all `*` | **0** | Matches any address |
+| Deny `!host` or `!*` | **0** | Exact-host / `*` forms only in Phase 0 |
+| TF path globs `host/ns/*`, `*/*`, shorthands `hashicorp/*` | **3** | |
+| RE2 regex keys | **3** (optional) | No lookaround |
+
+Examples in this section that use `host/ns/*` are **Phase 3** capabilities unless noted.
+
+#### Match target (locked)
+
+Patterns match the **regaddr-resolved** provider address string:
+
+```text
+{hostname}/{namespace}/{type}
+```
+
+Example: user input `hashicorp/random` resolves to `registry.opentofu.org/hashicorp/random`.  
+An override key `registry.terraform.io` does **not** match that address. Users who mirror only the Terraform registry must pass a fully qualified `registry.terraform.io/...` source (D3) or add an OpenTofu host override.
+
+#### Entry syntax and parsing (locked)
 
 Comma-separated entries (same spirit as `PULUMI_PLUGIN_*_OVERRIDES`):
 
 ```text
-# Positive: pattern = mirror base URL
+# Positive
 pattern=https://mirror-base/path/
 
-# Deny (optional): leading ! — no URL value required
+# Deny — leading ! ; URL value ignored / omitted
 !pattern
+!pattern=
 ```
 
-Examples:
+**Split rules:**
+
+1. Trim whitespace around each comma-separated entry.
+2. Empty entries (trailing/duplicate commas) are skipped.
+3. If entry starts with `!`, the remainder (after optional `=…`) is the deny pattern.
+4. Otherwise split on the **first** `=` only: left = pattern, right = URL (URLs may contain `=`).
+5. Commas inside URLs are **not** supported without encoding — document that mirror bases must not rely on unescaped `,` in the env value (use `%2C` if unavoidable). Prefer mirror URLs without commas.
+6. Reject / error on: empty pattern (`=url`), empty URL for positives (`pattern=`), unknown Phase 0 pattern forms that look like globs/regex if we choose strict Phase 0 validation (recommended: **error** on `*` elsewhere than whole-key `*` and on `/` in Phase 0 keys except we only allow exact host — so `registry.terraform.io/foo` in Phase 0 should error with “use Phase 3 globs or exact host”).
+
+**Duplicate keys:** first positive match wins among ordered entries; duplicate positives later are unreachable. Multiple denies all apply (any match → direct).
+
+#### Phase 0 examples
 
 ```bash
-# Catch-all (TF: network_mirror { url = "..." } with no include)
+# Catch-all
 export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
 '*=https://myartifactory.example.com/artifactory/api/terraform/providers/'
 
-# Host allowlist
+# Host allowlist (recommended when private registry shares Artifactory host)
 export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
-registry.terraform.io=https://myartifactory.example.com/artifactory/api/terraform/providers/
+'registry.terraform.io=https://myartifactory.example.com/artifactory/api/terraform/providers/,registry.opentofu.org=https://myartifactory.example.com/artifactory/api/terraform/providers/'
 
-# Namespace allowlist
+# Catch-all with deny
 export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
-'registry.terraform.io/hashicorp/*=https://mirror.example.com/providers/'
-
-# Catch-all with deny-list ("mirror all except X") — NO negative lookahead
-export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
-'*=https://mirror.example.com/providers/,!registry.terraform.io/evil/*'
-
-# Multi-mirror
-export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
-'registry.terraform.io/hashicorp/*=https://mirror-a.example.com/providers/,registry.terraform.io/alekc/*=https://mirror-b.example.com/providers/'
+'*=https://mirror.example.com/providers/,!myartifactory.example.com'
 ```
 
-Pattern keys: exact host, TF-style `host/ns/*` globs, and/or RE2 regex.  
-**Not supported:** Perl lookaround (`(?!…)`). Go `regexp` is RE2.
-
-#### Deny-list algorithm (`!pattern`)
-
-Evaluated in **code**, not via regex lookaround:
+#### Resolve algorithm (all phases)
 
 ```text
-function resolveMirror(addr, packageFlag, overrides):
+function resolveMirror(resolvedAddr, packageFlag, overrides):
   if packageFlag != "":
-    return MIRROR(packageFlag)
+    return MIRROR(packageFlag)   # flag beats env, including !deny
 
-  // 1) Deny rules win over broader includes
-  for each entry in overrides where entry is "!pattern":
-    if match(pattern, addr):
+  for each deny !pattern in overrides (order preserved):
+    if match(pattern, resolvedAddr):  // Phase 0: exact host or *
       return DIRECT
 
-  // 2) First matching positive pattern=url
-  for each entry in overrides where entry is "pattern=url":
-    if match(pattern, addr):
+  for each positive pattern=url in overrides (order preserved):
+    if match(pattern, resolvedAddr):
       return MIRROR(url)
 
-  return DIRECT  // registry disco + .well-known
+  return DIRECT
 ```
 
-Notes:
+**Flag vs deny:** `--provider-mirror` **wins over** a matching `!pattern`. Document this; package authors opt in deliberately.
 
-- Order among **positive** entries: **first-match wins** (document; users put specific patterns before `*`).
-- Deny (`!`) is checked **before** positives so `*=url,!evil/*` works.
-- Per-package `--provider-mirror` still wins over env (including denies) — package author opted in.
-- Empty deny value forms like `!pattern=` are treated the same as `!pattern`.
+#### HTTP scheme (locked for Phase 0)
 
-This gives TF `include` + `exclude` outcomes without a second env var and without RE2 lookaround.
+- Accept `https` and `http` (http useful for local test servers).
+- Reject other schemes.
+- Production docs recommend `https` only (matches Terraform guidance).
+
+#### `Value` compatibility (Phase 1)
+
+- Adding `Mirror string \`json:"mirror,omitempty"\`` is backward compatible for **old SDKs → new provider** (missing field → empty → env/registry).
+- **New SDK → old provider binary:** unknown JSON fields are typically ignored → `mirror` dropped → silent registry fallback. Document that air-gap users need a provider version that understands `mirror`, or keep `OVERRIDES` set as belt-and-suspenders.
 
 #### Resolution order (summary)
 
@@ -1431,6 +1420,7 @@ This gives TF `include` + `exclude` outcomes without a second env var and withou
 ```
 
 When mirror selected: network mirror protocol; **skip `.well-known`**.
+
 
 ### 22.5 Auth: env tokens + Pulumi credentials file (idea)
 
@@ -1493,11 +1483,11 @@ This matches Pulumi’s “env for CI, credentials file for interactive login”
 | TF capability | Pulumi surface | Phase |
 |---------------|----------------|-------|
 | Catch-all `network_mirror { url }` | `OVERRIDES='*=url'` / `--provider-mirror` | 0 / 1 |
-| `include` host on mirror + `direct` exclude | `OVERRIDES` pattern keys | 0/3 |
-| Namespace/`*` or regex patterns | Pattern/regex **keys** on `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` | 3 |
+| `include` host on mirror + `direct` exclude | exact-host / `*` (Phase 0); globs (Phase 3) | 0 / 3 |
+| Namespace/`*` or regex patterns | TF globs / optional RE2 keys | **3** |
 | Multiple `network_mirror` blocks | Multiple override entries | 3 |
 | Separate `INCLUDE` / `MIRROR_URL` env | **Not used** | — |
-| `exclude` on network_mirror | `!pattern` deny entries in `OVERRIDES` | 0/3 |
+| `exclude` on network_mirror | `!pattern` deny entries in `OVERRIDES` | **0** |
 | Skip `.well-known` when mirrored | Always when mirror base selected | 0+ |
 | Same-host private registry | Scoped overrides or `!host/*` (no auto-skip) | 0+ |
 | `TF_TOKEN_*` | Env | 2 |
@@ -1505,19 +1495,17 @@ This matches Pulumi’s “env for CI, credentials file for interactive login”
 | `filesystem_mirror` | Later | 4 |
 | Read `.terraformrc` itself | **Out of primary scope** | maybe never |
 
-### 22.7 Open points for Phase 3 pattern syntax
+### 22.7 Open points (non-blocking for Phase 0)
 
-Env name locked: **`PULUMI_TF_NETWORK_MIRROR_OVERRIDES`**.  
-**Not shipping:** `PULUMI_TF_NETWORK_MIRROR_URL`.
+Locked already: env name, no `MIRROR_URL`, Phase 0 grammar (exact-host / `*` / `!`), match on resolved address, first-`=` split, flag > deny, http+https allowed.
 
-Still to decide at implement time:
+Still open (can decide at implement time or in maintainer Qs):
 
-1. Key syntax: TF globs vs RE2 regex vs both (no lookaround).
-2. Catch-all token: prefer `*`.
-3. Match order for multiple positive hits: **first-wins** (document; put specific before `*`).
-4. Ship `!pattern` deny in Phase 0 (if cheap) vs Phase 3.
-5. Whether per-package params ever embed an overrides map (probably rare).
-6. TF glob shorthands: `hashicorp/*` ≡ `registry.terraform.io/hashicorp/*`, `*/*` ≡ `registry.terraform.io/*/*` — implement if we claim TF glob parity.
+1. Phase 3: TF globs only vs globs+RE2.
+2. Phase 3: first-wins vs most-specific-wins for overlapping globs.
+3. Whether per-package params ever embed a full overrides map (probably rare).
+4. Whether to tighten Phase 0 to https-only later.
+
 
 ### 22.8 Audit: Terraform `network_mirror` coverage
 
@@ -1546,7 +1534,7 @@ Scope note: Terraform’s **`network_mirror` block** is only one method inside `
 | Mirror some addresses, direct for the rest | **Yes** | No override match → direct |
 | Mirror public registries, direct for private registry host | **Yes** | Host-scoped overrides or `*=…,!private-host/*` |
 | `include` on mirror + matching `exclude` on `direct` | **Yes** | Absence from overrides = direct (no separate `direct` block needed) |
-| TF glob shorthands (`hashicorp/*`, `*/*` → terraform.io) | **Must implement** | Call out in Phase 0/3 pattern matcher (§22.7 item 6) |
+| TF glob shorthands (`hashicorp/*`, `*/*` → terraform.io) | **Phase 3** | Exact-host / `*` ship in Phase 0 |
 
 #### C. Broader `provider_installation` (not `network_mirror`, but often expected)
 
