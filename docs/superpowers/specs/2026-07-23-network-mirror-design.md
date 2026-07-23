@@ -26,7 +26,7 @@ This document defines a **target architecture** and a **phased plan** to support
 
 **Config philosophy:** behavioral parity with Terraform `provider_installation`, via **Pulumi-native** surfaces only. **Do not parse** `.terraformrc`. **One env:** `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` (no separate catch-all URL env). Keep **`--provider-mirror`** for clear per-package config.
 
-**Phase 1 pattern grammar:** exact hostname, literal `*`, TF-style path globs (`host/ns/*` and shorthands like `hashicorp/*`), and `!pattern` deny. Optional RE2 regex keys can wait for Phase 3 if they add complexity.
+**Phase 1 pattern grammar:** exact hostname, literal `*`, Terraform-style path globs (`host/ns/*` and shorthands like `hashicorp/*`), and `!pattern` deny. **No Go/RE2 regex keys** — one pattern language only (TF globs).
 
 For works/doesn't see **§8A**. For TF → Pulumi mapping see **§22**.
 
@@ -123,7 +123,7 @@ Proposed decisions that constrain the implementation:
 | D9 | Delivery | Phase 1 PR: MirrorSource + OVERRIDES (globs+`!`) + `TF_TOKEN_*`; Phase 2 PR: flag + Value | |
 | D10 | Same-host behavior | No automatic skip | Users must scope `OVERRIDES` (or use `!host`); misconfig is user error |
 | D11 | TF parity | Same *outcomes*, not file reuse | |
-| D12 | Overrides shape | Phase 1: exact-host / `*` / TF globs / `!pattern` (optional RE2 later). No lookaround | See §22.4 |
+| D12 | Overrides shape | Phase 1: exact-host / `*` / TF globs / `!pattern` only (no RE2 regex keys) | See §22.4 |
 
 ---
 
@@ -684,7 +684,7 @@ One feature PR (multiple commits OK). This is the machine-side Terraform-equival
 - [ ] Unmatched address → registry disco
 - [ ] No separate `PULUMI_TF_NETWORK_MIRROR_URL`
 
-**Out of scope for Phase 1:** `--provider-mirror`, `Value` persistence, `credentials.json` store, RE2-only keys (optional later), hash verification, `filesystem_mirror`, `.terraformrc` parsing.
+**Out of scope for Phase 1:** `--provider-mirror`, `Value` persistence, `credentials.json` store, hash verification, `filesystem_mirror`, `.terraformrc` parsing, Go/RE2 regex override keys.
 
 ### Phase 2 — Durable `--provider-mirror` (follow-up PR)
 
@@ -712,7 +712,6 @@ Only as demand requires:
 |------|-------|
 | Pulumi `credentials.json` `terraformProviderCredentials` | Needs `pulumi/pulumi`; env still wins |
 | Archive hash verification | When mirror returns hashes |
-| Optional RE2 regex keys | If globs prove insufficient |
 | `filesystem_mirror` | Local directory layout |
 | `.terraformrc` parsing | Explicitly not committed (D7) |
 
@@ -814,7 +813,7 @@ Prefer actionable errors:
 
 Routing, globs, `!pattern` deny, and OVERRIDES grammar are specified in **§22.4** (Phase 1).
 
-Phase 3 covers optional credentials store, hash verification, RE2, and filesystem mirror — see §10.
+Phase 3 covers optional credentials store, hash verification, and filesystem mirror — see §10.
 
 
 ## 13. Testing strategy
@@ -983,7 +982,7 @@ See also `2026-07-23-network-mirror-maintainer-questions.md`.
 
 Reasons:
 
-1. **Pulumi already solved a similar problem differently.** Plugin download routing uses `PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES` / `PULUMI_PLUGIN_HOST_OVERRIDES` (env), not a Terraform-style rc file.
+1. **Pulumi already uses env overrides for plugin downloads** (`PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES` uses Go regexp on URLs), not a Terraform-style rc file. Mirror routing is a different problem (provider addresses + network-mirror protocol), so we use Terraform-style globs instead of regexp.
 2. **Dual sources of truth are painful.** If both `.terraformrc` and Pulumi env/params apply, precedence bugs and “works in terraform / fails in pulumi” support load explode.
 3. **Dynamic providers already have a project-native config channel** (`packages.*.parameters` + embedded `Value`). That is the right place for *project* mirror intent.
 4. **Machine-wide defaults** fit env vars (and later credentials store), matching CI practice.
@@ -1002,9 +1001,8 @@ Parsing `.terraformrc` remains a possible later escape hatch if customers demand
 | Auth for mirror/registry host | `TF_TOKEN_<host>` (env, wins) → `credentials` blocks in CLI config → `credentials_helper` |
 | When mirror is used | Skip origin registry discovery; use [network mirror protocol](https://developer.hashicorp.com/terraform/internals/provider-network-mirror-protocol) |
 
-Important: **host rewrite ≠ network mirror.**  
-`PULUMI_PLUGIN_HOST_OVERRIDES` rewrites `https://api.github.com/foo` → `https://proxy/.../foo` but keeps path semantics.  
-A Terraform **network mirror** does **not** pretend to be `registry.terraform.io`; it serves:
+Important: **URL rewrite ≠ network mirror.**  
+`PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES` rewrites plugin download URLs via Go regexp (different domain). A Terraform **network mirror** does **not** pretend to be `registry.terraform.io`; it serves:
 
 ```text
 {mirrorBase}/{originalHostname}/{namespace}/{type}/index.json
@@ -1178,13 +1176,6 @@ export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
 'registry.terraform.io/hashicorp/*=https://mirror.example.com/providers/'
 ```
 
-Or regex-style keys (same idea as `PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES`’s `regexp=URL`):
-
-```bash
-export PULUMI_TF_NETWORK_MIRROR_OVERRIDES=\
-'^registry\.terraform\.io/hashicorp/=https://mirror.example.com/providers/'
-```
-
 | Address | Result |
 |---------|--------|
 | `registry.terraform.io/hashicorp/random` | Mirror |
@@ -1263,7 +1254,6 @@ Do **not** add a separate `PULUMI_TF_NETWORK_MIRROR_URL`.
 | Literal catch-all `*` | **1** | Matches any address |
 | TF path globs `host/ns/*`, `host/*/*`, `*/*` | **1** | Incl. shorthands `hashicorp/*` → `registry.terraform.io/hashicorp/*` |
 | Deny `!pattern` | **1** | Same pattern forms; checked before positives |
-| RE2 regex keys | **3** (optional) | No lookaround; only if globs prove insufficient |
 
 
 #### Match target 
@@ -1297,7 +1287,7 @@ pattern=https://mirror-base/path/
 3. If entry starts with `!`, the remainder (after optional `=…`) is the deny pattern.
 4. Otherwise split on the **first** `=` only: left = pattern, right = URL (URLs may contain `=`).
 5. Commas inside URLs are **not** supported without encoding — document that mirror bases must not rely on unescaped `,` in the env value (use `%2C` if unavoidable). Prefer mirror URLs without commas.
-6. Reject / error on: empty pattern (`=url`), empty URL for positives (`pattern=`), and malformed globs. Accept Phase 1 forms above; reject lookaround / unsupported regex unless Phase 3 RE2 is explicitly enabled later.
+6. Reject / error on: empty pattern (`=url`), empty URL for positives (`pattern=`), and malformed globs. Accept Phase 1 forms above only — **reject** Go/RE2 regex keys (one language: Terraform globs).
 
 **Duplicate keys:** first positive match wins among ordered entries; duplicate positives later are unreachable. Multiple denies all apply (any match → direct).
 
@@ -1422,8 +1412,7 @@ This matches Pulumi’s “env for CI, credentials file for interactive login”
 |---------------|----------------|-------|
 | Catch-all `network_mirror { url }` | `OVERRIDES='*=url'` / `--provider-mirror` | 1 / 2 |
 | `include` host on mirror + `direct` exclude | OVERRIDES patterns (Phase 1) | **1** |
-| Namespace/`*` patterns (TF globs) | OVERRIDES keys | **1** |
-| Optional RE2 regex keys | OVERRIDES keys | **3** |
+| Namespace/`*` patterns (TF globs only) | OVERRIDES keys | **1** |
 | Multiple `network_mirror` blocks | Multiple override entries | 3 |
 | Separate `INCLUDE` / `MIRROR_URL` env | **Not used** | — |
 | `exclude` on network_mirror | `!pattern` deny entries in `OVERRIDES` | **1** |
@@ -1436,14 +1425,13 @@ This matches Pulumi’s “env for CI, credentials file for interactive login”
 
 ### 22.7 Open points
 
-Settled: env name; no separate `MIRROR_URL`; Phase 1 grammar (exact-host / `*` / TF globs / `!`); match on resolved address; first-`=` split; flag > deny; `TF_TOKEN_*` in Phase 1; http+https accepted.
+Settled: env name; no separate `MIRROR_URL`; Phase 1 grammar = Terraform globs only (exact-host / `*` / path globs / `!`); no Go/RE2 override keys; match on resolved address; first-`=` split; flag > deny; `TF_TOKEN_*` in Phase 1; http+https accepted.
 
 Still open:
 
-1. Whether to add optional RE2 keys later (Phase 3).
-2. First-wins vs most-specific-wins for overlapping globs (default: first-wins).
-3. Token host keying for absolute archive URLs on a different host than the mirror.
-4. Whether per-package params ever embed a full overrides map (probably rare).
+1. First-wins vs most-specific-wins for overlapping globs (default: first-wins).
+2. Token host keying for absolute archive URLs on a different host than the mirror.
+3. Whether per-package params ever embed a full overrides map (probably rare).
 
 
 ### 22.8 Audit: Terraform `network_mirror` coverage

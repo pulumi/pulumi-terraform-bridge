@@ -18,7 +18,7 @@ Under each question we note our current lean. Please push back freely—includin
 
 ## 1. Configuration surfaces
 
-Terraform configures mirrors only in CLI config files. Pulumi’s closest pattern for downloads is environment overrides (for example `PULUMI_PLUGIN_HOST_OVERRIDES`), not reading `.terraformrc`.
+Terraform configures mirrors only in CLI config files. Pulumi’s closest official pattern for plugin download rewriting is `PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES` (Go regexp on URLs) — a different problem than Terraform provider-address globs.
 
 ### Q1. Primary config approach
 
@@ -38,9 +38,9 @@ If we ship an overrides env var, is this name acceptable?
 
 - `PULUMI_TF_NETWORK_MIRROR_OVERRIDES`
 
-Or would you prefer something closer to plugin naming, such as `PULUMI_TF_PROVIDER_HOST_OVERRIDES`?
+Or would you prefer a different name?
 
-**Our lean:** `PULUMI_TF_NETWORK_MIRROR_OVERRIDES`, because this is **network-mirror protocol + skip `.well-known`**, not a transparent HTTP host rewrite like `PULUMI_PLUGIN_HOST_OVERRIDES`.
+**Our lean:** `PULUMI_TF_NETWORK_MIRROR_OVERRIDES`, because this selects the **network-mirror protocol** and skips `.well-known` (not a generic URL rewrite).
 
 ### Q3. Single catch-all URL env
 
@@ -116,17 +116,17 @@ No match → direct registry discovery.
 
 Patterns match the **regaddr-resolved** address `hostname/namespace/type` (so bare `hashicorp/random` is `registry.opentofu.org/hashicorp/random`).
 
-### Q7. Pattern syntax
+### Q7. Pattern language for override keys
 
-Phase 1 proposes exact-host + `*` + TF globs/shorthands + `!`. Prefer:
+Override keys need a match language. Two options people often mix up:
 
-| Option | Description |
-|--------|-------------|
-| **A** | Terraform-style globs only (incl. shorthands like `hashicorp/*`) |
-| **B** | Also allow RE2 regex keys in Phase 1 |
-| **C** | Globs in Phase 1; RE2 only later if needed |
+| Option | Description | Precedent |
+|--------|-------------|-----------|
+| **A** | Terraform-style globs only (`registry.terraform.io/hashicorp/*`, shorthands like `hashicorp/*`, plus exact host / `*` / `!pattern`) | `.terraformrc` `include`/`exclude` |
+| **B** | Go/RE2 regexp keys (like `PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES`) | Official Pulumi plugin URL overrides |
+| **C** | Support both | — |
 
-**Our lean:** **C** (or **A** if you want zero regex surface).
+**Our lean:** **A** only. One language, matches Terraform mental model, avoids `*` meaning different things in glob vs regex. We do **not** plan RE2 keys unless maintainers insist.
 
 ### Q8. Match order
 
@@ -218,7 +218,6 @@ Which of these should move earlier than Phase 3?
 |------|----------------|
 | Pulumi `credentials.json` token store | Phase 3 |
 | Hash verification of mirror archives | Phase 3 |
-| Optional RE2 regex keys | Phase 3 |
 | `filesystem_mirror` | Phase 3+ |
 | Parsing `.terraformrc` / `.tofurc` | Out of primary scope |
 | OpenTofu `oci_mirror` | Out of scope unless demanded |
@@ -239,7 +238,7 @@ Is this phasing acceptable?
 
 1. **Phase 1 (one PR, multi-commit OK):** `MirrorSource` + `OVERRIDES` (exact-host / `*` / TF globs / `!`) + `TF_TOKEN_*`
 2. **Phase 2 (follow-up PR):** `--provider-mirror` + persist in `Value` → address #3334
-3. **Phase 3+:** credentials.json, hash verify, optional RE2 / filesystem
+3. **Phase 3+:** credentials.json, hash verify, filesystem
 
 ### Q18. Closing #3334
 
@@ -274,10 +273,10 @@ For the first user-facing docs, is `dynamic/README.md` enough, or should pulumi.
 | Topic | Lean |
 |-------|------|
 | Surfaces | `OVERRIDES` + `--provider-mirror`; no `.terraformrc`; no single `MIRROR_URL` |
-| Phase 1 | MirrorSource + OVERRIDES (globs + `!`) + `TF_TOKEN_*` — one PR |
+| Phase 1 | MirrorSource + OVERRIDES (TF globs + `!`) + `TF_TOKEN_*` — one PR |
 | Phase 2 | `--provider-mirror` + `Value` — follow-up PR |
 | Routing | Match resolved `host/ns/type`; flag > overrides; no same-host auto-skip |
 | Auth | `TF_TOKEN_*` in Phase 1; credentials.json optional Phase 3 |
-| Later | Hash verify, RE2, filesystem; no rc parse |
+| Later | Hash verify, filesystem; no rc parse; no RE2 override keys |
 
 We're happy to revise the design from your answers before more implementation. Thank you!
