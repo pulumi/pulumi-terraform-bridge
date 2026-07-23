@@ -119,6 +119,7 @@ These decisions were made during design review. They constrain implementation.
 | D7 | Config end-state | Flag + env are the permanent public API unless demand proves `.terraformrc` needed | Avoid large CLI-config parser surface |
 | D8 | Precedence | **flag > env > default registry** | Per-package intent wins over machine default |
 | D9 | Delivery | Phase 0 = current PR; Phase 1 = follow-up PR based on Phase 0 | Keep reviews focused; complementary features |
+| D10 | Same-host mirror vs private registry | If `provider.Hostname == mirrorURL.Host`, **silently skip mirror** and use registry discovery (direct) for that address | Avoids forcing private Artifactory packages through network-mirror paths; no warning spam |
 
 ---
 
@@ -353,11 +354,13 @@ mirror := args.Mirror
 if mirror == "" {
     mirror = os.Getenv("PULUMI_TF_NETWORK_MIRROR_URL")
 }
-if mirror != "" {
+if mirror != "" && !sameHost(provider.Hostname, mirror) {
     return getProviderFromMirror(...)
 }
 return getProviderServer(... disco ...)
 ```
+
+**Same-host rule (D10):** parse the mirror URL; if its host equals the provider address hostname, treat the mirror as unset for that download (silent). Public addresses (`registry.terraform.io`, `registry.opentofu.org`) keep using the mirror. Private packages on the Artifactory hostname use registry discovery even when a global env mirror is set.
 
 ### 7.5 Local providers
 
@@ -513,10 +516,10 @@ See also §10A.
 | # | Setup | Public TF provider | Private `myartifactory…/myorg/custom` | P1 |
 |---|-------|--------------------|----------------------------------------|----|
 | 16 | `--provider-mirror` **only** on the public package; private package has **no** mirror flag | ✅ via mirror | ✅ via registry disco on `myartifactory…` | ✅ **Recommended** |
-| 17 | Global `PULUMI_TF_NETWORK_MIRROR_URL=MIRROR` for the whole process | ✅ | ❌ / ⚠️ | Private addr forced through mirror path `…/providers/myartifactory.example.com/myorg/custom/…` — 404 unless that layout exists |
-| 18 | `--provider-mirror` also set on the private package | ✅ | ❌ / ⚠️ | Same as #17 for that package |
-| 19 | Private providers also published **in mirror layout** under hostname `myartifactory.example.com` | ✅ | ✅ even with global env | Possible but uncommon; don't assume |
-| 20 | Phase 3: mirror `include = registry.terraform.io/*`, private host uses direct | ✅ | ✅ | 🔜 Proper TF-like split |
+| 17 | Global `PULUMI_TF_NETWORK_MIRROR_URL=MIRROR` for the whole process | ✅ | ✅ (P1+ with D10) | Same-host rule: private addr hostname == mirror host → **silent** direct registry disco; public TF/OpenTofu hosts still mirrored |
+| 18 | `--provider-mirror` also set on the private package | ✅ | ✅ (P1+ with D10) | Same as #17 — flag/env mirror ignored for that hostname |
+| 19 | Private providers also published **only** in mirror layout under hostname `myartifactory.example.com` (no registry protocol) | ✅ | ❌ with D10 | Rare; D10 would skip mirror. Use a different mirror host / publish via registry protocol / Phase 3 escape later |
+| 20 | Phase 3: explicit include/exclude | ✅ | ✅ | Still useful for non-same-host splits; D10 covers the common same-host case earlier |
 
 **Works (Phase 1 mixed project):**
 
@@ -540,11 +543,15 @@ packages:
 
 **Does not work (global env + private package, typical Artifactory):**
 
+~~Before D10~~ this failed. **With D10 (Phase 1):** global env is OK for mixed hosts — private package silently uses registry disco.
+
 ```bash
 export PULUMI_TF_NETWORK_MIRROR_URL=https://myartifactory.example.com/artifactory/api/terraform/providers/
 pulumi package add terraform-provider myartifactory.example.com/myorg/custom 1.2.3
-# → network-mirror GET …/myartifactory.example.com/myorg/custom/index.json
-# → usually 404; private pkgs expect .well-known registry discovery instead
+# D10: provider host == mirror host → skip MirrorSource, use .well-known on myartifactory.example.com
+pulumi package add terraform-provider -- \
+  registry.terraform.io/hashicorp/random 3.6.0
+# still uses network mirror (registry.terraform.io ≠ myartifactory.example.com)
 ```
 
 ### 8A.5 Authentication
@@ -600,8 +607,9 @@ Mirror is TF-registry layout?
   → Always pass registry.terraform.io/... (don't rely on bare names)
 
 Same Artifactory host also serves private providers?
-  → Put --provider-mirror only on public packages
-  → Do NOT set global env on those machines (until Phase 3)
+  → Phase 1+ D10: same hostname as mirror → silent direct (safe with global env)
+  → Still fine to put --provider-mirror only on public packages
+  → Phase 3 include/exclude for non-same-host routing
 
 Mirror needs a password?
   → Phase 2 + TF_TOKEN_<host> (never put token in Pulumi.yaml)
@@ -616,6 +624,7 @@ Mirror needs a password?
 | Single mirror via env | **MUST** | 0 | PR #3463 |
 | Single mirror via `--provider-mirror` | **MUST** | 1 | Closes #3334 |
 | Persist mirror in `Value` | **MUST** | 1 | Runtime durability |
+| Same-host silent skip (D10) | **MUST** | 1 | `provider.Hostname == mirror.Host` → direct disco |
 | Precedence flag > env > default | **MUST** | 1 | |
 | TF + OpenTofu host paths on one mirror | **MUST** | 0/1 | Already in `providerURL`; add tests |
 | Docs for qualified hosts | **MUST** | 1 | Avoid silent 404 confusion |
@@ -665,7 +674,7 @@ Mirror needs a password?
 | `dynamic/parameterize/value.go` | `Value.Mirror`; `IntoArgs` round-trip |
 | `dynamic/parameterize/*_test.go` | Parse / marshal / IntoArgs tests |
 | `dynamic/main.go` | Copy `Mirror` into `Value`; pass into `getProvider` |
-| `dynamic/internal/shim/run/loader.go` | Precedence resolution API |
+| `dynamic/internal/shim/run/loader.go` | Precedence resolution API + **D10 same-host silent skip** |
 | `dynamic/README.md` | User docs + host qualification + future include/exclude note |
 | This design doc | Link from README if useful |
 
@@ -675,11 +684,12 @@ Mirror needs a password?
    - cobra parsing of `--provider-mirror`
    - `Value` JSON round-trip including `mirror`
    - loader precedence (flag beats env)
+   - **D10:** provider hostname equals mirror host → registry path (no mirror HTTP), silent
    - **regression:** `ParameterizeValue` path with env unset still uses embedded mirror
 2. Implement flag + model fields.
-3. Thread mirror through `getProvider` / `NamedProvider`.
-4. Update docs with examples for TF-hosted and OpenTofu-hosted addresses.
-5. Document Phase 3 include/exclude as future work (see §12).
+3. Thread mirror through `getProvider` / `NamedProvider`; implement same-host compare after `url.Parse` (D10).
+4. Update docs with examples for TF-hosted and OpenTofu-hosted addresses + same-host Artifactory case.
+5. Document Phase 3 include/exclude as future work for non-same-host splits (see §12).
 
 **Success criteria:**
 
@@ -687,8 +697,9 @@ Mirror needs a password?
 - [ ] Generated / embedded `Value` contains `mirror`
 - [ ] Fresh cache + no env → runtime still uses mirror
 - [ ] Flag overrides env when both set
+- [ ] D10: same host as mirror → silent direct (no mirror requests)
 - [ ] Local path + `--provider-mirror` errors clearly
-- [ ] README documents host qualification
+- [ ] README documents host qualification + same-host behavior
 
 **Issue linking:** `Fixes #3334` (and references Phase 0 / #106 as related).
 
@@ -775,33 +786,31 @@ That only works if the mirror repo **also** publishes private providers in netwo
 
 | Config style | Public providers via mirror | Custom provider on same host | Conflict? |
 |--------------|----------------------------|------------------------------|-----------|
-| **Per-package `--provider-mirror` only on public packages** | Yes | No flag → registry disco to `myartifactory…` | **No** (preferred Phase 1 pattern) |
-| **Global `PULUMI_TF_NETWORK_MIRROR_URL`** | Yes | Also forced through mirror path | **Yes**, unless private pkgs exist in mirror layout |
-| **`--provider-mirror` on the custom package too** | n/a | Forced through mirror path | **Yes**, same caveat |
-| **Phase 3 include/exclude** | Mirror only `registry.terraform.io/*` (etc.) | `direct` for `myartifactory…/*` | **No** (TF-like) |
+| **Per-package `--provider-mirror` only on public packages** | Yes | No flag → registry disco to `myartifactory…` | **No** (still fine) |
+| **Global `PULUMI_TF_NETWORK_MIRROR_URL` + D10** | Yes | Same host → **silent direct** (D10) | **No** (Phase 1+) |
+| **Global env without D10 (Phase 0 only)** | Yes | Forced through mirror path | **Yes**, unless private pkgs exist in mirror layout |
+| **`--provider-mirror` on the custom package + D10** | n/a | Same host → silent direct | **No** for typical registry-protocol private pkgs |
+| **Phase 3 include/exclude** | Mirror only selected public hosts | `direct` for private host | **No** (explicit; still useful when hosts differ) |
 
-### 10A.3 Phase 1 guidance (no include/exclude yet)
+### 10A.3 Phase 1 guidance (with D10)
 
 For mixed Artifactory hosts:
 
-1. Prefer **per-package** `--provider-mirror` on packages that come from public registries.
-2. Add internal providers **without** `--provider-mirror`, using the fully qualified private address:
-   ```bash
-   pulumi package add terraform-provider -- \
-     myartifactory.example.com/myorg/myprovider 1.2.3
-   ```
-3. Avoid a process-wide `PULUMI_TF_NETWORK_MIRROR_URL` on machines that also install private-registry providers — or accept that those private providers must be present in the mirror layout / cache.
-4. If the org later needs “env var for everything public, but never for `myartifactory…`”, that is exactly **Phase 3 include/exclude** (§12).
+1. **D10 is the safety net:** if the provider address hostname equals the mirror URL host, the bridge silently uses registry discovery instead of the network mirror protocol.
+2. Prefer **per-package** `--provider-mirror` on packages that come from public registries (clearest intent).
+3. Global `PULUMI_TF_NETWORK_MIRROR_URL` is acceptable on mixed machines **once D10 ships** (Phase 1).
+4. Phase 0 alone (env without D10) still has the conflict — do not rely on global env for private same-host providers until Phase 1.
+5. Rare escape: if private packages exist *only* in network-mirror layout under the Artifactory hostname, D10 will not fetch them via mirror; publish via registry protocol or use a distinct mirror hostname.
 
 ### 10A.4 Implications for the roadmap
 
 This use case **strengthens** the rationale for:
 
-- Phase 1 per-package flag (finer than env-only)
-- Documenting the Phase 1 limitation (global env is blunt)
-- Keeping §12 include/exclude as an explicit follow-up, not an afterthought
+- Phase 1 per-package flag **and** D10 same-host silent skip
+- Documenting Phase 0 limitation (env without D10 is blunt)
+- Keeping §12 include/exclude for **non-same-host** routing (different DNS names for mirror vs private registry)
 
-It does **not** block Phase 0/1 if users follow the per-package pattern above.
+Phase 0 remains shippable; D10 lands with Phase 1.
 
 ---
 
@@ -892,6 +901,8 @@ MirrorExclude []string `json:"mirrorExclude,omitempty"`
 
 Matching should use provider source address patterns familiar to TF (`hostname/namespace/type` globs). Exact glob syntax should follow Terraform’s `include` / `exclude` semantics where practical.
 
+**Note:** Phase 1 **D10** already covers the common case where the private registry hostname equals the mirror URL host (silent direct). Phase 3 remains for splits across **different** hostnames (e.g. mirror at `terraform-mirror.corp.com`, private registry at `artifactory.corp.com`).
+
 ### 12.3 Resolution algorithm (strawman)
 
 ```text
@@ -980,7 +991,7 @@ Suggested README outline addition:
 | Marketing “enterprise ready” before auth | User frustration | Phase 2 before claiming authenticated Artifactory support |
 | Scope creep into full `.terraformrc` | Slow delivery | D7; Phase 4 uncommitted |
 | Absolute archive URLs on another host | Auth host mismatch | Phase 2 design note; follow redirects carefully |
-| Same host = mirror + private registry | Global env forces private addrs through mirror protocol → 404 | Prefer per-package flag; Phase 3 include/exclude; see §10A |
+| Same host = mirror + private registry | Wrong protocol / 404 for private pkgs | **D10** silent skip when hosts equal; see §8A.4 / §10A |
 
 ---
 
@@ -1057,6 +1068,7 @@ Suggested PR #3463 description note (when updating, if desired):
 7. Flag + env are permanent API; `.terraformrc` uncommitted later.
 8. Precedence: flag > env > registry.
 9. Phase 0 then Phase 1 as separate PRs.
+10. Same-host rule (D10): if provider hostname equals mirror URL host, silently use registry discovery instead of network mirror.
 
 ---
 
