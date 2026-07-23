@@ -2,8 +2,7 @@
 
 **Status:** Questions for Pulumi maintainers  
 **Design draft:** [`docs/superpowers/specs/2026-07-23-network-mirror-design.md`](./2026-07-23-network-mirror-design.md)  
-**Baseline:** Clean `main` (greenfield — no mirror code landed yet). Discussion branch: `docs/disussion-issue3334`.  
-**Related:** [#3334](https://github.com/pulumi/pulumi-terraform-bridge/issues/3334), [pulumi-terraform-provider#106](https://github.com/pulumi/pulumi-terraform-provider/issues/106). Prior exploration [#3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463) is **not** the implementation baseline.
+**Related:** [#3334](https://github.com/pulumi/pulumi-terraform-bridge/issues/3334), [pulumi-terraform-provider#106](https://github.com/pulumi/pulumi-terraform-provider/issues/106), [#3463](https://github.com/pulumi/pulumi-terraform-bridge/pull/3463)  
 
 ## Why we’re asking
 
@@ -53,7 +52,7 @@ export PULUMI_TF_NETWORK_MIRROR_OVERRIDES='*=https://mirror.example/providers/'
 
 Is that enough, or do you still want a dedicated one-URL env for short CI one-liners?
 
-**Our lean:** overrides only (greenfield — no legacy single-URL env to preserve).
+**Our lean:** overrides only — one env is enough.
 
 ---
 
@@ -97,19 +96,19 @@ Would you rather a first-class package field (for example `providerMirror:`) ins
 
 ## 3. Routing and Terraform `include` / `exclude` parity
 
-Proposed overrides shape (one env). **Phase 0** ships exact-host keys, literal `*`, and `!pattern` deny. TF path globs (`host/ns/*`) are **Phase 3**.
+Proposed overrides shape (one env). **Phase 1** ships exact-host keys, literal `*`, and `!pattern` deny. TF path globs (`host/ns/*`) are **Phase 4**.
 
 ```bash
-# Phase 0 — include host → mirror protocol, skip .well-known
+# Phase 1 — include host → mirror protocol, skip .well-known
 registry.terraform.io=https://mirror.example/providers/
 
-# Phase 0 — deny host → direct (evaluated in code; Go RE2 has no negative lookahead)
+# Phase 1 — deny host → direct (evaluated in code; Go RE2 has no negative lookahead)
 !myartifactory.example.com
 
-# Phase 0 — catch-all
+# Phase 1 — catch-all
 *=https://mirror.example/providers/
 
-# Phase 3 — path glob include / deny
+# Phase 4 — path glob include / deny
 # registry.terraform.io/hashicorp/*=https://mirror.example/providers/
 # !registry.terraform.io/evil/*
 ```
@@ -118,9 +117,9 @@ No match → direct registry discovery.
 
 Patterns match the **regaddr-resolved** address `hostname/namespace/type` (so bare `hashicorp/random` is `registry.opentofu.org/hashicorp/random`).
 
-### Q7. Pattern syntax (Phase 3 richness)
+### Q7. Pattern syntax (Phase 4 richness)
 
-Phase 0 is locked to exact-host + `*` + `!`. For **Phase 3**, prefer override keys as:
+Phase 1 proposes exact-host + `*` + `!`. For **Phase 4**, prefer override keys as:
 
 | Option | Description |
 |--------|-------------|
@@ -145,11 +144,11 @@ When multiple positive patterns match, prefer:
 
 Is `!pattern` in the same overrides string acceptable for Terraform `exclude`-style behavior?
 
-We plan to ship `!` deny in **Phase 0** (exact-host / `*` forms). Path-glob denies wait for Phase 3 with globs.
+We plan to ship `!` deny in **Phase 1** (exact-host / `*` forms). Path-glob denies wait for Phase 4 with globs.
 
 Alternatives we considered: a second env var, or Perl-style negative lookahead in regex (rejected — Go RE2 does not support lookaround).
 
-**Our lean:** `!pattern` in the same env, Phase 0.
+**Our lean:** `!pattern` in the same env (Phase 1).
 
 ### Q10. Multi-method “newest version”
 
@@ -178,7 +177,7 @@ Users should configure explicitly, for example:
 # scoped (recommended)
 PULUMI_TF_NETWORK_MIRROR_OVERRIDES='registry.terraform.io=https://myartifactory…/providers/'
 
-# or catch-all with deny (Phase 0: deny exact host)
+# or catch-all with deny (Phase 1: deny exact host)
 PULUMI_TF_NETWORK_MIRROR_OVERRIDES='*=https://myartifactory…/providers/,!myartifactory.example.com'
 ```
 
@@ -196,7 +195,7 @@ Do you prefer this explicit model, or do you want automatic same-host rescue (wa
 
 Should mirror/registry HTTP auth use Terraform-compatible `TF_TOKEN_<host>` environment variables?
 
-**Our lean:** yes (Phase 2).
+**Our lean:** yes (Phase 3).
 
 ### Q13. Pulumi credentials file
 
@@ -241,16 +240,16 @@ Leave Terraform-style `dev_overrides` out for dynamic providers?
 
 Is this phasing acceptable?
 
-1. **Phase 0 (greenfield):** `MirrorSource` + `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` with exact-host / `*` / `!pattern` deny (no separate `MIRROR_URL` env)
-2. **Phase 1:** `--provider-mirror` + persist in `Value` → close / substantially address #3334
-3. **Phase 2:** Auth (`TF_TOKEN_*`, maybe credentials store)
-4. **Phase 3+:** TF path globs / optional RE2, hash verification, optional filesystem mirror
+1. **Phase 1:** `MirrorSource` + `PULUMI_TF_NETWORK_MIRROR_OVERRIDES` (exact-host / `*` / `!pattern` deny)
+2. **Phase 2:** `--provider-mirror` + persist in `Value` → address #3334
+3. **Phase 3:** Auth (`TF_TOKEN_*`, maybe credentials store)
+4. **Phase 4+:** TF path globs / optional RE2, hash verification, optional filesystem mirror
 
 ### Q18. Closing #3334
 
-Should #3334 be closed when durable `--provider-mirror` + Phase 0 overrides land, or only once Phase 3 globs land?
+Should #3334 be closed when durable `--provider-mirror` + Phase 1 overrides land, or only once Phase 4 globs land?
 
-**Our lean:** close (or largely close) after Phase 1; Phase 0 already covers env-based exclude via `!`; keep follow-ups for glob polish.
+**Our lean:** close (or largely close) after Phase 2; Phase 1 already covers env-based exclude via `!`; keep follow-ups for glob polish.
 
 ### Q19. “Behavioral parity” framing
 
@@ -279,11 +278,10 @@ For the first user-facing docs, is `dynamic/README.md` enough, or should pulumi.
 | Topic | Lean |
 |-------|------|
 | Surfaces | `OVERRIDES` + `--provider-mirror`; no `.terraformrc`; no single `MIRROR_URL` |
-| Baseline | Greenfield from clean `main` |
-| Phase 0 grammar | Exact-host, `*`, `!pattern` deny |
-| Durability | Mirror URL in parameterized `Value` (Phase 1) |
+| Phase 1 grammar | Exact-host, `*`, `!pattern` deny |
+| Durability | Mirror URL in parameterized `Value` (Phase 2) |
 | Routing | Match resolved `host/ns/type`; flag > overrides; no same-host auto-skip |
 | Auth | `TF_TOKEN_*` first; optional credentials.json later |
-| Not in v1 | filesystem mirror, oci_mirror, rc parse, multi-source newest-version racing; TF path globs wait for Phase 3 |
+| Later | TF path globs (Phase 4); filesystem mirror (Phase 5); no rc parse |
 
-We’re happy to revise the design from your answers before more implementation. Thank you!
+We're happy to revise the design from your answers before more implementation. Thank you!
