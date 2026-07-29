@@ -87,7 +87,7 @@ func TestValidInputsFromPlan(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "set requires exact match",
+			name: "set does not require exact order",
 			path: newPropertyPath("set"),
 			inputValue: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("a"),
@@ -106,7 +106,46 @@ func TestValidInputsFromPlan(t *testing.T) {
 					},
 				},
 			},
-			want: false,
+			want: true,
+		},
+		{
+			name: "nested set does not require exact order",
+			path: newPropertyPath("obj"),
+			inputValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"nested": resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewStringProperty("a"),
+							resource.NewStringProperty("b"),
+						}),
+					}),
+				},
+			),
+			planValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"nested": resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewStringProperty("b"),
+							resource.NewStringProperty("a"),
+						}),
+					}),
+				},
+			),
+			sdkv2Schema: map[string]*schema.Schema{
+				"obj": {
+					Type: schema.TypeSet,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested": {
+								Type:     schema.TypeSet,
+								Optional: true,
+								Elem:     &schema.Schema{Type: schema.TypeString},
+							},
+						},
+					},
+				},
+			},
+			want: true,
 		},
 		{
 			name: "missing non-computed property",
@@ -3398,6 +3437,60 @@ func TestMakeSetDiffElementResult(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestDetailedDiffMatchesSetElementsWithReorderedNestedSets(t *testing.T) {
+	t.Parallel()
+
+	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+		"rules": {
+			Type:     schema.TypeSet,
+			Optional: true,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"name": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+					"statements": {
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem:     &schema.Schema{Type: schema.TypeString},
+					},
+				},
+			},
+		},
+	})
+
+	priorState := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"rules": []interface{}{
+			map[string]interface{}{
+				"name":       "before",
+				"statements": []interface{}{"a", "b"},
+			},
+		},
+	})
+	plannedState := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"rules": []interface{}{
+			map[string]interface{}{
+				"name":       "after",
+				"statements": []interface{}{"b", "a"},
+			},
+		},
+	})
+	newInputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"rules": []interface{}{
+			map[string]interface{}{
+				"name":       "after",
+				"statements": []interface{}{"a", "b"},
+			},
+		},
+	})
+
+	actual := MakeDetailedDiffV2(context.Background(), tfs, nil, priorState, plannedState, newInputs, nil)
+	require.Equal(t, map[string]*pulumirpc.PropertyDiff{
+		"rules[0].name": {Kind: pulumirpc.PropertyDiff_UPDATE},
+	}, actual)
 }
 
 func TestDetailedDiffAssets(t *testing.T) {
