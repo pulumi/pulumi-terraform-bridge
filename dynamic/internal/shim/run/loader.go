@@ -79,6 +79,12 @@ func NamedProvider(ctx context.Context, key, version string) (Provider, error) {
 		return nil, fmt.Errorf("invalid provider name: %w", err)
 	}
 
+	if entry, ok, err := reattachEntryFor(p); err != nil {
+		return nil, err
+	} else if ok {
+		return reattachProvider(ctx, p, entry)
+	}
+
 	v, err := getproviders.ParseVersionConstraints(version)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse version constraint %q: %w", version, err)
@@ -191,10 +197,9 @@ func getPluginCache() (string, error) {
 
 type provider struct {
 	tfprotov6.ProviderServer
+	io.Closer
 
 	name, version, url string
-
-	close func() error
 }
 
 func (p provider) Name() string { return p.name }
@@ -202,8 +207,6 @@ func (p provider) Name() string { return p.name }
 func (p provider) Version() string { return p.version }
 
 func (p provider) URL() string { return p.url }
-
-func (p provider) Close() error { return p.close() }
 
 func getProviderServer(
 	ctx context.Context, addr addrs.Provider, version getproviders.VersionConstraints,
@@ -300,38 +303,45 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		return nil, err
 	}
 
-	raw, err := rpcClient.Dispense(tfplugin.ProviderPluginName)
-	if err != nil {
-		return nil, err
-	}
-
-	switch client.NegotiatedVersion() {
-	case 5:
-		p := raw.(*tfplugin.GRPCProvider)
-		p.PluginClient = client
-		p.Addr = meta.Provider
-
-		slog.Info("Found v5 provider.. upgrading to v6")
-
-		v6, err := tf5to6server.UpgradeServer(ctx, func() tfprotov5.ProviderServer {
-			return v5shim.New(tfplugin5.NewProviderClient(rpcClient.(*plugin.GRPCClient).Conn))
-		})
+	if client.NegotiatedVersion() == 5 {
+		raw, err := rpcClient.Dispense(tfplugin.ProviderPluginName)
 		if err != nil {
 			return nil, err
 		}
-		return provider{
-			v6,
-			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
-			rpcClient.Close,
-		}, nil
+		p := raw.(*tfplugin.GRPCProvider)
+		p.PluginClient = client
+		p.Addr = meta.Provider
+	}
+
+	grpcClient, ok := rpcClient.(*plugin.GRPCClient)
+	if !ok {
+		return nil, fmt.Errorf("expected a gRPC plugin client, got %T", rpcClient)
+	}
+	server, err := protov6ServerFromConn(ctx, grpcClient.Conn, client.NegotiatedVersion())
+	if err != nil {
+		return nil, err
+	}
+	return provider{
+		server,
+		rpcClient,
+		meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
+	}, nil
+}
+
+// protov6ServerFromConn adapts the raw gRPC connection of a running TF
+// provider into a tfprotov6.ProviderServer, upgrading protocol 5 servers.
+func protov6ServerFromConn(
+	ctx context.Context, conn *grpc.ClientConn, protocolVersion int,
+) (tfprotov6.ProviderServer, error) {
+	switch protocolVersion {
+	case 5:
+		slog.Info("Found v5 provider.. upgrading to v6")
+		return tf5to6server.UpgradeServer(ctx, func() tfprotov5.ProviderServer {
+			return v5shim.New(tfplugin5.NewProviderClient(conn))
+		})
 	case 6:
-		p := tfplugin6.NewProviderClient(rpcClient.(*plugin.GRPCClient).Conn)
-		return provider{
-			v6shim.New(p),
-			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
-			rpcClient.Close,
-		}, nil
+		return v6shim.New(tfplugin6.NewProviderClient(conn)), nil
 	default:
-		panic("unsupported protocol version")
+		return nil, fmt.Errorf("unsupported protocol version %d", protocolVersion)
 	}
 }
