@@ -60,6 +60,10 @@ type reattachEntry struct {
 // PULUMI_BRIDGE_REATTACH_PROVIDERS is set and contains one. Keys are matched
 // as provider source addresses, so "simple" and "registry.opentofu.org/-/simple"
 // style spellings compare after normalization.
+//
+// Every key is validated on every call, so a malformed key rejects the env
+// var deterministically — acceptance never depends on which provider is being
+// resolved or on map iteration order.
 func reattachEntryFor(addr addrs.Provider) (reattachEntry, bool, error) {
 	raw := os.Getenv(envReattachProviders)
 	if raw == "" {
@@ -71,16 +75,20 @@ func reattachEntryFor(addr addrs.Provider) (reattachEntry, bool, error) {
 		return reattachEntry{}, false, fmt.Errorf("invalid %s: %w", envReattachProviders, err)
 	}
 
+	var match *reattachEntry
 	for key, entry := range entries {
 		keyAddr, err := regaddr.ParseProviderSource(key)
 		if err != nil {
 			return reattachEntry{}, false, fmt.Errorf("invalid %s: provider key %q: %w", envReattachProviders, key, err)
 		}
 		if keyAddr.Equals(addr) {
-			return entry, true, nil
+			match = &entry
 		}
 	}
-	return reattachEntry{}, false, nil
+	if match == nil {
+		return reattachEntry{}, false, nil
+	}
+	return *match, true, nil
 }
 
 // reattachProvider connects to the running provider server described by entry
@@ -119,7 +127,9 @@ func reattachProvider(ctx context.Context, addr addrs.Provider, entry reattachEn
 	})
 	rpcClient, err := client.Client()
 	if err != nil {
-		client.Kill()
+		// No cleanup: a Reattach-mode client doesn't own the external
+		// process, and client.Kill would shut down (or SIGKILL) the shared
+		// server other clients are attached to.
 		return nil, fmt.Errorf("%s: connecting to %s: %w", envReattachProviders, addr, err)
 	}
 	grpcClient, ok := rpcClient.(*plugin.GRPCClient)
