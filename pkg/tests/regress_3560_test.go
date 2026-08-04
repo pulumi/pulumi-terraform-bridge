@@ -10,11 +10,9 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 )
 
-// Regression test for https://github.com/pulumi/pulumi-terraform-bridge/issues/3560.
-//
-// ignoreChanges on a list index that does not resolve against the prior state must be
-// dropped (matching Terraform), not applied to the flatmap diff where it materializes an
-// empty element.
+// Regression test for https://github.com/pulumi/pulumi-terraform-bridge/issues/3560:
+// ignoring a list index absent from the prior state used to materialize an empty
+// element (["a", ""]) instead of leaving the append in place.
 func TestRegress3560(t *testing.T) {
 	t.Parallel()
 

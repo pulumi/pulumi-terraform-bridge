@@ -2310,9 +2310,7 @@ func TestComputeIgnoreChanges(t *testing.T) {
 		want         map[string]struct{}
 	}{
 		{
-			// See https://github.com/pulumi/pulumi-terraform-bridge/issues/3560: a list
-			// index that does not resolve against the prior state must be dropped, like
-			// Terraform drops unresolvable ignore_changes entries.
+			// https://github.com/pulumi/pulumi-terraform-bridge/issues/3560
 			name:         "list index beyond prior state is dropped",
 			ignoredPaths: []string{"zones[1]"},
 			want:         map[string]struct{}{},

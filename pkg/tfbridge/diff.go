@@ -284,15 +284,11 @@ func newIgnoreChanges(
 	}
 }
 
-// ignoredPathResolvesAgainstOlds reports whether an ignoreChanges path can be resolved
-// against the prior state. Terraform drops an ignore_changes entry whose traversal does
-// not resolve against the prior state; we emulate that for list indexes. Missing
-// attributes and map keys remain ignorable (matching Terraform's handling of maps)
-// unless a list index follows them.
-//
-// Applying an unresolvable list index to the flatmap diff deletes the element's diff
-// while leaving the list's count diff in place, materializing a zero value for the
-// element (see pulumi/pulumi-terraform-bridge#3560).
+// Terraform drops an ignore_changes entry whose traversal does not resolve against the
+// prior state. Only list indexes are checked: Terraform still allows ignoring map keys
+// and attributes absent from the prior state, while applying an unresolvable index to
+// the flatmap diff deletes the element's diff but keeps the list's count diff,
+// materializing a zero value for the element (pulumi/pulumi-terraform-bridge#3560).
 func ignoredPathResolvesAgainstOlds(path resource.PropertyPath, olds resource.PropertyMap) bool {
 	last := -1
 	for i, step := range path {
