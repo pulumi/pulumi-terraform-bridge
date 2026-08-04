@@ -284,6 +284,29 @@ func newIgnoreChanges(
 	}
 }
 
+// ignoredPathResolvesAgainstOlds reports whether an ignoreChanges path can be resolved
+// against the prior state. Terraform drops an ignore_changes entry whose traversal does
+// not resolve against the prior state; we emulate that for list indexes. Missing
+// attributes and map keys remain ignorable (matching Terraform's handling of maps)
+// unless a list index follows them.
+//
+// Applying an unresolvable list index to the flatmap diff deletes the element's diff
+// while leaving the list's count diff in place, materializing a zero value for the
+// element (see pulumi/pulumi-terraform-bridge#3560).
+func ignoredPathResolvesAgainstOlds(path resource.PropertyPath, olds resource.PropertyMap) bool {
+	last := -1
+	for i, step := range path {
+		if _, ok := step.(int); ok {
+			last = i
+		}
+	}
+	if last < 0 {
+		return true
+	}
+	_, ok := path[:last+1].Get(resource.NewObjectProperty(olds))
+	return ok
+}
+
 // Computes the ignored key set.
 func computeIgnoreChanges(
 	ctx context.Context,
@@ -294,6 +317,9 @@ func computeIgnoreChanges(
 ) map[string]struct{} {
 	ignoredPathSet := map[string]bool{}
 	for _, p := range ignoredPaths {
+		if pp, err := resource.ParsePropertyPath(p); err == nil && !ignoredPathResolvesAgainstOlds(pp, olds) {
+			continue
+		}
 		ignoredPathSet[p] = true
 	}
 	ignoredKeySet := map[string]struct{}{}
