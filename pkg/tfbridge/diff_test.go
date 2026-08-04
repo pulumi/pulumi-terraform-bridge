@@ -322,7 +322,8 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 	for _, s := range setup {
 		t.Run(s.name, func(t *testing.T) {
 			// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff
-			// and check the result.
+			// and check the result. Ignores that do not resolve against the prior state are dropped
+			// (https://github.com/pulumi/pulumi-terraform-bridge/issues/3560), so their diffs remain.
 			t.Run("withIgnoreAllExpected", func(t *testing.T) {
 				t.Parallel()
 				sch, r, provider, info := s.setup(tfs)
@@ -333,8 +334,17 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, nil, inputsMap, sch, info)
 				assert.NoError(t, err)
 
-				for k := range expected {
+				expectedResidualDiff := map[string]*pulumirpc.PropertyDiff{}
+				expectedResidualChanges := pulumirpc.DiffResponse_DIFF_NONE
+				for k, v := range expected {
 					ignoreChanges = append(ignoreChanges, k)
+
+					pp, err := resource.ParsePropertyPath(k)
+					require.NoError(t, err)
+					if !ignoredPathResolvesAgainstOlds(pp, stateMap) {
+						expectedResidualDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
+						expectedResidualChanges = pulumirpc.DiffResponse_DIFF_SOME
+					}
 				}
 				tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
 					IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
@@ -342,8 +352,8 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 				assert.NoError(t, err)
 
 				diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
-				assert.Equal(t, pulumirpc.DiffResponse_DIFF_NONE, changes)
-				assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
+				assert.Equal(t, expectedResidualChanges, changes)
+				assert.Equal(t, expectedResidualDiff, diff)
 			})
 		})
 	}
@@ -2268,4 +2278,65 @@ func TestChangingMaxItems1FilterProperty(t *testing.T) {
 			"rules[0].filter": {},
 		},
 	})
+}
+
+func TestComputeIgnoreChanges(t *testing.T) {
+	t.Parallel()
+
+	tfs := shimv2.NewSchemaMap(map[string]*v2Schema.Schema{
+		"zones": {
+			Type:     v2Schema.TypeList,
+			Optional: true,
+			Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
+		},
+		"tags": {
+			Type:     v2Schema.TypeMap,
+			Optional: true,
+			Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
+		},
+	})
+	olds := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"zones": []interface{}{"a"},
+		"tags":  map[string]interface{}{"k": "v"},
+	})
+	news := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"zones": []interface{}{"a", "z"},
+		"tags":  map[string]interface{}{"k": "v2", "new": "v"},
+	})
+
+	tests := []struct {
+		name         string
+		ignoredPaths []string
+		want         map[string]struct{}
+	}{
+		{
+			// https://github.com/pulumi/pulumi-terraform-bridge/issues/3560
+			name:         "list index beyond prior state is dropped",
+			ignoredPaths: []string{"zones[1]"},
+			want:         map[string]struct{}{},
+		},
+		{
+			name:         "list index within prior state",
+			ignoredPaths: []string{"zones[0]"},
+			want:         map[string]struct{}{"zones.0": {}},
+		},
+		{
+			name:         "whole attribute",
+			ignoredPaths: []string{"zones"},
+			want:         map[string]struct{}{"zones": {}},
+		},
+		{
+			name:         "map key added in news is kept",
+			ignoredPaths: []string{"tags.new"},
+			want:         map[string]struct{}{"tags.new": {}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := computeIgnoreChanges(context.Background(), tfs, nil, olds, news, tt.ignoredPaths)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
