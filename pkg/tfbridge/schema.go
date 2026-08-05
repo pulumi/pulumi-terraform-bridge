@@ -739,6 +739,26 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 	return conflictsWith
 }
 
+// defaultExcluded returns true if the field must not have any default applied —
+// neither from the TF schema's Default/DefaultFunc, nor from a bridge overlay's
+// SchemaInfo.Default, nor reused from old state. The function combines bridge-
+// overlay markers (psi.Removed) with TF schema markers (Removed; Deprecated
+// without Required). Required-and-Deprecated is intentionally excluded: a
+// required field cannot be dropped without breaking PlanResourceChange's
+// required-field validation.
+func defaultExcluded(sch shim.Schema, psi *SchemaInfo) bool {
+	if psi != nil && psi.Removed {
+		return true
+	}
+	if sch == nil {
+		return false
+	}
+	if sch.Removed() != "" {
+		return true
+	}
+	return sch.Deprecated() != "" && !sch.Required()
+}
+
 func (ctx *conversionContext) applyDefaults(
 	result map[string]interface{},
 	olds, _news resource.PropertyMap,
@@ -769,17 +789,14 @@ func (ctx *conversionContext) applyDefaults(
 
 	// First, attempt to use the overlays.
 	for name, info := range ps {
-		if info.Removed {
+		sch := getSchema(tfs, name)
+		if defaultExcluded(sch, info) {
 			continue
 		}
 		if _, conflicts := conflictsWith[name]; conflicts {
 			continue
 		}
 		if _, exactlyOneOfConflicts := exactlyOneOf[name]; exactlyOneOfConflicts {
-			continue
-		}
-		sch := getSchema(tfs, name)
-		if sch != nil && (sch.Removed() != "" || sch.Deprecated() != "" && !sch.Required()) {
 			continue
 		}
 
@@ -892,10 +909,7 @@ func (ctx *conversionContext) applyDefaults(
 	if tfs != nil && ctx.ApplyTFDefaults {
 		var valueErr error
 		tfs.Range(func(name string, sch shim.Schema) bool {
-			if sch.Removed() != "" {
-				return true
-			}
-			if sch.Deprecated() != "" && !sch.Required() {
+			if defaultExcluded(sch, ps[name]) {
 				return true
 			}
 			if _, conflicts := conflictsWith[name]; conflicts {
