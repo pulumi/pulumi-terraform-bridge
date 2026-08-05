@@ -295,7 +295,7 @@ func main() {
 		}
 		cloudrun, err := http.GetHttp(ctx, &http.GetHttpArgs{
 			Url: "https://your.cloud.run.app/",
-			RequestHeaders: map[string]interface{}{
+			RequestHeaders: map[string]string{
 				"Authorization": fmt.Sprintf("Bearer %v", oidc.IdToken),
 			},
 		}, nil)

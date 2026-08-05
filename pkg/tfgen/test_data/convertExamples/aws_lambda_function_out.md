@@ -863,7 +863,7 @@ func main() {
 		}
 		// Mount target connects the file system to the subnet
 		alpha, err := efs.NewMountTarget(ctx, "alpha", &efs.MountTargetArgs{
-			FileSystemId: efsForLambda.ID(),
+			FileSystemId: efsForLambda.ID().ToIDOutput().ToStringOutput(),
 			SubnetId:     pulumi.Any(aws_subnet.Subnet_for_lambda.Id),
 			SecurityGroups: pulumi.StringArray{
 				aws_security_group.Sg_for_lambda.Id,
@@ -874,7 +874,7 @@ func main() {
 		}
 		// EFS access point used by lambda file system
 		accessPointForLambda, err := efs.NewAccessPoint(ctx, "accessPointForLambda", &efs.AccessPointArgs{
-			FileSystemId: efsForLambda.ID(),
+			FileSystemId: efsForLambda.ID().ToIDOutput().ToStringOutput(),
 			RootDirectory: &efs.AccessPointRootDirectoryArgs{
 				Path: pulumi.String("/lambda"),
 				CreationInfo: &efs.AccessPointRootDirectoryCreationInfoArgs{
