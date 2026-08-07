@@ -1973,6 +1973,16 @@ func propertyName(key string, sch shim.SchemaMap, custom map[string]*tfbridge.Sc
 	return tfbridge.TerraformToPulumiNameV2(key, sch, custom)
 }
 
+// hasExplicitPulumiName reports whether the user has supplied an explicit Pulumi Name
+// override for the given Terraform key via SchemaInfo.
+func hasExplicitPulumiName(key string, custom map[string]*tfbridge.SchemaInfo) bool {
+	if custom == nil {
+		return false
+	}
+	ci, ok := custom[key]
+	return ok && ci != nil && ci.Name != ""
+}
+
 // propertyVariable creates a new property, with the Pulumi name, out of the given components.
 //
 // key is the Terraform property name
@@ -1982,6 +1992,27 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 	schemaMap shim.SchemaMap, info map[string]*tfbridge.SchemaInfo,
 	doc string, rawdoc string, out bool, entityDocs entityDocs,
 ) (*variable, error) {
+	// Terraform providers occasionally declare fields whose names begin with an underscore.
+	// These are effectively provider-private; drop them from the Pulumi schema unless the
+	// user has supplied an explicit Name override, in which case defer to that.
+	if strings.HasPrefix(strings.TrimSuffix(key, ":"), "_") && !hasExplicitPulumiName(key, info) {
+		var shimSchema shim.Schema
+		if schemaMap != nil {
+			shimSchema = schemaMap.Get(key)
+		}
+		var varInfo *tfbridge.SchemaInfo
+		if info != nil {
+			varInfo = info[key]
+		}
+		if !isOptional(varInfo, shimSchema, false, false /* config */) {
+			propName := paths.PropertyName{Key: key, Name: tokens.Name(key)}
+			typePath := paths.NewProperyPath(parentPath, propName)
+			return nil, fmt.Errorf(
+				"required property %q (@ %s) may not be omitted from binding generation",
+				propName, typePath)
+		}
+		return nil, nil
+	}
 	if name := propertyName(key, schemaMap, info); name != "" {
 		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
 		typePath := paths.NewProperyPath(parentPath, propName)
