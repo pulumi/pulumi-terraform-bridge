@@ -1970,6 +1970,11 @@ func input(sch shim.Schema, info *tfbridge.SchemaInfo) bool {
 func propertyName(key string, sch shim.SchemaMap, custom map[string]*tfbridge.SchemaInfo) string {
 	// BUGBUG: work around issue in the Elastic Transcoder where a field has a trailing ":".
 	key = strings.TrimSuffix(key, ":")
+	// Terraform providers occasionally declare fields whose names begin with an underscore.
+	// These are provider-internal; drop them from the Pulumi schema.
+	if strings.HasPrefix(key, "_") {
+		return ""
+	}
 	return tfbridge.TerraformToPulumiNameV2(key, sch, custom)
 }
 
