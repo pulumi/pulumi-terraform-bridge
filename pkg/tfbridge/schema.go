@@ -1650,26 +1650,82 @@ func convertTfStringToFloat(stringValue string) (interface{}, error) {
 	return floatVal, nil
 }
 
+func allObjectValues(values []resource.PropertyValue) bool {
+	for _, v := range values {
+		if !v.IsObject() {
+			return false
+		}
+	}
+	return true
+}
+
+// scalarSetKey returns a comparable key for a scalar set element. Values that are not plain
+// scalars (computed, secret, output, nested collections) report false so that the caller falls
+// back to positional matching rather than guessing.
+func scalarSetKey(v resource.PropertyValue) (string, bool) {
+	switch {
+	case v.IsString():
+		return "s:" + v.StringValue(), true
+	case v.IsNumber():
+		return "n:" + strconv.FormatFloat(v.NumberValue(), 'g', -1, 64), true
+	case v.IsBool():
+		return "b:" + strconv.FormatBool(v.BoolValue()), true
+	}
+	return "", false
+}
+
+// matchScalarSetElements matches scalar set elements by exact value. A set is unordered, so a
+// provider returns its elements in an implementation-defined order that generally differs from the
+// order the values were written in the program. Refreshing a scalar set would otherwise rewrite the
+// recorded inputs into the provider's order and leave them permanently different from what the
+// program produces.
+//
+// A mapping is only produced when both sides hold the same multiset of values. When set membership
+// genuinely changed, nil is returned so the caller keeps its positional behavior and the change
+// stays visible as drift.
+func matchScalarSetElements(oldArray, newArray []resource.PropertyValue) map[int]int {
+	if len(oldArray) != len(newArray) {
+		return nil
+	}
+
+	available := make(map[string][]int, len(newArray))
+	for ni, newElem := range newArray {
+		key, ok := scalarSetKey(newElem)
+		if !ok {
+			return nil
+		}
+		available[key] = append(available[key], ni)
+	}
+
+	indexMap := make(map[int]int, len(oldArray))
+	for oi, oldElem := range oldArray {
+		key, ok := scalarSetKey(oldElem)
+		if !ok {
+			return nil
+		}
+		matches := available[key]
+		if len(matches) == 0 {
+			return nil
+		}
+		indexMap[oi] = matches[0]
+		available[key] = matches[1:]
+	}
+	return indexMap
+}
+
 // matchSetElements returns a mapping from old array indices to new array indices for TypeSet
-// arrays, using property-overlap scoring to find the best content-based match. Returns nil to
-// signal that the caller should fall back to positional matching (e.g. for non-TypeSet schemas,
-// scalar set elements, or nil schemas).
+// arrays. Object elements are matched by property-overlap scoring; scalar elements are matched by
+// exact value. Returns nil to signal that the caller should fall back to positional matching (e.g.
+// for non-TypeSet schemas or nil schemas).
 func matchSetElements(
 	oldArray, newArray []resource.PropertyValue, tfs shim.Schema,
 ) map[int]int {
 	if tfs == nil || tfs.Type() != shim.TypeSet {
 		return nil
 	}
-	// Only match object elements — scalar sets have no keys to score on.
-	for _, v := range oldArray {
-		if !v.IsObject() {
-			return nil
-		}
-	}
-	for _, v := range newArray {
-		if !v.IsObject() {
-			return nil
-		}
+	// Scalar sets have no keys to score on, but their elements can be matched exactly by value.
+	if !allObjectValues(oldArray) || !allObjectValues(newArray) {
+		return matchScalarSetElements(oldArray, newArray)
 	}
 
 	type candidate struct {
