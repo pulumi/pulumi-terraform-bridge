@@ -1718,6 +1718,22 @@ func matchSetElements(
 func extractInputs(
 	oldInput, newState resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
 ) (resource.PropertyValue, bool) {
+	// Unwrap secrets before doing anything else. A secret is not an array, object or string, so
+	// without this a secret-wrapped value falls through to the default branch below and the raw
+	// state is substituted for the recorded input, discarding nested `__defaults` markers along
+	// with the input/output distinction. Re-wrap afterwards so a value never loses secretness.
+	if oldInput.IsSecret() || newState.IsSecret() {
+		oldElem, newElem := oldInput, newState
+		if oldElem.IsSecret() {
+			oldElem = oldElem.SecretValue().Element
+		}
+		if newElem.IsSecret() {
+			newElem = newElem.SecretValue().Element
+		}
+		extracted, possibleDefault := extractInputs(oldElem, newElem, tfs, ps)
+		return resource.MakeSecret(extracted), possibleDefault
+	}
+
 	if IsMaxItemsOne(tfs, ps) {
 		tfs, ps = elemSchemas(tfs, ps)
 	}
