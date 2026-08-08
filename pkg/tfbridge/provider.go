@@ -1527,9 +1527,6 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		}
 
 		cleanInputs := deconflict(ctx, res.TF.Schema(), res.Schema.Fields, inputs)
-		if isRefresh {
-			deleteDefaultsKey(cleanInputs)
-		}
 
 		// TODO: https://github.com/pulumi/pulumi/issues/16886
 		// It is currently not possible to differentiate between an import and a .get request
