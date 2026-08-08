@@ -16,11 +16,16 @@ package tests
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/providertest/pulumitest"
 	testutils "github.com/pulumi/providertest/replay"
+	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -135,4 +140,80 @@ func TestRegress3567(t *testing.T) {
 	}
 	`
 	testutils.Replay(t, server, testCase)
+}
+
+// End-to-end companion to TestRegress3567: a no-op refresh must not perturb the inputs stored in
+// state.
+//
+// This invariant is deliberately asserted against the state rather than against a preview diff.
+// The bridge reports DIFF_NONE for this drift, so optrefresh.ExpectNoChanges and
+// optpreview.ExpectNoChanges both pass while the inputs in state have in fact changed. The engine
+// compares raw input bags in sameSnapshotMutation.mustWrite, so it is the state, not the diff, that
+// decides whether a checkpoint write can be elided.
+func TestRegress3567RefreshPreservesStateInputs(t *testing.T) {
+	t.Parallel()
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				require.NoError(t, rd.Set("prop", "val"))
+				return nil
+			},
+			CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				rd.SetId("id0")
+				return nil
+			},
+		},
+	}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", &schema.Provider{ResourcesMap: resMap})
+	pt := pulcheck.PulCheck(t, bridgedProvider, `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      prop: "val"
+`)
+	pt.Up(t)
+
+	before := mainResInputs(t, pt)
+	require.Contains(t, before, "__defaults",
+		"precondition: Check should record an empty __defaults marker in state")
+
+	pt.Refresh(t)
+
+	require.Equal(t, before, mainResInputs(t, pt),
+		"refresh must not change the inputs recorded in state")
+}
+
+func mainResInputs(t *testing.T, pt *pulumitest.PulumiTest) map[string]interface{} {
+	t.Helper()
+
+	data, err := pt.ExportStack(t).Deployment.MarshalJSON()
+	require.NoError(t, err)
+
+	var deployment struct {
+		Resources []struct {
+			Type   string                 `json:"type"`
+			Inputs map[string]interface{} `json:"inputs"`
+		} `json:"resources"`
+	}
+	require.NoError(t, json.Unmarshal(data, &deployment))
+
+	for _, r := range deployment.Resources {
+		if r.Type == "prov:index/test:Test" {
+			return r.Inputs
+		}
+	}
+
+	t.Fatal("did not find the resource in the exported stack")
+	return nil
 }
