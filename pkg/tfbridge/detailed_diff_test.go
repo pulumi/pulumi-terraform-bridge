@@ -148,6 +148,108 @@ func TestValidInputsFromPlan(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "set matching reassigns an ambiguous pairing",
+			path: newPropertyPath("items"),
+			inputValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name": resource.NewStringProperty("shared"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":   resource.NewStringProperty("shared"),
+					"system": resource.NewStringProperty("fixed"),
+				}),
+			}),
+			planValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":   resource.NewStringProperty("shared"),
+					"system": resource.NewStringProperty("fixed"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":   resource.NewStringProperty("shared"),
+					"system": resource.NewStringProperty("generated"),
+				}),
+			}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"items": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+						"name":   {Type: schema.TypeString, Optional: true},
+						"system": {Type: schema.TypeString, Optional: true, Computed: true},
+					}},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "set elements cannot share one plan match",
+			path: newPropertyPath("items"),
+			inputValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":   resource.NewStringProperty("shared"),
+					"system": resource.NewStringProperty("fixed"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":   resource.NewStringProperty("shared"),
+					"system": resource.NewStringProperty("fixed"),
+				}),
+			}),
+			planValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":   resource.NewStringProperty("shared"),
+					"system": resource.NewStringProperty("fixed"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":   resource.NewStringProperty("shared"),
+					"system": resource.NewStringProperty("generated"),
+				}),
+			}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"items": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+						"name":   {Type: schema.TypeString, Optional: true},
+						"system": {Type: schema.TypeString, Optional: true, Computed: true},
+					}},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "reordered set allows auto-filled fields",
+			path: newPropertyPath("items"),
+			inputValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name": resource.NewStringProperty("first"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name": resource.NewStringProperty("second"),
+				}),
+			}),
+			planValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":   resource.NewStringProperty("second"),
+					"system": resource.NewStringProperty("generated-second"),
+				}),
+				resource.NewObjectProperty(resource.PropertyMap{
+					"name":   resource.NewStringProperty("first"),
+					"system": resource.NewStringProperty("generated-first"),
+				}),
+			}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"items": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+						"name":   {Type: schema.TypeString, Optional: true},
+						"system": {Type: schema.TypeString, Optional: true, Computed: true},
+					}},
+				},
+			},
+			want: true,
+		},
+		{
 			name: "missing non-computed property",
 			path: newPropertyPath("obj"),
 			inputValue: resource.NewArrayProperty(

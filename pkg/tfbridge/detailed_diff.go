@@ -159,6 +159,60 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 	return undecidedDiff
 }
 
+// validSetInputsFromPlan returns true if each input set element can be paired with a distinct compatible plan element.
+func validSetInputsFromPlan(
+	path propertyPath,
+	inputs resource.PropertyValue,
+	plan resource.PropertyValue,
+	tfs shim.SchemaMap,
+	ps map[string]*info.Schema,
+) bool {
+	inputsList := inputs.ArrayValue()
+	planList := plan.ArrayValue()
+	if len(inputsList) != len(planList) {
+		return false
+	}
+
+	candidates := make([][]int, len(inputsList))
+	for inputIndex, input := range inputsList {
+		for planIndex, plan := range planList {
+			if validInputsFromPlan(path.Index(planIndex), input, plan, tfs, ps) {
+				candidates[inputIndex] = append(candidates[inputIndex], planIndex)
+			}
+		}
+		if len(candidates[inputIndex]) == 0 {
+			return false
+		}
+	}
+
+	matchedInputForPlan := make([]int, len(planList))
+	for i := range matchedInputForPlan {
+		matchedInputForPlan[i] = -1
+	}
+
+	var match func(int, []bool) bool
+	match = func(inputIndex int, seen []bool) bool {
+		for _, planIndex := range candidates[inputIndex] {
+			if seen[planIndex] {
+				continue
+			}
+			seen[planIndex] = true
+			if matchedInputForPlan[planIndex] == -1 || match(matchedInputForPlan[planIndex], seen) {
+				matchedInputForPlan[planIndex] = inputIndex
+				return true
+			}
+		}
+		return false
+	}
+
+	for inputIndex := range inputsList {
+		if !match(inputIndex, make([]bool, len(planList))) {
+			return false
+		}
+	}
+	return true
+}
+
 // validInputsFromPlan returns true if the given plan property value could originate from the given inputs.
 // Under the hood, it walks the plan and the inputs and checks that all differences stem from computed properties.
 // Any differences coming from properties which are not computed will be rejected.
@@ -170,59 +224,6 @@ func validInputsFromPlan(
 	tfs shim.SchemaMap,
 	ps map[string]*info.Schema,
 ) bool {
-	validSetInputsFromPlan := func(
-		path propertyPath,
-		inputs resource.PropertyValue,
-		plan resource.PropertyValue,
-		tfs shim.SchemaMap,
-		ps map[string]*info.Schema,
-	) bool {
-		inputsList := inputs.ArrayValue()
-		planList := plan.ArrayValue()
-		if len(inputsList) != len(planList) {
-			return false
-		}
-
-		candidates := make([][]int, len(inputsList))
-		for inputIndex, input := range inputsList {
-			for planIndex, plan := range planList {
-				if validInputsFromPlan(path.Index(planIndex), input, plan, tfs, ps) {
-					candidates[inputIndex] = append(candidates[inputIndex], planIndex)
-				}
-			}
-			if len(candidates[inputIndex]) == 0 {
-				return false
-			}
-		}
-
-		matchedInputForPlan := make([]int, len(planList))
-		for i := range matchedInputForPlan {
-			matchedInputForPlan[i] = -1
-		}
-
-		var match func(int, []bool) bool
-		match = func(inputIndex int, seen []bool) bool {
-			for _, planIndex := range candidates[inputIndex] {
-				if seen[planIndex] {
-					continue
-				}
-				seen[planIndex] = true
-				if matchedInputForPlan[planIndex] == -1 || match(matchedInputForPlan[planIndex], seen) {
-					matchedInputForPlan[planIndex] = inputIndex
-					return true
-				}
-			}
-			return false
-		}
-
-		for inputIndex := range inputsList {
-			if !match(inputIndex, make([]bool, len(planList))) {
-				return false
-			}
-		}
-		return true
-	}
-
 	abortErr := errors.New("abort")
 	visitor := func(
 		subpath propertyPath, inputsSubVal, planSubVal resource.PropertyValue,
