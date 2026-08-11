@@ -1,9 +1,10 @@
 name: Accept Goldens
 
 # Triggered manually from the Actions tab. Checks out the specified branch,
-# runs the dynamic full-docs tests with PULUMI_ACCEPT=1, and commits any
-# refreshed golden files back to the branch. Used when local golden
-# regeneration cannot reproduce CI (e.g. plugins missing on darwin-arm64).
+# runs the full test suite with PULUMI_ACCEPT=1 (and autogold `-update`), and
+# commits any refreshed golden files back to the branch. Used when local
+# golden regeneration cannot reproduce CI (e.g. plugins missing on
+# darwin-arm64).
 
 on:
   workflow_dispatch:
@@ -12,14 +13,6 @@ on:
         description: 'Branch (or ref) to regenerate goldens on'
         required: true
         default: 'main'
-      test_pattern:
-        description: 'Go -run pattern for tests to regenerate'
-        required: true
-        default: 'TestSchemaGenerationFullDocs|TestSchemaGenerationIndexDocOutDir'
-      test_package:
-        description: 'Go package to run'
-        required: true
-        default: './dynamic/'
 
 permissions:
   contents: write
@@ -31,6 +24,7 @@ env:
 jobs:
   accept:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     steps:
       - name: Check out source code
         uses: actions/checkout@v4
@@ -59,6 +53,8 @@ jobs:
           pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
       - name: Build
         run: make build
+      - name: Build PF
+        run: cd pkg/pf && make build
       - name: Restore plugins
         uses: actions/cache/restore@v4
         with:
@@ -66,13 +62,12 @@ jobs:
           key: ubuntu-latest-plugins
           restore-keys: |
             ubuntu-latest-plugins
-      - name: Install plugins
-        run: make install_plugins
+      # Runs `make test_accept` (sets PULUMI_HOME, PULUMI_ACCEPT=1, installs
+      # plugins). RUN_TEST_CMD adds `-args -update` so autogold-based tests
+      # accept new expected values in the same run.
       - name: Regenerate goldens
         run: |
-          PULUMI_ACCEPT=1 go test -v -count=1 -timeout 30m \
-            -run '${{ github.event.inputs.test_pattern }}' \
-            ${{ github.event.inputs.test_package }}
+          make test_accept RUN_TEST_CMD='./... -args -update'
       - name: Commit and push
         run: |
           git config user.name  'github-actions[bot]'
