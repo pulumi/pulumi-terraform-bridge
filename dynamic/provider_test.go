@@ -788,8 +788,9 @@ func TestRandomCreate(t *testing.T) {
 }
 
 func TestSDKv1Provider(t *testing.T) {
-	t.Parallel()
+	// helper.Integration(t) now calls t.Setenv, which must happen before t.Parallel().
 	helper.Integration(t)
+	t.Parallel()
 	skipWindows(t)
 
 	server := parameterizedTestServer(t, sdkv1ProviderPath)

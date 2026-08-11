@@ -20,8 +20,9 @@ var conflictsProviderPath = helper.BuildOnce(&globalTempDir,
 	"test/conflictsprovider", "terraform-provider-conflictsprovider")
 
 func TestConflictsWithNamePrefixOnly(t *testing.T) {
-	t.Parallel()
+	// helper.Integration(t) now calls t.Setenv, which must happen before t.Parallel().
 	helper.Integration(t)
+	t.Parallel()
 	skipWindows(t)
 
 	server := parameterizedTestServer(t, conflictsProviderPath)
@@ -55,8 +56,9 @@ func TestConflictsWithNamePrefixOnly(t *testing.T) {
 // must surface the upstream ConflictsWith error rather than silently dropping
 // one of the user-provided values.
 func TestConflictsWithBothUserSpecified(t *testing.T) {
-	t.Parallel()
+	// helper.Integration(t) now calls t.Setenv, which must happen before t.Parallel().
 	helper.Integration(t)
+	t.Parallel()
 	skipWindows(t)
 
 	server := parameterizedTestServer(t, conflictsProviderPath)
