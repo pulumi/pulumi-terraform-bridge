@@ -1,0 +1,86 @@
+name: Accept Goldens
+
+# Triggered manually from the Actions tab. Checks out the specified branch,
+# runs the dynamic full-docs tests with PULUMI_ACCEPT=1, and commits any
+# refreshed golden files back to the branch. Used when local golden
+# regeneration cannot reproduce CI (e.g. plugins missing on darwin-arm64).
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch (or ref) to regenerate goldens on'
+        required: true
+        default: 'main'
+      test_pattern:
+        description: 'Go -run pattern for tests to regenerate'
+        required: true
+        default: 'TestSchemaGenerationFullDocs|TestSchemaGenerationIndexDocOutDir'
+      test_package:
+        description: 'Go package to run'
+        required: true
+        default: './dynamic/'
+
+permissions:
+  contents: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PULUMI_SKIP_UPDATE_CHECK: 'true'
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          persist-credentials: true
+      - name: Install terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.x
+          cache-dependency-path: |
+            **/go.sum
+      - name: Find pulumi version
+        id: pulumi_version
+        shell: bash
+        run: |
+          GO_MODULE_VERSION=$(go list -m -f '{{.Version}}' github.com/pulumi/pulumi/pkg/v3)
+          echo "pulumi_version=${GO_MODULE_VERSION#v}" >> "$GITHUB_OUTPUT"
+      - name: Install pulumi
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+        with:
+          pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
+      - name: Build
+        run: make build
+      - name: Restore plugins
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.pulumi/plugins
+          key: ubuntu-latest-plugins
+          restore-keys: |
+            ubuntu-latest-plugins
+      - name: Install plugins
+        run: make install_plugins
+      - name: Regenerate goldens
+        run: |
+          PULUMI_ACCEPT=1 go test -v -count=1 -timeout 30m \
+            -run '${{ github.event.inputs.test_pattern }}' \
+            ${{ github.event.inputs.test_package }}
+      - name: Commit and push
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          if git diff --quiet; then
+            echo 'No golden changes.'
+            exit 0
+          fi
+          git add -A
+          git commit -m 'Regenerate goldens via CI'
+          git push origin HEAD:${{ github.event.inputs.ref }}
