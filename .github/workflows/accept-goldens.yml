@@ -1,0 +1,103 @@
+name: Accept Goldens
+
+# Triggered manually from the Actions tab. Checks out the specified branch,
+# runs the full test suite with PULUMI_ACCEPT=1 (and autogold `-update`), and
+# commits any refreshed golden files back to the branch. Used when local
+# golden regeneration cannot reproduce CI (e.g. plugins missing on
+# darwin-arm64).
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch (or ref) to regenerate goldens on'
+        required: true
+        default: 'main'
+
+permissions:
+  contents: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PULUMI_SKIP_UPDATE_CHECK: 'true'
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          persist-credentials: true
+      - name: Install terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.x
+          cache-dependency-path: |
+            **/go.sum
+      - name: Find pulumi version
+        id: pulumi_version
+        shell: bash
+        run: |
+          GO_MODULE_VERSION=$(go list -m -f '{{.Version}}' github.com/pulumi/pulumi/pkg/v3)
+          echo "pulumi_version=${GO_MODULE_VERSION#v}" >> "$GITHUB_OUTPUT"
+      - name: Install pulumi
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+        with:
+          pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
+      - name: Build
+        run: make build
+      - name: Build PF
+        run: cd pkg/pf && make build
+      - name: Restore plugins
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.pulumi/plugins
+          key: ubuntu-latest-plugins
+          restore-keys: |
+            ubuntu-latest-plugins
+      # Discover Go packages that import hexops/autogold so we can pass
+      # `-args -update` only to those. `-update` is registered by autogold's
+      # init(), so packages that don't import it fail with "flag provided
+      # but not defined".
+      - name: Compute autogold packages
+        id: autogold_pkgs
+        run: |
+          set -euo pipefail
+          # List of package dirs (relative) that import autogold.
+          pkgs=$(git grep -l 'hexops/autogold' -- '*.go' \
+            | xargs -n1 dirname | sort -u | sed 's|^|./|')
+          echo "packages<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$pkgs" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "found $(echo "$pkgs" | wc -l) autogold packages"
+      # Two passes:
+      #   1. Full suite with PULUMI_ACCEPT=1 (regenerates all non-autogold goldens).
+      #   2. Autogold-importing packages with `-args -update` to refresh their
+      #      autogold values.
+      # `make test_accept` handles PULUMI_HOME + plugin install and sets
+      # PULUMI_ACCEPT=1 for us.
+      - name: Regenerate PULUMI_ACCEPT goldens
+        run: |
+          make test_accept RUN_TEST_CMD='./...'
+      - name: Regenerate autogold goldens
+        run: |
+          pkgs=$(echo '${{ steps.autogold_pkgs.outputs.packages }}' | tr '\n' ' ')
+          make test_accept RUN_TEST_CMD="$pkgs -args -update"
+      - name: Commit and push
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          if git diff --quiet; then
+            echo 'No golden changes.'
+            exit 0
+          fi
+          git add -A
+          git commit -m 'Regenerate goldens via CI'
+          git push origin HEAD:${{ github.event.inputs.ref }}
