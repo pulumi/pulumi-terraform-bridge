@@ -722,6 +722,10 @@ func TestSchemaGenerationIndexDocOutDir(t *testing.T) { //nolint:paralleltest
 }
 
 func TestRandomCreate(t *testing.T) {
+	// This test relies on live registry acquisition, so it must not inherit
+	// PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION from the environment. Must be set
+	// before t.Parallel(), since t.Setenv panics once a test is marked parallel.
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 	t.Parallel()
 	ctx := context.Background()
 	server := grpcTestServer(ctx, t)
