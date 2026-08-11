@@ -148,6 +148,58 @@ func TestValidInputsFromPlan(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "max items one block uses flattened object",
+			path: newPropertyPath("obj"),
+			inputValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"single": resource.NewObjectProperty(resource.PropertyMap{
+							"nested": resource.NewArrayProperty([]resource.PropertyValue{
+								resource.NewStringProperty("a"),
+								resource.NewStringProperty("b"),
+							}),
+						}),
+					}),
+				},
+			),
+			planValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"single": resource.NewObjectProperty(resource.PropertyMap{
+							"nested": resource.NewArrayProperty([]resource.PropertyValue{
+								resource.NewStringProperty("b"),
+								resource.NewStringProperty("a"),
+							}),
+						}),
+					}),
+				},
+			),
+			sdkv2Schema: map[string]*schema.Schema{
+				"obj": {
+					Type: schema.TypeSet,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"single": {
+								Type:     schema.TypeList,
+								Optional: true,
+								MaxItems: 1,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"nested": {
+											Type:     schema.TypeSet,
+											Optional: true,
+											Elem:     &schema.Schema{Type: schema.TypeString},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
 			name: "set matching reassigns an ambiguous pairing",
 			path: newPropertyPath("items"),
 			inputValue: resource.NewArrayProperty([]resource.PropertyValue{

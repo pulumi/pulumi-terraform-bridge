@@ -236,7 +236,7 @@ func validInputsFromPlan(
 			return SkipChildrenError{}
 		}
 
-		currentTFS, _, err := lookupSchemas(subpath, tfs, ps)
+		currentTFS, currentPS, err := lookupSchemas(subpath, tfs, ps)
 		if err != nil {
 			return abortErr
 		}
@@ -247,6 +247,25 @@ func validInputsFromPlan(
 		}
 
 		if currentTFS.Type() == shim.TypeList || currentTFS.Type() == shim.TypeSet {
+			if IsMaxItemsOne(currentTFS, currentPS) && !inputsSubVal.IsArray() && !planSubVal.IsArray() {
+				if inputsSubVal.IsNull() {
+					if planSubVal.IsNull() {
+						return nil
+					}
+					return abortErr
+				}
+				if planSubVal.IsNull() {
+					return abortErr
+				}
+				if inputsSubVal.IsObject() && planSubVal.IsObject() {
+					return nil
+				}
+				if inputsSubVal.DeepEquals(planSubVal) {
+					return nil
+				}
+				return abortErr
+			}
+
 			if inputsSubVal.IsNull() {
 				// The plan is allowed to populate a nil list with an empty value.
 				if (planSubVal.IsArray() && len(planSubVal.ArrayValue()) == 0) || planSubVal.IsNull() {
