@@ -62,12 +62,34 @@ jobs:
           key: ubuntu-latest-plugins
           restore-keys: |
             ubuntu-latest-plugins
-      # Runs `make test_accept` (sets PULUMI_HOME, PULUMI_ACCEPT=1, installs
-      # plugins). RUN_TEST_CMD adds `-args -update` so autogold-based tests
-      # accept new expected values in the same run.
-      - name: Regenerate goldens
+      # Discover Go packages that import hexops/autogold so we can pass
+      # `-args -update` only to those. `-update` is registered by autogold's
+      # init(), so packages that don't import it fail with "flag provided
+      # but not defined".
+      - name: Compute autogold packages
+        id: autogold_pkgs
         run: |
-          make test_accept RUN_TEST_CMD='./... -args -update'
+          set -euo pipefail
+          # List of package dirs (relative) that import autogold.
+          pkgs=$(git grep -l 'hexops/autogold' -- '*.go' \
+            | xargs -n1 dirname | sort -u | sed 's|^|./|')
+          echo "packages<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$pkgs" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "found $(echo "$pkgs" | wc -l) autogold packages"
+      # Two passes:
+      #   1. Full suite with PULUMI_ACCEPT=1 (regenerates all non-autogold goldens).
+      #   2. Autogold-importing packages with `-args -update` to refresh their
+      #      autogold values.
+      # `make test_accept` handles PULUMI_HOME + plugin install and sets
+      # PULUMI_ACCEPT=1 for us.
+      - name: Regenerate PULUMI_ACCEPT goldens
+        run: |
+          make test_accept RUN_TEST_CMD='./...'
+      - name: Regenerate autogold goldens
+        run: |
+          pkgs=$(echo '${{ steps.autogold_pkgs.outputs.packages }}' | tr '\n' ' ')
+          make test_accept RUN_TEST_CMD="$pkgs -args -update"
       - name: Commit and push
         run: |
           git config user.name  'github-actions[bot]'
