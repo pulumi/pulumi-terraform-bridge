@@ -83,7 +83,7 @@ var removeBadText = tfbridge.DocsEdit{
 }
 ```
 
-Here's an example of a large find/replace that reads from files fo find and set text.
+Here's an example of a large find/replace that reads from files to find and set text.
 It is recommended that if you must do this, you include a hard error so that we don't wind up with orphaned code that finds nothing.
 > [!NOTE]
 > Large find/replaces are discouraged and should only be used for critical files, such as the `_index.md` landing page, or frequently visited resource pages.
