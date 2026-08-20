@@ -1776,11 +1776,11 @@ func parseImportCode(code string) (struct {
 
 // importTokens resolves the Pulumi type token to stamp onto a rewritten import example.
 //
-// Upstream frequently documents a family of resources on a single page - the Google IAM
-// "triad" (`google_*_iam_member`, `google_*_iam_binding`, `google_*_iam_policy`) is the
-// common case - so an example found on one page often belongs to a sibling resource. Naming
-// the page's own resource there produces a command that does not do what it says, so prefer
-// the token the example's own Terraform resource maps to.
+// Google Cloud documents its IAM "triad" (`google_*_iam_member`, `google_*_iam_binding`,
+// `google_*_iam_policy`) on one shared upstream page, so an example found on any of those
+// pages often belongs to a sibling resource. Naming the page's own resource there produces a
+// command that does not do what it says, so prefer the token the example's own Terraform
+// resource maps to.
 type importTokens struct {
 	// typeToken is the token of the resource whose docs are being generated.
 	typeToken string
