@@ -1203,7 +1203,8 @@ func (p *tfMarkdownParser) parseImports(body string) {
 	if token == "" {
 		token = "MISSING_TOK"
 	}
-	if rewritten, ok := rewriteImportMarkdown(body, token); ok {
+	toks := importTokens{typeToken: token, resources: p.infoCtx.info.Resources}
+	if rewritten, ok := rewriteImportMarkdown(body, toks); ok {
 		p.ret.Import = rewritten
 	}
 }
@@ -1231,7 +1232,7 @@ var (
 //	```sh
 //	$ pulumi import snowflake:index/apiIntegration:ApiIntegration example name
 //	```
-func rewriteImportMarkdown(body, typeToken string) (string, bool) {
+func rewriteImportMarkdown(body string, toks importTokens) (string, bool) {
 	if body == "" {
 		return "", false
 	}
@@ -1259,7 +1260,7 @@ func rewriteImportMarkdown(body, typeToken string) (string, bool) {
 				fenceLines = fenceLines[:0]
 				continue
 			}
-			out = append(out, line)
+			out = append(out, rewriteInlineImportCode(line, toks))
 			continue
 		}
 
@@ -1267,7 +1268,7 @@ func rewriteImportMarkdown(body, typeToken string) (string, bool) {
 		// This acts as a post-processor for the collected fence lines.
 		if fenceEnd.MatchString(line) {
 			rewritten, keep, dropSyntaxLine := rewriteImportFence(
-				fenceStartLine, line, fenceIndent, fenceInfo, fenceLines, typeToken)
+				fenceStartLine, line, fenceIndent, fenceInfo, fenceLines, toks)
 			if keep {
 				if dropSyntaxLine {
 					out = dropImportSyntaxLine(out)
@@ -1334,7 +1335,7 @@ func rewriteImportMarkdown(body, typeToken string) (string, bool) {
 //	# Example:
 //	$ pulumi import auth0/index/pages:Pages my_pages "22f4f21b-017a-319d-92e7-2291c1ca36c4"
 func rewriteImportFence(
-	startLine, endLine, indent, info string, lines []string, typeToken string,
+	startLine, endLine, indent, info string, lines []string, toks importTokens,
 ) ([]string, bool, bool) {
 	if fields := strings.Fields(info); len(fields) > 0 {
 		info = fields[0]
@@ -1342,7 +1343,7 @@ func rewriteImportFence(
 		info = ""
 	}
 	code := strings.Join(lines, "\n")
-	if info == "terraform" && looksLikeTerraformImportBlock(code) {
+	if isHCLFenceInfo(info) && looksLikeTerraformImportBlock(code) {
 		return nil, false, false
 	}
 	if info == "" || info == "console" || info == "shell" || info == "sh" || info == "bash" {
@@ -1354,7 +1355,7 @@ func rewriteImportFence(
 		}
 		hoistMode := hasHoistableImportComments(lines)
 		if hoistMode {
-			if rewritten, updated := rewriteImportFenceWithHoistedComments(lines, indent, typeToken); updated {
+			if rewritten, updated := rewriteImportFenceWithHoistedComments(lines, indent, toks); updated {
 				return rewritten, true, true
 			}
 		}
@@ -1367,7 +1368,7 @@ func rewriteImportFence(
 		//   # Example:
 		//   $ pulumi import auth0/index/pages:Pages my_pages "..."
 		comments, remaining, hoist := extractImportFenceComments(lines, indent)
-		rewritten, updated := rewriteImportLines(remaining, typeToken)
+		rewritten, updated := rewriteImportLines(remaining, toks)
 		if updated {
 			out := make([]string, 0, len(rewritten)+2)
 			if hoist && len(comments) > 0 {
@@ -1407,7 +1408,7 @@ func hasHoistableImportComments(lines []string) bool {
 	return false
 }
 
-func rewriteImportFenceWithHoistedComments(lines []string, indent, typeToken string) ([]string, bool) {
+func rewriteImportFenceWithHoistedComments(lines []string, indent string, toks importTokens) ([]string, bool) {
 	var out []string
 	updated := false
 	remaining := lines
@@ -1460,7 +1461,7 @@ func rewriteImportFenceWithHoistedComments(lines []string, indent, typeToken str
 			continue
 		}
 		chunk, hadTrailingBlank := trimTrailingBlankLines(chunk)
-		rewritten, chunkUpdated := rewriteImportLines(chunk, typeToken)
+		rewritten, chunkUpdated := rewriteImportLines(chunk, toks)
 		if chunkUpdated {
 			updated = true
 		}
@@ -1479,7 +1480,7 @@ func rewriteImportFenceWithHoistedComments(lines []string, indent, typeToken str
 	return out, updated
 }
 
-func rewriteImportLines(lines []string, typeToken string) ([]string, bool) {
+func rewriteImportLines(lines []string, toks importTokens) ([]string, bool) {
 	updated := false
 	rewritten := make([]string, 0, len(lines))
 	for i := 0; i < len(lines); {
@@ -1497,7 +1498,8 @@ func rewriteImportLines(lines []string, typeToken string) ([]string, bool) {
 			cmd := strings.Join(cmdLines, "\n")
 			if parsed, ok := parseImportCode(cmd); ok {
 				rewritten = append(rewritten,
-					fmt.Sprintf("%s$ pulumi import %s %s %s", leading, typeToken, parsed.Name, parsed.ID))
+					fmt.Sprintf("%s$ pulumi import %s %s %s",
+						leading, toks.tokenFor(parsed.Type), parsed.Name, parsed.ID))
 				updated = true
 				i = j + 1
 				continue
@@ -1514,6 +1516,35 @@ func rewriteImportLines(lines []string, typeToken string) ([]string, bool) {
 		i++
 	}
 	return rewritten, updated
+}
+
+// inlineImportCodeSpan matches a backtick-delimited code span in prose.
+var inlineImportCodeSpan = regexp.MustCompile("`[^`]*`")
+
+// rewriteInlineImportCode rewrites `terraform import` examples that upstream embeds in prose
+// rather than in a code fence. Left alone they leak the Terraform CLI and an upstream
+// resource name into the rendered Import section.
+//
+// Example (input):
+//
+//	e.g. `terraform import google_project_iam_binding.my_project "{{project}} roles/{{role}} title"`
+//
+// Example (output):
+//
+//	e.g. `pulumi import gcp:projects/iAMBinding:IAMBinding my_project "{{project}} roles/{{role}} title"`
+func rewriteInlineImportCode(line string, toks importTokens) string {
+	if !strings.Contains(line, "terraform import") && !strings.Contains(line, "pulumi import") {
+		return line
+	}
+	return inlineImportCodeSpan.ReplaceAllStringFunc(line, func(span string) string {
+		code := strings.TrimSuffix(strings.TrimPrefix(span, "`"), "`")
+		parsed, ok := parseImportCode(code)
+		if !ok {
+			return span
+		}
+		return fmt.Sprintf("`pulumi import %s %s %s`",
+			toks.tokenFor(parsed.Type), parsed.Name, parsed.ID)
+	})
 }
 
 // extractImportFenceComments hoists leading comment lines (starting with '#') from a fence.
@@ -1657,6 +1688,19 @@ func dropImportSyntaxLine(lines []string) []string {
 	return out
 }
 
+// isHCLFenceInfo reports whether a fence info string tags the block as HCL. Upstream tags
+// these fences `tf` far more often than `terraform`, and the distinction matters: an HCL
+// block left in the Import section is handed to convertExamples, which strips the entire
+// enclosing subsection when the conversion fails.
+func isHCLFenceInfo(info string) bool {
+	switch info {
+	case "terraform", "tf", "hcl":
+		return true
+	default:
+		return false
+	}
+}
+
 // looksLikeTerraformImportBlock detects the HCL `import { ... }` syntax so it can be dropped.
 //
 // Example:
@@ -1689,8 +1733,13 @@ func looksLikeTerraformImportBlock(code string) bool {
 //	$ terraform import \
 //	      some_resource.name \
 //	      <some-ID>
+//
+// The ID is either a single whitespace-free token or a quoted string. Quoting is what lets a
+// composite ID contain spaces, as IAM-style resources do:
+//
+//	$ terraform import google_project_iam_member.default "{{project}} roles/viewer user:jane@example.com"
 var importCodePattern = regexp.MustCompile(
-	`^\s*(?:[%$]\s+)?(?:pulumi|terraform) import[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+([^\s]+)\s*$`)
+	`^\s*(?:[%$]\s+)?(?:pulumi|terraform) import[\\\s]+([^.]+)[.]([^\s]+)[\\\s]+("[^"]*"|'[^']*'|[^\s]+)\s*$`)
 
 // Recognize import example codeblocks.
 //
@@ -1698,22 +1747,57 @@ var importCodePattern = regexp.MustCompile(
 //
 //	s := "% pulumi import aws_accessanalyzer_analyzer.example exampleID"
 //	v, ok := parseImportCode(s)
+//	v.Type == "aws_accessanalyzer_analyzer"
 //	v.Name == "example"
 //	v.ID == "exampleID"
 func parseImportCode(code string) (struct {
+	Type string
 	Name string
 	ID   string
 }, bool,
 ) {
 	type ret struct {
+		Type string
 		Name string
 		ID   string
 	}
-	if importCodePattern.MatchString(code) {
-		matches := importCodePattern.FindStringSubmatch(code)
-		return ret{Name: matches[2], ID: matches[3]}, true
+	matches := importCodePattern.FindStringSubmatch(code)
+	if matches == nil {
+		return ret{}, false
 	}
-	return ret{}, false
+	// A line-continuation example puts the resource address on its own line, so the type
+	// capture can pick up surrounding whitespace and backslashes.
+	return ret{
+		Type: strings.Trim(matches[1], " \t\n\\"),
+		Name: matches[2],
+		ID:   matches[3],
+	}, true
+}
+
+// importTokens resolves the Pulumi type token to stamp onto a rewritten import example.
+//
+// Upstream frequently documents a family of resources on a single page - the Google IAM
+// "triad" (`google_*_iam_member`, `google_*_iam_binding`, `google_*_iam_policy`) is the
+// common case - so an example found on one page often belongs to a sibling resource. Naming
+// the page's own resource there produces a command that does not do what it says, so prefer
+// the token the example's own Terraform resource maps to.
+type importTokens struct {
+	// typeToken is the token of the resource whose docs are being generated.
+	typeToken string
+	// resources maps upstream Terraform resource names to their bridged Pulumi resources.
+	// It is nil when the provider's resource map is unavailable, in which case every
+	// example falls back to typeToken.
+	resources map[string]*tfbridge.ResourceInfo
+}
+
+// tokenFor returns the token to use for an example importing the given Terraform resource
+// type, falling back to the token of the resource being documented when that type is not a
+// resource this provider bridges.
+func (t importTokens) tokenFor(tfResourceType string) string {
+	if r, ok := t.resources[tfResourceType]; ok && r != nil && r.Tok != "" {
+		return r.Tok.String()
+	}
+	return t.typeToken
 }
 
 func (p *tfMarkdownParser) parseFrontMatter(subsection []string) {
