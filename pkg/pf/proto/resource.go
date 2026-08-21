@@ -92,9 +92,10 @@ func (r resource) Importer() shim.ImportFunc {
 
 func (r resource) DeprecationMessage() string { return deprecated(r.r.Block.Deprecated) }
 
-func (r resource) Timeouts() *shim.ResourceTimeout {
-	panic("Cannot call Timeouts for a schema only resource")
-}
+// Timeouts is nil: the SDKv2-style declared operation timeouts do not exist for
+// a protocol-level resource, where any timeouts block is an ordinary part of the
+// schema.
+func (r resource) Timeouts() *shim.ResourceTimeout { return nil }
 
 func (r resource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {
 	panic("Cannot call InstanceState for a schema only resource")
