@@ -19,7 +19,7 @@ func Provider() info.Provider {
         P: shimv2.NewProvider(upstream.Provider()),
 
         Resources: map[string]*info.Resource{
-        	# Automatic token maping will ignore resources that are manually mapped.
+        	# Automatic token mapping will ignore resources that are manually mapped.
         },
         # ...
     }
