@@ -104,7 +104,7 @@ func knownDataSource(finalize Make) func(mod, tk string, d *info.DataSource, err
 		if err != nil {
 			return err
 		}
-		tk, err = finalize(mod, "get"+tk)
+		tk, err = dataSourceMake(finalize)(mod, tk)
 		if err != nil {
 			return err
 		}

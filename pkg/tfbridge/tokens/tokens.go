@@ -42,6 +42,13 @@ const (
 //	}
 type Make func(module, name string) (string, error)
 
+// dataSourceMake wraps finalize so data sources receive the `get` prefix.
+func dataSourceMake(finalize Make) Make {
+	return func(module, name string) (string, error) {
+		return finalize(module, "get"+name)
+	}
+}
+
 // Convert a Terraform token to a Pulumi token with the standard mapping.
 //
 // The mapping is
