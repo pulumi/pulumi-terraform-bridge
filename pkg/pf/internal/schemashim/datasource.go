@@ -57,6 +57,7 @@ func (*schemaOnlyDataSource) Importer() shim.ImportFunc {
 	panic("schemaOnlyDataSource does not implement runtime operation ImporterFunc")
 }
 
+// Timeouts is nil; see schemaOnlyResource.Timeouts.
 func (*schemaOnlyDataSource) Timeouts() *shim.ResourceTimeout { return nil }
 
 func (*schemaOnlyDataSource) InstanceState(id string, object,
