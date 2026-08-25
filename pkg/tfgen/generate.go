@@ -2035,6 +2035,14 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 				return nil, err
 			}
 			return nil, nil
+		} else if (varInfo == nil || varInfo.Name == "") && strings.HasPrefix(key, "_") {
+			if !isOptional(varInfo, shimSchema, false, false /* config */) {
+				return nil, fmt.Errorf(
+					"required property %q (@ %s) starts with an underscore and cannot be generated; "+
+						"map it to a valid name with an explicit SchemaInfo.Name",
+					propName, typePath)
+			}
+			return nil, nil
 		}
 		typ, err := g.makePropertyType(typePath, strings.ToLower(key), shimSchema, varInfo, out, entityDocs)
 		if err != nil {
