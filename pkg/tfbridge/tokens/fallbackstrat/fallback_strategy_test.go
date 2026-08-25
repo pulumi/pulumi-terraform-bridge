@@ -8,7 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	bridgeinfo "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens/fallbackstrat"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
@@ -121,4 +123,39 @@ func TestTokensMappedModulesWithInferredFallbackPrefixesDataSourcesWithGet(t *te
 		"cs101_buzz_five": {Tok: "cs101:buzz:getFive"},
 		"cs101_buzz_ten":  {Tok: "cs101:buzz:getTen"},
 	}, info.DataSources)
+}
+
+func TestTokensMappedModulesWithInferredFallbackMapsProviderFunctions(t *testing.T) {
+	t.Parallel()
+	info := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"cs101_fizz_three": nil,
+				"cs101_buzz_five":  nil,
+				"cs101_buzz_ten":   nil,
+			},
+			Functions: map[string]shim.Function{
+				"parse_time_range": {},
+			},
+		}).Shim(),
+	}
+	strategy, err := fallbackstrat.MappedModulesWithInferredFallback(
+		&info,
+		"cs101_", "", map[string]string{
+			"fizz_": "fIzZ",
+		},
+		func(module, name string) (string, error) {
+			return fmt.Sprintf("cs101:%s:%s", module, name), nil
+		},
+	)
+	require.NoError(t, err)
+
+	err = info.ComputeTokens(tfbridge.Strategy{
+		Function: strategy.Function,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]*bridgeinfo.Function{
+		"parse_time_range": {Tok: "cs101:index:parseTimeRange"},
+	}, info.Functions)
 }

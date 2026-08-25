@@ -41,6 +41,7 @@ func tokenStrategyWithFallback(
 	return tokens.Strategy{
 		Resource:   resourceFallback,
 		DataSource: dataSourceFallback,
+		Function:   strategy.Function,
 	}
 }
 
