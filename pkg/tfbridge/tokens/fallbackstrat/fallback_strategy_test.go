@@ -87,3 +87,38 @@ func TestTokensKnownModulesWithInferredFallback(t *testing.T) {
 		"cs101_buzz_ten":  {Tok: "cs101:buzz:Ten"},
 	}, info.Resources)
 }
+
+func TestTokensMappedModulesWithInferredFallbackPrefixesDataSourcesWithGet(t *testing.T) {
+	t.Parallel()
+	info := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			DataSourcesMap: schema.ResourceMap{
+				"cs101_fizz_three": nil,
+				"cs101_buzz_five":  nil,
+				"cs101_buzz_ten":   nil,
+			},
+		}).Shim(),
+	}
+	strategy, err := fallbackstrat.MappedModulesWithInferredFallback(
+		&info,
+		"cs101_", "", map[string]string{
+			"fizz_": "fIzZ",
+		},
+		func(module, name string) (string, error) {
+			return fmt.Sprintf("cs101:%s:%s", module, name), nil
+		},
+	)
+	require.NoError(t, err)
+
+	err = info.ComputeTokens(tfbridge.Strategy{
+		DataSource: strategy.DataSource,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]*tfbridge.DataSourceInfo{
+		"cs101_fizz_three": {Tok: "cs101:fIzZ:getThree"},
+		// inferred
+		"cs101_buzz_five": {Tok: "cs101:buzz:getFive"},
+		"cs101_buzz_ten":  {Tok: "cs101:buzz:getTen"},
+	}, info.DataSources)
+}

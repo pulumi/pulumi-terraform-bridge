@@ -86,7 +86,7 @@ func InferredModules(
 		Resource: tokenFromMap(tokenMap, rIsEmpty, finalize, func(tk string, resource *info.Resource) {
 			checkedApply(&resource.Tok, tokens.Type(tk))
 		}),
-		DataSource: tokenFromMap(tokenMap, dIsEmpty, finalize, func(tk string, datasource *info.DataSource) {
+		DataSource: tokenFromMap(tokenMap, dIsEmpty, dataSourceMake(finalize), func(tk string, datasource *info.DataSource) {
 			checkedApply(&datasource.Tok, tokens.ModuleMember(tk))
 		}),
 		Function: topLevelFunction(finalize),
