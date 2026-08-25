@@ -22,6 +22,7 @@ package info
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -1044,11 +1045,15 @@ func MarshalResourceShim(r shim.Resource) MarshallableResourceShim {
 
 // Unmarshal creates a mostly-initialized Terraform resource schema from the given MarshallableResourceShim.
 func (m MarshallableResourceShim) Unmarshal() shim.Resource {
+	return m.unmarshalWithTimeouts(nil)
+}
+
+func (m MarshallableResourceShim) unmarshalWithTimeouts(t *MarshallableResourceTimeoutShim) shim.Resource {
 	s := schema.SchemaMap{}
 	for k, v := range m {
 		s[k] = v.Unmarshal()
 	}
-	return (&schema.Resource{Schema: s}).Shim()
+	return (&schema.Resource{Schema: s, Timeouts: t.Unmarshal()}).Shim()
 }
 
 // MarshallableElemShim is the JSON-marshallable form of a Terraform schema's element field.
@@ -1213,6 +1218,66 @@ type MarshallableProviderShim struct {
 	Resources   map[string]MarshallableResourceShim `json:"resources,omitempty"`
 	DataSources map[string]MarshallableResourceShim `json:"dataSources,omitempty"`
 	Functions   map[string]MarshallableFunctionShim `json:"functions,omitempty"`
+
+	// ResourceTimeouts and DataSourceTimeouts carry the operation timeouts a
+	// resource or data source declares (shim.Resource.Timeouts), keyed by
+	// Terraform type name. They are kept apart from Resources/DataSources
+	// because a MarshallableResourceShim is the bare schema map, and adding a
+	// key to it would read as a field.
+	ResourceTimeouts   map[string]*MarshallableResourceTimeoutShim `json:"resourceTimeouts,omitempty"`
+	DataSourceTimeouts map[string]*MarshallableResourceTimeoutShim `json:"dataSourceTimeouts,omitempty"`
+}
+
+// MarshallableResourceTimeoutShim is the JSON-marshallable form of a shim.ResourceTimeout.
+// A nil entry means the operation declares no timeout.
+type MarshallableResourceTimeoutShim struct {
+	Create  *time.Duration `json:"create,omitempty"`
+	Read    *time.Duration `json:"read,omitempty"`
+	Update  *time.Duration `json:"update,omitempty"`
+	Delete  *time.Duration `json:"delete,omitempty"`
+	Default *time.Duration `json:"default,omitempty"`
+}
+
+// MarshalResourceTimeoutShim converts a shim.ResourceTimeout into a MarshallableResourceTimeoutShim.
+func MarshalResourceTimeoutShim(t *shim.ResourceTimeout) *MarshallableResourceTimeoutShim {
+	if t == nil {
+		return nil
+	}
+	return &MarshallableResourceTimeoutShim{
+		Create:  t.Create,
+		Read:    t.Read,
+		Update:  t.Update,
+		Delete:  t.Delete,
+		Default: t.Default,
+	}
+}
+
+// Unmarshal creates a shim.ResourceTimeout from the given MarshallableResourceTimeoutShim.
+func (m *MarshallableResourceTimeoutShim) Unmarshal() *shim.ResourceTimeout {
+	if m == nil {
+		return nil
+	}
+	return &shim.ResourceTimeout{
+		Create:  m.Create,
+		Read:    m.Read,
+		Update:  m.Update,
+		Delete:  m.Delete,
+		Default: m.Default,
+	}
+}
+
+func marshalResourceTimeoutShims(rm shim.ResourceMap) map[string]*MarshallableResourceTimeoutShim {
+	var out map[string]*MarshallableResourceTimeoutShim
+	rm.Range(func(k string, v shim.Resource) bool {
+		if t := v.Timeouts(); t != nil {
+			if out == nil {
+				out = map[string]*MarshallableResourceTimeoutShim{}
+			}
+			out[k] = MarshalResourceTimeoutShim(t)
+		}
+		return true
+	})
+	return out
 }
 
 // MarshalProviderShim converts a Terraform provider schema into a MarshallableProviderShim.
@@ -1244,10 +1309,12 @@ func MarshalProviderShim(p shim.Provider) *MarshallableProviderShim {
 		}
 	}
 	return &MarshallableProviderShim{
-		Schema:      config,
-		Resources:   resources,
-		DataSources: dataSources,
-		Functions:   functions,
+		Schema:             config,
+		Resources:          resources,
+		DataSources:        dataSources,
+		Functions:          functions,
+		ResourceTimeouts:   marshalResourceTimeoutShims(p.ResourcesMap()),
+		DataSourceTimeouts: marshalResourceTimeoutShims(p.DataSourcesMap()),
 	}
 }
 
@@ -1263,11 +1330,11 @@ func (m *MarshallableProviderShim) Unmarshal() shim.Provider {
 	}
 	resources := schema.ResourceMap{}
 	for k, v := range m.Resources {
-		resources[k] = v.Unmarshal()
+		resources[k] = v.unmarshalWithTimeouts(m.ResourceTimeouts[k])
 	}
 	dataSources := schema.ResourceMap{}
 	for k, v := range m.DataSources {
-		dataSources[k] = v.Unmarshal()
+		dataSources[k] = v.unmarshalWithTimeouts(m.DataSourceTimeouts[k])
 	}
 	var functions map[string]shim.Function
 	if len(m.Functions) > 0 {

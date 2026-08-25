@@ -66,9 +66,8 @@ func (*schemaOnlyListResource) Importer() shim.ImportFunc {
 	panic("schemaOnlyListResource does not implement runtime operation ImporterFunc")
 }
 
-func (*schemaOnlyListResource) Timeouts() *shim.ResourceTimeout {
-	panic("schemaOnlyListResource does not implement runtime operation Timeouts")
-}
+// Timeouts is nil; see schemaOnlyResource.Timeouts.
+func (*schemaOnlyListResource) Timeouts() *shim.ResourceTimeout { return nil }
 
 func (*schemaOnlyListResource) InstanceState(id string, object,
 	meta map[string]interface{},

@@ -58,9 +58,9 @@ func (*schemaOnlyResource) Importer() shim.ImportFunc {
 	panic("schemaOnlyResource does not implement runtime operation ImporterFunc")
 }
 
-func (*schemaOnlyResource) Timeouts() *shim.ResourceTimeout {
-	panic("schemaOnlyResource does not implement runtime operation Timeouts")
-}
+// Timeouts is nil: a Plugin Framework resource has no SDKv2-style declared
+// operation timeouts; any timeouts block is an ordinary part of its schema.
+func (*schemaOnlyResource) Timeouts() *shim.ResourceTimeout { return nil }
 
 func (*schemaOnlyResource) InstanceState(id string, object,
 	meta map[string]interface{},

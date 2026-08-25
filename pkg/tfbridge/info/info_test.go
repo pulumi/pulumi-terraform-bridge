@@ -1,9 +1,15 @@
 package info
 
 import (
+	"encoding/json"
+	"maps"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/hexops/autogold/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	schemashim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -120,4 +126,70 @@ func TestMarshallableProviderPreservesSkipDefaultFixups(t *testing.T) {
 	unmarshalled := marshalled.Unmarshal()
 
 	autogold.Expect(true).Equal(t, unmarshalled.SkipDefaultFixups)
+}
+
+// Declared operation timeouts round-trip through the JSON wire form, so mapping
+// consumers can tell which operations a resource or data source accepts a
+// timeout for. Resources declaring none stay nil.
+func TestMarshallableProviderTimeouts(t *testing.T) {
+	t.Parallel()
+
+	create, read, deflt := 10*time.Minute, 2*time.Minute, 5*time.Minute
+	providerShim := &schemashim.Provider{
+		ResourcesMap: schemashim.ResourceMap{
+			"test_timed": (&schemashim.Resource{
+				Schema:   schemashim.SchemaMap{"name": (&schemashim.Schema{Type: shim.TypeString}).Shim()},
+				Timeouts: &shim.ResourceTimeout{Create: &create, Default: &deflt},
+			}).Shim(),
+			"test_untimed": (&schemashim.Resource{
+				Schema: schemashim.SchemaMap{"name": (&schemashim.Schema{Type: shim.TypeString}).Shim()},
+			}).Shim(),
+		},
+		DataSourcesMap: schemashim.ResourceMap{
+			"test_source": (&schemashim.Resource{
+				Schema:   schemashim.SchemaMap{"name": (&schemashim.Schema{Type: shim.TypeString}).Shim()},
+				Timeouts: &shim.ResourceTimeout{Read: &read},
+			}).Shim(),
+		},
+	}
+
+	marshalled := MarshalProviderShim(providerShim.Shim())
+	assert.Equal(t, map[string]*MarshallableResourceTimeoutShim{
+		"test_timed": {Create: &create, Default: &deflt},
+	}, marshalled.ResourceTimeouts)
+	assert.Equal(t, map[string]*MarshallableResourceTimeoutShim{
+		"test_source": {Read: &read},
+	}, marshalled.DataSourceTimeouts)
+
+	data, err := json.Marshal(marshalled)
+	require.NoError(t, err)
+	var decoded MarshallableProviderShim
+	require.NoError(t, json.Unmarshal(data, &decoded))
+
+	unmarshalled := decoded.Unmarshal()
+	assert.Equal(t, &shim.ResourceTimeout{Create: &create, Default: &deflt},
+		unmarshalled.ResourcesMap().Get("test_timed").Timeouts())
+	assert.Nil(t, unmarshalled.ResourcesMap().Get("test_untimed").Timeouts())
+	assert.Equal(t, &shim.ResourceTimeout{Read: &read},
+		unmarshalled.DataSourcesMap().Get("test_source").Timeouts())
+}
+
+// A provider that declares no timeouts marshals to the same JSON as before the
+// timeout maps existed, so older consumers of the wire form are unaffected.
+func TestMarshallableProviderTimeoutsAbsentFromJSON(t *testing.T) {
+	t.Parallel()
+
+	providerShim := &schemashim.Provider{
+		ResourcesMap: schemashim.ResourceMap{
+			"test_untimed": (&schemashim.Resource{
+				Schema: schemashim.SchemaMap{"name": (&schemashim.Schema{Type: shim.TypeString}).Shim()},
+			}).Shim(),
+		},
+	}
+
+	data, err := json.Marshal(MarshalProviderShim(providerShim.Shim()))
+	require.NoError(t, err)
+	var keys map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(data, &keys))
+	assert.Equal(t, []string{"resources"}, slices.Sorted(maps.Keys(keys)))
 }
