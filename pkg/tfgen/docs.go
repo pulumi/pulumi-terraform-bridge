@@ -1189,8 +1189,9 @@ func (p *tfMarkdownParser) parseImports(body string) {
 
 	// check for import overwrites
 	info := p.info
+	var docInfo *tfbridge.DocInfo
 	if info != nil {
-		docInfo := info.GetDocs()
+		docInfo = info.GetDocs()
 		if docInfo != nil {
 			importDetails := docInfo.ImportDetails
 			if importDetails != "" {
@@ -1203,7 +1204,10 @@ func (p *tfMarkdownParser) parseImports(body string) {
 	if token == "" {
 		token = "MISSING_TOK"
 	}
-	toks := importTokens{typeToken: token, resources: p.infoCtx.info.Resources}
+	toks := importTokens{typeToken: token}
+	if !docsPointElsewhere(docInfo) {
+		toks.resources = p.infoCtx.info.Resources
+	}
 	if rewritten, ok := rewriteImportMarkdown(body, toks); ok {
 		p.ret.Import = rewritten
 	}
@@ -1260,7 +1264,7 @@ func rewriteImportMarkdown(body string, toks importTokens) (string, bool) {
 				fenceLines = fenceLines[:0]
 				continue
 			}
-			out = append(out, rewriteInlineImportCode(line, toks))
+			out = append(out, rewriteInlineImportCommand(line, toks))
 			continue
 		}
 
@@ -1343,7 +1347,11 @@ func rewriteImportFence(
 		info = ""
 	}
 	code := strings.Join(lines, "\n")
-	if isHCLFenceInfo(info) && looksLikeTerraformImportBlock(code) {
+	// An HCL block left in the Import section is handed to convertExamples, which strips the
+	// entire enclosing subsection when the conversion fails - and `import {}` never converts.
+	// Upstream tags these fences ```tf far more often than ```terraform, so match on the same
+	// set of language identifiers the rest of this file treats as HCL.
+	if isHCL(info, code) && looksLikeTerraformImportBlock(code) {
 		return nil, false, false
 	}
 	if info == "" || info == "console" || info == "shell" || info == "sh" || info == "bash" {
@@ -1518,10 +1526,11 @@ func rewriteImportLines(lines []string, toks importTokens) ([]string, bool) {
 	return rewritten, updated
 }
 
-// inlineImportCodeSpan matches a backtick-delimited code span in prose.
-var inlineImportCodeSpan = regexp.MustCompile("`[^`]*`")
+// backtickSpan matches a backtick-delimited span in prose. Spans that do not hold an import
+// command are left alone by parseImportCode below.
+var backtickSpan = regexp.MustCompile("`[^`]*`")
 
-// rewriteInlineImportCode rewrites `terraform import` examples that upstream embeds in prose
+// rewriteInlineImportCommand rewrites `terraform import` commands that upstream embeds in prose
 // rather than in a code fence. Left alone they leak the Terraform CLI and an upstream
 // resource name into the rendered Import section.
 //
@@ -1532,11 +1541,11 @@ var inlineImportCodeSpan = regexp.MustCompile("`[^`]*`")
 // Example (output):
 //
 //	e.g. `pulumi import gcp:projects/iAMBinding:IAMBinding my_project "{{project}} roles/{{role}} title"`
-func rewriteInlineImportCode(line string, toks importTokens) string {
+func rewriteInlineImportCommand(line string, toks importTokens) string {
 	if !strings.Contains(line, "terraform import") && !strings.Contains(line, "pulumi import") {
 		return line
 	}
-	return inlineImportCodeSpan.ReplaceAllStringFunc(line, func(span string) string {
+	return backtickSpan.ReplaceAllStringFunc(line, func(span string) string {
 		code := strings.TrimSuffix(strings.TrimPrefix(span, "`"), "`")
 		parsed, ok := parseImportCode(code)
 		if !ok {
@@ -1688,19 +1697,6 @@ func dropImportSyntaxLine(lines []string) []string {
 	return out
 }
 
-// isHCLFenceInfo reports whether a fence info string tags the block as HCL. Upstream tags
-// these fences `tf` far more often than `terraform`, and the distinction matters: an HCL
-// block left in the Import section is handed to convertExamples, which strips the entire
-// enclosing subsection when the conversion fails.
-func isHCLFenceInfo(info string) bool {
-	switch info {
-	case "terraform", "tf", "hcl":
-		return true
-	default:
-		return false
-	}
-}
-
 // looksLikeTerraformImportBlock detects the HCL `import { ... }` syntax so it can be dropped.
 //
 // Example:
@@ -1735,7 +1731,7 @@ func looksLikeTerraformImportBlock(code string) bool {
 //	      <some-ID>
 //
 // The ID is either a single whitespace-free token or a quoted string. Quoting is what lets a
-// composite ID contain spaces, as IAM-style resources do:
+// composite ID contain spaces:
 //
 //	$ terraform import google_project_iam_member.default "{{project}} roles/viewer user:jane@example.com"
 var importCodePattern = regexp.MustCompile(
@@ -1788,6 +1784,18 @@ type importTokens struct {
 	// It is nil when the provider's resource map is unavailable, in which case every
 	// example falls back to typeToken.
 	resources map[string]*tfbridge.ResourceInfo
+}
+
+// docsPointElsewhere reports whether a resource's docs were deliberately sourced from some
+// other entity's markdown. When they were, the examples on the page name that other entity on
+// purpose - `aws_alb` is documented from `aws_lb`'s page - so resolving an example's own
+// Terraform type would stamp the wrong resource's token onto every command. Keep the page's
+// own token in that case.
+func docsPointElsewhere(docInfo *tfbridge.DocInfo) bool {
+	if docInfo == nil {
+		return false
+	}
+	return docInfo.Source != "" || len(docInfo.Markdown) > 0
 }
 
 // tokenFor returns the token to use for an example importing the given Terraform resource

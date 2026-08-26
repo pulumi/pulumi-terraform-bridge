@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -307,15 +308,8 @@ func TestParseImports_SpaceDelimitedIDs(t *testing.T) {
 	}
 }
 
-// TestParseImports_DropsHCLImportBlocks covers
-// https://github.com/pulumi/pulumi-terraform-bridge/issues/3585.
-//
-// A Terraform `import { ... }` block is Terraform-only config syntax with no Pulumi analogue,
-// so it has to be dropped from the Import section. Upstream tags these fences ```tf far more
-// often than ```terraform, and leaving one in does more than render stray HCL: isHCL treats
-// tf/hcl as convertible, the conversion cannot succeed, and convertExamples then strips the
-// entire enclosing subsection - heading, prose and sibling examples included.
-func TestParseImports_DropsHCLImportBlocks(t *testing.T) {
+// https://github.com/pulumi/pulumi-terraform-bridge/issues/3585
+func TestParseImports_DropsHCLImportBlocksForAllTerraformLanguageIdentifiers(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows - test cases need to be made robust to newline handling")
@@ -374,9 +368,6 @@ func TestParseImports_DropsHCLImportBlocks(t *testing.T) {
 	}
 }
 
-// TestParseImports_UnmappedResourceFallsBackToPageToken pins the fallback: when an example
-// names a Terraform resource this provider does not bridge, we keep stamping the token of the
-// page being generated rather than dropping the example.
 func TestParseImports_UnmappedResourceFallsBackToPageToken(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
@@ -403,4 +394,74 @@ func TestParseImports_UnmappedResourceFallsBackToPageToken(t *testing.T) {
 
 	assert.Contains(t, parser.ret.Import,
 		`$ pulumi import gcp:projects/iAMMember:IAMMember default "a b"`)
+}
+
+// A Docs.Source override points a page at another entity's markdown, so an example there names
+// that other entity on purpose. `aws_alb` is documented from `aws_lb`'s page: the command has
+// to carry the alb token, not the lb token its own Terraform type resolves to.
+func TestParseImports_DocsSourceOverrideKeepsPageToken(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - test case needs to be made robust to newline handling")
+	}
+
+	awsLBResources := map[string]*tfbridge.ResourceInfo{
+		"aws_lb":  {Tok: "aws:lb/loadBalancer:LoadBalancer"},
+		"aws_alb": {Tok: "aws:alb/loadBalancer:LoadBalancer"},
+	}
+
+	const lbARN = "arn:aws:elasticloadbalancing:us-west-2:123456789012:" +
+		"loadbalancer/app/my-load-balancer/50dc6c495c0c9188"
+	input := strings.Join([]string{
+		"",
+		"```sh",
+		"terraform import aws_lb.bar " + lbARN,
+		"```",
+		"",
+	}, "\n")
+
+	for _, tc := range []struct {
+		name    string
+		docs    tfbridge.DocInfo
+		rawname string
+		token   string
+		expect  string
+	}{
+		{
+			name:    "source override",
+			docs:    tfbridge.DocInfo{Source: "lb.html.markdown"},
+			rawname: "aws_alb",
+			token:   "aws:alb/loadBalancer:LoadBalancer",
+			expect:  "aws:alb/loadBalancer:LoadBalancer",
+		},
+		{
+			name:    "markdown override",
+			docs:    tfbridge.DocInfo{Markdown: []byte("# aws_alb")},
+			rawname: "aws_alb",
+			token:   "aws:alb/loadBalancer:LoadBalancer",
+			expect:  "aws:alb/loadBalancer:LoadBalancer",
+		},
+		{
+			name:    "no override",
+			rawname: "aws_lb",
+			token:   "aws:lb/loadBalancer:LoadBalancer",
+			expect:  "aws:lb/loadBalancer:LoadBalancer",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			parser := tfMarkdownParser{
+				info:    &mockResource{docs: tc.docs, token: tokens.Token(tc.token)},
+				rawname: tc.rawname,
+				infoCtx: infoContext{
+					pkg:  "aws",
+					info: tfbridge.ProviderInfo{Name: "aws", Resources: awsLBResources},
+				},
+			}
+			parser.parseImports(input)
+
+			assert.Contains(t, parser.ret.Import, "$ pulumi import "+tc.expect+" bar arn:aws:")
+			assert.NotContains(t, parser.ret.Import, "terraform import")
+		})
+	}
 }
