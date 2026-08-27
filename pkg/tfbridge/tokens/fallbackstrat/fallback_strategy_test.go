@@ -125,37 +125,60 @@ func TestTokensMappedModulesWithInferredFallbackPrefixesDataSourcesWithGet(t *te
 	}, info.DataSources)
 }
 
-func TestTokensMappedModulesWithInferredFallbackMapsProviderFunctions(t *testing.T) {
+func TestTokensWithInferredFallbackMapsProviderFunctions(t *testing.T) {
 	t.Parallel()
-	info := tfbridge.ProviderInfo{
-		P: (&schema.Provider{
-			ResourcesMap: schema.ResourceMap{
-				"cs101_fizz_three": nil,
-				"cs101_buzz_five":  nil,
-				"cs101_buzz_ten":   nil,
-			},
-			Functions: map[string]shim.Function{
-				"parse_time_range": {},
-			},
-		}).Shim(),
+
+	finalize := func(module, name string) (string, error) {
+		return fmt.Sprintf("cs101:%s:%s", module, name), nil
 	}
-	strategy, err := fallbackstrat.MappedModulesWithInferredFallback(
-		&info,
-		"cs101_", "", map[string]string{
-			"fizz_": "fIzZ",
-		},
-		func(module, name string) (string, error) {
-			return fmt.Sprintf("cs101:%s:%s", module, name), nil
-		},
-	)
-	require.NoError(t, err)
 
-	err = info.ComputeTokens(tfbridge.Strategy{
-		Function: strategy.Function,
-	})
-	require.NoError(t, err)
+	tests := []struct {
+		name     string
+		strategy func(*tfbridge.ProviderInfo) (bridgeinfo.FunctionStrategy, error)
+	}{
+		{
+			name: "MappedModulesWithInferredFallback",
+			strategy: func(p *tfbridge.ProviderInfo) (bridgeinfo.FunctionStrategy, error) {
+				s, err := fallbackstrat.MappedModulesWithInferredFallback(
+					p, "cs101_", "", map[string]string{"fizz_": "fIzZ"}, finalize)
+				return s.Function, err
+			},
+		},
+		{
+			name: "KnownModulesWithInferredFallback",
+			strategy: func(p *tfbridge.ProviderInfo) (bridgeinfo.FunctionStrategy, error) {
+				s, err := fallbackstrat.KnownModulesWithInferredFallback(
+					p, "cs101_", "", []string{"fizz_"}, finalize)
+				return s.Function, err
+			},
+		},
+	}
 
-	assert.Equal(t, map[string]*bridgeinfo.Function{
-		"parse_time_range": {Tok: "cs101:index:parseTimeRange"},
-	}, info.Functions)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			info := tfbridge.ProviderInfo{
+				P: (&schema.Provider{
+					ResourcesMap: schema.ResourceMap{
+						"cs101_fizz_three": nil,
+						"cs101_buzz_five":  nil,
+						"cs101_buzz_ten":   nil,
+					},
+					Functions: map[string]shim.Function{
+						"parse_time_range": {},
+					},
+				}).Shim(),
+			}
+
+			function, err := tt.strategy(&info)
+			require.NoError(t, err)
+
+			err = info.ComputeTokens(tfbridge.Strategy{Function: function})
+			require.NoError(t, err)
+
+			assert.Equal(t, map[string]*bridgeinfo.Function{
+				"parse_time_range": {Tok: "cs101:index:parseTimeRange"},
+			}, info.Functions)
+		})
+	}
 }
