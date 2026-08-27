@@ -38,9 +38,16 @@ func tokenStrategyWithFallback(
 		}
 		return nil
 	}
+	functionFallback := func(tfToken string, elem *info.Function) error {
+		if err := strategy.Function(tfToken, elem); err != nil {
+			return fallback.Function(tfToken, elem)
+		}
+		return nil
+	}
 	return tokens.Strategy{
 		Resource:   resourceFallback,
 		DataSource: dataSourceFallback,
+		Function:   functionFallback,
 	}
 }
 
