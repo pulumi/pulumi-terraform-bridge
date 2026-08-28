@@ -187,11 +187,10 @@ outputs:
             port: 22
         protocol: ssh
 
-  # TODO this is currently failing.
-  # tupleElementAttrRes__actual: ${tupleElementAttrRes.tuplesOptionals}
-  # tupleElementAttrRes__expect:
-  #   - { t0: false, t1: "no" }
-  #   - { t0: true, t1: "yes"}
+  tupleElementAttrRes__actual: ${tupleElementAttrRes.tuplesOptionals}
+  tupleElementAttrRes__expect:
+    - { t0: false, t1: "no" }
+    - { t0: true, t1: "yes"}
 
   setElementAttrRes__actual: ${setElementAttrRes.setOptionals}
 

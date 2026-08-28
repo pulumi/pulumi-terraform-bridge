@@ -107,7 +107,7 @@ func (c TupleType) ValueFromTerraform(ctx context.Context, val tftypes.Value) (a
 			typ:   c,
 		}, nil
 	}
-	if !val.IsNull() {
+	if val.IsNull() {
 		return TupleValue{
 			state: attr.ValueStateNull,
 			typ:   c,
@@ -140,7 +140,7 @@ func (c TupleValue) Type(context.Context) attr.Type { return c.typ }
 
 func (c TupleValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
 	t := c.typ.tftype(ctx)
-	if c.state == attr.ValueStateKnown {
+	if c.state == attr.ValueStateUnknown {
 		return tftypes.NewValue(t, tftypes.UnknownValue), nil
 	}
 	if c.state == attr.ValueStateNull {
