@@ -2717,6 +2717,9 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 		reservedkeys.Defaults: []interface{}{},
 		"inputA":              "input_a_read",
 		"inputC":              "input_c_read",
+		// inputD is retained: its value matches the schema default, and dropping it would
+		// cause a spurious diff when PlanResourceChange re-applies the default on next preview.
+		"inputD": "input_d_default",
 	})
 	assert.Equal(t, expected, ins)
 }
@@ -2788,6 +2791,10 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 	assert.NoError(t, err)
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
 		reservedkeys.Defaults: []interface{}{},
+		// inputC and inputD are retained: their values match the schema defaults (-1),
+		// and dropping them would cause spurious diffs on next preview.
+		"inputC": -1,
+		"inputD": -1,
 	})
 	assert.Equal(t, expected, ins)
 }
@@ -3649,14 +3656,20 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}),
 		},
 		{
-			name:  "string attribute with defaults not extracted",
+			// Fields whose value matches the schema default are retained rather than
+			// dropped. Dropping them would cause spurious diffs when PlanResourceChange
+			// re-applies the same default on next preview.
+			name:  "string attribute matching default is retained",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "baz"}),
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Optional: true, Default: "baz"},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expected: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: "baz"},
+			}),
 		},
 		{
 			name:  "string attribute with empty value not extracted",
@@ -3915,6 +3928,230 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			tc.expected.Equal(t, result)
 		})
 	}
+}
+
+// TestExtractSchemaInputsDefaultInjection verifies that extractSchemaInputsObject
+// injects schema defaults for null fields and retains fields whose value matches the
+// schema default, instead of dropping them. This prevents spurious null → default diffs
+// after pulumi import. See https://github.com/pulumi/pulumi-terraform-bridge/issues/2436.
+func TestExtractSchemaInputsDefaultInjection(t *testing.T) {
+	t.Parallel()
+
+	defaults := func() resource.PropertyValue {
+		return resource.NewArrayProperty([]resource.PropertyValue{})
+	}
+
+	type testCase struct {
+		name      string
+		props     resource.PropertyMap
+		schemaMap map[string]*schemav2.Schema
+		expected  resource.PropertyMap
+	}
+
+	testCases := []testCase{
+		{
+			// Field absent from state entirely — extractSchemaInputsObject only
+			// iterates fields present in state, so this is not affected.
+			name:  "absent field with default is not synthesized",
+			props: resource.PropertyMap{},
+			schemaMap: map[string]*schemav2.Schema{
+				"force_destroy": {Type: schemav2.TypeBool, Optional: true, Default: false},
+			},
+			expected: resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): defaults(),
+			},
+		},
+		{
+			// Read explicitly returns null for a bool field with Default: false.
+			name: "explicit null bool with default false is injected",
+			props: resource.PropertyMap{
+				"force_destroy": resource.NewNullProperty(),
+			},
+			schemaMap: map[string]*schemav2.Schema{
+				"force_destroy": {Type: schemav2.TypeBool, Optional: true, Default: false},
+			},
+			expected: resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): defaults(),
+				resource.PropertyKey("force_destroy"):       resource.NewPropertyValue(false),
+			},
+		},
+		{
+			// Read explicitly returns null for an int field with Default: 30.
+			name: "explicit null int with default 30 is injected",
+			props: resource.PropertyMap{
+				"recovery_window": resource.NewNullProperty(),
+			},
+			schemaMap: map[string]*schemav2.Schema{
+				"recovery_window": {Type: schemav2.TypeInt, Optional: true, Default: 30},
+			},
+			expected: resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): defaults(),
+				resource.PropertyKey("recovery_window"):     resource.NewNumberProperty(30),
+			},
+		},
+		{
+			// Read returns false for a bool field with Default: false.
+			// The value matches the default — it should be kept, not dropped.
+			name: "bool matching default false is retained",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"force_destroy": false,
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"force_destroy": {Type: schemav2.TypeBool, Optional: true, Default: false},
+			},
+			expected: resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): defaults(),
+				resource.PropertyKey("force_destroy"):       resource.NewPropertyValue(false),
+			},
+		},
+		{
+			// Read returns "baz" which matches Default: "baz".
+			// The value matches the default — it should be kept, not dropped.
+			name: "string matching default is retained",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": "baz",
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {Type: schemav2.TypeString, Optional: true, Default: "baz"},
+			},
+			expected: resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): defaults(),
+				resource.PropertyKey("foo"):                 resource.NewPropertyValue("baz"),
+			},
+		},
+		{
+			// Read returns null for a field with no schema default.
+			// Should still be dropped (no default to inject).
+			name: "null with no default is still dropped",
+			props: resource.PropertyMap{
+				"optional_field": resource.NewNullProperty(),
+			},
+			schemaMap: map[string]*schemav2.Schema{
+				"optional_field": {Type: schemav2.TypeString, Optional: true},
+			},
+			expected: resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): defaults(),
+			},
+		},
+		{
+			// Read returns empty string for a field with no schema default.
+			// Should still be dropped (zero value, no default).
+			name: "zero value string with no default is still dropped",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"optional_field": "",
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"optional_field": {Type: schemav2.TypeString, Optional: true},
+			},
+			expected: resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): defaults(),
+			},
+		},
+		{
+			// Read returns null for a string field with Default: "something".
+			name: "explicit null string with default is injected",
+			props: resource.PropertyMap{
+				"engine": resource.NewNullProperty(),
+			},
+			schemaMap: map[string]*schemav2.Schema{
+				"engine": {Type: schemav2.TypeString, Optional: true, Default: "mysql"},
+			},
+			expected: resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): defaults(),
+				resource.PropertyKey("engine"):              resource.NewPropertyValue("mysql"),
+			},
+		},
+		{
+			// Read returns zero (0) for an int field with Default: 30.
+			// Zero is not the default — it should be kept regardless.
+			name: "int zero value with non-zero default is kept",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"recovery_window": 0,
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"recovery_window": {Type: schemav2.TypeInt, Optional: true, Default: 30},
+			},
+			expected: resource.PropertyMap{
+				resource.PropertyKey(reservedkeys.Defaults): defaults(),
+				resource.PropertyKey("recovery_window"):     resource.NewNumberProperty(0),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			sm := shimv2.NewSchemaMap(tc.schemaMap)
+			err := sm.Validate()
+			require.NoErrorf(t, err, "Invalid test case schema, please fix the testCase")
+
+			result, err := ExtractInputsFromOutputs(nil, tc.props, sm, nil, false)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+// TestIsDefaultOrZeroValueBehavior validates our understanding of how isDefaultOrZeroValue
+// handles various combinations of null/zero values with and without schema defaults.
+func TestIsDefaultOrZeroValueBehavior(t *testing.T) {
+	t.Parallel()
+
+	boolSchema := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+		"f": {Type: schemav2.TypeBool, Optional: true, Default: false},
+	})
+	intSchema := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+		"f": {Type: schemav2.TypeInt, Optional: true, Default: 30},
+	})
+	noDefaultSchema := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+		"f": {Type: schemav2.TypeString, Optional: true},
+	})
+
+	getSchema := func(sm shim.SchemaMap) shim.Schema {
+		return sm.Get("f")
+	}
+
+	// Validate getDefaultValue behavior
+	t.Run("getDefaultValue returns false for Default:false", func(t *testing.T) {
+		dv := getDefaultValue(getSchema(boolSchema), nil)
+		// interface{}(false) is NOT nil
+		assert.NotNil(t, dv, "false should not be nil as interface{}")
+		assert.Equal(t, false, dv)
+	})
+
+	t.Run("getDefaultValue returns 30 for Default:30", func(t *testing.T) {
+		dv := getDefaultValue(getSchema(intSchema), nil)
+		assert.NotNil(t, dv)
+		assert.Equal(t, 30, dv)
+	})
+
+	t.Run("getDefaultValue returns nil for no default", func(t *testing.T) {
+		dv := getDefaultValue(getSchema(noDefaultSchema), nil)
+		assert.Nil(t, dv)
+	})
+
+	// Validate isDefaultOrZeroValue behavior
+	t.Run("null with Default:false — isDefaultOrZeroValue returns false", func(t *testing.T) {
+		// Because getDefaultValue returns false (non-nil), isDefaultOrZeroValue
+		// returns dv==v.V which is false==nil → false.
+		// This means null fields with a schema default are NOT considered
+		// default/zero, so they WON'T be dropped — they'll be kept as null.
+		result := isDefaultOrZeroValue(getSchema(boolSchema), nil, resource.NewNullProperty())
+		assert.False(t, result, "null with Default:false returns false (dv==v.V → false==nil → false)")
+	})
+
+	t.Run("false with Default:false — isDefaultOrZeroValue returns true", func(t *testing.T) {
+		// dv==v.V → false==false → true
+		result := isDefaultOrZeroValue(getSchema(boolSchema), nil, resource.NewPropertyValue(false))
+		assert.True(t, result)
+	})
+
+	t.Run("null with no default — isDefaultOrZeroValue returns true", func(t *testing.T) {
+		// getDefaultValue returns nil, falls to switch, v.IsNull() → true
+		result := isDefaultOrZeroValue(getSchema(noDefaultSchema), nil, resource.NewNullProperty())
+		assert.True(t, result)
+	})
 }
 
 func TestMakeSingleTerraformInput(t *testing.T) {
