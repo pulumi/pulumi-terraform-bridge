@@ -27,6 +27,23 @@ type flattenedEncoder struct {
 }
 
 func (enc *flattenedEncoder) fromPropertyValue(v resource.PropertyValue) (tftypes.Value, error) {
+	// FIX: Handle cases where IsMaxItemsOne incorrectly identified a multi-item list
+	// If the input is an array (which it shouldn't be for true MaxItemsOne), encode all elements
+	if v.IsArray() {
+		list := []tftypes.Value{}
+		for _, elem := range v.ArrayValue() {
+			encoded, err := enc.elementEncoder.fromPropertyValue(elem)
+			if err != nil {
+				return tftypes.Value{}, fmt.Errorf("encoding list element: %w", err)
+			}
+			if !encoded.IsNull() {
+				list = append(list, encoded)
+			}
+		}
+		return tftypes.NewValue(enc.collectionType, list), nil
+	}
+
+	// Original single-element encoding logic
 	encoded, err := enc.elementEncoder.fromPropertyValue(v)
 	if err != nil {
 		return tftypes.Value{}, err
@@ -55,8 +72,18 @@ func (dec *flattenedDecoder) toPropertyValue(v tftypes.Value) (resource.Property
 	case 1:
 		return decode(dec.elementDecoder, list[0])
 	default:
-		msg := "IsMaxItemsOne list or set has too many (%d) values"
-		err := fmt.Errorf(msg, len(list))
-		return resource.PropertyValue{}, err
+		// FIX: Handle cases where IsMaxItemsOne incorrectly identified a multi-item list
+		// Instead of erroring, decode all elements and return as an array
+		// This fixes a bug where Plugin Framework ListNestedBlock types were being
+		// truncated to 1 element in the Go SDK.
+		values := []resource.PropertyValue{}
+		for _, e := range list {
+			ev, err := decode(dec.elementDecoder, e)
+			if err != nil {
+				return resource.PropertyValue{}, fmt.Errorf("decoding list element: %w", err)
+			}
+			values = append(values, ev)
+		}
+		return resource.NewArrayProperty(values), nil
 	}
 }
