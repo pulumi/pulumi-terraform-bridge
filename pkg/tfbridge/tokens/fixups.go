@@ -513,7 +513,7 @@ func fixID(providerName, tokenPrefix string) fixupProperty {
 			if f := r.Schema.Fields["id"]; f != nil && f.Type == "string" {
 				return nil
 			}
-			if r.Schema.ComputeID != nil && computedIDTypeIsCoercibleToString(tfIDProperty.Type()) {
+			if computedIDTypeIsCoercibleToString(tfIDProperty.Type()) {
 				getField(&r.Schema.Fields, "id").Type = "string"
 				return nil
 			}
