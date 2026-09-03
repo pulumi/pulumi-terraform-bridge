@@ -561,8 +561,7 @@ func (ctx *conversionContext) makeTerraformInput(
 		}
 		return makeTerraformUnknown(tfs), nil
 	default:
-		contract.Failf("Unexpected value marshaled: %v", v)
-		return nil, nil
+		return nil, fmt.Errorf("%s: unsupported Pulumi property value type", name)
 	}
 }
 
@@ -1451,12 +1450,15 @@ func makeTerraformStateWithOpts(
 
 // The preferred method for recreating TF state that is used when the Pulumi state was written with a recent enough
 // bridge code is to reconstruct the TF raw state and pass it to the state upgrade TF life-cycle method. This most
-// closely approximates how TF runs internally.
+// closely approximates how TF runs internally. If the stored delta is invalid, this falls back to legacy state
+// decoding.
 func makeTerraformStateViaUpgrade(
 	ctx context.Context,
 	p shim.ProviderWithRawStateSupport,
 	res Resource,
+	id string,
 	m resource.PropertyMap,
+	opts makeTerraformStateOptions,
 ) (shim.InstanceState, error) {
 	// Only log error details at Debug level to avoid leaking secrets to errors.
 	logger := log.TryGetLogger(ctx)
@@ -1468,25 +1470,25 @@ func makeTerraformStateViaUpgrade(
 	contract.Assertf(ok, "makeTerraformStateViaUpgrade should only be called if %s key is set",
 		reservedkeys.RawStateDelta)
 
+	fallback := func(err error) (shim.InstanceState, error) {
+		// Delta and state values can contain secrets. Keep the error details in debug logs.
+		logger.Debug(fmt.Sprintf("Failed to recover raw state from %q: %v; props=%v",
+			reservedkeys.RawStateDelta, err, m.Mappable()))
+		logger.Warn(fmt.Sprintf("Failed to apply %q. The provider will use legacy state decoding.",
+			reservedkeys.RawStateDelta))
+
+		props := m.Copy()
+		delete(props, reservedkeys.RawStateDelta)
+		return makeTerraformStateWithOpts(ctx, res, id, props, opts)
+	}
+
 	delta, err := UnmarshalRawStateDelta(deltaValue)
 	if err != nil {
-		logger.Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
-			"  %q: %#v\n"+
-			"  error: %v",
-			reservedkeys.RawStateDelta,
-			delta.Marshal().String(),
-			err))
-		contract.AssertNoErrorf(err, "Failed to parse raw state markers")
+		return fallback(err)
 	}
 	recoveredRawState, err := delta.Recover(resource.NewObjectProperty(m))
 	if err != nil {
-		logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
-			"  %q: %#v\n"+
-			"  error: %v",
-			reservedkeys.RawStateDelta,
-			delta.Marshal().String(),
-			err))
-		contract.AssertNoErrorf(err, "Failed to recover raw state")
+		return fallback(err)
 	}
 	meta, err := parseMeta(m, res, makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 	if err != nil {

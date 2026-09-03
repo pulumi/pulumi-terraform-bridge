@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -511,6 +512,66 @@ func Test_rawstate_delta_timeouts_with_null_read(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, string(cvJSON), string(recoveredJSON))
+}
+
+func TestRawStateDeltaRecoverReturnsErrorsForInvalidStoredValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		delta RawStateDelta
+		value resource.PropertyValue
+		err   string
+	}{
+		{
+			name: "computed value",
+			value: resource.NewComputedProperty(resource.Computed{
+				Element: resource.NewStringProperty(""),
+			}),
+			err: "raw state recovery cannot process unknown values",
+		},
+		{
+			name:  "unknown output",
+			value: resource.NewOutputProperty(resource.Output{Known: false}),
+			err:   "raw state recovery cannot process unknown values",
+		},
+		{
+			name: "nested unknown output",
+			value: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewOutputProperty(resource.Output{Known: false}),
+			}),
+			err: "element 0: natural raw state recovery cannot process unknown outputs",
+		},
+		{
+			name: "nested computed value",
+			value: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")}),
+			}),
+			err: "element 0: natural raw state recovery cannot process computed values",
+		},
+		{
+			name:  "invalid number",
+			delta: RawStateDelta{Num: &numDelta{}},
+			value: resource.NewStringProperty("not-a-number"),
+			err:   "invalid JSON number",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := tt.delta.Recover(tt.value)
+			require.ErrorContains(t, err, tt.err)
+		})
+	}
+}
+
+func TestUnmarshalRawStateDeltaReturnsJSONErrors(t *testing.T) {
+	t.Parallel()
+
+	_, err := UnmarshalRawStateDelta(resource.NewNumberProperty(math.NaN()))
+	require.ErrorContains(t, err, "failed to marshal raw state delta")
 }
 
 func Test_rawstate_delta_serialization(t *testing.T) {

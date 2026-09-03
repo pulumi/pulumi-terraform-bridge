@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"bytes"
 	"context"
 	"sort"
 	"strconv"
@@ -35,6 +36,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -645,6 +647,54 @@ func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
 			}), result)
 		})
 	}
+}
+
+func TestMakeTerraformInputReturnsErrorForUnsupportedPropertyValue(t *testing.T) {
+	t.Parallel()
+
+	value := resource.NewResourceReferenceProperty(resource.ResourceReference{
+		ID: resource.NewStringProperty("resource-id"),
+	})
+	_, err := (&conversionContext{}).makeTerraformInput(
+		"value", resource.PropertyValue{}, value, nil, nil)
+	require.EqualError(t, err, "value: unsupported Pulumi property value type")
+}
+
+func TestMakeTerraformStateViaUpgradeFallsBackForInvalidRawStateDelta(t *testing.T) {
+	t.Parallel()
+
+	prov := shimv2.NewProvider(testprovider.ProviderV2())
+	provWithRawState, ok := prov.(shim.ProviderWithRawStateSupport)
+	require.True(t, ok)
+
+	const resName = "example_resource"
+	res := prov.ResourcesMap().Get(resName)
+	resourceState := Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName}
+	props := resource.NewPropertyMapFromMap(map[string]any{
+		"arrayPropertyValue":  []any{"an array"},
+		"stringPropertyValue": "a string",
+	})
+	props[reservedkeys.RawStateDelta] = RawStateDelta{Obj: &objDelta{
+		PropertyDeltas: map[resource.PropertyKey]RawStateDelta{
+			"stringPropertyValue": {Map: &mapDelta{}},
+		},
+	}}.Marshal()
+
+	var logs bytes.Buffer
+	ctx := logging.InitLogging(context.Background(), logging.LogOptions{
+		LogSink: &testLogSink{buf: &logs},
+	})
+	state, err := makeTerraformStateViaUpgrade(
+		ctx, provWithRawState, resourceState, "resource-id", props, makeTerraformStateOptions{})
+	require.NoError(t, err)
+	require.Equal(t, "resource-id", state.ID())
+	require.Contains(t, logs.String(),
+		`Failed to apply "__pulumi_raw_state_delta". The provider will use legacy state decoding.`)
+	require.Contains(t, logs.String(), `property "stringPropertyValue"`)
+	require.Contains(t, logs.String(), `a string`)
+	// The fallback must not modify the caller's state map.
+	_, hasDelta := props[reservedkeys.RawStateDelta]
+	require.True(t, hasDelta)
 }
 
 // Test that meta-properties are correctly produced.
