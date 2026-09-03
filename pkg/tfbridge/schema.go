@@ -561,8 +561,7 @@ func (ctx *conversionContext) makeTerraformInput(
 		}
 		return makeTerraformUnknown(tfs), nil
 	default:
-		contract.Failf("Unexpected value marshaled: %v", v)
-		return nil, nil
+		return nil, fmt.Errorf("%s: unsupported Pulumi property value type", name)
 	}
 }
 

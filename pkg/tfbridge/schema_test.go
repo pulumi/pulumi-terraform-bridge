@@ -649,6 +649,17 @@ func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
 	}
 }
 
+func TestMakeTerraformInputReturnsErrorForUnsupportedPropertyValue(t *testing.T) {
+	t.Parallel()
+
+	value := resource.NewResourceReferenceProperty(resource.ResourceReference{
+		ID: resource.NewStringProperty("resource-id"),
+	})
+	_, err := (&conversionContext{}).makeTerraformInput(
+		"value", resource.PropertyValue{}, value, nil, nil)
+	require.EqualError(t, err, "value: unsupported Pulumi property value type")
+}
+
 func TestMakeTerraformStateViaUpgradeFallsBackForInvalidRawStateDelta(t *testing.T) {
 	t.Parallel()
 

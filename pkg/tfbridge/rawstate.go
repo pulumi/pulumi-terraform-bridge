@@ -89,7 +89,9 @@ func (d RawStateDelta) recoverRepr(pv resource.PropertyValue) (rawstate.Builder,
 		return d.recoverRepr(pv.OutputValue().Element)
 	}
 	isUnknown := pv.IsComputed() || pv.IsOutput() && !pv.OutputValue().Known
-	contract.Assertf(!isUnknown, "rawStateRecover cannot process unknown values")
+	if isUnknown {
+		return rawstate.Null(), errors.New("raw state recovery cannot process unknown values")
+	}
 
 	switch {
 	case d.isEmpty():
@@ -224,10 +226,14 @@ func (d RawStateDelta) recoverRepr(pv resource.PropertyValue) (rawstate.Builder,
 			return rawstate.Null(), errors.New("Expected PropertyValue to be a String")
 		}
 		v := json.Number(pv.StringValue())
+		// Converting a string to json.Number does not validate it. Validate it here because
+		// rawstate.Builder.Build cannot return the marshal error and would panic instead.
+		if _, err := json.Marshal(v); err != nil {
+			return rawstate.Null(), fmt.Errorf("invalid JSON number: %w", err)
+		}
 		return rawstate.Number(v), nil
 	default:
-		contract.Failf("RawStateDelta.Recover does not recognize this rawStateDelta case")
-		return rawstate.Null(), errors.New("impossible")
+		return rawstate.Null(), errors.New("raw state recovery does not recognize this delta variant")
 	}
 }
 
@@ -243,11 +249,12 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (rawstate.Builder, error)
 		return rawStateRecoverNatural(pv.SecretValue().Element)
 	case pv.IsOutput():
 		ov := pv.OutputValue()
-		contract.Assertf(ov.Known, "rawStateRecoverNatural cannot process unknowns")
+		if !ov.Known {
+			return rawstate.Null(), errors.New("natural raw state recovery cannot process unknown outputs")
+		}
 		return rawStateRecoverNatural(ov.Element)
 	case pv.IsComputed():
-		contract.Failf("rawStateRecoverNatural cannot process Computed values")
-		return rawstate.Null(), errors.New("rawStateRecoverNatural cannot process Computed values")
+		return rawstate.Null(), errors.New("natural raw state recovery cannot process computed values")
 	case pv.IsArray():
 		var elements []rawstate.Builder
 		for i, v := range pv.ArrayValue() {
@@ -271,8 +278,7 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (rawstate.Builder, error)
 	case pv.IsResourceReference():
 		return rawstate.Null(), errors.New("rawStateRecoverNatural cannot process ResourceReference values")
 	default:
-		contract.Failf("rawStateRecoverNatural does not recognize this PropertyValue case")
-		return rawstate.Null(), errors.New("impossible")
+		return rawstate.Null(), errors.New("natural raw state recovery does not recognize this PropertyValue variant")
 	}
 }
 
@@ -330,7 +336,9 @@ func (d RawStateDelta) Marshal() resource.PropertyValue {
 func UnmarshalRawStateDelta(pv resource.PropertyValue) (RawStateDelta, error) {
 	pvNoSecret := propertyvalue.RemoveSecrets(pv)
 	bytes, err := json.Marshal(pvNoSecret.Mappable())
-	contract.AssertNoErrorf(err, "Failed to json.Marshal(pv.Mappable())")
+	if err != nil {
+		return RawStateDelta{}, fmt.Errorf("failed to marshal raw state delta: %w", err)
+	}
 	var rsd RawStateDelta
 	err = json.Unmarshal(bytes, &rsd)
 	if err != nil {
