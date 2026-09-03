@@ -116,7 +116,7 @@ func (d RawStateDelta) recoverRepr(pv resource.PropertyValue) (rawstate.Builder,
 		for k, v := range pm {
 			element, err := d.Map.ElementDeltas[k].recoverRepr(v)
 			if err != nil {
-				return rawstate.Null(), err
+				return rawstate.Null(), fmt.Errorf("property %q: %w", k, err)
 			}
 			recovered[string(k)] = element
 		}
@@ -149,7 +149,7 @@ func (d RawStateDelta) recoverRepr(pv resource.PropertyValue) (rawstate.Builder,
 			}
 			prop, err := d.Obj.PropertyDeltas[k].recoverRepr(v)
 			if err != nil {
-				return rawstate.Null(), err
+				return rawstate.Null(), fmt.Errorf("property %q: %w", k, err)
 			}
 			recovered[name] = prop
 		}
@@ -166,7 +166,7 @@ func (d RawStateDelta) recoverRepr(pv resource.PropertyValue) (rawstate.Builder,
 			}
 			prop, err := pd.recoverRepr(resource.NewNullProperty())
 			if err != nil {
-				return rawstate.Null(), err
+				return rawstate.Null(), fmt.Errorf("property %q: %w", k, err)
 			}
 			recovered[name] = prop
 		}
@@ -190,7 +190,7 @@ func (d RawStateDelta) recoverRepr(pv resource.PropertyValue) (rawstate.Builder,
 		for k, v := range arr {
 			r, err := d.ArrayOrSet.ElementDeltas[k].recoverRepr(v)
 			if err != nil {
-				return rawstate.Null(), err
+				return rawstate.Null(), fmt.Errorf("element %d: %w", k, err)
 			}
 			elements = append(elements, r)
 		}
@@ -250,10 +250,10 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (rawstate.Builder, error)
 		return rawstate.Null(), errors.New("rawStateRecoverNatural cannot process Computed values")
 	case pv.IsArray():
 		var elements []rawstate.Builder
-		for _, v := range pv.ArrayValue() {
+		for i, v := range pv.ArrayValue() {
 			vv, err := rawStateRecoverNatural(v)
 			if err != nil {
-				return rawstate.Null(), err
+				return rawstate.Null(), fmt.Errorf("element %d: %w", i, err)
 			}
 			elements = append(elements, vv)
 		}

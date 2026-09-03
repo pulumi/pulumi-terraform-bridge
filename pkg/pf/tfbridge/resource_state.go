@@ -24,7 +24,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -242,18 +241,20 @@ func (p *provider) parseAndUpgradeResourceState(
 	// States written by newer version of the bridge should be able to recover the raw state.
 	if delta, hasDelta := props[reservedkeys.RawStateDelta]; hasDelta {
 		rawState, err := recoverRawState(props, delta)
-		if err != nil {
-			// Log details at Debug level since they may contain secrets.
-			tflog.Debug(ctx, "[pf/tfbridge] Failed to recover raw state for Plugin Framework",
-				map[string]any{
-					"token": rh.token,
-					"props": props.Mappable(),
-				})
-			return nil, fmt.Errorf("[pf/tfbridge] Failed to recover raw state for Plugin Framework")
+		if err == nil {
+			// Always call the upgrade method, even if at current schema version.
+			return p.upgradeResourceState(ctx, rh, rawState, parsedMeta.PrivateState, stateVersion)
 		}
 
-		// Always call the upgrade method, even if at current schema version.
-		return p.upgradeResourceState(ctx, rh, rawState, parsedMeta.PrivateState, stateVersion)
+		// Delta and state values can contain secrets. Keep the error details in debug logs.
+		logger := tfbridge.GetLogger(ctx)
+		logger.Debug(fmt.Sprintf("[pf/tfbridge] Failed to recover raw state for %s: %v; props=%v",
+			rh.token, err, props.Mappable()))
+		logger.Warn(fmt.Sprintf("Failed to apply %q. The provider will use legacy state decoding.",
+			reservedkeys.RawStateDelta))
+
+		props = props.Copy()
+		delete(props, reservedkeys.RawStateDelta)
 	}
 
 	// Otherwise fallback to imprecise legacy parsing.

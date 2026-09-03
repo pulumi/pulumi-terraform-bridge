@@ -41,6 +41,7 @@ func TestReadFromRefresh(t *testing.T) {
 	// - __meta writing out the schema version
 	// - implicit upgrade from version 1 to version 3 is performed ("numeric": true) appears
 	// - inputs being populated
+	// - invalid raw state delta falling back to legacy state decoding
 
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
@@ -73,6 +74,15 @@ func TestReadFromRefresh(t *testing.T) {
 	    "urn": "urn:pulumi:dev::repro-pulumi-random-258::random:index/randomPassword:RandomPassword::access-token-",
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"1\"}",
+	      "__pulumi_raw_state_delta": {
+	        "obj": {
+	          "ps": {
+	            "length": {
+	              "map": {}
+	            }
+	          }
+	        }
+	      },
 	      "bcryptHash": "$2a$10$HHwx0gQztkpPIc7WkE4Wt.v7ibWT9Ug24/F5XLa6xNm/gOuyS5WRa",
 	      "id": "none",
 	      "length": 8,
