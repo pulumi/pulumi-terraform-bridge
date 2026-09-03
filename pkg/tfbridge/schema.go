@@ -1451,7 +1451,8 @@ func makeTerraformStateWithOpts(
 
 // The preferred method for recreating TF state that is used when the Pulumi state was written with a recent enough
 // bridge code is to reconstruct the TF raw state and pass it to the state upgrade TF life-cycle method. This most
-// closely approximates how TF runs internally. If the stored delta is invalid, this falls back to legacy state decoding.
+// closely approximates how TF runs internally. If the stored delta is invalid, this falls back to legacy state
+// decoding.
 func makeTerraformStateViaUpgrade(
 	ctx context.Context,
 	p shim.ProviderWithRawStateSupport,
