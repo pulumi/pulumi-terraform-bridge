@@ -128,7 +128,16 @@ func TestRegressAws2352(t *testing.T) {
 		Repository:  "https://github.com/phillipedwards/pulumi-aws",
 		Version:     "0.0.2",
 		Resources: map[string]*tfbridge.ResourceInfo{
-			"aws_route53_resolver_endpoint": {Tok: "aws:route53/resolverEndpoint:ResolverEndpoint"},
+			"aws_route53_resolver_endpoint": {
+				Tok: "aws:route53/resolverEndpoint:ResolverEndpoint",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"name": {Default: &tfbridge.DefaultInfo{
+						ComputeDefault: func(ctx context.Context, opts tfbridge.ComputeDefaultOptions) (interface{}, error) {
+							return "auto-named", nil
+						},
+					}},
+				},
+			},
 		},
 	}
 
