@@ -24,8 +24,12 @@ import (
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	regaddr "github.com/opentofu/registry-address/v2"
+	disco "github.com/opentofu/svchost/disco"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/getproviders"
 )
 
 func TestRetryOnTextFileBusy_NonRetryableErrorReturnsImmediately(t *testing.T) {
@@ -70,11 +74,32 @@ func TestRetryOnTextFileBusy_BackoffIsCalledBeforeRetries(t *testing.T) {
 	assert.Equal(t, []int{1}, backoffCalls)
 }
 
+// A cache miss with PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION set must error instead of
+// contacting the registry. The use of t.Setenv makes it necessary to not call t.Parallel().
+func TestGetProviderServerDisablesAutomaticAcquisition(t *testing.T) {
+	// Point the cache at an empty directory to force a cache miss.
+	t.Setenv(envPluginCache, t.TempDir())
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+
+	addr, err := regaddr.ParseProviderSource("hashicorp/tls")
+	require.NoError(t, err)
+
+	v, err := getproviders.ParseVersionConstraints("")
+	require.NoError(t, err)
+
+	_, err = getProviderServer(context.Background(), addr, v, disco.New())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION")
+}
+
 func Integration(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
 		t.Skipf("Skipping integration test during -short")
 	}
+	// Integration tests rely on live registry acquisition, so they must not inherit
+	// PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION from the environment.
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 }
 
 // The use of t.Setenv makes it necessary to disable t.Parallel() and skip the paralleltest linter rule.

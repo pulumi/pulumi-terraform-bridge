@@ -722,7 +722,10 @@ func TestSchemaGenerationIndexDocOutDir(t *testing.T) { //nolint:paralleltest
 }
 
 func TestRandomCreate(t *testing.T) {
-	t.Parallel()
+	// This test relies on live registry acquisition, so it must not inherit
+	// PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION from the environment. t.Setenv and
+	// t.Parallel are mutually exclusive on the same test, so this cannot be parallel.
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 	ctx := context.Background()
 	server := grpcTestServer(ctx, t)
 	parameterizeResp, err := server.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
@@ -783,8 +786,9 @@ func TestRandomCreate(t *testing.T) {
 	})
 }
 
-func TestSDKv1Provider(t *testing.T) {
-	t.Parallel()
+func TestSDKv1Provider(t *testing.T) { //nolint:paralleltest
+	// helper.Integration(t) now calls t.Setenv. t.Setenv and t.Parallel are mutually
+	// exclusive on the same test, so this cannot be parallel.
 	helper.Integration(t)
 	skipWindows(t)
 
