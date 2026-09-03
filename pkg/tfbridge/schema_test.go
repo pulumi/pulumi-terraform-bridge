@@ -4671,6 +4671,85 @@ func TestRefreshExtractInputsTypeSetReorder(t *testing.T) {
 	})
 }
 
+// TestRefreshExtractInputsScalarTypeSetReorder verifies that extractInputs preserves the recorded
+// order of a scalar TypeSet when the provider returns the same values in Terraform's set hash
+// order. Rewriting the inputs into hash order leaves them permanently different from what the
+// program produces, which forces a checkpoint write on every update even though nothing changed.
+func TestRefreshExtractInputsScalarTypeSetReorder(t *testing.T) {
+	t.Parallel()
+
+	scalarSetSchema := func(typ shim.ValueType) shim.SchemaMap {
+		return schemaMap(map[string]*schema.Schema{
+			"administrators": {
+				Type:     typ,
+				Optional: true,
+				Elem:     (&schema.Schema{Type: shim.TypeString}).Shim(),
+			},
+		})
+	}
+
+	strs := func(values ...string) resource.PropertyValue {
+		elems := make([]resource.PropertyValue, 0, len(values))
+		for _, v := range values {
+			elems = append(elems, resource.NewStringProperty(v))
+		}
+		return resource.NewArrayProperty(elems)
+	}
+
+	actualStrings := func(t *testing.T, pm resource.PropertyMap) []string {
+		t.Helper()
+		out := []string{}
+		for _, v := range pm["administrators"].ArrayValue() {
+			out = append(out, v.StringValue())
+		}
+		return out
+	}
+
+	t.Run("set_order_preserved", func(t *testing.T) {
+		t.Parallel()
+
+		oldInputs := resource.PropertyMap{"administrators": strs("bob", "alice")}
+		outs := resource.PropertyMap{"administrators": strs("alice", "bob")}
+
+		actual, err := ExtractInputsFromOutputs(oldInputs, outs, scalarSetSchema(shim.TypeSet), nil, true)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"bob", "alice"}, actualStrings(t, actual))
+	})
+
+	t.Run("typelist_still_positional", func(t *testing.T) {
+		t.Parallel()
+
+		oldInputs := resource.PropertyMap{"administrators": strs("bob", "alice")}
+		outs := resource.PropertyMap{"administrators": strs("alice", "bob")}
+
+		actual, err := ExtractInputsFromOutputs(oldInputs, outs, scalarSetSchema(shim.TypeList), nil, true)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"alice", "bob"}, actualStrings(t, actual))
+	})
+
+	t.Run("changed_membership_still_visible", func(t *testing.T) {
+		t.Parallel()
+
+		oldInputs := resource.PropertyMap{"administrators": strs("bob", "alice")}
+		outs := resource.PropertyMap{"administrators": strs("alice", "carol")}
+
+		actual, err := ExtractInputsFromOutputs(oldInputs, outs, scalarSetSchema(shim.TypeSet), nil, true)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"alice", "carol"}, actualStrings(t, actual))
+	})
+
+	t.Run("duplicate_values_preserved", func(t *testing.T) {
+		t.Parallel()
+
+		oldInputs := resource.PropertyMap{"administrators": strs("bob", "alice", "bob")}
+		outs := resource.PropertyMap{"administrators": strs("alice", "bob", "bob")}
+
+		actual, err := ExtractInputsFromOutputs(oldInputs, outs, scalarSetSchema(shim.TypeSet), nil, true)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"bob", "alice", "bob"}, actualStrings(t, actual))
+	})
+}
+
 // TestCheckMakeTerraformInputsTypeSetReorder verifies that makeTerraformInputs correctly matches
 // TypeSet elements by content rather than position when old state has a different order than new inputs.
 // See https://github.com/pulumi/pulumi-terraform-bridge/issues/3392.
