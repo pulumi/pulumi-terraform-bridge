@@ -16,6 +16,9 @@ func Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skipf("Skipping integration test during -short")
 	}
+	// Integration tests rely on live registry acquisition, so they must not inherit
+	// PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION from the environment.
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 }
 
 func BuildOnce(globalTempDir *string, dir, name string) func(t *testing.T) string {
