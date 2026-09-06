@@ -20,6 +20,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	testutils "github.com/pulumi/providertest/replay"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/require"
 
 	webaclschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/webaclschema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -258,4 +261,64 @@ func TestRegressAws1423(t *testing.T) {
 		// diffs.
 		testutils.Replay(t, server, testCase2CreatePreview)
 	})
+}
+
+func TestRegressAws3495DetailedDiffMatchesWAFV2NestedSets(t *testing.T) {
+	t.Parallel()
+
+	rule := func(name string, textTransformations []interface{}) map[string]interface{} {
+		return map[string]interface{}{
+			"name":     name,
+			"priority": 0,
+			"action": map[string]interface{}{
+				"allow": map[string]interface{}{},
+			},
+			"statement": map[string]interface{}{
+				"byteMatchStatement": map[string]interface{}{
+					"fieldToMatch": map[string]interface{}{
+						"method": map[string]interface{}{},
+					},
+					"positionalConstraint": "EXACTLY",
+					"searchString":         "example",
+					"textTransformation":   textTransformations,
+				},
+			},
+			"visibilityConfig": map[string]interface{}{
+				"cloudwatchMetricsEnabled": true,
+				"metricName":               "rule-metric",
+				"sampledRequestsEnabled":   true,
+			},
+		}
+	}
+
+	noneTransform := map[string]interface{}{
+		"priority": 0,
+		"type":     "NONE",
+	}
+	lowercaseTransform := map[string]interface{}{
+		"priority": 1,
+		"type":     "LOWERCASE",
+	}
+
+	tfs := shimv2.NewSchemaMap(webaclschema.ResourceWebACL().SchemaFunc())
+	priorState := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"rules": []interface{}{
+			rule("rule-before", []interface{}{noneTransform, lowercaseTransform}),
+		},
+	})
+	plannedState := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"rules": []interface{}{
+			rule("rule-after", []interface{}{lowercaseTransform, noneTransform}),
+		},
+	})
+	newInputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"rules": []interface{}{
+			rule("rule-after", []interface{}{noneTransform, lowercaseTransform}),
+		},
+	})
+
+	actual := tfbridge.MakeDetailedDiffV2(context.Background(), tfs, nil, priorState, plannedState, newInputs, nil)
+	require.Equal(t, map[string]*pulumirpc.PropertyDiff{
+		"rules[0].name": {Kind: pulumirpc.PropertyDiff_UPDATE},
+	}, actual)
 }
