@@ -81,8 +81,36 @@ func SchemaAttrGen(depth int) *rapid.Generator[*schema.Schema] {
 		attrKind := AttributeKindGen().Draw(t, "attrKind")
 		attrKind.Set(s)
 		s.ForceNew = rapid.Bool().Draw(t, "forceNew")
+		if attrKind == Optional && isScalar(valueType) && rapid.Bool().Draw(t, "hasDefault") {
+			s.Default = DefaultValueGen(valueType).Draw(t, "default")
+		}
 		return s
 	})
+}
+
+// DefaultValueGen generates a Go value of the kind that schema.Schema.Default
+// expects for a scalar valueType.
+func DefaultValueGen(valueType schema.ValueType) *rapid.Generator[interface{}] {
+	switch valueType {
+	case schema.TypeBool:
+		return rapid.Bool().AsAny()
+	case schema.TypeInt:
+		return rapid.IntRange(-2, 2).AsAny()
+	case schema.TypeFloat:
+		return rapid.Float64Range(-2, 2).AsAny()
+	case schema.TypeString:
+		return rapid.SampledFrom([]string{"", "a", "b"}).AsAny()
+	}
+	contract.Failf("no default for non-scalar type %v", valueType)
+	return nil
+}
+
+func isScalar(valueType schema.ValueType) bool {
+	switch valueType {
+	case schema.TypeBool, schema.TypeInt, schema.TypeFloat, schema.TypeString:
+		return true
+	}
+	return false
 }
 
 func SchemaBlockGen(depth int) *rapid.Generator[*schema.Schema] {
