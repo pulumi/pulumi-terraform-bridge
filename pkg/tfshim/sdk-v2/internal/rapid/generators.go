@@ -80,6 +80,7 @@ func SchemaAttrGen(depth int) *rapid.Generator[*schema.Schema] {
 
 		attrKind := AttributeKindGen().Draw(t, "attrKind")
 		attrKind.Set(s)
+		s.ForceNew = rapid.Bool().Draw(t, "forceNew")
 		return s
 	})
 }
@@ -107,6 +108,7 @@ func SchemaBlockGen(depth int) *rapid.Generator[*schema.Schema] {
 
 		attrKind := AttributeKindGen().Draw(t, "attrKind")
 		attrKind.Set(s)
+		s.ForceNew = rapid.Bool().Draw(t, "forceNew")
 		return s
 	})
 }
