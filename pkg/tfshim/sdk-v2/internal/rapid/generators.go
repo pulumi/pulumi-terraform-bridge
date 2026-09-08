@@ -1,6 +1,8 @@
 package rapidgen
 
 import (
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"pgregory.net/rapid"
@@ -84,8 +86,18 @@ func SchemaAttrGen(depth int) *rapid.Generator[*schema.Schema] {
 		if attrKind == Optional && isScalar(valueType) && rapid.Bool().Draw(t, "hasDefault") {
 			s.Default = DefaultValueGen(valueType).Draw(t, "default")
 		}
+		// The SDK rejects a StateFunc on a computed-only attribute.
+		if valueType == schema.TypeString && attrKind != Computed && rapid.Bool().Draw(t, "hasStateFunc") {
+			s.StateFunc = upperCaseStateFunc
+		}
 		return s
 	})
+}
+
+// upperCaseStateFunc is a deterministic StateFunc whose output differs from
+// its input for most strings, so that the diff records a NewExtra value.
+func upperCaseStateFunc(v interface{}) string {
+	return strings.ToUpper(v.(string))
 }
 
 // DefaultValueGen generates a Go value of the kind that schema.Schema.Default
