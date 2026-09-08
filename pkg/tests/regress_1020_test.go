@@ -152,7 +152,16 @@ func TestRegress1020(t *testing.T) {
 			Repository:  "https://github.com/pulumi/pulumi-aws",
 			Version:     "0.0.2",
 			Resources: map[string]*tfbridge.ResourceInfo{
-				"aws_wafv2_ip_set": {Tok: "aws:wafv2/ipSet:IpSet"},
+				"aws_wafv2_ip_set": {
+					Tok: "aws:wafv2/ipSet:IpSet",
+					Fields: map[string]*tfbridge.SchemaInfo{
+						"name": {Default: &tfbridge.DefaultInfo{
+							ComputeDefault: func(ctx context.Context, opts tfbridge.ComputeDefaultOptions) (interface{}, error) {
+								return "auto-named", nil
+							},
+						}},
+					},
+				},
 			},
 		}
 		return tfbridge.NewProvider(ctx,
