@@ -88,8 +88,24 @@ func SchemaAttrGen(depth int) *rapid.Generator[*schema.Schema] {
 		if valueType == schema.TypeString && attrKind != Computed && rapid.Bool().Draw(t, "hasStateFunc") {
 			s.StateFunc = upperCaseStateFunc
 		}
+		configurable := attrKind == Required || attrKind == Optional
+		if configurable && isScalar(valueType) && !s.ForceNew && s.Default == nil &&
+			rapid.Bool().Draw(t, "writeOnly") {
+			s.WriteOnly = true
+		}
 		return s
 	})
+}
+
+// clearWriteOnly unsets WriteOnly on every attribute under r. The SDK rejects
+// WriteOnly attributes anywhere inside a set block or a computed block.
+func clearWriteOnly(r *schema.Resource) {
+	for _, s := range r.Schema {
+		s.WriteOnly = false
+		if elem, ok := s.Elem.(*schema.Resource); ok {
+			clearWriteOnly(elem)
+		}
+	}
 }
 
 // upperCaseStateFunc is a deterministic StateFunc whose output differs from
@@ -147,6 +163,9 @@ func SchemaBlockGen(depth int) *rapid.Generator[*schema.Schema] {
 		attrKind := AttributeKindGen().Draw(t, "attrKind")
 		attrKind.Set(s)
 		s.ForceNew = rapid.Bool().Draw(t, "forceNew")
+		if nesting == schema.TypeSet || s.Computed {
+			clearWriteOnly(resource)
+		}
 		return s
 	})
 }
