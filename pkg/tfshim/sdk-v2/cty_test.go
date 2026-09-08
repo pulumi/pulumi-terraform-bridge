@@ -816,12 +816,13 @@ func TestRecoverAndCoerceCtyValue(t *testing.T) {
 	})
 }
 
+// normalizeCtyValue rebuilds every number from its shortest decimal text, so
+// that numbers of equal value but different big.Float precision or mantissa
+// layout compare equal under RawEquals, including inside sets.
 func normalizeCtyValue(v cty.Value) cty.Value {
 	v, err := cty.Transform(v, func(p cty.Path, v cty.Value) (cty.Value, error) {
 		if v.IsWhollyKnown() && !v.IsNull() && v.Type() == cty.Number {
-			f := v.AsBigFloat()
-			f.SetPrec(512)
-			return cty.NumberVal(f), nil
+			return cty.MustParseNumberVal(v.AsBigFloat().Text('g', -1)), nil
 		}
 		return v, nil
 	})
