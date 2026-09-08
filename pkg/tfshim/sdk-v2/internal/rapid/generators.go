@@ -2,6 +2,7 @@ package rapidgen
 
 import (
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -13,8 +14,37 @@ import (
 func ResourceProperGen(depth int) *rapid.Generator[*schema.Resource] {
 	return rapid.Custom[*schema.Resource](func(t *rapid.T) *schema.Resource {
 		schemaMap := SchemaMapGen(depth).Draw(t, "schemaMap")
-		return &schema.Resource{
-			Schema: schemaMap,
+		r := &schema.Resource{Schema: schemaMap}
+		// CoreConfigSchema panics on a nil BlockTypes map when it adds the
+		// timeouts block to a resource with no attributes.
+		if len(schemaMap) > 0 {
+			r.Timeouts = ResourceTimeoutGen().Draw(t, "timeouts")
+		}
+		return r
+	})
+}
+
+// ResourceTimeoutGen generates nil or a ResourceTimeout with any subset of its
+// operations set. Each set operation adds an attribute to the resource's
+// "timeouts" block.
+func ResourceTimeoutGen() *rapid.Generator[*schema.ResourceTimeout] {
+	return rapid.Custom[*schema.ResourceTimeout](func(t *rapid.T) *schema.ResourceTimeout {
+		if !rapid.Bool().Draw(t, "hasTimeouts") {
+			return nil
+		}
+		d := time.Minute
+		draw := func(name string) *time.Duration {
+			if rapid.Bool().Draw(t, name) {
+				return &d
+			}
+			return nil
+		}
+		return &schema.ResourceTimeout{
+			Create:  draw("create"),
+			Read:    draw("read"),
+			Update:  draw("update"),
+			Delete:  draw("delete"),
+			Default: draw("default"),
 		}
 	})
 }
