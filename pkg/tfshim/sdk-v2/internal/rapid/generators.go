@@ -65,7 +65,12 @@ func SchemaAttrGen(depth int) *rapid.Generator[*schema.Schema] {
 		}
 
 		switch valueType {
-		case schema.TypeMap, schema.TypeSet, schema.TypeInt:
+		case schema.TypeMap:
+			// The SDK only supports maps of primitives at runtime.
+			if rapid.Bool().Draw(t, "hasElementSchema") {
+				s.Elem = &schema.Schema{Type: ValueTypeScalarGen().Draw(t, "elementType")}
+			}
+		case schema.TypeSet, schema.TypeInt:
 			hasElem := rapid.Bool().Draw(t, "hasElementSchema")
 			if hasElem {
 				elem := SchemaGen(depth-1).Draw(t, "elementSchema")
