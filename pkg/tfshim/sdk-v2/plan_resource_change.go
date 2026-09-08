@@ -52,9 +52,9 @@ func (s *grpcServer) planResourceChange(
 	schemaBlock := res.CoreConfigSchema()
 	create := priorStateVal.IsNull()
 
-	// We do not plan destroys here; mirror the SDK by returning the prior state.
+	// A null proposed state is a destroy, which plans to the null state.
 	if proposedNewStateVal.IsNull() {
-		return priorStateVal, priorMeta, nil, nil
+		return proposedNewStateVal, priorMeta, nil, nil
 	}
 
 	// Ensure there are no nulls that will cause helper/schema to panic.
