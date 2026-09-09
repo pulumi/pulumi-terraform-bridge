@@ -1259,7 +1259,7 @@ func rewriteImportMarkdown(body, typeToken string) (string, bool) {
 				fenceLines = fenceLines[:0]
 				continue
 			}
-			out = append(out, line)
+			out = append(out, rewriteInlineImportCommand(line, typeToken))
 			continue
 		}
 
@@ -1342,7 +1342,11 @@ func rewriteImportFence(
 		info = ""
 	}
 	code := strings.Join(lines, "\n")
-	if info == "terraform" && looksLikeTerraformImportBlock(code) {
+	// Drop Terraform-only `import {}` blocks: pulumi convert cannot translate one, and
+	// convertExamplesInner deletes the entire enclosing subsection when a conversion fails,
+	// taking the heading, prose and sibling examples with it. isHCL matches every fence tag
+	// treated as HCL elsewhere in this file - terraform, tf and hcl.
+	if isHCL(info, code) && looksLikeTerraformImportBlock(code) {
 		return nil, false, false
 	}
 	if info == "" || info == "console" || info == "shell" || info == "sh" || info == "bash" {
@@ -1514,6 +1518,35 @@ func rewriteImportLines(lines []string, typeToken string) ([]string, bool) {
 		i++
 	}
 	return rewritten, updated
+}
+
+// backtickSpan matches a span delimited by single backticks. Spans that do not hold an import
+// command are left alone by parseImportCode below.
+var backtickSpan = regexp.MustCompile("`[^`]*`")
+
+// rewriteInlineImportCommand rewrites `terraform import` commands that upstream embeds in
+// prose rather than in a ```-fenced block. Left alone they leak the Terraform CLI and an
+// upstream resource name into the rendered Import section.
+//
+// Example (input):
+//
+//	e.g. `terraform import random_string.test test`
+//
+// Example (output):
+//
+//	e.g. `pulumi import random:index/string:String test test`
+func rewriteInlineImportCommand(line, typeToken string) string {
+	if !strings.Contains(line, "terraform import") && !strings.Contains(line, "pulumi import") {
+		return line
+	}
+	return backtickSpan.ReplaceAllStringFunc(line, func(span string) string {
+		code := strings.TrimSuffix(strings.TrimPrefix(span, "`"), "`")
+		parsed, ok := parseImportCode(code)
+		if !ok {
+			return span
+		}
+		return fmt.Sprintf("`pulumi import %s %s %s`", typeToken, parsed.Name, parsed.ID)
+	})
 }
 
 // extractImportFenceComments hoists leading comment lines (starting with '#') from a fence.
