@@ -20,6 +20,7 @@ import (
 	"io"
 	"runtime"
 	"sort"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -39,6 +40,7 @@ import (
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	bridgetokens "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -427,6 +429,190 @@ func TestNestedTypeSingularization(t *testing.T) {
 	})
 }
 
+func TestNestedTypeTokenCollisions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("disambiguates incompatible generated types", func(t *testing.T) {
+		nestedBlock := func(innerMaxItems int) *schema.Schema {
+			return &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+					"inner_block": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: innerMaxItems,
+						Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+							"attr": {Type: schema.TypeString, Required: true},
+						}},
+					},
+				}},
+			}
+		}
+		provider := tfbridge.ProviderInfo{
+			P: sdkv2.NewProvider(&schema.Provider{ResourcesMap: map[string]*schema.Resource{
+				"tc_res": {Schema: map[string]*schema.Schema{
+					"block": {
+						Type:     schema.TypeList,
+						Optional: true,
+						Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+							"name":         {Type: schema.TypeString, Required: true},
+							"nested_block": nestedBlock(1),
+						}},
+					},
+				}},
+				"tc_res_block": {Schema: map[string]*schema.Schema{
+					"nested_block": nestedBlock(0),
+				}},
+			}}),
+			Name:         "tc",
+			Version:      "0.0.1",
+			MetadataInfo: tfbridge.NewProviderMetadata(nil),
+		}
+		provider.MustComputeTokens(bridgetokens.SingleModule("tc", "index", bridgetokens.MakeStandard("tc")))
+
+		actual, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}))
+		require.NoError(t, err)
+
+		resBlockRef := actual.Resources["tc:index/res:Res"].InputProperties["blocks"].Items.Ref
+		resNestedBlockRef := actual.Types[strings.TrimPrefix(resBlockRef, "#/types/")].
+			Properties["nestedBlocks"].Items.Ref
+		standaloneNestedBlockRef := actual.Resources["tc:index/resBlock:ResBlock"].
+			InputProperties["nestedBlocks"].Items.Ref
+
+		assert.Equal(t,
+			"#/types/tc:index/ResBlockNestedBlockV2:ResBlockNestedBlockV2", resNestedBlockRef)
+		assert.Equal(t,
+			"#/types/tc:index/ResBlockNestedBlock:ResBlockNestedBlock", standaloneNestedBlockRef)
+
+		resNestedBlock := actual.Types[strings.TrimPrefix(resNestedBlockRef, "#/types/")]
+		standaloneNestedBlock := actual.Types[strings.TrimPrefix(standaloneNestedBlockRef, "#/types/")]
+		assert.Contains(t, resNestedBlock.Properties, "innerBlock")
+		assert.NotContains(t, resNestedBlock.Properties, "innerBlocks")
+		assert.Contains(t, standaloneNestedBlock.Properties, "innerBlocks")
+		assert.NotContains(t, standaloneNestedBlock.Properties, "innerBlock")
+		assert.Equal(t, "array", standaloneNestedBlock.Properties["innerBlocks"].Type)
+	})
+
+	t.Run("disambiguates singularized names within one resource", func(t *testing.T) {
+		objectList := func(field string, maxItems int) *schema.Schema {
+			return &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: maxItems,
+				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+					field: {Type: schema.TypeString, Optional: true},
+				}},
+			}
+		}
+		provider := tfbridge.ProviderInfo{
+			P: sdkv2.NewProvider(&schema.Provider{ResourcesMap: map[string]*schema.Resource{
+				"tc_policy": {Schema: map[string]*schema.Schema{
+					"restriction":  objectList("start_hour", 1),
+					"restrictions": objectList("start_day", 0),
+				}},
+			}}),
+			Name:         "tc",
+			Version:      "0.0.1",
+			MetadataInfo: tfbridge.NewProviderMetadata(nil),
+		}
+		provider.MustComputeTokens(bridgetokens.SingleModule("tc", "index", bridgetokens.MakeStandard("tc")))
+
+		actual, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}))
+		require.NoError(t, err)
+
+		policy := actual.Resources["tc:index/policy:Policy"]
+		restrictionRef := policy.InputProperties["restriction"].Ref
+		restrictionsRef := policy.InputProperties["restrictions"].Items.Ref
+		assert.Equal(t, "#/types/tc:index/PolicyRestrictionV2:PolicyRestrictionV2", restrictionRef)
+		assert.Equal(t, "#/types/tc:index/PolicyRestriction:PolicyRestriction", restrictionsRef)
+		assert.Contains(t, actual.Types[strings.TrimPrefix(restrictionRef, "#/types/")].Properties, "startHour")
+		assert.Contains(t, actual.Types[strings.TrimPrefix(restrictionsRef, "#/types/")].Properties, "startDay")
+	})
+
+	newDeclaration := func(tfName, resourceToken, typeName string, different, explicit bool) *schemaNestedType {
+		typ := &propertyType{name: typeName, kind: kindObject}
+		if different {
+			typ.properties = []*variable{{
+				name: "different",
+				opt:  true,
+				typ:  &propertyType{kind: kindString},
+			}}
+		}
+		if explicit {
+			typ.typeName = tfbridge.Ref(typeName)
+		}
+		path := paths.NewProperyPath(
+			paths.NewResourcePath(tfName, tokens.Type(resourceToken), false).Inputs(),
+			paths.PropertyName{Key: "nested", Name: "nested"})
+		return &schemaNestedType{
+			typ:       typ,
+			declarer:  &resourceType{name: tfName},
+			typePaths: paths.SingletonTypePathSet(path),
+		}
+	}
+	generator := &schemaGenerator{pkg: "tc"}
+
+	t.Run("shares compatible types", func(t *testing.T) {
+		first := newDeclaration("tc_first", "tc:index/first:First", "Collision", false, false)
+		second := newDeclaration("tc_second", "tc:index/second:Second", "Collision", false, false)
+		resolved, err := generator.resolveSchemaNestedTypeCollisions([]*schemaNestedType{first, second})
+		require.NoError(t, err)
+		require.Len(t, resolved, 1)
+		assert.Len(t, resolved[0].typePaths, 2)
+	})
+
+	t.Run("preserves the last declared shape", func(t *testing.T) {
+		first := newDeclaration("tc_first", "tc:index/first:First", "Collision", false, false)
+		second := newDeclaration("tc_second", "tc:index/second:Second", "Collision", true, false)
+		last := newDeclaration("tc_last", "tc:index/last:Last", "Collision", false, false)
+		resolved, err := generator.resolveSchemaNestedTypeCollisions(
+			[]*schemaNestedType{first, second, last})
+		require.NoError(t, err)
+		assert.Equal(t, "Collision", first.typ.name)
+		assert.Equal(t, "CollisionV2", second.typ.name)
+		assert.Equal(t, "Collision", last.typ.name)
+		assert.Len(t, resolved, 2)
+	})
+
+	t.Run("skips occupied variants", func(t *testing.T) {
+		first := newDeclaration("tc_first", "tc:index/first:First", "Collision", false, false)
+		occupied := newDeclaration("tc_occupied", "tc:index/occupied:Occupied", "CollisionV2", false, false)
+		winner := newDeclaration("tc_winner", "tc:index/winner:Winner", "Collision", true, false)
+		resolved, err := generator.resolveSchemaNestedTypeCollisions(
+			[]*schemaNestedType{first, occupied, winner})
+		require.NoError(t, err)
+		assert.Equal(t, "CollisionV3", first.typ.name)
+		assert.Equal(t, "Collision", winner.typ.name)
+		assert.Len(t, resolved, 3)
+	})
+
+	t.Run("explicit name takes precedence", func(t *testing.T) {
+		explicit := newDeclaration("tc_explicit", "tc:index/explicit:Explicit", "Collision", false, true)
+		implicit := newDeclaration("tc_implicit", "tc:index/implicit:Implicit", "Collision", true, false)
+		resolved, err := generator.resolveSchemaNestedTypeCollisions(
+			[]*schemaNestedType{explicit, implicit})
+		require.NoError(t, err)
+		assert.Equal(t, "Collision", explicit.typ.name)
+		assert.Equal(t, "CollisionV2", implicit.typ.name)
+		assert.Len(t, resolved, 2)
+	})
+
+	t.Run("rejects incompatible explicit names", func(t *testing.T) {
+		first := newDeclaration("tc_first", "tc:index/first:First", "Collision", false, true)
+		second := newDeclaration("tc_second", "tc:index/second:Second", "Collision", true, true)
+		_, err := generator.resolveSchemaNestedTypeCollisions([]*schemaNestedType{first, second})
+		require.Error(t, err)
+		assert.ErrorContains(t, err, `nested type token "tc:index/Collision:Collision"`)
+		assert.ErrorContains(t, err, `resource[key="tc_first"`)
+		assert.ErrorContains(t, err, `resource[key="tc_second"`)
+	})
+}
+
 func TestNestedDescriptions(t *testing.T) {
 	t.Parallel()
 	provider := testprovider.ProviderNestedDescriptions()
@@ -735,12 +921,10 @@ func Test_DynamicAttributeHandling(t *testing.T) {
 			typ:          nil, // This represents a dynamic attribute
 		}
 
-		nt := &schemaNestedTypes{
-			nameToType: make(map[string]*schemaNestedType),
-		}
+		nt := newSchemaNestedTypes()
 		assert.NotPanics(t, func() { nt.gatherFromMember(dynamicVar) })
 		nt.gatherFromMember(dynamicVar)
-		assert.Empty(t, nt.nameToType, "Dynamic attributes should not generate nested types")
+		assert.Empty(t, nt.types, "Dynamic attributes should not generate nested types")
 	})
 
 	t.Run("should handle mixed variable types including dynamic", func(t *testing.T) {
