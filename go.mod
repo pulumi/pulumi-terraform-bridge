@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3
 
-go 1.25.11
+go 1.26.0
 
 require (
 	github.com/apparentlymart/go-cidr v1.1.0
@@ -64,11 +64,11 @@ require (
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/sdk v1.45.0
 	go.opentelemetry.io/otel/trace v1.45.0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/mod v0.40.0
 	golang.org/x/net v0.58.0
 	golang.org/x/text v0.41.0
-	google.golang.org/grpc v1.83.1
+	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.5.1
