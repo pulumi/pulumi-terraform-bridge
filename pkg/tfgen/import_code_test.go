@@ -241,6 +241,9 @@ func TestParseImports_RewritesImportCommandsInProse(t *testing.T) {
 		name   string
 		line   string
 		expect string
+		// literal marks a case whose prose is meant to render verbatim, so a
+		// `terraform import` command survives in it by design.
+		literal bool
 	}{
 		{
 			name:   "backticked command in a sentence",
@@ -256,6 +259,22 @@ func TestParseImports_RewritesImportCommandsInProse(t *testing.T) {
 			name:   "an already-pulumi command is left alone",
 			line:   "Import with `pulumi import aws:iam/role:Role example developer_name`.",
 			expect: "Import with `pulumi import aws:iam/role:Role example developer_name`.",
+		},
+		{
+			name:   "a double-backticked command is rewritten",
+			line:   "Roles can be imported with ``terraform import aws_iam_role.example developer_name``.",
+			expect: "Roles can be imported with ``pulumi import aws:iam/role:Role example developer_name``.",
+		},
+		{
+			name:    "a double-backticked span holding a literal backtick is untouched",
+			line:    "Quote it as `` `terraform import aws_iam_role.example developer_name` `` verbatim.",
+			expect:  "Quote it as `` `terraform import aws_iam_role.example developer_name` `` verbatim.",
+			literal: true,
+		},
+		{
+			name:   "an already-pulumi command with a dotted name is left alone",
+			line:   "Import with `pulumi import aws:iam/role:Role my.role developer_name`.",
+			expect: "Import with `pulumi import aws:iam/role:Role my.role developer_name`.",
 		},
 		{
 			name:   "prose that merely mentions the command is untouched",
@@ -293,7 +312,62 @@ func TestParseImports_RewritesImportCommandsInProse(t *testing.T) {
 			parser.parseImports(input)
 
 			assert.Contains(t, parser.ret.Import, tc.expect)
-			assert.NotContains(t, parser.ret.Import, "terraform import aws_iam_role")
+			// The fenced example is rewritten in every case.
+			assert.Contains(t, parser.ret.Import,
+				"$ pulumi import aws:iam/role:Role example developer_name")
+			if !tc.literal {
+				assert.NotContains(t, parser.ret.Import, "terraform import aws_iam_role")
+			}
+		})
+	}
+}
+
+// Dropping a fence is destructive: the whole block disappears from the rendered page. A fence
+// only qualifies when it opens a Terraform `import {}` block, so one that merely opens with an
+// `import` attribute stays. A fence that pairs an import block with the target resource does
+// still go - see TestParseImports_NoOverrides - since the block alone fails the conversion.
+func TestParseImports_KeepsFencesThatAreNotImportBlocks(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - test cases need to be made robust to newline handling")
+	}
+
+	for _, tc := range []struct {
+		name string
+		// fence is the fence's info string, "" for an untagged fence.
+		fence string
+		code  []string
+		// survives is a line that must still be present after parsing.
+		survives string
+	}{
+		{
+			name:     "an import attribute is not an import block",
+			fence:    "hcl",
+			code:     []string{"import = true", `name   = "example"`},
+			survives: "import = true",
+		},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			input := strings.Join(append(append([]string{
+				"",
+				"### Importing roles",
+				"",
+				"```" + tc.fence,
+			}, tc.code...), "```", ""), "\n")
+
+			parser := tfMarkdownParser{
+				info:    &mockResource{token: "aws:iam/role:Role"},
+				rawname: "aws_iam_role",
+				infoCtx: infoContext{
+					pkg:  "aws",
+					info: tfbridge.ProviderInfo{Name: "aws"},
+				},
+			}
+			parser.parseImports(input)
+
+			assert.Contains(t, parser.ret.Import, tc.survives)
 		})
 	}
 }
