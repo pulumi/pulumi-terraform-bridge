@@ -73,6 +73,8 @@ linters:
         - revive
         path: pkg/tfshim/util/(.+)\.go$
         text: 'var-naming: avoid meaningless package names'
+      - path: (.+)\.go$
+        text: 'var-naming: avoid package names that conflict with Go standard library package names'
     paths:
       - pkg/tf2pulumi/internal/addrs
       - pkg/tf2pulumi/internal/config
