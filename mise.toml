@@ -5,7 +5,7 @@ _.vfox-pulumi = { module_path = "" } # Sets GO_VERSION_MISE and PULUMI_VERSION_M
 # Runtimes
 go = "{{ env.GO_VERSION_MISE }}"
 # Executable tools
-golangci-lint = '2.5.0'
+golangci-lint = '2.9.0'
 pulumi = "{{ env.PULUMI_VERSION_MISE }}"
 terraform = 'latest'
 
