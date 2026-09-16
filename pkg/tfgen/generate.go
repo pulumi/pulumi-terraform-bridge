@@ -1512,12 +1512,21 @@ func (g *Generator) gatherResource(rawname string,
 
 	// Collect documentation information
 	var entityDocs entityDocs
+	entitySchemaMap := schema.Schema()
+	entityCtx := &entityDocContext{
+		token: resourceToken.String(),
+		kind:  ResourceDocs,
+		hasField: func(tfName string) bool {
+			_, ok := entitySchemaMap.GetOk(tfName)
+			return ok
+		},
+	}
 	if !isProvider {
 		// If g.noDocsRepo is set, we have established that it's pointless to get
 		// docs from the repo, so we don't try.
 		if !g.noDocsRepo {
 			source := NewGitRepoDocsSource(g)
-			pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
+			pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info, entityCtx)
 			if err == nil {
 				entityDocs = pulumiDocs
 			} else if !g.checkNoDocsError(err) {
@@ -1549,6 +1558,7 @@ func (g *Generator) gatherResource(rawname string,
 			language: g.language,
 			pkg:      g.pkg,
 			info:     g.info,
+			entity:   entityCtx,
 		}, propschema.Description(), nil)
 
 		propinfo := info.Fields[key]
@@ -1741,7 +1751,17 @@ func (g *Generator) gatherDataSource(rawname string,
 
 	// Collect documentation information for this data source.
 	source := NewGitRepoDocsSource(g)
-	entityDocs, err := getDocsForResource(g, source, DataSourceDocs, rawname, info)
+	dsSchemaMap := ds.Schema()
+	dsToken := tokens.NewModuleMemberToken(mod, name)
+	entityCtx := &entityDocContext{
+		token: dsToken.String(),
+		kind:  DataSourceDocs,
+		hasField: func(tfName string) bool {
+			_, ok := dsSchemaMap.GetOk(tfName)
+			return ok
+		},
+	}
+	entityDocs, err := getDocsForResource(g, source, DataSourceDocs, rawname, info, entityCtx)
 	if err != nil && !g.checkNoDocsError(err) {
 		return nil, err
 	}
