@@ -168,7 +168,11 @@ func (g *Generator) gatherFunction(rawname string,
 	var entityDocs entityDocs
 	if !g.noDocsRepo {
 		source := NewGitRepoDocsSource(g)
-		docs, err := getDocsForResource(g, source, FunctionDocs, rawname, fninfo)
+		entityCtx := &entityDocContext{
+			token: tok.String(),
+			kind:  FunctionDocs,
+		}
+		docs, err := getDocsForResource(g, source, FunctionDocs, rawname, fninfo, entityCtx)
 		if err == nil {
 			entityDocs = docs
 		} else if !g.checkNoDocsError(err) {
