@@ -19,8 +19,9 @@ import (
 var conflictsProviderPath = helper.BuildOnce(&globalTempDir,
 	"test/conflictsprovider", "terraform-provider-conflictsprovider")
 
-func TestConflictsWithNamePrefixOnly(t *testing.T) {
-	t.Parallel()
+func TestConflictsWithNamePrefixOnly(t *testing.T) { //nolint:paralleltest
+	// helper.Integration(t) now calls t.Setenv. t.Setenv and t.Parallel are mutually
+	// exclusive on the same test, so this cannot be parallel.
 	helper.Integration(t)
 	skipWindows(t)
 
@@ -54,8 +55,9 @@ func TestConflictsWithNamePrefixOnly(t *testing.T) {
 // When the user explicitly supplies both `name` and `name_prefix`, the bridge
 // must surface the upstream ConflictsWith error rather than silently dropping
 // one of the user-provided values.
-func TestConflictsWithBothUserSpecified(t *testing.T) {
-	t.Parallel()
+func TestConflictsWithBothUserSpecified(t *testing.T) { //nolint:paralleltest
+	// helper.Integration(t) now calls t.Setenv. t.Setenv and t.Parallel are mutually
+	// exclusive on the same test, so this cannot be parallel.
 	helper.Integration(t)
 	skipWindows(t)
 
