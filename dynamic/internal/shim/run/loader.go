@@ -31,6 +31,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
 	regaddr "github.com/opentofu/registry-address/v2"
 	disco "github.com/opentofu/svchost/disco"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"google.golang.org/grpc"
@@ -237,6 +238,13 @@ func getProviderServer(
 
 	// We have not found a package that fits our constraints, so we need to download
 	// one.
+
+	// Downloading contacts the registry, so honor PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION.
+	if env.DisableAutomaticPluginAcquisition.Value() {
+		return nil, fmt.Errorf(
+			"%s %s is not in the plugin cache and PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION is set",
+			addr, version)
+	}
 
 	source := getproviders.NewRegistrySource(ctx, registryDisco, nil, getproviders.LocationConfig{})
 
