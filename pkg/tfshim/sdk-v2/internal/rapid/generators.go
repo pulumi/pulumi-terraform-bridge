@@ -14,13 +14,43 @@ import (
 func ResourceProperGen(depth int) *rapid.Generator[*schema.Resource] {
 	return rapid.Custom[*schema.Resource](func(t *rapid.T) *schema.Resource {
 		schemaMap := SchemaMapGen(depth).Draw(t, "schemaMap")
-		r := &schema.Resource{Schema: schemaMap}
+		r := &schema.Resource{
+			Schema:   schemaMap,
+			Identity: ResourceIdentityGen().Draw(t, "identity"),
+		}
 		// CoreConfigSchema panics on a nil BlockTypes map when it adds the
 		// timeouts block to a resource with no attributes.
 		if len(schemaMap) > 0 {
 			r.Timeouts = ResourceTimeoutGen().Draw(t, "timeouts")
 		}
 		return r
+	})
+}
+
+// ResourceIdentityGen generates nil or an identity schema of one or two scalar
+// attributes, each marked RequiredForImport or OptionalForImport as the SDK
+// requires.
+func ResourceIdentityGen() *rapid.Generator[*schema.ResourceIdentity] {
+	return rapid.Custom[*schema.ResourceIdentity](func(t *rapid.T) *schema.ResourceIdentity {
+		if !rapid.Bool().Draw(t, "hasIdentity") {
+			return nil
+		}
+		attrs := rapid.MapOfN(PropertyNameGen(), identityAttrGen(), 1, 2).Draw(t, "identitySchema")
+		return &schema.ResourceIdentity{
+			SchemaFunc: func() map[string]*schema.Schema { return attrs },
+		}
+	})
+}
+
+func identityAttrGen() *rapid.Generator[*schema.Schema] {
+	return rapid.Custom[*schema.Schema](func(t *rapid.T) *schema.Schema {
+		s := &schema.Schema{Type: ValueTypeScalarGen().Draw(t, "type")}
+		if rapid.Bool().Draw(t, "requiredForImport") {
+			s.RequiredForImport = true
+		} else {
+			s.OptionalForImport = true
+		}
+		return s
 	})
 }
 
