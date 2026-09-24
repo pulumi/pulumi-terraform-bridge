@@ -68,7 +68,7 @@ require (
 	golang.org/x/mod v0.41.0
 	golang.org/x/net v0.59.0
 	golang.org/x/text v0.42.0
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.5.1
@@ -170,6 +170,7 @@ require (
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
+	github.com/pulumi/pulumi-cloud-sdk/go v1.20260918.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.8.1 // indirect
 	github.com/vbauerster/cupwriter v0.0.4 // indirect
@@ -208,8 +209,8 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/tools v0.49.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260911204522-f61a6ca850bd // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260911204522-f61a6ca850bd // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260921155816-b14227669459 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260921155816-b14227669459 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	mvdan.cc/gofumpt v0.9.2 // indirect
 )
@@ -298,8 +299,8 @@ require (
 	github.com/pjbgf/sha1cd v0.6.0 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.263.0
-	github.com/pulumi/pulumi/sdk/v3 v3.263.0
+	github.com/pulumi/pulumi/pkg/v3 v3.264.0
+	github.com/pulumi/pulumi/sdk/v3 v3.264.0
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
@@ -321,7 +322,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/zclconf/go-cty-yaml v1.2.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/atomic v1.12.0 // indirect
 	gocloud.dev v0.46.1-0.20260810195832-b5401c07b5f1 // indirect
 	gocloud.dev/secrets/hashivault v0.46.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
