@@ -13,6 +13,10 @@ on:
         description: 'Branch (or ref) to regenerate goldens on'
         required: true
         default: 'main'
+      packages:
+        description: 'Go packages pattern (e.g. ./dynamic/... or ./...) — default is ./...'
+        required: false
+        default: './...'
 
 permissions:
   contents: write
@@ -85,8 +89,9 @@ jobs:
       # PULUMI_ACCEPT=1 for us.
       - name: Regenerate PULUMI_ACCEPT goldens
         run: |
-          make test_accept RUN_TEST_CMD='./...'
+          make test_accept RUN_TEST_CMD='${{ github.event.inputs.packages }}'
       - name: Regenerate autogold goldens
+        if: github.event.inputs.packages == './...'
         run: |
           pkgs=$(echo '${{ steps.autogold_pkgs.outputs.packages }}' | tr '\n' ' ')
           make test_accept RUN_TEST_CMD="$pkgs -args -update"
