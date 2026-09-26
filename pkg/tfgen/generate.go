@@ -1514,8 +1514,9 @@ func (g *Generator) gatherResource(rawname string,
 	var entityDocs entityDocs
 	entitySchemaMap := schema.Schema()
 	entityCtx := &entityDocContext{
-		token: resourceToken.String(),
-		kind:  ResourceDocs,
+		token:      resourceToken.String(),
+		kind:       ResourceDocs,
+		isProvider: isProvider,
 		hasField: func(tfName string) bool {
 			_, ok := entitySchemaMap.GetOk(tfName)
 			return ok

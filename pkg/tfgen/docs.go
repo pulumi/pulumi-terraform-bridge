@@ -2452,17 +2452,22 @@ type infoContext struct {
 	entity *entityDocContext
 }
 
-// entityDocContext carries the Pulumi identity of the resource / data source whose docs are
-// currently being reformatted. It is used to emit {{% ref %}} shortcodes for property mentions.
+// entityDocContext carries the Pulumi identity of the entity whose docs are currently being
+// reformatted. It is used to emit {{% ref %}} shortcodes for property mentions.
 type entityDocContext struct {
-	// token is the Pulumi token of the entity (e.g. "aws:s3/bucket:Bucket").
+	// token is the Pulumi token of the entity (e.g. "aws:s3/bucket:Bucket"). Ignored when
+	// isProvider is true, since the provider has a fixed ref destination.
 	token string
 	// kind is the entity kind (ResourceDocs, DataSourceDocs, or FunctionDocs). Doc refs use
-	// different destinations for resources vs functions.
+	// different destinations for resources vs functions. Ignored when isProvider is true.
 	kind DocKind
+	// isProvider is true when the docs being reformatted belong to the package's provider
+	// (i.e. the provider config), not a regular resource, data source, or function. Property
+	// refs on the provider use `#/provider/properties/<name>` rather than a token-based path.
+	isProvider bool
 	// hasField reports whether the entity's schema has a field with the given Terraform name.
 	// May be nil if the caller cannot check property existence, in which case property mentions
-	// fall back to plain camelCase text.
+	// fall back to plain camelCase text (or a provider-config ref, if one matches).
 	hasField func(tfName string) bool
 }
 
@@ -2479,12 +2484,21 @@ func functionRefDestination(token string) string {
 // propertyRefDestination builds a `{{% ref %}}` destination for a property of the current
 // entity, using the Pulumi property name.
 func (e *entityDocContext) propertyRefDestination(pulumiName string) string {
+	if e.isProvider {
+		return providerPropertyRefDestination(pulumiName)
+	}
 	switch e.kind {
 	case DataSourceDocs, FunctionDocs:
 		return "#/functions/" + url.PathEscape(e.token) + "/outputs/properties/" + url.PathEscape(pulumiName)
 	default:
 		return "#/resources/" + url.PathEscape(e.token) + "/properties/" + url.PathEscape(pulumiName)
 	}
+}
+
+// providerPropertyRefDestination builds a `{{% ref %}}` destination for a property on the
+// current package's provider config (i.e. `#/provider/properties/<name>`).
+func providerPropertyRefDestination(pulumiName string) string {
+	return "#/provider/properties/" + url.PathEscape(pulumiName)
 }
 
 func buildRefShortcode(destination string) string {
@@ -2539,12 +2553,25 @@ func (c infoContext) fixupPropertyReference(text string) string {
 		pname := propertyName(name, nil, nil)
 		camelCaseFormat := open + pname + close
 
+		if c.language == RegistryDocs {
+			return camelCaseFormat
+		}
+
 		// If we know the current entity and the referenced name exists on its schema,
-		// emit a property ref shortcode. Otherwise fall back to a plain camelCase rendering.
-		if c.language != RegistryDocs && c.entity != nil && c.entity.hasField != nil &&
-			c.entity.hasField(name) {
+		// emit a property ref shortcode pointing at the current entity.
+		if c.entity != nil && c.entity.hasField != nil && c.entity.hasField(name) {
 			return open + buildRefShortcode(c.entity.propertyRefDestination(pname)) + close
 		}
+		// Otherwise, if the current entity is not the provider itself and the name matches a
+		// field on the provider config schema, emit a ref pointing at the provider. This
+		// handles cases where a resource / data source's docs mention a provider config field
+		// (e.g. `region`).
+		if (c.entity == nil || !c.entity.isProvider) && c.info.P != nil {
+			if _, ok := c.info.P.Schema().GetOk(name); ok {
+				return open + buildRefShortcode(providerPropertyRefDestination(pname)) + close
+			}
+		}
+		// Fall back to a plain camelCase rendering.
 		return camelCaseFormat
 	})
 }

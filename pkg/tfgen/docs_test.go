@@ -41,6 +41,8 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
@@ -3036,6 +3038,48 @@ func TestFixupPropertyReference(t *testing.T) {
 					token:    "random:index/getSomething:getSomething",
 					kind:     DataSourceDocs,
 					hasField: func(name string) bool { return name == "foo" },
+				},
+			},
+		},
+		{
+			// Local provider reference: when we are reformatting the provider's own docs
+			// and the mention resolves to a field on the provider config, emit the bare
+			// #/provider/properties/<name> ref rather than a token-based path.
+			name:     "provider config self-reference emits #/provider ref",
+			input:    "Configure the `api_key` field to authenticate.",
+			expected: "Configure the `{{% ref #/provider/properties/apiKey %}}` field to authenticate.",
+			ctx: infoContext{
+				pkg:  "random",
+				info: tfbridge.ProviderInfo{},
+				entity: &entityDocContext{
+					token:      "random:index:Provider",
+					kind:       ResourceDocs,
+					isProvider: true,
+					hasField:   func(name string) bool { return name == "api_key" },
+				},
+			},
+		},
+		{
+			// External provider reference: while reformatting a normal resource's docs, a
+			// mention resolves to a field on the provider config schema (not on the
+			// current resource). Emit a #/provider/properties/<name> ref via the provider
+			// schema fallback lookup.
+			name:     "resource docs mentioning provider config emits #/provider ref",
+			input:    "Defaults to the provider's `region` setting.",
+			expected: "Defaults to the provider's `{{% ref #/provider/properties/region %}}` setting.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					P: (&shimschema.Provider{
+						Schema: shimschema.SchemaMap{
+							"region": (&shimschema.Schema{Type: shim.TypeString}).Shim(),
+						},
+					}).Shim(),
+				},
+				entity: &entityDocContext{
+					token:    "random:index/randomString:RandomString",
+					kind:     ResourceDocs,
+					hasField: func(name string) bool { return false }, // not on this resource
 				},
 			},
 		},
