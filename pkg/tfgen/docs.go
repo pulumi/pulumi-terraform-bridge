@@ -2488,7 +2488,10 @@ func (e *entityDocContext) propertyRefDestination(pulumiName string) string {
 		return providerPropertyRefDestination(pulumiName)
 	}
 	switch e.kind {
-	case DataSourceDocs, FunctionDocs:
+	case FunctionDocs:
+		// Function docs primarily reference the function's named parameters (inputs).
+		return "#/functions/" + url.PathEscape(e.token) + "/inputs/properties/" + url.PathEscape(pulumiName)
+	case DataSourceDocs:
 		return "#/functions/" + url.PathEscape(e.token) + "/outputs/properties/" + url.PathEscape(pulumiName)
 	default:
 		return "#/resources/" + url.PathEscape(e.token) + "/properties/" + url.PathEscape(pulumiName)

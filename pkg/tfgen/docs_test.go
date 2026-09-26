@@ -3042,6 +3042,22 @@ func TestFixupPropertyReference(t *testing.T) {
 			},
 		},
 		{
+			// Provider-defined function docs reference the function's named parameters
+			// (inputs), not outputs — hence the `/inputs/properties/` destination.
+			name:     "provider function property emits function input ref",
+			input:    "Pass the `arn` argument.",
+			expected: "Pass the `{{% ref #/functions/aws:index%2FparseArn:parseArn/inputs/properties/arn %}}` argument.",
+			ctx: infoContext{
+				pkg:  "aws",
+				info: tfbridge.ProviderInfo{},
+				entity: &entityDocContext{
+					token:    "aws:index/parseArn:parseArn",
+					kind:     FunctionDocs,
+					hasField: func(name string) bool { return name == "arn" },
+				},
+			},
+		},
+		{
 			// Local provider reference: when we are reformatting the provider's own docs
 			// and the mention resolves to a field on the provider config, emit the bare
 			// #/provider/properties/<name> ref rather than a token-based path.

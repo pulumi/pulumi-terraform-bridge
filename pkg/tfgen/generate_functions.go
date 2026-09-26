@@ -168,9 +168,21 @@ func (g *Generator) gatherFunction(rawname string,
 	var entityDocs entityDocs
 	if !g.noDocsRepo {
 		source := NewGitRepoDocsSource(g)
+		paramNames := make(map[string]bool, len(fn.Parameters)+1)
+		for _, p := range fn.Parameters {
+			if p.Name != "" {
+				paramNames[p.Name] = true
+			}
+		}
+		if fn.VariadicParameter != nil && fn.VariadicParameter.Name != "" {
+			paramNames[fn.VariadicParameter.Name] = true
+		}
 		entityCtx := &entityDocContext{
 			token: tok.String(),
 			kind:  FunctionDocs,
+			hasField: func(tfName string) bool {
+				return paramNames[tfName]
+			},
 		}
 		docs, err := getDocsForResource(g, source, FunctionDocs, rawname, fninfo, entityCtx)
 		if err == nil {
