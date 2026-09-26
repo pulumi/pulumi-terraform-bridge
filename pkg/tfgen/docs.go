@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -29,7 +30,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -184,7 +184,7 @@ func formatEntityName(rawname string) string {
 // getDocsForResource extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo,
+	rawname string, info tfbridge.ResourceOrDataSourceInfo, entity *entityDocContext,
 ) (entityDocs, error) {
 	if g.skipDocs {
 		return entityDocs{}, nil
@@ -240,7 +240,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 
 	markdownBytes, markdownFileName := docFile.Content, docFile.FileName
 
-	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, rawname)
+	doc, err := parseTFMarkdown(g, info, kind, markdownBytes, markdownFileName, rawname, entity)
 	if err != nil {
 		return entityDocs{}, err
 	}
@@ -248,7 +248,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	if docInfo != nil {
 		// Helper func for readability due to large number of params
 		getSourceDocs := func(sourceFrom string) (entityDocs, error) {
-			return getDocsForResource(g, source, kind, sourceFrom, nil)
+			return getDocsForResource(g, source, kind, sourceFrom, nil, entity)
 		}
 
 		if docInfo.IncludeAttributesFrom != "" {
@@ -463,7 +463,7 @@ func splitStringsAtIndexes(s string, splits []int) []string {
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
-	markdown []byte, markdownFileName, rawname string,
+	markdown []byte, markdownFileName, rawname string, entity *entityDocContext,
 ) (entityDocs, error) {
 	p := &tfMarkdownParser{
 		sink:             g,
@@ -476,6 +476,7 @@ func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind 
 			language: g.language,
 			pkg:      g.pkg,
 			info:     g.info,
+			entity:   entity,
 		},
 		editRules: g.editRules,
 	}
@@ -2444,25 +2445,67 @@ type infoContext struct {
 	language Language
 	pkg      tokens.Package
 	info     tfbridge.ProviderInfo
+
+	// entity, when non-nil, identifies the resource or data source / function whose docs are
+	// being reformatted. It is consulted when rewriting property-name mentions into
+	// {{% ref %}} shortcodes.
+	entity *entityDocContext
 }
 
-type spanValues struct {
-	node, dotnet, golang, python, yaml, java, hcl, defaultDisplay string
+// entityDocContext carries the Pulumi identity of the entity whose docs are currently being
+// reformatted. It is used to emit {{% ref %}} shortcodes for property mentions.
+type entityDocContext struct {
+	// token is the Pulumi token of the entity (e.g. "aws:s3/bucket:Bucket"). Ignored when
+	// isProvider is true, since the provider has a fixed ref destination.
+	token string
+	// kind is the entity kind (ResourceDocs, DataSourceDocs, or FunctionDocs). Doc refs use
+	// different destinations for resources vs functions. Ignored when isProvider is true.
+	kind DocKind
+	// isProvider is true when the docs being reformatted belong to the package's provider
+	// (i.e. the provider config), not a regular resource, data source, or function. Property
+	// refs on the provider use `#/provider/properties/<name>` rather than a token-based path.
+	isProvider bool
+	// hasField reports whether the entity's schema has a field with the given Terraform name.
+	// May be nil if the caller cannot check property existence, in which case property mentions
+	// fall back to plain camelCase text (or a provider-config ref, if one matches).
+	hasField func(tfName string) bool
 }
 
-func buildSpan(values spanValues) string {
-	//nolint:lll
-	spanFormat := `<span pulumi-lang-nodejs="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s" pulumi-lang-hcl="%s">%s</span>`
-	return fmt.Sprintf(
-		spanFormat,
-		values.node,
-		values.dotnet,
-		values.golang,
-		values.python,
-		values.yaml,
-		values.java,
-		values.hcl,
-		values.defaultDisplay)
+// resourceRefDestination builds a `{{% ref %}}` destination for a resource token.
+func resourceRefDestination(token string) string {
+	return "#/resources/" + url.PathEscape(token)
+}
+
+// functionRefDestination builds a `{{% ref %}}` destination for a function/data source token.
+func functionRefDestination(token string) string {
+	return "#/functions/" + url.PathEscape(token)
+}
+
+// propertyRefDestination builds a `{{% ref %}}` destination for a property of the current
+// entity, using the Pulumi property name.
+func (e *entityDocContext) propertyRefDestination(pulumiName string) string {
+	if e.isProvider {
+		return providerPropertyRefDestination(pulumiName)
+	}
+	switch e.kind {
+	case FunctionDocs:
+		// Function docs primarily reference the function's named parameters (inputs).
+		return "#/functions/" + url.PathEscape(e.token) + "/inputs/properties/" + url.PathEscape(pulumiName)
+	case DataSourceDocs:
+		return "#/functions/" + url.PathEscape(e.token) + "/outputs/properties/" + url.PathEscape(pulumiName)
+	default:
+		return "#/resources/" + url.PathEscape(e.token) + "/properties/" + url.PathEscape(pulumiName)
+	}
+}
+
+// providerPropertyRefDestination builds a `{{% ref %}}` destination for a property on the
+// current package's provider config (i.e. `#/provider/properties/<name>`).
+func providerPropertyRefDestination(pulumiName string) string {
+	return "#/provider/properties/" + url.PathEscape(pulumiName)
+}
+
+func buildRefShortcode(destination string) string {
+	return "{{% ref " + destination + " %}}"
 }
 
 func (c infoContext) fixupPropertyReference(text string) string {
@@ -2488,73 +2531,51 @@ func (c infoContext) fixupPropertyReference(text string) string {
 		}
 
 		if resInfo, hasResourceInfo := c.info.Resources[name]; hasResourceInfo {
-			// This is a resource name
+			// This is a resource name.
 			resname, mod := resourceName(c.info.GetResourcePrefix(), name, resInfo, false)
-			modname := formatModulePrefix(parentModuleName(mod))
+			token := c.pkg.String() + ":" + string(mod) + ":" + resname.String()
 
-			// Use `ec2.Instance` format for Go and Python
-			goAndPyFormat := open + modname + resname.String() + close
-			// Use `aws.ec2.Instance` format for all other languages
-			allOtherLangs := open + c.pkg.String() + "." + modname + resname.String() + close
-
-			// We use the NodeJS default for registry docs.
 			if c.language == RegistryDocs {
-				return allOtherLangs
+				modname := formatModulePrefix(parentModuleName(mod))
+				return open + c.pkg.String() + "." + modname + resname.String() + close
 			}
-			return buildSpan(spanValues{
-				node:           allOtherLangs,
-				dotnet:         allOtherLangs,
-				golang:         goAndPyFormat,
-				python:         goAndPyFormat,
-				yaml:           allOtherLangs,
-				java:           allOtherLangs,
-				hcl:            open + name + close,
-				defaultDisplay: allOtherLangs,
-			})
+			return open + buildRefShortcode(resourceRefDestination(token)) + close
 		} else if dataInfo, hasDatasourceInfo := c.info.DataSources[name]; hasDatasourceInfo {
-			// This is a data source name
+			// This is a data source name.
 			getname, mod := dataSourceName(c.info.GetResourcePrefix(), name, dataInfo)
-			modname := formatModulePrefix(parentModuleName(mod))
+			token := c.pkg.String() + ":" + string(mod) + ":" + getname.String()
 
-			goFormat := open + modname + getname.String() + close
-			pyFormat := open + python.PyName(modname+getname.String()) + close
-			// Use `aws.ec2.Instance` format
-			allOtherLangs := open + c.pkg.String() + "." + modname + getname.String() + close
 			if c.language == RegistryDocs {
-				return allOtherLangs
+				modname := formatModulePrefix(parentModuleName(mod))
+				return open + c.pkg.String() + "." + modname + getname.String() + close
 			}
-			return buildSpan(spanValues{
-				node:           allOtherLangs,
-				dotnet:         allOtherLangs,
-				golang:         goFormat,
-				python:         pyFormat,
-				yaml:           allOtherLangs,
-				java:           allOtherLangs,
-				hcl:            open + "data." + name + close,
-				defaultDisplay: allOtherLangs,
-			})
+			return open + buildRefShortcode(functionRefDestination(token)) + close
 		}
-		// Else just treat as a property name
+
+		// Else treat as a property name.
 		pname := propertyName(name, nil, nil)
 		camelCaseFormat := open + pname + close
-
-		// Capitalize dotnet properties
-		firstLetter := string(pname[0])
-		dotnetFormat := open + strings.ToUpper(firstLetter) + pname[1:] + close
 
 		if c.language == RegistryDocs {
 			return camelCaseFormat
 		}
-		return buildSpan(spanValues{
-			node:           camelCaseFormat,
-			dotnet:         dotnetFormat,
-			golang:         camelCaseFormat,
-			python:         match,
-			yaml:           camelCaseFormat,
-			java:           camelCaseFormat,
-			hcl:            match,
-			defaultDisplay: camelCaseFormat,
-		})
+
+		// If we know the current entity and the referenced name exists on its schema,
+		// emit a property ref shortcode pointing at the current entity.
+		if c.entity != nil && c.entity.hasField != nil && c.entity.hasField(name) {
+			return open + buildRefShortcode(c.entity.propertyRefDestination(pname)) + close
+		}
+		// Otherwise, if the current entity is not the provider itself and the name matches a
+		// field on the provider config schema, emit a ref pointing at the provider. This
+		// handles cases where a resource / data source's docs mention a provider config field
+		// (e.g. `region`).
+		if (c.entity == nil || !c.entity.isProvider) && c.info.P != nil {
+			if _, ok := c.info.P.Schema().GetOk(name); ok {
+				return open + buildRefShortcode(providerPropertyRefDestination(pname)) + close
+			}
+		}
+		// Fall back to a plain camelCase rendering.
+		return camelCaseFormat
 	})
 }
 
