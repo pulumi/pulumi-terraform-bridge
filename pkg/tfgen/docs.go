@@ -2481,9 +2481,9 @@ func functionRefDestination(token string) string {
 	return "#/functions/" + url.PathEscape(token)
 }
 
-// propertyRefDestination builds a `{{% ref %}}` destination for a property of the current
+// entityPropertyRefDestination builds a `{{% ref %}}` destination for a property of the given
 // entity, using the Pulumi property name.
-func (e *entityDocContext) propertyRefDestination(pulumiName string) string {
+func entityPropertyRefDestination(e *entityDocContext, pulumiName string) string {
 	if e.isProvider {
 		return providerPropertyRefDestination(pulumiName)
 	}
@@ -2560,10 +2560,13 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			return camelCaseFormat
 		}
 
-		// If we know the current entity and the referenced name exists on its schema,
-		// emit a property ref shortcode pointing at the current entity.
+		// A snake_case-looking mention inside code quotes is treated as a top-level property
+		// on the current entity when it exists on the schema. Mentions of nested-type
+		// properties (e.g. `subnet.cidr_block` styles, or a bare `cidr_block` that lives on
+		// an inline object type) don't match the top-level schema and correctly fall through
+		// to plain camelCase rather than emitting a broken ref into the parent entity.
 		if c.entity != nil && c.entity.hasField != nil && c.entity.hasField(name) {
-			return open + buildRefShortcode(c.entity.propertyRefDestination(pname)) + close
+			return open + buildRefShortcode(entityPropertyRefDestination(c.entity, pname)) + close
 		}
 		// Otherwise, if the current entity is not the provider itself and the name matches a
 		// field on the provider config schema, emit a ref pointing at the provider. This

@@ -311,7 +311,7 @@ func TestPropertyDocumentationEdits(t *testing.T) {
 	assert.NoError(t, err)
 
 	//nolint:lll
-	// asserts that `aws_s3_bucket_acl` has been translated to the correct language-specific formats and marked up with a span
+	// asserts that `aws_s3_bucket_acl` has been translated into a {{% ref %}} shortcode pointing at the mapped Pulumi resource
 	autogold.Expect("The [canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) to apply. Valid values are `private`, `public-read`, `public-read-write`, `aws-exec-read`, `authenticated-read`, and `log-delivery-write`. Defaults to `private`.  Conflicts with `grant`. The provider will only perform drift detection if a configuration value is provided. Use the resource `{{% ref #/resources/aws:s3%2FbucketAclV2:BucketAclV2 %}}` instead.\n").Equal(
 		t,
 		schema.Resources["aws:s3/bucketV2:BucketV2"].InputProperties["acl"].Description,
