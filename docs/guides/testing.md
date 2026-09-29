@@ -182,6 +182,7 @@ or investigating production regressions.
 Examples worth consulting:
 
 - Diff parity (`pkg/internal/tests/cross-tests/diff_cross_test.go`)
+- Refresh regressions (`pkg/tests/refresh_cross_test.go`)
 - Create/Update flows (`pkg/tfbridge/tests/provider_test.go`)
 - Provider configuration (`pkg/tfbridge/tests/provider_configure_test.go`, `pkg/pf/tests/provider_configure_test.go`)
 - PF-specific diffing (`pkg/pf/tests/diff_test.go`)
