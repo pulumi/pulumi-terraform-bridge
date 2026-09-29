@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -81,11 +82,14 @@ func Create(t *testing.T, res pb.Resource, tfConfig map[string]cty.Value, option
 	})
 	shimProvider := tfbridge.ShimProvider(tfProvider)
 
-	puConfig := crosstestsimpl.InferPulumiValue(t,
-		shimProvider.ResourcesMap().Get("testprovider_test").Schema(),
-		opts.resourceInfo,
-		cty.ObjectVal(tfConfig),
-	)
+	puConfig := opts.pulumiConfig
+	if puConfig == nil {
+		puConfig = crosstestsimpl.InferPulumiValue(t,
+			shimProvider.ResourcesMap().Get("testprovider_test").Schema(),
+			opts.resourceInfo,
+			cty.ObjectVal(tfConfig),
+		)
+	}
 	pulumiYaml := yamlResource(t, puConfig)
 	bytes, err := yaml.Marshal(pulumiYaml)
 	require.NoError(t, err)
@@ -108,6 +112,14 @@ type CreateOption func(*createOpts)
 
 type createOpts struct {
 	resourceInfo map[string]*info.Schema
+	pulumiConfig pulumiresource.PropertyMap
+}
+
+// CreatePulumiConfig provides Pulumi input without deriving it from the Terraform configuration.
+func CreatePulumiConfig(config pulumiresource.PropertyMap) CreateOption {
+	return func(o *createOpts) {
+		o.pulumiConfig = config
+	}
 }
 
 func CreateResourceInfo(info map[string]*info.Schema) CreateOption {
