@@ -83,13 +83,22 @@ jobs:
       #      autogold values.
       # `make test_accept` handles PULUMI_HOME + plugin install and sets
       # PULUMI_ACCEPT=1 for us.
+      # Both passes can fail (autogold tests fail the first pass until the
+      # second refreshes them), so neither may stop the workflow before the
+      # commit. The PR's own test run reports anything still broken.
       - name: Regenerate PULUMI_ACCEPT goldens
+        continue-on-error: true
         run: |
           make test_accept RUN_TEST_CMD='./...'
       - name: Regenerate autogold goldens
+        continue-on-error: true
         run: |
           pkgs=$(echo '${{ steps.autogold_pkgs.outputs.packages }}' | tr '\n' ' ')
           make test_accept RUN_TEST_CMD="$pkgs -args -update"
+      # TestSchemaGenInSync compares checked-in schema.json files that
+      # PULUMI_ACCEPT does not rewrite.
+      - name: Regenerate PF test provider schemas
+        run: cd pkg/pf && make build.testproviders
       - name: Commit and push
         run: |
           git config user.name  'github-actions[bot]'
