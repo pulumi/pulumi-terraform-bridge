@@ -67,18 +67,6 @@
         }
       },
       "stateInputs": {
-        "description": "Input properties used for looking up and filtering resource resources.\n",
-        "properties": {
-          "aListOfResources": {
-            "type": "array",
-            "items": {
-              "$ref": "#/types/blocks:index/resourceAListOfResource:resourceAListOfResource"
-            }
-          },
-          "result": {
-            "type": "string"
-          }
-        },
         "type": "object"
       }
     }

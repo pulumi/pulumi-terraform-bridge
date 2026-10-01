@@ -67,18 +67,6 @@
         }
       },
       "stateInputs": {
-        "description": "Input properties used for looking up and filtering resource resources.\n",
-        "properties": {
-          "myResult": {
-            "type": "string"
-          },
-          "theNumber": {
-            "type": "number"
-          },
-          "theResource": {
-            "$ref": "#/types/renames:index/resourceTheResource:resourceTheResource"
-          }
-        },
         "type": "object"
       }
     }

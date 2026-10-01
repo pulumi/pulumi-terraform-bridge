@@ -827,15 +827,6 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 		}
 	}
 
-	if !res.IsProvider() {
-		stateTypePath := res.resourcePath.State()
-		stateInputs := g.genObjectType(&schemaNestedType{
-			typ:       res.statet,
-			typePaths: paths.SingletonTypePathSet(stateTypePath),
-		}, true)
-		spec.StateInputs = &stateInputs
-	}
-
 	// If the resources supports listing we'll have set listprops to non-nil, and we need to correspondingly populate
 	// the ListInputs section of the schema. Note that there might not actually be _any_ properties.
 	if res.listprops != nil {
