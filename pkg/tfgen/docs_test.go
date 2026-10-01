@@ -41,6 +41,8 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
@@ -118,8 +120,9 @@ func TestReformatImportText(t *testing.T) {
 	}
 	input := "### Identity Schema\n\n#### Required\n\n- `load_balancer_name` (String) Name."
 	text := reformatImportText(infoCtx, input, nil)
-	assert.Contains(t, text, "`load_balancer_name`")
-	assert.Contains(t, text, "pulumi-lang-nodejs")
+	// Without an entity context, unknown property mentions fall back to plain camelCase text.
+	assert.Contains(t, text, "`loadBalancerName`")
+	assert.NotContains(t, text, "pulumi-lang-nodejs")
 }
 
 func TestArgumentRegex(t *testing.T) {
@@ -2669,7 +2672,7 @@ func TestErrorMissingDocs(t *testing.T) {
 			_, err := getDocsForResource(g, tt.source, ResourceDocs, rawName, &mockResource{
 				token: tokens.Token(rawName),
 				docs:  tt.docs,
-			})
+			}, nil)
 			if tt.expectErr {
 				assert.NotNil(t, err)
 			} else {
@@ -2687,7 +2690,7 @@ func TestErrorNilDocs(t *testing.T) {
 		rawName := "nil_docs"
 		t.Setenv("PULUMI_MISSING_DOCS_ERROR", "true")
 		info := mockNilDocsResource{token: tokens.Token(rawName)}
-		_, err := getDocsForResource(g, mockSource{}, ResourceDocs, rawName, &info)
+		_, err := getDocsForResource(g, mockSource{}, ResourceDocs, rawName, &info, nil)
 		assert.NotNil(t, err)
 	})
 }
@@ -2955,7 +2958,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "resource name with backticks",
 			input:    "Use the `random_pet` resource to generate pet names.",
-			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\" pulumi-lang-hcl=\"`random_pet`\">`random.RandomPet`</span> resource to generate pet names.",
+			expected: "Use the `{{% ref #/resources/random:index%2FrandomPet:RandomPet %}}` resource to generate pet names.",
 			ctx: infoContext{
 				pkg: "random",
 				info: tfbridge.ProviderInfo{
@@ -2968,7 +2971,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "data source name with backticks",
 			input:    "Use the `random_id` data source to get random IDs.",
-			expected: "Use the <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\" pulumi-lang-hcl=\"`data.random_id`\">`random.RandomId`</span> data source to get random IDs.",
+			expected: "Use the `{{% ref #/functions/random:index%2FrandomId:RandomId %}}` data source to get random IDs.",
 			ctx: infoContext{
 				pkg: "random",
 				info: tfbridge.ProviderInfo{
@@ -2979,27 +2982,127 @@ func TestFixupPropertyReference(t *testing.T) {
 			},
 		},
 		{
-			name:     "property name with backticks",
+			name:     "property name with backticks and no entity context falls back to camelCase",
 			input:    "The `length` property controls the output length.",
-			expected: "The <span pulumi-lang-nodejs=\"`length`\" pulumi-lang-dotnet=\"`Length`\" pulumi-lang-go=\"`length`\" pulumi-lang-python=\"`length`\" pulumi-lang-yaml=\"`length`\" pulumi-lang-java=\"`length`\" pulumi-lang-hcl=\"`length`\">`length`</span> property controls the output length.",
+			expected: "The `length` property controls the output length.",
 			ctx: infoContext{
 				pkg:  "random",
 				info: tfbridge.ProviderInfo{},
 			},
 		},
 		{
-			name:     "property name with underscores",
+			name:     "property name with underscores and no entity context falls back to camelCase",
 			input:    "The length must also be greater than `min_upper`.",
-			expected: "The length must also be greater than <span pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\" pulumi-lang-hcl=\"`min_upper`\">`minUpper`</span>.",
+			expected: "The length must also be greater than `minUpper`.",
 			ctx: infoContext{
 				pkg:  "random",
 				info: tfbridge.ProviderInfo{},
+			},
+		},
+		{
+			name:     "property known to entity emits ref",
+			input:    "The `min_upper` value matters.",
+			expected: "The `{{% ref #/resources/random:index%2FrandomString:RandomString/properties/minUpper %}}` value matters.",
+			ctx: infoContext{
+				pkg:  "random",
+				info: tfbridge.ProviderInfo{},
+				entity: &entityDocContext{
+					token:    "random:index/randomString:RandomString",
+					kind:     ResourceDocs,
+					hasField: func(name string) bool { return name == "min_upper" },
+				},
+			},
+		},
+		{
+			name:     "property unknown to entity falls back to camelCase",
+			input:    "The `unknown_prop` is not on the schema.",
+			expected: "The `unknownProp` is not on the schema.",
+			ctx: infoContext{
+				pkg:  "random",
+				info: tfbridge.ProviderInfo{},
+				entity: &entityDocContext{
+					token:    "random:index/randomString:RandomString",
+					kind:     ResourceDocs,
+					hasField: func(name string) bool { return false },
+				},
+			},
+		},
+		{
+			name:     "data source property emits function output ref",
+			input:    "The `foo` value.",
+			expected: "The `{{% ref #/functions/random:index%2FgetSomething:getSomething/outputs/properties/foo %}}` value.",
+			ctx: infoContext{
+				pkg:  "random",
+				info: tfbridge.ProviderInfo{},
+				entity: &entityDocContext{
+					token:    "random:index/getSomething:getSomething",
+					kind:     DataSourceDocs,
+					hasField: func(name string) bool { return name == "foo" },
+				},
+			},
+		},
+		{
+			// Provider-defined function docs reference the function's named parameters
+			// (inputs), not outputs — hence the `/inputs/properties/` destination.
+			name:     "provider function property emits function input ref",
+			input:    "Pass the `arn` argument.",
+			expected: "Pass the `{{% ref #/functions/aws:index%2FparseArn:parseArn/inputs/properties/arn %}}` argument.",
+			ctx: infoContext{
+				pkg:  "aws",
+				info: tfbridge.ProviderInfo{},
+				entity: &entityDocContext{
+					token:    "aws:index/parseArn:parseArn",
+					kind:     FunctionDocs,
+					hasField: func(name string) bool { return name == "arn" },
+				},
+			},
+		},
+		{
+			// Local provider reference: when we are reformatting the provider's own docs
+			// and the mention resolves to a field on the provider config, emit the bare
+			// #/provider/properties/<name> ref rather than a token-based path.
+			name:     "provider config self-reference emits #/provider ref",
+			input:    "Configure the `api_key` field to authenticate.",
+			expected: "Configure the `{{% ref #/provider/properties/apiKey %}}` field to authenticate.",
+			ctx: infoContext{
+				pkg:  "random",
+				info: tfbridge.ProviderInfo{},
+				entity: &entityDocContext{
+					token:      "random:index:Provider",
+					kind:       ResourceDocs,
+					isProvider: true,
+					hasField:   func(name string) bool { return name == "api_key" },
+				},
+			},
+		},
+		{
+			// External provider reference: while reformatting a normal resource's docs, a
+			// mention resolves to a field on the provider config schema (not on the
+			// current resource). Emit a #/provider/properties/<name> ref via the provider
+			// schema fallback lookup.
+			name:     "resource docs mentioning provider config emits #/provider ref",
+			input:    "Defaults to the provider's `region` setting.",
+			expected: "Defaults to the provider's `{{% ref #/provider/properties/region %}}` setting.",
+			ctx: infoContext{
+				pkg: "random",
+				info: tfbridge.ProviderInfo{
+					P: (&shimschema.Provider{
+						Schema: shimschema.SchemaMap{
+							"region": (&shimschema.Schema{Type: shim.TypeString}).Shim(),
+						},
+					}).Shim(),
+				},
+				entity: &entityDocContext{
+					token:    "random:index/randomString:RandomString",
+					kind:     ResourceDocs,
+					hasField: func(name string) bool { return false }, // not on this resource
+				},
 			},
 		},
 		{
 			name:     "resource name without backticks",
 			input:    "Use random_pet resource to generate pet names.",
-			expected: "Use<span pulumi-lang-nodejs=\" random.RandomPet \" pulumi-lang-dotnet=\" random.RandomPet \" pulumi-lang-go=\" RandomPet \" pulumi-lang-python=\" RandomPet \" pulumi-lang-yaml=\" random.RandomPet \" pulumi-lang-java=\" random.RandomPet \" pulumi-lang-hcl=\" random_pet \"> random.RandomPet </span>resource to generate pet names.",
+			expected: "Use {{% ref #/resources/random:index%2FrandomPet:RandomPet %}} resource to generate pet names.",
 			ctx: infoContext{
 				pkg: "random",
 				info: tfbridge.ProviderInfo{
@@ -3012,7 +3115,7 @@ func TestFixupPropertyReference(t *testing.T) {
 		{
 			name:     "multiple resource references",
 			input:    "Use `random_pet` and `random_id` together.",
-			expected: "Use <span pulumi-lang-nodejs=\"`random.RandomPet`\" pulumi-lang-dotnet=\"`random.RandomPet`\" pulumi-lang-go=\"`RandomPet`\" pulumi-lang-python=\"`RandomPet`\" pulumi-lang-yaml=\"`random.RandomPet`\" pulumi-lang-java=\"`random.RandomPet`\" pulumi-lang-hcl=\"`random_pet`\">`random.RandomPet`</span> and <span pulumi-lang-nodejs=\"`random.RandomId`\" pulumi-lang-dotnet=\"`random.RandomId`\" pulumi-lang-go=\"`RandomId`\" pulumi-lang-python=\"`random_id`\" pulumi-lang-yaml=\"`random.RandomId`\" pulumi-lang-java=\"`random.RandomId`\" pulumi-lang-hcl=\"`data.random_id`\">`random.RandomId`</span> together.",
+			expected: "Use `{{% ref #/resources/random:index%2FrandomPet:RandomPet %}}` and `{{% ref #/functions/random:index%2FrandomId:RandomId %}}` together.",
 			ctx: infoContext{
 				pkg: "random",
 				info: tfbridge.ProviderInfo{
@@ -3026,7 +3129,7 @@ func TestFixupPropertyReference(t *testing.T) {
 			},
 		},
 		{
-			name:     "returns no span for registry docs",
+			name:     "returns no shortcode for registry docs",
 			input:    "Use random_pet resource to generate pet names.",
 			expected: "Use random.RandomPet resource to generate pet names.",
 			ctx: infoContext{
