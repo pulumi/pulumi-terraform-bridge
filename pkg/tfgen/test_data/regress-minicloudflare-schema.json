@@ -124,29 +124,7 @@
       },
       "requiredInputs": [
         "name"
-      ],
-      "stateInputs": {
-        "description": "Input properties used for looking up and filtering Ruleset resources.\n",
-        "properties": {
-          "description": {
-            "type": "string",
-            "description": "Brief summary of the ruleset and its intended use."
-          },
-          "name": {
-            "type": "string",
-            "description": "Name of the ruleset.",
-            "willReplaceOnChanges": true
-          },
-          "rules": {
-            "type": "array",
-            "items": {
-              "$ref": "#/types/cloudflare:index/RulesetRule:RulesetRule"
-            },
-            "description": "List of rules to apply to the ruleset."
-          }
-        },
-        "type": "object"
-      }
+      ]
     }
   },
   "functions": {

@@ -113,15 +113,6 @@
         }
       },
       "stateInputs": {
-        "description": "Input properties used for looking up and filtering R1 resources.\n",
-        "properties": {
-          "sheets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/types/testprov:index/R1Sheet:R1Sheet"
-            }
-          }
-        },
         "type": "object"
       }
     },
@@ -149,18 +140,6 @@
         }
       },
       "stateInputs": {
-        "description": "Input properties used for looking up and filtering R2 resources.\n",
-        "properties": {
-          "sheets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/types/testprov:index/R2Sheet:R2Sheet"
-            }
-          },
-          "x": {
-            "type": "integer"
-          }
-        },
         "type": "object"
       }
     }
