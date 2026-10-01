@@ -1259,7 +1259,7 @@ func rewriteImportMarkdown(body, typeToken string) (string, bool) {
 				fenceLines = fenceLines[:0]
 				continue
 			}
-			out = append(out, line)
+			out = append(out, rewriteInlineImportCommand(line, typeToken))
 			continue
 		}
 
@@ -1342,7 +1342,11 @@ func rewriteImportFence(
 		info = ""
 	}
 	code := strings.Join(lines, "\n")
-	if info == "terraform" && looksLikeTerraformImportBlock(code) {
+	// Drop Terraform-only `import {}` blocks: pulumi convert cannot translate one, and
+	// convertExamplesInner deletes the entire enclosing subsection when a conversion fails,
+	// taking the heading, prose and sibling examples with it. isHCL matches every fence tag
+	// treated as HCL elsewhere in this file - terraform, tf and hcl.
+	if isHCL(info, code) && looksLikeTerraformImportBlock(code) {
 		return nil, false, false
 	}
 	if info == "" || info == "console" || info == "shell" || info == "sh" || info == "bash" {
@@ -1516,6 +1520,83 @@ func rewriteImportLines(lines []string, typeToken string) ([]string, bool) {
 	return rewritten, updated
 }
 
+// pulumiImportCommand matches an import command already written against a Pulumi type token,
+// which always carries a colon where a Terraform `type.name` address carries a dot.
+var pulumiImportCommand = regexp.MustCompile(`^\s*(?:[%$]\s+)?pulumi import[\\\s]+[^\s]*:[^\s]*[\\\s]`)
+
+// rewriteInlineImportCommand rewrites `terraform import` commands that upstream embeds in
+// prose rather than in a ```-fenced block. Left alone they leak the Terraform CLI and an
+// upstream resource name into the rendered Import section.
+//
+// Example (input):
+//
+//	e.g. `terraform import random_string.test test`
+//
+// Example (output):
+//
+//	e.g. `pulumi import random:index/string:String test test`
+func rewriteInlineImportCommand(line, typeToken string) string {
+	if !strings.Contains(line, "terraform import") && !strings.Contains(line, "pulumi import") {
+		return line
+	}
+	var out strings.Builder
+	for rest := line; rest != ""; {
+		before, span, code, after, ok := cutCodeSpan(rest)
+		out.WriteString(before)
+		if !ok {
+			break
+		}
+		rest = after
+		// parseImportCode is built around Terraform's `type.name` addressing, so running
+		// an already-Pulumi command back through it would truncate a dotted name.
+		if parsed, ok := parseImportCode(code); ok && !pulumiImportCommand.MatchString(code) {
+			delim := strings.Repeat("`", len(span)-len(strings.TrimLeft(span, "`")))
+			out.WriteString(delim)
+			fmt.Fprintf(&out, "pulumi import %s %s %s", typeToken, parsed.Name, parsed.ID)
+			out.WriteString(delim)
+			continue
+		}
+		out.WriteString(span)
+	}
+	return out.String()
+}
+
+// cutCodeSpan finds the first GFM code span in s, returning the text before it, the span with
+// its delimiters, the content between them, and the remainder of s.
+//
+// A span opens on a run of backticks and closes on the next run of the same length, so a span
+// delimited by a longer run may hold backticks of its own - the form upstream reaches for when
+// the content is itself a quoted command. Treating those as two single-backtick spans would
+// splice a rewrite into text meant to render literally.
+func cutCodeSpan(s string) (before, span, code, after string, ok bool) {
+	runLen := func(at string) int { return len(at) - len(strings.TrimLeft(at, "`")) }
+	for open := 0; open < len(s); {
+		k := strings.IndexByte(s[open:], '`')
+		if k < 0 {
+			break
+		}
+		open += k
+		n := runLen(s[open:])
+		delim := s[open : open+n]
+		// A closing run must be exactly as long as the opening one, so step over longer runs.
+		for i := open + n; i < len(s); {
+			j := strings.Index(s[i:], delim)
+			if j < 0 {
+				break
+			}
+			j += i
+			run := runLen(s[j:])
+			if run == n {
+				return s[:open], s[open : j+n], s[open+n : j], s[j+n:], true
+			}
+			i = j + run
+		}
+		// Unterminated run: literal text. Keep looking past it.
+		open += n
+	}
+	return s, "", "", "", false
+}
+
 // extractImportFenceComments hoists leading comment lines (starting with '#') from a fence.
 //
 // Example (input):
@@ -1668,14 +1749,19 @@ func dropImportSyntaxLine(lines []string) []string {
 //	}
 //
 // ```
+//
+// Only the opening line is examined. A fence that carries the target resource alongside the
+// import block - Terraform's own documented idiom, "Configuration omitted for brevity" - still
+// has to go, because the import block alone is enough to fail the conversion.
 func looksLikeTerraformImportBlock(code string) bool {
 	for _, line := range strings.Split(code, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
 			continue
 		}
-		return strings.HasPrefix(trimmed, "import ") || strings.HasPrefix(trimmed, "import{") ||
-			strings.HasPrefix(trimmed, "import {")
+		// `import` must open a block: an `import` attribute is not one.
+		rest, isImport := strings.CutPrefix(trimmed, "import")
+		return isImport && strings.HasPrefix(strings.TrimSpace(rest), "{")
 	}
 	return false
 }
