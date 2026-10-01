@@ -47,9 +47,6 @@
         "inputTwo": {
           "type": "integer"
         }
-      },
-      "stateInputs": {
-        "type": "object"
       }
     }
   },

@@ -386,10 +386,7 @@
       },
       "requiredInputs": [
         "user"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/accountAlias:AccountAlias": {
       "properties": {
@@ -418,10 +415,7 @@
       },
       "requiredInputs": [
         "accountAlias"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/accountPasswordPolicy:AccountPasswordPolicy": {
       "properties": {
@@ -494,9 +488,6 @@
         "requireUppercaseCharacters": {
           "type": "boolean"
         }
-      },
-      "stateInputs": {
-        "type": "object"
       }
     },
     "aws:iam/group:Group": {
@@ -526,9 +517,6 @@
         "path": {
           "type": "string"
         }
-      },
-      "stateInputs": {
-        "type": "object"
       }
     },
     "aws:iam/groupMembership:GroupMembership": {
@@ -570,10 +558,7 @@
       "requiredInputs": [
         "group",
         "users"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/groupPolicy:GroupPolicy": {
       "properties": {
@@ -624,10 +609,7 @@
       "requiredInputs": [
         "group",
         "policy"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/groupPolicyAttachment:GroupPolicyAttachment": {
       "properties": {
@@ -666,10 +648,7 @@
       "requiredInputs": [
         "group",
         "policyArn"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/instanceProfile:InstanceProfile": {
       "properties": {
@@ -745,9 +724,6 @@
             "type": "string"
           }
         }
-      },
-      "stateInputs": {
-        "type": "object"
       }
     },
     "aws:iam/openIdConnectProvider:OpenIdConnectProvider": {
@@ -819,10 +795,7 @@
         "clientIdLists",
         "thumbprintLists",
         "url"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/policy:Policy": {
       "properties": {
@@ -915,10 +888,7 @@
       },
       "requiredInputs": [
         "policy"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/policyAttachment:PolicyAttachment": {
       "properties": {
@@ -1010,10 +980,7 @@
       },
       "requiredInputs": [
         "policyArn"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/role:Role": {
       "properties": {
@@ -1144,10 +1111,7 @@
       },
       "requiredInputs": [
         "assumeRolePolicy"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/rolePolicy:RolePolicy": {
       "properties": {
@@ -1207,10 +1171,7 @@
       "requiredInputs": [
         "policy",
         "role"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/rolePolicyAttachment:RolePolicyAttachment": {
       "properties": {
@@ -1249,10 +1210,7 @@
       "requiredInputs": [
         "policyArn",
         "role"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/samlProvider:SamlProvider": {
       "properties": {
@@ -1305,10 +1263,7 @@
       },
       "requiredInputs": [
         "samlMetadataDocument"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/serverCertificate:ServerCertificate": {
       "properties": {
@@ -1398,10 +1353,7 @@
       "requiredInputs": [
         "certificateBody",
         "privateKey"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/serviceLinkedRole:ServiceLinkedRole": {
       "properties": {
@@ -1472,10 +1424,7 @@
       },
       "requiredInputs": [
         "awsServiceName"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/serviceSpecificCredential:ServiceSpecificCredential": {
       "properties": {
@@ -1522,10 +1471,7 @@
       "requiredInputs": [
         "serviceName",
         "userName"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/signingCertificate:SigningCertificate": {
       "properties": {
@@ -1563,10 +1509,7 @@
       "requiredInputs": [
         "certificateBody",
         "userName"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/sshKey:SshKey": {
       "properties": {
@@ -1618,10 +1561,7 @@
         "encoding",
         "publicKey",
         "username"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/user:User": {
       "properties": {
@@ -1683,9 +1623,6 @@
             "type": "string"
           }
         }
-      },
-      "stateInputs": {
-        "type": "object"
       }
     },
     "aws:iam/userGroupMembership:UserGroupMembership": {
@@ -1719,10 +1656,7 @@
       "requiredInputs": [
         "groups",
         "user"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/userLoginProfile:UserLoginProfile": {
       "properties": {
@@ -1775,10 +1709,7 @@
       },
       "requiredInputs": [
         "user"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/userPolicy:UserPolicy": {
       "properties": {
@@ -1829,10 +1760,7 @@
       "requiredInputs": [
         "policy",
         "user"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/userPolicyAttachment:UserPolicyAttachment": {
       "properties": {
@@ -1871,10 +1799,7 @@
       "requiredInputs": [
         "policyArn",
         "user"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     },
     "aws:iam/virtualMfaDevice:VirtualMfaDevice": {
       "properties": {
@@ -1931,10 +1856,7 @@
       },
       "requiredInputs": [
         "virtualMfaDeviceName"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     }
   },
   "functions": {

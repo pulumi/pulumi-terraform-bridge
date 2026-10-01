@@ -65,9 +65,6 @@
         "theResource": {
           "$ref": "#/types/renames:index/resourceTheResource:resourceTheResource"
         }
-      },
-      "stateInputs": {
-        "type": "object"
       }
     }
   },

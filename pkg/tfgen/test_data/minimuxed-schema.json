@@ -106,10 +106,7 @@
       "requiredInputs": [
         "max",
         "min"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     }
   },
   "functions": {

@@ -101,9 +101,6 @@
         "innerObject": {
           "$ref": "#/types/complex:index/resourceInnerObject:resourceInnerObject"
         }
-      },
-      "stateInputs": {
-        "type": "object"
       }
     }
   },

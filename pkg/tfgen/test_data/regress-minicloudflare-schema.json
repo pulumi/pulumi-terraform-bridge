@@ -124,10 +124,7 @@
       },
       "requiredInputs": [
         "name"
-      ],
-      "stateInputs": {
-        "type": "object"
-      }
+      ]
     }
   },
   "functions": {
