@@ -63,7 +63,7 @@ func main() {
 }
 ```
 ```hcl
-pulumi {
+terraform {
   required_providers {
     simple = {
       source = "pulumi/simple"

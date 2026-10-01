@@ -44,10 +44,10 @@ require (
 	github.com/opentofu/svchost v0.0.0-20250610175836-86c9e5e3d8c8
 	github.com/pgavlin/fx/v2 v2.0.12
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi-labs/pulumi-hcl v0.3.1
 	github.com/pulumi/inflector v0.2.1
 	github.com/pulumi/providertest v0.7.0
 	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.114.1
+	github.com/pulumi/pulumi-hcl v0.18.3
 	github.com/pulumi/pulumi-java v1.37.3
 	github.com/pulumi/pulumi-yaml v1.38.8
 	github.com/pulumi/terraform-diff-reader v0.0.2
@@ -109,6 +109,7 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bazelbuild/buildtools v0.0.0-20260211083412-859bfffeef82 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
