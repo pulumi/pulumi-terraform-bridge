@@ -142,7 +142,7 @@ import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
 import com.pulumi.gcp.serviceaccount.ServiceaccountFunctions;
 import com.pulumi.gcp.serviceaccount.inputs.GetAccountAccessTokenArgs;
-import com.pulumi.pulumi.providers.google;
+import com.pulumi.pulumi.providers.Google;
 import com.pulumi.pulumi.providers.ProviderArgs;
 import com.pulumi.gcp.serviceaccount.inputs.GetAccountIdTokenArgs;
 import java.util.ArrayList;
