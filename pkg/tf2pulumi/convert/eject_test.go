@@ -208,7 +208,7 @@ func TestEject(t *testing.T) {
 
 			if tt.name == "builtins" {
 				t.Skip("pulumi v3.267.0 rejects lookup() with a default not in the map " +
-					"(regressed by https://github.com/pulumi/pulumi/pull/24766)")
+					"(https://github.com/pulumi/pulumi/issues/25076)")
 			}
 
 			isExperimental := cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL"))
