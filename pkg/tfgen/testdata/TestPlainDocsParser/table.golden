@@ -213,7 +213,7 @@ config:
 resources:
   ## Define a resource
   aResource:
-    type: simple:resource
+    type: simple:Resource
     name: a_resource
     properties:
       inputOne: hello
@@ -276,6 +276,9 @@ public class App {
 ```hcl
 ## Define a resource
 resource "simple_resource" "a_resource" {
+  lifecycle {
+    create_before_destroy = true
+  }
   input_one = "hello"
   input_two = true
 }

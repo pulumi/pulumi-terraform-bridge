@@ -72,6 +72,9 @@ terraform {
 }
 
 resource "simple_resource" "a_resource" {
+  lifecycle {
+    create_before_destroy = true
+  }
   renamed_input1 = "hello"
   input_two      = true
 }
