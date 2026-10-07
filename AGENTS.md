@@ -52,7 +52,7 @@ The project has multiple Go module roots, including the repo root and `tools/`.
   - `make test_accept` starts from an empty `.pulumi-test` and installs only what `make install_plugins` lists. Prefer it over plain `make test ... -update`, which uses `~/.pulumi`. If `~/.pulumi` has a newer converter or extra resource plugins, `pulumi convert` uses them. For example, `converter-terraform` v1.2.4 produces `simple:Resource` where the pinned v1.0.20 produces `simple:resource`.
   - When running `go test` directly, as in the `dynamic/` module, set `PULUMI_HOME` to a fresh directory populated by `make install_plugins`. Also set `PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true`, because otherwise tests download plugins CI doesn't have (such as `azure` or `std`) and those change the generated examples.
   - `PULUMI_ACCEPT=1` only refreshes the repo's own golden helpers, such as `TestSchemaGenerationFullDocs`. `autogold` tests, such as `TestPlainDocsParser`, also need `-update`.
-  - Unset `PULUMI_MISSING_DOCS_ERROR` and `PULUMI_MISSING_MAPPING_ERROR` before running tests. Several `pkg/tfgen` tests fail when they're set.
+  - Unset `PULUMI_MISSING_DOCS_ERROR` before running tests. Several `pkg/tfgen` tests fail when it's set.
   - If a regenerated golden changes something unrelated to your change, suspect the plugin set before accepting it.
 - Testing guide: `docs/guides/testing.md`
 
