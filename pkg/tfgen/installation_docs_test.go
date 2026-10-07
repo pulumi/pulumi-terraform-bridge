@@ -120,6 +120,67 @@ func TestPlainDocsParser(t *testing.T) {
 	}
 }
 
+// The post-code-translation edit rules rewrite "terraform" to "pulumi" in prose. They must not reach the generated
+// HCL example, where they would turn a `terraform {}` block into `pulumi {}`, which the HCL plugin rejects.
+func TestPlainDocsParserPreservesHCLExamples(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on Windows due to a newline handling issue")
+	}
+
+	p := tfbridge.ProviderInfo{
+		Name: "simple",
+		P: sdkv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"simple_resource": {
+					Schema: map[string]*schema.Schema{
+						"input_one": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		}),
+	}
+	g := &Generator{
+		sink: mockSink{t},
+		info: tfbridge.ProviderInfo{
+			Golang: &tfbridge.GolangInfo{
+				ImportBasePath: "github.com/pulumi/pulumi-simple/sdk/go/simple",
+			},
+			Repository: "https://github.com/pulumi/pulumi-simple",
+		},
+		cliConverterState: &cliConverter{
+			info: p,
+			pcls: make(map[string]translatedExample),
+		},
+		editRules: defaultEditRules(),
+		language:  RegistryDocs,
+		pkg:       tokens.NewPackageToken("simple"),
+	}
+
+	docFile := DocFile{Content: []byte("# Simple Provider\n\n" +
+		"Use the Terraform provider from hashicorp.\n\n" +
+		"## Example Usage\n\n" +
+		"```hcl\n" +
+		"resource \"simple_resource\" \"a_resource\" {\n" +
+		"  input_one = \"managed-by-terraform\"\n" +
+		"}\n" +
+		"```\n")}
+
+	actual, err := plainDocsParser(&docFile, g)
+	require.NoError(t, err)
+
+	hclBlock := regexp.MustCompile("(?s)\\{\\{% choosable language hcl %\\}\\}.*?\\{\\{% /choosable %\\}\\}").
+		FindString(string(actual))
+	require.NotEmpty(t, hclBlock, "expected an HCL example in:\n%s", actual)
+	assert.Contains(t, hclBlock, `input_one = "managed-by-terraform"`)
+
+	// Prose outside the HCL example is still rewritten.
+	assert.Contains(t, string(actual), "Use the Pulumi provider from pulumi.")
+}
+
 func TestDisplayNameFallback(t *testing.T) {
 	t.Parallel()
 

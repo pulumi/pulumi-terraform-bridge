@@ -224,7 +224,7 @@ public class App {
 {{% /choosable %}}
 {{% choosable language hcl %}}
 ```hcl
-pulumi {
+terraform {
   required_providers {
     aws = {
       source = "pulumi/aws"
@@ -236,19 +236,24 @@ pulumi {
 }
 
 resource "random_id" "server" {
+  lifecycle {
+    create_before_destroy = true
+  }
   keepers = {
     "ami_id" = amiId
   }
   byte_length = 8
 }
 resource "aws_ec2_instance" "server" {
+  lifecycle {
+    create_before_destroy = true
+  }
   tags = {
     "Name" ="web-server ${random_id.server.hex}"
   }
   ami = random_id.server.keepers.amiId
 }
 ```
-
 {{% /choosable %}}
 {{< /chooser >}}
 

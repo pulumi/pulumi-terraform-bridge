@@ -209,7 +209,7 @@ config:
 resources:
   ## Define a resource
   aResource:
-    type: simple:Resource
+    type: simple:resource
     name: a_resource
     properties:
       inputOne: hello
@@ -279,7 +279,6 @@ resource "simple_resource" "a_resource" {
   input_two = true
 }
 ```
-
 {{% /choosable %}}
 {{< /chooser >}}
 ## Configuration Reference
