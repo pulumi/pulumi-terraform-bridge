@@ -74,14 +74,16 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 
 	// Apply post-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
 	// the post-code translation phase.
-	// The translated HCL examples are shielded from these rules: the default rules rewrite "terraform" to "pulumi",
-	// which would turn the generated `terraform {}` block into `pulumi {}` and make the example invalid HCL.
+	// Shield HCL examples: the default rules rewrite "terraform" to "pulumi".
 	content, hclExamples := shieldHCLExamples(content)
 	contentBytes, err = g.editRules.apply(docFile.FileName, content, info.PostCodeTranslation)
 	if err != nil {
 		return nil, err
 	}
-	contentBytes = restoreHCLExamples(contentBytes, hclExamples)
+	contentBytes, err = restoreHCLExamples(contentBytes, hclExamples)
+	if err != nil {
+		return nil, err
+	}
 	// Reformat field names.
 	contentStr = reformatText(infoContext{
 		language: RegistryDocs,
@@ -205,8 +207,7 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 
 var hclExampleRegexp = regexp.MustCompile(`(?s)\{\{% choosable language hcl %\}\}.*?\{\{% /choosable %\}\}`)
 
-// shieldHCLExamples replaces each translated HCL example with a placeholder that edit rules will not match.
-// restoreHCLExamples puts the examples back.
+// shieldHCLExamples swaps each translated HCL example for a placeholder; restoreHCLExamples undoes it.
 func shieldHCLExamples(content []byte) ([]byte, [][]byte) {
 	var examples [][]byte
 	shielded := hclExampleRegexp.ReplaceAllFunc(content, func(example []byte) []byte {
@@ -216,11 +217,15 @@ func shieldHCLExamples(content []byte) ([]byte, [][]byte) {
 	return shielded, examples
 }
 
-func restoreHCLExamples(content []byte, examples [][]byte) []byte {
+func restoreHCLExamples(content []byte, examples [][]byte) ([]byte, error) {
 	for i, example := range examples {
-		content = bytes.Replace(content, hclExamplePlaceholder(i), example, 1)
+		placeholder := hclExamplePlaceholder(i)
+		if !bytes.Contains(content, placeholder) {
+			return nil, fmt.Errorf("post-code-translation edit rules removed HCL example placeholder %s", placeholder)
+		}
+		content = bytes.Replace(content, placeholder, example, 1)
 	}
-	return content
+	return content, nil
 }
 
 func hclExamplePlaceholder(i int) []byte {

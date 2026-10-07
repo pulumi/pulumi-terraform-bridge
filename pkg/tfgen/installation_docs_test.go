@@ -2,13 +2,19 @@ package tfgen
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"io"
 	"regexp"
 	"runtime"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark"
@@ -120,8 +126,6 @@ func TestPlainDocsParser(t *testing.T) {
 	}
 }
 
-// The post-code-translation edit rules rewrite "terraform" to "pulumi" in prose. They must not reach the generated
-// HCL example, where they would turn a `terraform {}` block into `pulumi {}`, which the HCL plugin rejects.
 func TestPlainDocsParserPreservesHCLExamples(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
@@ -129,7 +133,10 @@ func TestPlainDocsParserPreservesHCLExamples(t *testing.T) {
 	}
 
 	p := tfbridge.ProviderInfo{
-		Name: "simple",
+		Name:       "simple",
+		Repository: "https://github.com/pulumi/pulumi-simple",
+		Golang:     &tfbridge.GolangInfo{ImportBasePath: "github.com/pulumi/pulumi-simple/sdk/go/simple"},
+		Resources:  map[string]*tfbridge.ResourceInfo{"simple_resource": {Tok: "simple:index:resource"}},
 		P: sdkv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
 				"simple_resource": {
@@ -143,22 +150,19 @@ func TestPlainDocsParserPreservesHCLExamples(t *testing.T) {
 			},
 		}),
 	}
-	g := &Generator{
-		sink: mockSink{t},
-		info: tfbridge.ProviderInfo{
-			Golang: &tfbridge.GolangInfo{
-				ImportBasePath: "github.com/pulumi/pulumi-simple/sdk/go/simple",
-			},
-			Repository: "https://github.com/pulumi/pulumi-simple",
-		},
-		cliConverterState: &cliConverter{
-			info: p,
-			pcls: make(map[string]translatedExample),
-		},
-		editRules: defaultEditRules(),
-		language:  RegistryDocs,
-		pkg:       tokens.NewPackageToken("simple"),
-	}
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      p.Name,
+		Language:     RegistryDocs,
+		PluginHost:   newTestPluginHost(),
+		ProviderInfo: p,
+		Root:         afero.NewMemMapFs(),
+		Sink:         diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+	})
+	require.NoError(t, err)
+	res, err := g.generateSchemaResult(context.Background())
+	require.NoError(t, err)
+	g.providerShim.schema, err = json.Marshal(res.PackageSpec)
+	require.NoError(t, err)
 
 	docFile := DocFile{Content: []byte("# Simple Provider\n\n" +
 		"Use the Terraform provider from hashicorp.\n\n" +
@@ -171,14 +175,19 @@ func TestPlainDocsParserPreservesHCLExamples(t *testing.T) {
 
 	actual, err := plainDocsParser(&docFile, g)
 	require.NoError(t, err)
-
-	hclBlock := regexp.MustCompile("(?s)\\{\\{% choosable language hcl %\\}\\}.*?\\{\\{% /choosable %\\}\\}").
-		FindString(string(actual))
+	hclBlock := hclExampleRegexp.FindString(string(actual))
 	require.NotEmpty(t, hclBlock, "expected an HCL example in:\n%s", actual)
-	assert.Contains(t, hclBlock, `input_one = "managed-by-terraform"`)
+	assert.Contains(t, hclBlock, "terraform {", "edit rules rewrote the HCL example's terraform block")
+	assert.Contains(t, hclBlock, `input_one = "managed-by-terraform"`, "edit rules rewrote a string in the HCL example")
+	assert.Contains(t, string(actual), "Use the Pulumi provider from pulumi.",
+		"edit rules no longer rewrite prose outside HCL examples")
+}
 
-	// Prose outside the HCL example is still rewritten.
-	assert.Contains(t, string(actual), "Use the Pulumi provider from pulumi.")
+func TestRestoreHCLExamplesMissingPlaceholder(t *testing.T) {
+	t.Parallel()
+	shielded, examples := shieldHCLExamples([]byte("{{% choosable language hcl %}}x{{% /choosable %}}"))
+	_, err := restoreHCLExamples(bytes.ReplaceAll(shielded, hclExamplePlaceholder(0), nil), examples)
+	require.ErrorContains(t, err, "removed HCL example placeholder")
 }
 
 func TestDisplayNameFallback(t *testing.T) {
