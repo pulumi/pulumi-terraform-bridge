@@ -74,7 +74,10 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 
 	// Apply post-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
 	// the post-code translation phase.
-	// Shield HCL examples: the default rules rewrite "terraform" to "pulumi".
+	// Shield HCL examples from these rules. The default rules are blanket substring replacements aimed at prose
+	// (e.g. "terraform" -> "pulumi", "hashicorp" -> "pulumi") and cannot tell prose from code, so they would corrupt
+	// the generated HCL: `terraform {}` would become `pulumi {}` and `source = "hashicorp/random"` would become
+	// `pulumi/random`. The HCL tab must stay exactly as pulumi-hcl generated it; prose is still rewritten.
 	content, hclExamples := shieldHCLExamples(content)
 	contentBytes, err = g.editRules.apply(docFile.FileName, content, info.PostCodeTranslation)
 	if err != nil {
