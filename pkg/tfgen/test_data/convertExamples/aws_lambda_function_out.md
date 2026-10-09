@@ -957,8 +957,8 @@ public class App {
         // Mount target connects the file system to the subnet
         var alpha = new MountTarget("alpha", MountTargetArgs.builder()
             .fileSystemId(efsForLambda.id())
-            .subnetId(aws_subnet.subnet_for_lambda().id())
-            .securityGroups(aws_security_group.sg_for_lambda().id())
+            .subnetId(aws_subnet.get("subnet_for_lambda").get("id"))
+            .securityGroups(aws_security_group.get("sg_for_lambda").get("id"))
             .build());
 
         // EFS access point used by lambda file system
@@ -986,8 +986,8 @@ public class App {
                 .localMountPath("/mnt/efs")
                 .build())
             .vpcConfig(FunctionVpcConfigArgs.builder()
-                .subnetIds(aws_subnet.subnet_for_lambda().id())
-                .securityGroupIds(aws_security_group.sg_for_lambda().id())
+                .subnetIds(aws_subnet.get("subnet_for_lambda").get("id"))
+                .securityGroupIds(aws_security_group.get("sg_for_lambda").get("id"))
                 .build())
             .build(), CustomResourceOptions.builder()
                 .dependsOn(alpha)
@@ -1326,7 +1326,7 @@ public class App {
             .build());
 
         var lambdaLogs = new RolePolicyAttachment("lambdaLogs", RolePolicyAttachmentArgs.builder()
-            .role(aws_iam_role.iam_for_lambda().name())
+            .role(aws_iam_role.get("iam_for_lambda").get("name"))
             .policyArn(lambdaLoggingPolicy.arn())
             .build());
 

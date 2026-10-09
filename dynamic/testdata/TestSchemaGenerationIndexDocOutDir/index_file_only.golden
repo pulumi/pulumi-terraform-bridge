@@ -105,7 +105,7 @@ return await Deployment.RunAsync(() =>
         {
             { "ami_id", amiId },
         },
-        ByteLength = 8,
+        ByteLength = 8.0,
     });
 
     var serverInstance = new Aws.Ec2.Instance("server", new()
@@ -214,7 +214,7 @@ public class App {
 
         var serverInstance = new Instance("serverInstance", InstanceArgs.builder()
             .tags(Map.of("Name", server.hex().applyValue(_hex -> String.format("web-server %s", _hex))))
-            .ami(server.keepers().applyValue(_keepers -> _keepers.amiId()))
+            .ami(server.keepers().applyValue(_keepers -> _keepers.get("amiId")))
             .build());
 
     }

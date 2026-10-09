@@ -206,6 +206,11 @@ func TestEject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			if tt.name == "builtins" {
+				t.Skip("pulumi v3.267.0 rejects lookup() with a default not in the map " +
+					"(https://github.com/pulumi/pulumi/issues/25076)")
+			}
+
 			isExperimental := cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL"))
 
 			pclPath := filepath.Join(tt.path, "pcl")

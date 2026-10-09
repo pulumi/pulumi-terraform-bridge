@@ -88,8 +88,8 @@ package generated_program;
 import com.pulumi.Context;
 import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
-import com.pulumi.outscale.outscale_volume;
-import com.pulumi.outscale.outscale_volumeArgs;
+import com.pulumi.outscale.Outscale_volume;
+import com.pulumi.outscale.Outscale_volumeArgs;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
@@ -104,7 +104,7 @@ public class App {
 
     public static void stack(Context ctx) {
         var volume01 = new Outscale_volume("volume01", Outscale_volumeArgs.builder()
-            .subregionName(String.format("%sa", var_.region()))
+            .subregionName(String.format("%sa", var_.get("region")))
             .size(10)
             .iops(100)
             .volumeType("io1")
@@ -194,8 +194,8 @@ package generated_program;
 import com.pulumi.Context;
 import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
-import com.pulumi.outscale.outscale_volume;
-import com.pulumi.outscale.outscale_volumeArgs;
+import com.pulumi.outscale.Outscale_volume;
+import com.pulumi.outscale.Outscale_volumeArgs;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
@@ -211,7 +211,7 @@ public class App {
     public static void stack(Context ctx) {
         var volume01 = new Outscale_volume("volume01", Outscale_volumeArgs.builder()
             .terminationSnapshotName("deleting_volume_snap")
-            .subregionName(String.format("%sa", var_.region()))
+            .subregionName(String.format("%sa", var_.get("region")))
             .size(40)
             .build());
 
