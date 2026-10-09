@@ -2,13 +2,19 @@ package tfgen
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"io"
 	"regexp"
 	"runtime"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark"
@@ -118,6 +124,64 @@ func TestPlainDocsParser(t *testing.T) {
 			autogold.ExpectFile(t, autogold.Raw(string(actual)))
 		})
 	}
+}
+
+func TestPlainDocsParserPreservesHCLExamples(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on Windows due to a newline handling issue")
+	}
+
+	p := tfbridge.ProviderInfo{
+		Name:       "simple",
+		Repository: "https://github.com/pulumi/pulumi-simple",
+		Golang:     &tfbridge.GolangInfo{ImportBasePath: "github.com/pulumi/pulumi-simple/sdk/go/simple"},
+		Resources:  map[string]*tfbridge.ResourceInfo{"simple_resource": {Tok: "simple:index:resource"}},
+		P: sdkv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"simple_resource": {
+					Schema: map[string]*schema.Schema{
+						"input_one": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		}),
+	}
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      p.Name,
+		Language:     RegistryDocs,
+		PluginHost:   newTestPluginHost(),
+		ProviderInfo: p,
+		Root:         afero.NewMemMapFs(),
+		Sink:         diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+	})
+	require.NoError(t, err)
+	res, err := g.generateSchemaResult(context.Background())
+	require.NoError(t, err)
+	g.providerShim.schema, err = json.Marshal(res.PackageSpec)
+	require.NoError(t, err)
+
+	docFile := DocFile{Content: []byte("# Simple Provider\n\n" +
+		"Use the Terraform provider from hashicorp.\n\n" +
+		"## Example Usage\n\n" +
+		"```hcl\n" +
+		"resource \"simple_resource\" \"a_resource\" {\n" +
+		"  input_one = \"managed-by-terraform\"\n" +
+		"}\n" +
+		"```\n")}
+
+	actual, err := plainDocsParser(&docFile, g)
+	require.NoError(t, err)
+	hclBlock := regexp.MustCompile(`(?s)\{\{% choosable language hcl %\}\}.*?\{\{% /choosable %\}\}`).
+		FindString(string(actual))
+	require.NotEmpty(t, hclBlock, "expected an HCL example in:\n%s", actual)
+	assert.Contains(t, hclBlock, "terraform {", "edit rules rewrote the HCL example's terraform block")
+	assert.Contains(t, hclBlock, `input_one = "managed-by-terraform"`, "edit rules rewrote a string in the HCL example")
+	assert.Contains(t, string(actual), "Use the Pulumi provider from pulumi.",
+		"edit rules no longer rewrite prose outside HCL examples")
 }
 
 func TestDisplayNameFallback(t *testing.T) {

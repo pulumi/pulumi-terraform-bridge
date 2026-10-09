@@ -296,6 +296,20 @@ const example = new azuredevops.Project("example", {
     This Resource is Managed by Terraform
 `),
 		},
+		{
+			name:  "Post-code-translation text rules skip HCL code blocks",
+			phase: info.PostCodeTranslation,
+			docFile: DocFile{
+				Content: []byte("Configure the Terraform provider from hashicorp.\n\n" +
+					"```typescript\nconst source = \"terraform\";\n```\n\n" +
+					"```hcl\nterraform {\n  required_providers {\n    x = {\n      source = \"hashicorp/x\"\n" +
+					"    }\n  }\n}\n```\n\nThe data source reads hashicorp data.\n"),
+			},
+			expected: []byte("Configure the Pulumi provider from pulumi.\n\n" +
+				"```typescript\nconst source = \"pulumi\";\n```\n\n" +
+				"```hcl\nterraform {\n  required_providers {\n    x = {\n      source = \"hashicorp/x\"\n" +
+				"    }\n  }\n}\n```\n\nThe function reads pulumi data.\n"),
+		},
 	}
 	edits := defaultEditRules()
 
