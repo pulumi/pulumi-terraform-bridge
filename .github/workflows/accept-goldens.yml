@@ -83,10 +83,15 @@ jobs:
       #      autogold values.
       # `make test_accept` handles PULUMI_HOME + plugin install and sets
       # PULUMI_ACCEPT=1 for us.
+      # Both passes may exit non-zero (tests comparing against still-stale
+      # goldens will fail on the first run). We rely on the Commit step to
+      # verify a diff was produced.
       - name: Regenerate PULUMI_ACCEPT goldens
+        continue-on-error: true
         run: |
           make test_accept RUN_TEST_CMD='./...'
       - name: Regenerate autogold goldens
+        continue-on-error: true
         run: |
           pkgs=$(echo '${{ steps.autogold_pkgs.outputs.packages }}' | tr '\n' ' ')
           make test_accept RUN_TEST_CMD="$pkgs -args -update"
