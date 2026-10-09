@@ -279,6 +279,7 @@ resource "simple_resource" "a_resource" {
   input_two = true
 }
 ```
+
 {{% /choosable %}}
 {{< /chooser >}}
 ## Configuration Reference

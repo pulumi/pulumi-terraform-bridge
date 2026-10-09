@@ -175,19 +175,13 @@ func TestPlainDocsParserPreservesHCLExamples(t *testing.T) {
 
 	actual, err := plainDocsParser(&docFile, g)
 	require.NoError(t, err)
-	hclBlock := hclExampleRegexp.FindString(string(actual))
+	hclBlock := regexp.MustCompile(`(?s)\{\{% choosable language hcl %\}\}.*?\{\{% /choosable %\}\}`).
+		FindString(string(actual))
 	require.NotEmpty(t, hclBlock, "expected an HCL example in:\n%s", actual)
 	assert.Contains(t, hclBlock, "terraform {", "edit rules rewrote the HCL example's terraform block")
 	assert.Contains(t, hclBlock, `input_one = "managed-by-terraform"`, "edit rules rewrote a string in the HCL example")
 	assert.Contains(t, string(actual), "Use the Pulumi provider from pulumi.",
 		"edit rules no longer rewrite prose outside HCL examples")
-}
-
-func TestRestoreHCLExamplesMissingPlaceholder(t *testing.T) {
-	t.Parallel()
-	shielded, examples := shieldHCLExamples([]byte("{{% choosable language hcl %}}x{{% /choosable %}}"))
-	_, err := restoreHCLExamples(bytes.ReplaceAll(shielded, hclExamplePlaceholder(0), nil), examples)
-	require.ErrorContains(t, err, "removed HCL example placeholder")
 }
 
 func TestDisplayNameFallback(t *testing.T) {

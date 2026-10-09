@@ -254,6 +254,7 @@ resource "aws_ec2_instance" "server" {
   ami = random_id.server.keepers.amiId
 }
 ```
+
 {{% /choosable %}}
 {{< /chooser >}}
 
