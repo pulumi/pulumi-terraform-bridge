@@ -593,6 +593,52 @@ func TestSDKv2DetailedDiffSetDefault(t *testing.T) {
 	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
 }
 
+// TestSDKv2DetailedDiffSetBlockOptionalUnspecified reproduces the issue where
+// adding an element to a TypeSet of blocks falls back to a whole-set UPDATE
+// when the block has an Optional (non-Computed, no Default) field that the user
+// doesn't specify. TF fills in the zero value ("") in the planned state, but the
+// user input has null for that field, causing validInputsFromPlan to fail.
+//
+// This is the root cause of noisy diffs on resources like google_compute_url_map
+// where host_rule has an optional description field.
+//
+// See https://github.com/pulumi/pulumi-terraform-bridge/issues/3324
+func TestSDKv2DetailedDiffSetBlockOptionalUnspecified(t *testing.T) {
+	t.Parallel()
+
+	// Schema mimics google_compute_url_map's host_rule:
+	// - nested_prop is like pathMatcher/hosts (Required)
+	// - description is Optional, not Computed, no Default
+	blockSchemaOptionalUnspecified := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"description": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	diffSchemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
+		// User only specifies nested_prop, never description.
+		// TF plan will fill description with "" for all elements.
+		{"block optional unspecified", blockSchemaOptionalUnspecified, nestedListValueMaker},
+	}
+
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
+}
+
 func TestSDKv2DetailedDiffSetMaxItemsOne(t *testing.T) {
 	t.Parallel()
 
