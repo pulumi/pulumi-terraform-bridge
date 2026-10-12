@@ -310,6 +310,14 @@ const example = new azuredevops.Project("example", {
 				"```hcl\nterraform {\n  required_providers {\n    x = {\n      source = \"hashicorp/x\"\n" +
 				"    }\n  }\n}\n```\n\nThe function reads pulumi data.\n"),
 		},
+		{
+			name:  "Post-code-translation text rules skip an unclosed HCL code block",
+			phase: info.PostCodeTranslation,
+			docFile: DocFile{
+				Content: []byte("Configure the Terraform provider.\n\n```hcl\nterraform {}"),
+			},
+			expected: []byte("Configure the Pulumi provider.\n\n```hcl\nterraform {}"),
+		},
 	}
 	edits := defaultEditRules()
 

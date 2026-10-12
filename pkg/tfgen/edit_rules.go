@@ -150,14 +150,18 @@ func proseReplace(from, to string) tfbridge.DocsEdit {
 	return tfbridge.DocsEdit{
 		Path: "*",
 		Edit: func(_ string, content []byte) ([]byte, error) {
-			const codeFence = "```"
 			var result []byte
 			start := 0
 			for _, block := range findCodeBlocks(content) {
 				if block.language != "hcl" {
 					continue
 				}
-				end := block.end + len(codeFence)
+				// block.end is the first byte of the closing fence line. An unclosed block runs to the
+				// end of the document.
+				end := len(content)
+				if eol := bytes.IndexByte(content[block.end:], '\n'); eol >= 0 {
+					end = block.end + eol
+				}
 				result = append(result, r.ReplaceAll(content[start:block.start], bTo)...)
 				result = append(result, content[block.start:end]...)
 				start = end
