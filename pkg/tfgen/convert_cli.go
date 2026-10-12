@@ -30,8 +30,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	hcl2hcl "github.com/pulumi-labs/pulumi-hcl/pkg/codegen"
 	hcl2dotnet "github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3/codegen"
+	hcl2hcl "github.com/pulumi/pulumi-hcl/pkg/codegen"
 	hcl2java "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	hcl2yaml "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	hcl2go "github.com/pulumi/pulumi/pkg/v3/codegen/go"

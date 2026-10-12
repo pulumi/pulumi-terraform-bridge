@@ -259,6 +259,12 @@ func processConfigYaml(pulumiYAML, lang string) string {
 	return pulumiYAMLFile
 }
 
+// The markers around every translated example in installation docs.
+const (
+	chooserStart = `{{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}` + "\n"
+	chooserEnd   = "{{< /chooser >}}\n"
+)
+
 func convertExample(g *Generator, code string, exampleNumber int) (string, error) {
 	// Make an example to record in the cliConverter.
 	converter := g.cliConverter()
@@ -282,11 +288,7 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	}
 
 	langs := genLanguageToSlice(g.language)
-	const (
-		chooserStart = `{{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}` + "\n"
-		chooserEnd   = "{{< /chooser >}}\n"
-		choosableEnd = "\n{{% /choosable %}}\n"
-	)
+	const choosableEnd = "\n{{% /choosable %}}\n"
 	exampleContent := chooserStart
 	successfulConversion := false
 

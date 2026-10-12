@@ -19,13 +19,17 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
+
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func defaultEditRules() editRules {
-	return editRules{
+	return slices.Concat([]tfbridge.DocsEdit{
 		// Replace content such as "`terraform plan`" with "`pulumi preview`"
 		boundedReplace("[tT]erraform [pP]lan", "pulumi preview"),
 		// Replace content such as " Terraform Apply." with " pulumi up."
@@ -48,38 +52,39 @@ func defaultEditRules() editRules {
 		// on all docs.
 		skipSectionHeadersEdit(),
 		removeTfVersionMentions(),
+	},
 		// Replace "providers.tf" with "Pulumi.yaml"
-		reReplace(`providers.tf`, `Pulumi.yaml`, info.PostCodeTranslation),
-		reReplace(`terraform init`, `pulumi up`, info.PostCodeTranslation),
+		proseReplace(`providers.tf`, `Pulumi.yaml`),
+		proseReplace(`terraform init`, `pulumi up`),
 		// Replace all " T/terraform" with " P/pulumi"
-		reReplace(`Terraform`, `Pulumi`, info.PostCodeTranslation),
-		reReplace(`terraform`, `pulumi`, info.PostCodeTranslation),
+		proseReplace(`Terraform`, `Pulumi`),
+		proseReplace(`terraform`, `pulumi`),
 		// Replace all "H/hashicorp" strings
-		reReplace(`Hashicorp`, `Pulumi`, info.PostCodeTranslation),
-		reReplace(`hashicorp`, `pulumi`, info.PostCodeTranslation),
+		proseReplace(`Hashicorp`, `Pulumi`),
+		proseReplace(`hashicorp`, `pulumi`),
 		// Reformat certain headers
-		reReplace(`The following arguments are supported`,
-			`The following configuration inputs are supported`, info.PostCodeTranslation),
-		reReplace(`The provider supports the following arguments`,
-			`The following configuration inputs are supported`, info.PostCodeTranslation),
-		reReplace(`Argument Reference`,
-			`Configuration Reference`, info.PostCodeTranslation),
-		reReplace(`# Arguments`,
-			`# Configuration Reference`, info.PostCodeTranslation),
-		reReplace(`# Configuration Schema`,
-			`# Configuration Reference`, info.PostCodeTranslation),
-		reReplace(`# Schema`,
-			`# Configuration Reference`, info.PostCodeTranslation),
-		reReplace("### Optional\n", "", info.PostCodeTranslation),
-		reReplace(`block contains the following arguments`,
-			`input has the following nested fields`, info.PostCodeTranslation),
-		reReplace(`provider block`, `provider configuration`, info.PostCodeTranslation),
-		reReplace("`provider` block", "provider configuration", info.PostCodeTranslation),
-		reReplace("Data Source", "Function", info.PostCodeTranslation),
-		reReplace("data source", "function", info.PostCodeTranslation),
-		reReplace("Datasource", "Function", info.PostCodeTranslation),
-		reReplace("datasource", "function", info.PostCodeTranslation),
-	}
+		proseReplace(`The following arguments are supported`,
+			`The following configuration inputs are supported`),
+		proseReplace(`The provider supports the following arguments`,
+			`The following configuration inputs are supported`),
+		proseReplace(`Argument Reference`,
+			`Configuration Reference`),
+		proseReplace(`# Arguments`,
+			`# Configuration Reference`),
+		proseReplace(`# Configuration Schema`,
+			`# Configuration Reference`),
+		proseReplace(`# Schema`,
+			`# Configuration Reference`),
+		proseReplace("### Optional\n", ""),
+		proseReplace(`block contains the following arguments`,
+			`input has the following nested fields`),
+		proseReplace(`provider block`, `provider configuration`),
+		proseReplace("`provider` block", "provider configuration"),
+		proseReplace("Data Source", "Function"),
+		proseReplace("data source", "function"),
+		proseReplace("Datasource", "Function"),
+		proseReplace("datasource", "function"),
+	)
 }
 
 type editRules []tfbridge.DocsEdit
@@ -138,6 +143,131 @@ func reReplace(from, to string, phase info.EditPhase) tfbridge.DocsEdit {
 		},
 		Phase: phase,
 	}
+}
+
+// proseReplace creates a regex based replace for text that is not translated code.
+//
+// It returns two edits. Before code translation, the comments inside code blocks that code translation will
+// convert (see isHCL) are edited, so the converter carries the change into every generated language while the
+// HCL itself stays valid. After code translation, everything outside translated code is edited: prose and the
+// code blocks that were never translated.
+func proseReplace(from, to string) []tfbridge.DocsEdit {
+	r := regexp.MustCompile(from)
+	bTo := []byte(to)
+	replace := func(b []byte) []byte { return r.ReplaceAll(b, bTo) }
+	keep := func(b []byte) []byte { return b }
+	return []tfbridge.DocsEdit{
+		{
+			Path: "*",
+			Edit: func(_ string, content []byte) ([]byte, error) {
+				return editAroundCodeBlocks(content, keep, func(block codeBlock, span []byte) []byte {
+					codeStart := bytes.IndexByte(span, '\n') + 1
+					codeEnd := block.end - block.start
+					code := span[codeStart:codeEnd]
+					if !isHCL(block.language, string(code)) {
+						return span
+					}
+					edited := append([]byte{}, span[:codeStart]...)
+					edited = append(edited, replaceHCLComments(code, replace)...)
+					return append(edited, span[codeEnd:]...)
+				}), nil
+			},
+			Phase: info.PreCodeTranslation,
+		},
+		{
+			Path: "*",
+			Edit: func(_ string, content []byte) ([]byte, error) {
+				return editAroundTranslatedCode(content, replace), nil
+			},
+			Phase: info.PostCodeTranslation,
+		},
+	}
+}
+
+// editAroundCodeBlocks rebuilds content by applying prose to each stretch of text outside a fenced code block
+// and block to each fenced code block. The span passed to block runs from the opening fence to the end of the
+// closing fence line.
+func editAroundCodeBlocks(
+	content []byte, prose func([]byte) []byte, block func(codeBlock, []byte) []byte,
+) []byte {
+	var result []byte
+	start := 0
+	for _, b := range findCodeBlocks(content) {
+		// b.end is the first byte of the closing fence line. An unclosed block runs to the end of the
+		// document.
+		end := len(content)
+		if eol := bytes.IndexByte(content[b.end:], '\n'); eol >= 0 {
+			end = b.end + eol
+		}
+		result = append(result, prose(content[start:b.start])...)
+		result = append(result, block(b, content[b.start:end])...)
+		start = end
+	}
+	return append(result, prose(content[start:])...)
+}
+
+// replaceHCLComments applies replace to each comment token in code and copies every other byte through.
+//
+// The lexer still returns tokens for invalid HCL, which matters because isHCL guesses the language of untagged
+// blocks, so its diagnostics are not needed.
+func replaceHCLComments(code []byte, replace func([]byte) []byte) []byte {
+	tokens, _ := hclsyntax.LexConfig(code, "", hcl.InitialPos)
+	var result []byte
+	last := 0
+	for _, tok := range tokens {
+		if tok.Type != hclsyntax.TokenComment {
+			continue
+		}
+		start, end := tok.Range.Start.Byte, tok.Range.End.Byte
+		result = append(result, code[last:start]...)
+		result = append(result, replace(code[start:end])...)
+		last = end
+	}
+	return append(result, code[last:]...)
+}
+
+// translatedCodeMarkers pairs the start and end of each region that code translation writes: the chooser that
+// convertExample emits for installation docs and the code chooser comments that convertExamplesInner emits for
+// resource docs.
+//
+// TODO: A provider configuration example without resource code skips the chooser (see the early return in
+// convertExample) and is emitted as a bare YAML code block. That block is translated code too, but nothing
+// marks it, so post-translation edits still apply to it.
+var translatedCodeMarkers = [][2]string{
+	{chooserStart, chooserEnd},
+	{startPulumiCodeChooser, endPulumiCodeChooser},
+}
+
+// editAroundTranslatedCode applies edit to every stretch of content outside translated code.
+func editAroundTranslatedCode(content []byte, edit func([]byte) []byte) []byte {
+	var result []byte
+	for {
+		start, end := nextTranslatedCode(content)
+		if start < 0 {
+			return append(result, edit(content)...)
+		}
+		result = append(result, edit(content[:start])...)
+		result = append(result, content[start:end]...)
+		content = content[end:]
+	}
+}
+
+// nextTranslatedCode returns the bounds of the first translated code region in content, or -1, -1 when there is
+// none. A region without an end marker runs to the end of content.
+func nextTranslatedCode(content []byte) (start, end int) {
+	start, end = -1, -1
+	for _, markers := range translatedCodeMarkers {
+		s := bytes.Index(content, []byte(markers[0]))
+		if s < 0 || (start >= 0 && s > start) {
+			continue
+		}
+		e := len(content)
+		if i := bytes.Index(content[s:], []byte(markers[1])); i >= 0 {
+			e = s + i + len(markers[1])
+		}
+		start, end = s, e
+	}
+	return start, end
 }
 
 func fixupImports() tfbridge.DocsEdit {

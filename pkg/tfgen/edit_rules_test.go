@@ -296,6 +296,64 @@ const example = new azuredevops.Project("example", {
     This Resource is Managed by Terraform
 `),
 		},
+		{
+			name:  "Pre-translation rules edit only the comments of code blocks that code translation converts",
+			phase: info.PreCodeTranslation,
+			docFile: DocFile{
+				Content: []byte("Configure the Terraform provider from hashicorp.\n\n" +
+					"```typescript\nconst source = \"terraform\"; // terraform\n```\n\n" +
+					"```hcl\n# terraform block\nterraform {\n  required_providers {\n    x = {\n" +
+					"      source = \"hashicorp/x\"\n    }\n  }\n}\n```\n\n" +
+					"```terraform\nprovider \"x\" {\n  source = \"hashicorp/x\" // from hashicorp\n}\n```\n\n" +
+					"```tf\n/* managed by\n   terraform */\n```\n\n" +
+					"```\n# terraform\nresource \"x_y\" \"terraform\" {\n  source = \"hashicorp/x\"\n}\n```\n\n" +
+					"```\n# terraform\nSee the hashicorp docs.\n```\n\n" +
+					"The data source reads hashicorp data.\n"),
+			},
+			expected: []byte("Configure the Terraform provider from hashicorp.\n\n" +
+				"```typescript\nconst source = \"terraform\"; // terraform\n```\n\n" +
+				"```hcl\n# pulumi block\nterraform {\n  required_providers {\n    x = {\n" +
+				"      source = \"hashicorp/x\"\n    }\n  }\n}\n```\n\n" +
+				"```terraform\nprovider \"x\" {\n  source = \"hashicorp/x\" // from pulumi\n}\n```\n\n" +
+				"```tf\n/* managed by\n   pulumi */\n```\n\n" +
+				"```\n# pulumi\nresource \"x_y\" \"terraform\" {\n  source = \"hashicorp/x\"\n}\n```\n\n" +
+				"```\n# terraform\nSee the hashicorp docs.\n```\n\n" +
+				"The data source reads hashicorp data.\n"),
+		},
+		{
+			name:  "Pre-translation rules edit the comments of an unclosed HCL code block",
+			phase: info.PreCodeTranslation,
+			docFile: DocFile{
+				Content: []byte("Configure the Terraform provider.\n\n```hcl\n# terraform\nterraform {}"),
+			},
+			expected: []byte("Configure the Terraform provider.\n\n```hcl\n# pulumi\nterraform {}"),
+		},
+		{
+			name:  "Post-translation rules skip translated code",
+			phase: info.PostCodeTranslation,
+			docFile: DocFile{
+				Content: []byte("Configure the Terraform provider from hashicorp.\n\n" +
+					chooserStart +
+					"{{% choosable language go %}}\n```go\nimport \"github.com/pulumi/pulumi-terraform-provider/sdks/go/x\"\n```\n" +
+					"{{% /choosable %}}\n" +
+					"{{% choosable language hcl %}}\n```hcl\nterraform {\n  required_providers {\n    x = {\n" +
+					"      source = \"hashicorp/x\"\n    }\n  }\n}\n```\n{{% /choosable %}}\n" + chooserEnd + "\n" +
+					startPulumiCodeChooser + "\n```typescript\nconst source = \"terraform\";\n```\n" +
+					endPulumiCodeChooser + "\n\n" +
+					"```sh\n$ terraform import x_y.example id\n```\n\n" +
+					"The data source reads hashicorp data.\n"),
+			},
+			expected: []byte("Configure the Pulumi provider from pulumi.\n\n" +
+				chooserStart +
+				"{{% choosable language go %}}\n```go\nimport \"github.com/pulumi/pulumi-terraform-provider/sdks/go/x\"\n```\n" +
+				"{{% /choosable %}}\n" +
+				"{{% choosable language hcl %}}\n```hcl\nterraform {\n  required_providers {\n    x = {\n" +
+				"      source = \"hashicorp/x\"\n    }\n  }\n}\n```\n{{% /choosable %}}\n" + chooserEnd + "\n" +
+				startPulumiCodeChooser + "\n```typescript\nconst source = \"terraform\";\n```\n" +
+				endPulumiCodeChooser + "\n\n" +
+				"```sh\n$ pulumi import x_y.example id\n```\n\n" +
+				"The function reads pulumi data.\n"),
+		},
 	}
 	edits := defaultEditRules()
 
