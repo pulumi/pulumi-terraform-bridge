@@ -15,6 +15,7 @@ import (
 	"github.com/yuin/goldmark/util"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -22,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
-func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
+func plainDocsParser(docFile *DocFile, g *Generator, secretKeys map[string]bool) ([]byte, error) {
 	// Apply pre-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
 	// the default pre-code translation phase.
 	contentBytes, err := g.editRules.apply(docFile.FileName, docFile.Content, info.PreCodeTranslation)
@@ -61,7 +62,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	overviewHeader := getOverviewHeader(content)
 
 	// Translate code blocks to Pulumi
-	contentStr, err := translateCodeBlocks(string(content), g)
+	contentStr, err := translateCodeBlocks(string(content), g, secretKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +200,7 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 	return content
 }
 
-func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
+func translateCodeBlocks(contentStr string, g *Generator, secretKeys map[string]bool) (string, error) {
 	var returnContent string
 	// Extract code blocks
 	const codeFence string = "```"
@@ -220,7 +221,7 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 
 		// Only convert code blocks that we have reasonable suspicion of actually being Terraform.
 		if code := block.code([]byte(contentStr)); isHCL(block.language, code) {
-			exampleContent, err := convertExample(g, code, i)
+			exampleContent, err := convertExample(g, code, i, secretKeys)
 			if err != nil {
 				return "", err
 			}
@@ -237,26 +238,118 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	return returnContent, nil
 }
 
-// This function renders the Pulumi.yaml config file for a given language if configuration is included in the example.
-func processConfigYaml(pulumiYAML, lang string) string {
-	// Replace the project name from the default `/` to a more descriptive name
-	nameRegex := regexp.MustCompile(`name: /*`)
-	pulumiYAMLFile := nameRegex.ReplaceAllString(pulumiYAML, "name: configuration-example")
-	// Replace the runtime with the language specified.
-	// Unfortunately, lang strings don't quite map to runtime strings.
-	if lang == "typescript" {
-		lang = "nodejs"
+// renderConfigSetCommands renders the provider config from a converted example's Pulumi.yaml as a bash block of
+// `pulumi config set` commands. Keys in secretKeys (Pulumi config names without the package prefix) are set with
+// --secret. Returns "" if the Pulumi.yaml has no config.
+func renderConfigSetCommands(pulumiYAML string, secretKeys map[string]bool) (string, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(pulumiYAML), &doc); err != nil {
+		return "", fmt.Errorf("parsing converted Pulumi.yaml: %w", err)
 	}
-	if lang == "csharp" {
-		lang = "dotnet"
+	if len(doc.Content) == 0 {
+		return "", nil
 	}
-	runtimeRegex := regexp.MustCompile(`runtime: terraform`)
-	pulumiYAMLFile = runtimeRegex.ReplaceAllString(pulumiYAMLFile, fmt.Sprintf("runtime: %s", lang))
-	// Add descriptive code comment
-	pulumiYAMLFile = "```yaml\n" +
-		"# Pulumi.yaml provider configuration file\n" +
-		pulumiYAMLFile + "\n```\n"
-	return pulumiYAMLFile
+	config := mappingValue(doc.Content[0], "config")
+	if config == nil || config.Kind != yaml.MappingNode {
+		return "", nil
+	}
+
+	var commands strings.Builder
+	for i := 0; i+1 < len(config.Content); i += 2 {
+		key := config.Content[i].Value
+		value := mappingValue(config.Content[i+1], "value")
+		if value == nil {
+			continue
+		}
+		_, name, _ := strings.Cut(key, ":")
+		secret := secretKeys[name]
+		if value.Kind == yaml.ScalarNode {
+			writeConfigSetCommand(&commands, key, value.Value, secret, false)
+			continue
+		}
+		for _, leaf := range configLeaves(key, value) {
+			writeConfigSetCommand(&commands, leaf.path, leaf.value, secret, true)
+		}
+	}
+	if commands.Len() == 0 {
+		return "", nil
+	}
+	return "```bash\n" + commands.String() + "```\n", nil
+}
+
+// mappingValue returns the value node for key in a YAML mapping node, or nil if it is absent.
+func mappingValue(node *yaml.Node, key string) *yaml.Node {
+	if node == nil || node.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i].Value == key {
+			return node.Content[i+1]
+		}
+	}
+	return nil
+}
+
+type configLeaf struct{ path, value string }
+
+// configLeaves flattens a nested config value into `pulumi config set --path` paths and scalar values.
+func configLeaves(path string, node *yaml.Node) []configLeaf {
+	switch node.Kind {
+	case yaml.MappingNode:
+		var leaves []configLeaf
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			leaves = append(leaves, configLeaves(path+"."+node.Content[i].Value, node.Content[i+1])...)
+		}
+		return leaves
+	case yaml.SequenceNode:
+		var leaves []configLeaf
+		for i, item := range node.Content {
+			leaves = append(leaves, configLeaves(fmt.Sprintf("%s[%d]", path, i), item)...)
+		}
+		return leaves
+	default:
+		return []configLeaf{{path, node.Value}}
+	}
+}
+
+func writeConfigSetCommand(w *strings.Builder, key, value string, secret, path bool) {
+	w.WriteString("pulumi config set ")
+	if secret {
+		w.WriteString("--secret ")
+	}
+	if path {
+		// Always quote paths: list indexes contain shell glob characters.
+		w.WriteString("--path '" + key + "'")
+	} else {
+		w.WriteString(shellQuote(key))
+	}
+	w.WriteString(" ")
+	w.WriteString(configValueArg(value))
+	w.WriteString("\n")
+}
+
+var terraformVarRef = regexp.MustCompile(`var\.([A-Za-z0-9_]+)`)
+
+// configValueArg renders a config value as a shell argument. The converter emits "TODO: <expr>" for values it cannot
+// translate, such as Terraform variable references; those become a placeholder named after the variable.
+func configValueArg(value string) string {
+	if expr, ok := strings.CutPrefix(value, "TODO: "); ok {
+		if m := terraformVarRef.FindStringSubmatch(expr); m != nil {
+			return "<" + m[1] + ">"
+		}
+		return "<value>"
+	}
+	return shellQuote(value)
+}
+
+var shellSafe = regexp.MustCompile(`^[A-Za-z0-9_@%+=:,./-]+$`)
+
+// shellQuote returns s unchanged when it needs no quoting in a POSIX shell, and single-quoted otherwise.
+func shellQuote(s string) string {
+	if shellSafe.MatchString(s) {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // The markers around every translated example in installation docs.
@@ -265,7 +358,7 @@ const (
 	chooserEnd   = "{{< /chooser >}}\n"
 )
 
-func convertExample(g *Generator, code string, exampleNumber int) (string, error) {
+func convertExample(g *Generator, code string, exampleNumber int, secretKeys map[string]bool) (string, error) {
 	// Make an example to record in the cliConverter.
 	converter := g.cliConverter()
 	fileName := fmt.Sprintf("configuration-installation-%d", exampleNumber)
@@ -274,17 +367,18 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		return "", err
 	}
 
-	// If both PCL and PulumiYAML fields are empty, we can return.
-	if pclExample.PulumiYAML == "" && pclExample.PCL == "" {
-		return "", nil
+	// Provider config is the same for every language, so render it once above the language chooser.
+	var configCommands string
+	if pclExample.PulumiYAML != "" {
+		configCommands, err = renderConfigSetCommands(pclExample.PulumiYAML, secretKeys)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	// If we have a valid provider config but no additional code, we only render a YAML configuration block
-	// with no choosers and an empty language runtime field
-	if pclExample.PulumiYAML != "" && pclExample.PCL == "" {
-		if pclExample.PCL == "" {
-			return processConfigYaml(pclExample.PulumiYAML, ""), nil
-		}
+	// If we have provider config but no additional code, we only render the config commands.
+	if pclExample.PCL == "" {
+		return configCommands, nil
 	}
 
 	langs := genLanguageToSlice(g.language)
@@ -296,12 +390,6 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	for _, lang := range langs {
 		choosableStart := fmt.Sprintf("{{%% choosable language %s %%}}\n", lang)
 
-		// Generate the Pulumi.yaml config file for each language. HCL programs do not use Pulumi.yaml.
-		var pulumiYAML string
-		if pclExample.PulumiYAML != "" && lang != "hcl" {
-			pulumiYAML = processConfigYaml(pclExample.PulumiYAML, lang)
-		}
-
 		// Generate language example
 		convertedLang, err := converter.singleExampleFromPCLToLanguage(pclExample, lang)
 		if err != nil {
@@ -310,13 +398,16 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		if convertedLang != exampleUnavailable {
 			successfulConversion = true
 		}
-		exampleContent += choosableStart + pulumiYAML + convertedLang + choosableEnd
+		exampleContent += choosableStart + convertedLang + choosableEnd
 	}
 
 	if successfulConversion {
-		return exampleContent + chooserEnd, nil
+		if configCommands != "" {
+			configCommands += "\n"
+		}
+		return configCommands + exampleContent + chooserEnd, nil
 	}
-	return "", nil
+	return configCommands, nil
 }
 
 type titleRemover struct{}

@@ -119,7 +119,7 @@ func TestPlainDocsParser(t *testing.T) {
 				language:  RegistryDocs,
 				pkg:       tokens.NewPackageToken("libvirt"),
 			}
-			actual, err := plainDocsParser(&tt.docFile, g)
+			actual, err := plainDocsParser(&tt.docFile, g, map[string]bool{"password": true})
 			require.NoError(t, err)
 			autogold.ExpectFile(t, autogold.Raw(string(actual)))
 		})
@@ -173,7 +173,7 @@ func TestPlainDocsParserPreservesHCLExamples(t *testing.T) {
 		"}\n" +
 		"```\n")}
 
-	actual, err := plainDocsParser(&docFile, g)
+	actual, err := plainDocsParser(&docFile, g, nil)
 	require.NoError(t, err)
 	hclBlock := regexp.MustCompile(`(?s)\{\{% choosable language hcl %\}\}.*?\{\{% /choosable %\}\}`).
 		FindString(string(actual))
@@ -573,7 +573,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 				// process cannot access the file because it is being used by another process.
 				t.Skipf("Skipping on Windows due to a test setup issue")
 			}
-			actual, err := translateCodeBlocks(tt.contentStr, tt.g)
+			actual, err := translateCodeBlocks(tt.contentStr, tt.g, map[string]bool{"password": true})
 			require.NoError(t, err)
 			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
@@ -740,4 +740,130 @@ func assertEqualHTML(t *testing.T, expected, actual string) bool {
 		panic(err)
 	}
 	return assert.Equal(t, expectedBuf.String(), outputBuf.String())
+}
+
+func TestRenderConfigSetCommands(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		pulumiYAML string
+		secretKeys map[string]bool
+		expected   string
+	}{
+		{
+			name: "scalars",
+			pulumiYAML: `name: /
+runtime: terraform
+config:
+    simple:authUrl:
+        value: http://myauthurl:5000/v3
+    simple:insecure:
+        value: true
+    simple:maxRetries:
+        value: 3
+`,
+			expected: "```bash\n" +
+				"pulumi config set simple:authUrl http://myauthurl:5000/v3\n" +
+				"pulumi config set simple:insecure true\n" +
+				"pulumi config set simple:maxRetries 3\n" +
+				"```\n",
+		},
+		{
+			name: "secret",
+			pulumiYAML: `config:
+    simple:password:
+        value: pwd
+    simple:userName:
+        value: admin
+`,
+			secretKeys: map[string]bool{"password": true},
+			expected: "```bash\n" +
+				"pulumi config set --secret simple:password pwd\n" +
+				"pulumi config set simple:userName admin\n" +
+				"```\n",
+		},
+		{
+			name: "unconvertible values",
+			pulumiYAML: `config:
+    vsphere:password:
+        value: 'TODO: var.vsphere_password'
+    spotinst:token:
+        value: 'TODO: "${var.spotinst_token}"'
+    kafka:accessKey:
+        value: 'TODO: data.vault_aws_access_credentials.creds.access_key'
+`,
+			secretKeys: map[string]bool{"password": true},
+			expected: "```bash\n" +
+				"pulumi config set --secret vsphere:password <vsphere_password>\n" +
+				"pulumi config set spotinst:token <spotinst_token>\n" +
+				"pulumi config set kafka:accessKey <value>\n" +
+				"```\n",
+		},
+		{
+			name: "nested map and list",
+			pulumiYAML: `config:
+    aws:allowedAccountIds:
+        value:
+            - "123"
+            - "456"
+    aws:assumeRole:
+        value:
+            roleArn: arn:aws:iam::123:role/x
+            tags:
+                team: infra
+`,
+			expected: "```bash\n" +
+				"pulumi config set --path 'aws:allowedAccountIds[0]' 123\n" +
+				"pulumi config set --path 'aws:allowedAccountIds[1]' 456\n" +
+				"pulumi config set --path 'aws:assumeRole.roleArn' arn:aws:iam::123:role/x\n" +
+				"pulumi config set --path 'aws:assumeRole.tags.team' infra\n" +
+				"```\n",
+		},
+		{
+			name: "secret nested",
+			pulumiYAML: `config:
+    simple:auth:
+        value:
+            token: abc
+`,
+			secretKeys: map[string]bool{"auth": true},
+			expected: "```bash\n" +
+				"pulumi config set --secret --path 'simple:auth.token' abc\n" +
+				"```\n",
+		},
+		{
+			name: "quoting",
+			pulumiYAML: `config:
+    simple:a:
+        value: hello world
+    simple:b:
+        value: $HOME
+    simple:c:
+        value: it's
+    simple:d:
+        value: ""
+`,
+			expected: "```bash\n" +
+				"pulumi config set simple:a 'hello world'\n" +
+				"pulumi config set simple:b '$HOME'\n" +
+				"pulumi config set simple:c 'it'\\''s'\n" +
+				"pulumi config set simple:d ''\n" +
+				"```\n",
+		},
+		{
+			name:       "no config",
+			pulumiYAML: "name: /\nruntime: terraform\n",
+			expected:   "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual, err := renderConfigSetCommands(tt.pulumiYAML, tt.secretKeys)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
 }
