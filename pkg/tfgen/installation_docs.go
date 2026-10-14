@@ -288,8 +288,14 @@ func renderConfigSetCommands(leaves []configLeaf) string {
 // exampleConfigLeaves returns the config set by the provider blocks in an HCL example.
 //
 // This provider's blocks are read from the HCL against its schema. The converter's Pulumi.yaml can't be used for
-// them: it drops nested blocks in provider config and keeps nested keys in Terraform casing. Config for any other
-// provider still comes from the converter's Pulumi.yaml, because only the converter knows that provider's schema.
+// them: it drops nested blocks in provider config and keeps nested keys in Terraform casing.
+//
+// Config for any other provider still comes from the converter's Pulumi.yaml, because only the converter knows that
+// provider's Pulumi package name and schema. Install docs rarely configure another provider, but it does happen. For
+// example, databricks configures azurerm alongside itself:
+// https://registry.terraform.io/providers/databricks/databricks/latest/docs#authenticating-with-azure-managed-service-principal-using-github-openid-connect-oidc
+//
+//nolint:lll // The example URL is longer than the line limit.
 func exampleConfigLeaves(g *Generator, code, pulumiYAML string) ([]configLeaf, error) {
 	leaves := providerBlockConfigLeaves(g, code)
 	other, err := pulumiYAMLConfigLeaves(pulumiYAML, func(key string) bool {
