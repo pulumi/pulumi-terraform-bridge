@@ -275,7 +275,7 @@ func renderConfigSetCommands(leaves []configLeaf) string {
 		}
 		if leaf.nested() {
 			// Always quote paths: list indexes contain shell glob characters.
-			w.WriteString("--path '" + leaf.path + "'")
+			w.WriteString("--path '" + strings.ReplaceAll(leaf.path, "'", `'\''`) + "'")
 		} else {
 			w.WriteString(shellQuote(leaf.path))
 		}
@@ -424,12 +424,21 @@ func sortedConfigLeaves(entries []configEntry) []configLeaf {
 	return leaves
 }
 
+// configChildPath appends a key to a `pulumi config set --path` path.
 func configChildPath(parent, name string) string {
 	if strings.HasSuffix(parent, ":") {
 		return parent + name
 	}
+	// --path splits on "." and "[", so a key that isn't a plain identifier must be written as ["key"]. The only escape
+	// inside the quotes is \"; other backslashes are literal. At the time of writing, no provider's install docs use
+	// such a key in provider config; this is here for safety, since a wrong path silently stores the value elsewhere.
+	if !configPathIdentifier.MatchString(name) {
+		return parent + `["` + strings.ReplaceAll(name, `"`, `\"`) + `"]`
+	}
 	return parent + "." + name
 }
+
+var configPathIdentifier = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 func (w configWalker) body(path string, body *hclsyntax.Body, n configNode, secret bool) []configLeaf {
 	var entries []configEntry
@@ -570,7 +579,7 @@ func yamlConfigLeaves(path string, node *yaml.Node) []configLeaf {
 	case yaml.MappingNode:
 		var leaves []configLeaf
 		for i := 0; i+1 < len(node.Content); i += 2 {
-			leaves = append(leaves, yamlConfigLeaves(path+"."+node.Content[i].Value, node.Content[i+1])...)
+			leaves = append(leaves, yamlConfigLeaves(configChildPath(path, node.Content[i].Value), node.Content[i+1])...)
 		}
 		return leaves
 	case yaml.SequenceNode:

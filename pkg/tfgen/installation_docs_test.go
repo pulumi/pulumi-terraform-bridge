@@ -851,6 +851,26 @@ func TestRenderConfigSetCommands(t *testing.T) {
 				"pulumi config set --path 'simple:tags.team' infra\n",
 		},
 		{
+			// pulumi config set --path splits on "." and "[", so such map keys must be bracketed and quoted.
+			name: "map keys that aren't identifiers",
+			hcl: `provider "simple" {
+  tags = {
+    "kubernetes.io/role" = "web"
+    "a[0]"               = "x"
+    "say \"hi\""         = "y"
+    "it's"               = "z"
+    "my-key"             = "w"
+    "back\\slash"        = "b"
+  }
+}`,
+			expected: `pulumi config set --path 'simple:tags["a[0]"]' x` + "\n" +
+				`pulumi config set --path 'simple:tags["back\slash"]' b` + "\n" +
+				`pulumi config set --path 'simple:tags["it'\''s"]' z` + "\n" +
+				`pulumi config set --path 'simple:tags["kubernetes.io/role"]' web` + "\n" +
+				`pulumi config set --path 'simple:tags.my-key' w` + "\n" +
+				`pulumi config set --path 'simple:tags["say \"hi\""]' y` + "\n",
+		},
+		{
 			name: "secret nested in a block",
 			hcl: `provider "simple" {
   app_auth {
@@ -951,11 +971,16 @@ func TestPulumiYAMLConfigLeaves(t *testing.T) {
             roleArn: arn:aws:iam::123:role/x
             tags:
                 - infra
+    aws:defaultTags:
+        value:
+            tags:
+                kubernetes.io/role: web
 `, func(key string) bool { return strings.HasPrefix(key, "simple:") })
 	require.NoError(t, err)
 	assert.Equal(t, "```bash\n"+
 		"pulumi config set aws:region us-west-2\n"+
 		"pulumi config set --path 'aws:assumeRole.roleArn' arn:aws:iam::123:role/x\n"+
 		"pulumi config set --path 'aws:assumeRole.tags[0]' infra\n"+
+		"pulumi config set --path 'aws:defaultTags.tags[\"kubernetes.io/role\"]' web\n"+
 		"```\n", renderConfigSetCommands(leaves))
 }
