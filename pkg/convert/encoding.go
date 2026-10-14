@@ -42,7 +42,13 @@ func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) 
 	if e.ProviderInfo != nil {
 		schemaInfos = e.ProviderInfo.Config
 	}
-	enc, err := NewObjectEncoder(ObjectSchema{schema, schemaInfos, &configType})
+
+	// A dynamic and static projection of the same TF provider may be in the same program,
+	// and they will disagree on `MaxItems: 1`. We fold provider configurations that are
+	// off by a `MaxItems: 1` shaped change.
+	mctx := newSchemaMapContext(schema, schemaInfos)
+	mctx.promoteToCollection = true
+	enc, err := newObjectEncoderWithContext(mctx, configType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for provider config: %w", err)
 	}
@@ -200,7 +206,11 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 		if err != nil {
 			return nil, err
 		}
-		return newListEncoder(tt.ElementType, elementEncoder)
+		enc, err := newListEncoder(tt.ElementType, elementEncoder)
+		if err != nil {
+			return nil, err
+		}
+		return promoteToCollection(pctx, enc), nil
 	case tftypes.Map:
 		elctx, err := pctx.Element()
 		if err != nil {
@@ -220,7 +230,11 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 		if err != nil {
 			return nil, err
 		}
-		return newSetEncoder(tt.ElementType, elementEncoder)
+		enc, err := newSetEncoder(tt.ElementType, elementEncoder)
+		if err != nil {
+			return nil, err
+		}
+		return promoteToCollection(pctx, enc), nil
 	case tftypes.Tuple:
 		return deriveTupleEncoder(pctx, tt)
 	default:

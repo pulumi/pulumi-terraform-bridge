@@ -67,8 +67,10 @@ func (os ObjectSchema) objectType() tftypes.Object {
 }
 
 func NewObjectEncoder(os ObjectSchema) (Encoder, error) {
-	mctx := newSchemaMapContext(os.SchemaMap, os.SchemaInfos)
-	objectType := os.objectType()
+	return newObjectEncoderWithContext(newSchemaMapContext(os.SchemaMap, os.SchemaInfos), os.objectType())
+}
+
+func newObjectEncoderWithContext(mctx *schemaMapContext, objectType tftypes.Object) (Encoder, error) {
 	propertyEncoders, err := buildPropertyEncoders(mctx, objectType)
 	if err != nil {
 		return nil, err
