@@ -48,7 +48,7 @@ As the provider does not use libvirt on the client side, not all connection URI 
 
 ```bash
 pulumi config set simple-provider:authUrl http://myauthurl:5000/v3
-pulumi config set --secret simple-provider:password pwd
+pulumi config set simple-provider:password pwd
 pulumi config set simple-provider:region RegionOne
 pulumi config set simple-provider:tenantName admin
 pulumi config set simple-provider:userName admin

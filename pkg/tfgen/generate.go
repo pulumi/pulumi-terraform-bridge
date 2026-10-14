@@ -1192,13 +1192,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "failed to obtain an index.md file for this provider")
 		}
-		secretConfigKeys := map[string]bool{}
-		for name, v := range pulumiPackageSpec.Config.Variables {
-			if v.Secret {
-				secretConfigKeys[name] = true
-			}
-		}
-		content, err := plainDocsParser(installationFile, g, secretConfigKeys)
+		content, err := plainDocsParser(installationFile, g)
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "failed to parse installation docs")
 		}

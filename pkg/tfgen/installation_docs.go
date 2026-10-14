@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
@@ -13,6 +17,7 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
+	"github.com/zclconf/go-cty/cty"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"gopkg.in/yaml.v3"
@@ -21,9 +26,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func plainDocsParser(docFile *DocFile, g *Generator, secretKeys map[string]bool) ([]byte, error) {
+func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Apply pre-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
 	// the default pre-code translation phase.
 	contentBytes, err := g.editRules.apply(docFile.FileName, docFile.Content, info.PreCodeTranslation)
@@ -62,7 +68,7 @@ func plainDocsParser(docFile *DocFile, g *Generator, secretKeys map[string]bool)
 	overviewHeader := getOverviewHeader(content)
 
 	// Translate code blocks to Pulumi
-	contentStr, err := translateCodeBlocks(string(content), g, secretKeys)
+	contentStr, err := translateCodeBlocks(string(content), g)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +206,7 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 	return content
 }
 
-func translateCodeBlocks(contentStr string, g *Generator, secretKeys map[string]bool) (string, error) {
+func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	var returnContent string
 	// Extract code blocks
 	const codeFence string = "```"
@@ -221,7 +227,7 @@ func translateCodeBlocks(contentStr string, g *Generator, secretKeys map[string]
 
 		// Only convert code blocks that we have reasonable suspicion of actually being Terraform.
 		if code := block.code([]byte(contentStr)); isHCL(block.language, code) {
-			exampleContent, err := convertExample(g, code, i, secretKeys)
+			exampleContent, err := convertExample(g, code, i)
 			if err != nil {
 				return "", err
 			}
@@ -238,43 +244,305 @@ func translateCodeBlocks(contentStr string, g *Generator, secretKeys map[string]
 	return returnContent, nil
 }
 
-// renderConfigSetCommands renders the provider config from a converted example's Pulumi.yaml as a bash block of
-// `pulumi config set` commands. Keys in secretKeys (Pulumi config names without the package prefix) are set with
-// --secret. Returns "" if the Pulumi.yaml has no config.
-func renderConfigSetCommands(pulumiYAML string, secretKeys map[string]bool) (string, error) {
+// configLeaf is one `pulumi config set` command: a config key, or a `--path` path for a nested value, and its value.
+type configLeaf struct {
+	path, value string
+	secret      bool
+}
+
+func newConfigLeaf(path, value string, secret bool) configLeaf {
+	return configLeaf{path: path, value: value, secret: secret}
+}
+
+// nested reports whether the leaf sets a value inside a config key, so it needs `--path`.
+func (l configLeaf) nested() bool {
+	_, name, _ := strings.Cut(l.path, ":")
+	return strings.ContainsAny(name, ".[")
+}
+
+// renderConfigSetCommands renders config leaves as a bash block of `pulumi config set` commands. Returns "" if there
+// are none.
+func renderConfigSetCommands(leaves []configLeaf) string {
+	if len(leaves) == 0 {
+		return ""
+	}
+	var w strings.Builder
+	w.WriteString("```bash\n")
+	for _, leaf := range leaves {
+		w.WriteString("pulumi config set ")
+		if leaf.secret {
+			w.WriteString("--secret ")
+		}
+		if leaf.nested() {
+			// Always quote paths: list indexes contain shell glob characters.
+			w.WriteString("--path '" + leaf.path + "'")
+		} else {
+			w.WriteString(shellQuote(leaf.path))
+		}
+		w.WriteString(" " + configValueArg(leaf.value) + "\n")
+	}
+	w.WriteString("```\n")
+	return w.String()
+}
+
+// exampleConfigLeaves returns the config set by the provider blocks in an HCL example.
+//
+// This provider's blocks are read from the HCL against its schema. The converter's Pulumi.yaml can't be used for
+// them: it drops nested blocks in provider config and keeps nested keys in Terraform casing. Config for any other
+// provider still comes from the converter's Pulumi.yaml, because only the converter knows that provider's schema.
+func exampleConfigLeaves(g *Generator, code, pulumiYAML string) ([]configLeaf, error) {
+	leaves := providerBlockConfigLeaves(g, code)
+	other, err := pulumiYAMLConfigLeaves(pulumiYAML, func(key string) bool {
+		pkg, _, _ := strings.Cut(key, ":")
+		return g.info.Name != "" && (pkg == g.info.Name || pkg == g.pkg.Name().String())
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append(leaves, other...), nil
+}
+
+// providerBlockConfigLeaves returns the config set by this provider's `provider` blocks in code, named and marked
+// secret according to the provider's config schema.
+func providerBlockConfigLeaves(g *Generator, code string) []configLeaf {
+	if g.info.Name == "" {
+		return nil
+	}
+	file, diags := hclsyntax.ParseConfig([]byte(code), "main.tf", hcl.InitialPos)
+	if diags.HasErrors() {
+		return nil
+	}
+	body, ok := file.Body.(*hclsyntax.Body)
+	if !ok {
+		return nil
+	}
+	root := configNode{fieldInfos: g.info.Config}
+	if g.info.P != nil {
+		root.fields = g.info.P.Schema()
+	}
+	w := configWalker{src: []byte(code)}
+	var leaves []configLeaf
+	for _, block := range body.Blocks {
+		if block.Type != "provider" || len(block.Labels) != 1 || block.Labels[0] != g.info.Name {
+			continue
+		}
+		// An aliased provider block configures an explicit provider resource, not the stack's config.
+		if _, aliased := block.Body.Attributes["alias"]; aliased {
+			continue
+		}
+		leaves = append(leaves, w.body(g.pkg.Name().String()+":", block.Body, root, false)...)
+	}
+	return leaves
+}
+
+// configNode is the schema at one position in provider config: either a single property (s and info) or an object's
+// fields. It is empty when the schema is unknown, in which case keys are used as written.
+type configNode struct {
+	s          shim.Schema
+	info       *tfbridge.SchemaInfo
+	fields     shim.SchemaMap
+	fieldInfos map[string]*tfbridge.SchemaInfo
+}
+
+func (n configNode) isList() bool {
+	return n.s != nil && (n.s.Type() == shim.TypeList || n.s.Type() == shim.TypeSet)
+}
+
+// element returns the schema of the elements of a list, set, or map.
+func (n configNode) element() configNode {
+	if n.s == nil {
+		return configNode{}
+	}
+	var info *tfbridge.SchemaInfo
+	if n.info != nil {
+		info = n.info.Elem
+	}
+	switch e := n.s.Elem().(type) {
+	case shim.Resource:
+		var fieldInfos map[string]*tfbridge.SchemaInfo
+		if info != nil {
+			fieldInfos = info.Fields
+		}
+		return configNode{fields: e.Schema(), fieldInfos: fieldInfos}
+	case shim.Schema:
+		return configNode{s: e, info: info}
+	}
+	return configNode{}
+}
+
+// field returns the Pulumi name, schema, and secretness of the key within n. Secretness follows the generated
+// schema: Terraform `Sensitive`, unless the field's SchemaInfo overrides it.
+func (n configNode) field(key string) (string, configNode, bool) {
+	fields, fieldInfos := n.fields, n.fieldInfos
+	if fields == nil && n.s != nil && n.s.Type() == shim.TypeMap {
+		r, isObject := n.s.Elem().(shim.Resource)
+		if !isObject {
+			// Map keys are data, not field names.
+			elem := n.element()
+			return key, elem, elem.s != nil && elem.s.Sensitive()
+		}
+		// A map whose element is a resource is a single object, whose field infos are on its own info.
+		fields = r.Schema()
+		if n.info != nil {
+			fieldInfos = n.info.Fields
+		}
+	}
+	if fields == nil {
+		return key, configNode{}, false
+	}
+	s, _ := fields.GetOk(key)
+	info := fieldInfos[key]
+	secret := s != nil && s.Sensitive()
+	if info != nil && info.Secret != nil {
+		secret = *info.Secret
+	}
+	return tfbridge.TerraformToPulumiNameV2(key, fields, fieldInfos), configNode{s: s, info: info}, secret
+}
+
+// configWalker flattens HCL provider config into config leaves. src is the HCL source, for rendering expressions it
+// can't evaluate.
+type configWalker struct{ src []byte }
+
+// configEntry holds the leaves under one key, so keys can be emitted in Pulumi name order.
+type configEntry struct {
+	name   string
+	leaves []configLeaf
+}
+
+func sortedConfigLeaves(entries []configEntry) []configLeaf {
+	sort.Slice(entries, func(i, j int) bool { return entries[i].name < entries[j].name })
+	var leaves []configLeaf
+	for _, e := range entries {
+		leaves = append(leaves, e.leaves...)
+	}
+	return leaves
+}
+
+func configChildPath(parent, name string) string {
+	if strings.HasSuffix(parent, ":") {
+		return parent + name
+	}
+	return parent + "." + name
+}
+
+func (w configWalker) body(path string, body *hclsyntax.Body, n configNode, secret bool) []configLeaf {
+	var entries []configEntry
+	for key, attr := range body.Attributes {
+		name, child, childSecret := n.field(key)
+		entries = append(entries,
+			configEntry{name, w.expr(configChildPath(path, name), attr.Expr, child, secret || childSecret)})
+	}
+
+	blocks := map[string][]*hclsyntax.Block{}
+	var types []string
+	for _, b := range body.Blocks {
+		// Dynamic blocks are generated from expressions that can't be evaluated here.
+		if b.Type == "dynamic" {
+			continue
+		}
+		if _, seen := blocks[b.Type]; !seen {
+			types = append(types, b.Type)
+		}
+		blocks[b.Type] = append(blocks[b.Type], b)
+	}
+	for _, typ := range types {
+		name, child, childSecret := n.field(typ)
+		p, s := configChildPath(path, name), secret || childSecret
+		var leaves []configLeaf
+		switch {
+		case tfbridge.IsMaxItemsOne(child.s, child.info):
+			leaves = w.body(p, blocks[typ][0].Body, child.element(), s)
+		case child.isList():
+			for i, b := range blocks[typ] {
+				leaves = append(leaves, w.body(fmt.Sprintf("%s[%d]", p, i), b.Body, child.element(), s)...)
+			}
+		case len(blocks[typ]) == 1:
+			// A single nested block, or a block the schema doesn't know.
+			leaves = w.body(p, blocks[typ][0].Body, child, s)
+		default:
+			for i, b := range blocks[typ] {
+				leaves = append(leaves, w.body(fmt.Sprintf("%s[%d]", p, i), b.Body, child, s)...)
+			}
+		}
+		entries = append(entries, configEntry{name, leaves})
+	}
+	return sortedConfigLeaves(entries)
+}
+
+func (w configWalker) expr(path string, expr hclsyntax.Expression, n configNode, secret bool) []configLeaf {
+	switch e := expr.(type) {
+	case *hclsyntax.TupleConsExpr:
+		if tfbridge.IsMaxItemsOne(n.s, n.info) && len(e.Exprs) == 1 {
+			return w.expr(path, e.Exprs[0], n.element(), secret)
+		}
+		var leaves []configLeaf
+		for i, item := range e.Exprs {
+			leaves = append(leaves, w.expr(fmt.Sprintf("%s[%d]", path, i), item, n.element(), secret)...)
+		}
+		return leaves
+	case *hclsyntax.ObjectConsExpr:
+		if n.isList() {
+			n = n.element()
+		}
+		var entries []configEntry
+		for _, item := range e.Items {
+			key, diags := item.KeyExpr.Value(nil)
+			if diags.HasErrors() || !key.Type().Equals(cty.String) || key.IsNull() {
+				continue
+			}
+			name, child, childSecret := n.field(key.AsString())
+			entries = append(entries,
+				configEntry{name, w.expr(configChildPath(path, name), item.ValueExpr, child, secret || childSecret)})
+		}
+		return sortedConfigLeaves(entries)
+	}
+
+	if v, diags := expr.Value(nil); !diags.HasErrors() && v.IsWhollyKnown() {
+		switch {
+		case v.IsNull():
+			return nil
+		case v.Type() == cty.String:
+			return []configLeaf{newConfigLeaf(path, v.AsString(), secret)}
+		case v.Type() == cty.Number:
+			return []configLeaf{newConfigLeaf(path, v.AsBigFloat().Text('f', -1), secret)}
+		case v.Type() == cty.Bool:
+			return []configLeaf{newConfigLeaf(path, strconv.FormatBool(v.True()), secret)}
+		}
+	}
+	// Values that can't be evaluated here, such as variable references, are marked the same way the converter marks
+	// them, so configValueArg renders a placeholder.
+	r := expr.Range()
+	return []configLeaf{newConfigLeaf(path, "TODO: "+string(w.src[r.Start.Byte:r.End.Byte]), secret)}
+}
+
+// pulumiYAMLConfigLeaves returns the config in a converted example's Pulumi.yaml, skipping keys for which skip
+// returns true. Nothing is marked secret, since the converter doesn't record which config is sensitive.
+func pulumiYAMLConfigLeaves(pulumiYAML string, skip func(key string) bool) ([]configLeaf, error) {
+	if pulumiYAML == "" {
+		return nil, nil
+	}
 	var doc yaml.Node
 	if err := yaml.Unmarshal([]byte(pulumiYAML), &doc); err != nil {
-		return "", fmt.Errorf("parsing converted Pulumi.yaml: %w", err)
+		return nil, fmt.Errorf("parsing converted Pulumi.yaml: %w", err)
 	}
 	if len(doc.Content) == 0 {
-		return "", nil
+		return nil, nil
 	}
 	config := mappingValue(doc.Content[0], "config")
 	if config == nil || config.Kind != yaml.MappingNode {
-		return "", nil
+		return nil, nil
 	}
 
-	var commands strings.Builder
+	var leaves []configLeaf
 	for i := 0; i+1 < len(config.Content); i += 2 {
 		key := config.Content[i].Value
 		value := mappingValue(config.Content[i+1], "value")
-		if value == nil {
+		if value == nil || skip(key) {
 			continue
 		}
-		_, name, _ := strings.Cut(key, ":")
-		secret := secretKeys[name]
-		if value.Kind == yaml.ScalarNode {
-			writeConfigSetCommand(&commands, key, value.Value, secret, false)
-			continue
-		}
-		for _, leaf := range configLeaves(key, value) {
-			writeConfigSetCommand(&commands, leaf.path, leaf.value, secret, true)
-		}
+		leaves = append(leaves, yamlConfigLeaves(key, value)...)
 	}
-	if commands.Len() == 0 {
-		return "", nil
-	}
-	return "```bash\n" + commands.String() + "```\n", nil
+	return leaves, nil
 }
 
 // mappingValue returns the value node for key in a YAML mapping node, or nil if it is absent.
@@ -290,42 +558,24 @@ func mappingValue(node *yaml.Node, key string) *yaml.Node {
 	return nil
 }
 
-type configLeaf struct{ path, value string }
-
-// configLeaves flattens a nested config value into `pulumi config set --path` paths and scalar values.
-func configLeaves(path string, node *yaml.Node) []configLeaf {
+// yamlConfigLeaves flattens a nested config value into `pulumi config set --path` paths and scalar values.
+func yamlConfigLeaves(path string, node *yaml.Node) []configLeaf {
 	switch node.Kind {
 	case yaml.MappingNode:
 		var leaves []configLeaf
 		for i := 0; i+1 < len(node.Content); i += 2 {
-			leaves = append(leaves, configLeaves(path+"."+node.Content[i].Value, node.Content[i+1])...)
+			leaves = append(leaves, yamlConfigLeaves(path+"."+node.Content[i].Value, node.Content[i+1])...)
 		}
 		return leaves
 	case yaml.SequenceNode:
 		var leaves []configLeaf
 		for i, item := range node.Content {
-			leaves = append(leaves, configLeaves(fmt.Sprintf("%s[%d]", path, i), item)...)
+			leaves = append(leaves, yamlConfigLeaves(fmt.Sprintf("%s[%d]", path, i), item)...)
 		}
 		return leaves
 	default:
-		return []configLeaf{{path, node.Value}}
+		return []configLeaf{newConfigLeaf(path, node.Value, false)}
 	}
-}
-
-func writeConfigSetCommand(w *strings.Builder, key, value string, secret, path bool) {
-	w.WriteString("pulumi config set ")
-	if secret {
-		w.WriteString("--secret ")
-	}
-	if path {
-		// Always quote paths: list indexes contain shell glob characters.
-		w.WriteString("--path '" + key + "'")
-	} else {
-		w.WriteString(shellQuote(key))
-	}
-	w.WriteString(" ")
-	w.WriteString(configValueArg(value))
-	w.WriteString("\n")
 }
 
 var terraformVarRef = regexp.MustCompile(`var\.([A-Za-z0-9_]+)`)
@@ -358,7 +608,7 @@ const (
 	chooserEnd   = "{{< /chooser >}}\n"
 )
 
-func convertExample(g *Generator, code string, exampleNumber int, secretKeys map[string]bool) (string, error) {
+func convertExample(g *Generator, code string, exampleNumber int) (string, error) {
 	// Make an example to record in the cliConverter.
 	converter := g.cliConverter()
 	fileName := fmt.Sprintf("configuration-installation-%d", exampleNumber)
@@ -368,13 +618,11 @@ func convertExample(g *Generator, code string, exampleNumber int, secretKeys map
 	}
 
 	// Provider config is the same for every language, so render it once above the language chooser.
-	var configCommands string
-	if pclExample.PulumiYAML != "" {
-		configCommands, err = renderConfigSetCommands(pclExample.PulumiYAML, secretKeys)
-		if err != nil {
-			return "", err
-		}
+	configLeaves, err := exampleConfigLeaves(g, code, pclExample.PulumiYAML)
+	if err != nil {
+		return "", err
 	}
+	configCommands := renderConfigSetCommands(configLeaves)
 
 	// If we have provider config but no additional code, we only render the config commands.
 	if pclExample.PCL == "" {

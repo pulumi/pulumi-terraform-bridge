@@ -7,6 +7,7 @@ import (
 	"io"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -119,7 +120,7 @@ func TestPlainDocsParser(t *testing.T) {
 				language:  RegistryDocs,
 				pkg:       tokens.NewPackageToken("libvirt"),
 			}
-			actual, err := plainDocsParser(&tt.docFile, g, map[string]bool{"password": true})
+			actual, err := plainDocsParser(&tt.docFile, g)
 			require.NoError(t, err)
 			autogold.ExpectFile(t, autogold.Raw(string(actual)))
 		})
@@ -173,7 +174,7 @@ func TestPlainDocsParserPreservesHCLExamples(t *testing.T) {
 		"}\n" +
 		"```\n")}
 
-	actual, err := plainDocsParser(&docFile, g, nil)
+	actual, err := plainDocsParser(&docFile, g)
 	require.NoError(t, err)
 	hclBlock := regexp.MustCompile(`(?s)\{\{% choosable language hcl %\}\}.*?\{\{% /choosable %\}\}`).
 		FindString(string(actual))
@@ -492,6 +493,13 @@ func TestTranslateCodeBlocks(t *testing.T) {
 	providerInfo := tfbridge.ProviderInfo{
 		Name: "simple",
 		P: sdkv2.NewProvider(&schema.Provider{
+			Schema: map[string]*schema.Schema{
+				"user_name":   {Type: schema.TypeString, Optional: true},
+				"tenant_name": {Type: schema.TypeString, Optional: true},
+				"password":    {Type: schema.TypeString, Optional: true, Sensitive: true},
+				"auth_url":    {Type: schema.TypeString, Optional: true},
+				"region":      {Type: schema.TypeString, Optional: true},
+			},
 			ResourcesMap: map[string]*schema.Resource{
 				"simple_resource": {
 					Schema: map[string]*schema.Schema{
@@ -529,6 +537,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		},
 	}
 	generator, err := NewGenerator(GeneratorOptions{
+		Package:      "simple",
 		Language:     RegistryDocs,
 		PluginHost:   newTestPluginHost(),
 		ProviderInfo: providerInfo,
@@ -573,7 +582,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 				// process cannot access the file because it is being used by another process.
 				t.Skipf("Skipping on Windows due to a test setup issue")
 			}
-			actual, err := translateCodeBlocks(tt.contentStr, tt.g, map[string]bool{"password": true})
+			actual, err := translateCodeBlocks(tt.contentStr, tt.g)
 			require.NoError(t, err)
 			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
@@ -745,125 +754,208 @@ func assertEqualHTML(t *testing.T, expected, actual string) bool {
 func TestRenderConfigSetCommands(t *testing.T) {
 	t.Parallel()
 
+	str := func(sensitive bool) *schema.Schema {
+		return &schema.Schema{Type: schema.TypeString, Optional: true, Sensitive: sensitive}
+	}
+	g := &Generator{
+		pkg: tokens.NewPackageToken("simple"),
+		info: tfbridge.ProviderInfo{
+			Name: "simple",
+			P: sdkv2.NewProvider(&schema.Provider{
+				Schema: map[string]*schema.Schema{
+					"auth_url":    str(false),
+					"insecure":    {Type: schema.TypeBool, Optional: true},
+					"max_retries": {Type: schema.TypeInt, Optional: true},
+					"password":    str(true),
+					"user_name":   str(false),
+					"api_key":     str(false),
+					"allowed_ids": {Type: schema.TypeList, Optional: true, Elem: str(false)},
+					"tags":        {Type: schema.TypeMap, Optional: true, Elem: str(false)},
+					// Shaped like github's app_auth: one block with a sensitive field.
+					"app_auth": {Type: schema.TypeList, Optional: true, MaxItems: 1, Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"installation_id": str(false),
+							"pem_file":        str(true),
+						},
+					}},
+					// Shaped like docker's registry_auth: repeated blocks with a sensitive field.
+					"registry_auth": {Type: schema.TypeSet, Optional: true, Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"address":  str(false),
+							"password": str(true),
+						},
+					}},
+					"credentials": {Type: schema.TypeList, Optional: true, MaxItems: 1, Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{"token": str(false)},
+					}},
+				},
+			}),
+			Config: map[string]*tfbridge.SchemaInfo{
+				"api_key":     {Name: "key", Secret: tfbridge.True()},
+				"credentials": {Secret: tfbridge.True()},
+			},
+		},
+	}
+
 	tests := []struct {
-		name       string
-		pulumiYAML string
-		secretKeys map[string]bool
-		expected   string
+		name     string
+		hcl      string
+		expected string
 	}{
 		{
 			name: "scalars",
-			pulumiYAML: `name: /
-runtime: terraform
-config:
-    simple:authUrl:
-        value: http://myauthurl:5000/v3
-    simple:insecure:
-        value: true
-    simple:maxRetries:
-        value: 3
-`,
-			expected: "```bash\n" +
-				"pulumi config set simple:authUrl http://myauthurl:5000/v3\n" +
+			hcl: `provider "simple" {
+  auth_url    = "http://myauthurl:5000/v3"
+  insecure    = true
+  max_retries = 3
+}`,
+			expected: "pulumi config set simple:authUrl http://myauthurl:5000/v3\n" +
 				"pulumi config set simple:insecure true\n" +
-				"pulumi config set simple:maxRetries 3\n" +
-				"```\n",
+				"pulumi config set simple:maxRetries 3\n",
 		},
 		{
 			name: "secret",
-			pulumiYAML: `config:
-    simple:password:
-        value: pwd
-    simple:userName:
-        value: admin
-`,
-			secretKeys: map[string]bool{"password": true},
-			expected: "```bash\n" +
-				"pulumi config set --secret simple:password pwd\n" +
-				"pulumi config set simple:userName admin\n" +
-				"```\n",
+			hcl: `provider "simple" {
+  user_name = "admin"
+  password  = "pwd"
+}`,
+			expected: "pulumi config set --secret simple:password pwd\n" +
+				"pulumi config set simple:userName admin\n",
+		},
+		{
+			name:     "renamed and marked secret by info",
+			hcl:      `provider "simple" { api_key = "abc" }`,
+			expected: "pulumi config set --secret simple:key abc\n",
 		},
 		{
 			name: "unconvertible values",
-			pulumiYAML: `config:
-    vsphere:password:
-        value: 'TODO: var.vsphere_password'
-    spotinst:token:
-        value: 'TODO: "${var.spotinst_token}"'
-    kafka:accessKey:
-        value: 'TODO: data.vault_aws_access_credentials.creds.access_key'
-`,
-			secretKeys: map[string]bool{"password": true},
-			expected: "```bash\n" +
-				"pulumi config set --secret vsphere:password <vsphere_password>\n" +
-				"pulumi config set spotinst:token <spotinst_token>\n" +
-				"pulumi config set kafka:accessKey <value>\n" +
-				"```\n",
+			hcl: `provider "simple" {
+  password  = var.simple_password
+  user_name = "${var.simple_user}"
+  auth_url  = data.vault_generic_secret.creds.data["url"]
+}`,
+			expected: "pulumi config set simple:authUrl <value>\n" +
+				"pulumi config set --secret simple:password <simple_password>\n" +
+				"pulumi config set simple:userName <simple_user>\n",
 		},
 		{
-			name: "nested map and list",
-			pulumiYAML: `config:
-    aws:allowedAccountIds:
-        value:
-            - "123"
-            - "456"
-    aws:assumeRole:
-        value:
-            roleArn: arn:aws:iam::123:role/x
-            tags:
-                team: infra
-`,
-			expected: "```bash\n" +
-				"pulumi config set --path 'aws:allowedAccountIds[0]' 123\n" +
-				"pulumi config set --path 'aws:allowedAccountIds[1]' 456\n" +
-				"pulumi config set --path 'aws:assumeRole.roleArn' arn:aws:iam::123:role/x\n" +
-				"pulumi config set --path 'aws:assumeRole.tags.team' infra\n" +
-				"```\n",
+			name: "list and map",
+			hcl: `provider "simple" {
+  allowed_ids = ["123", "456"]
+  tags = {
+    "team" = "infra"
+  }
+}`,
+			expected: "pulumi config set --path 'simple:allowedIds[0]' 123\n" +
+				"pulumi config set --path 'simple:allowedIds[1]' 456\n" +
+				"pulumi config set --path 'simple:tags.team' infra\n",
 		},
 		{
-			name: "secret nested",
-			pulumiYAML: `config:
-    simple:auth:
-        value:
-            token: abc
-`,
-			secretKeys: map[string]bool{"auth": true},
-			expected: "```bash\n" +
-				"pulumi config set --secret --path 'simple:auth.token' abc\n" +
-				"```\n",
+			name: "secret nested in a block",
+			hcl: `provider "simple" {
+  app_auth {
+    installation_id = var.app_installation_id
+    pem_file        = var.app_pem_file
+  }
+}`,
+			expected: "pulumi config set --path 'simple:appAuth.installationId' <app_installation_id>\n" +
+				"pulumi config set --secret --path 'simple:appAuth.pemFile' <app_pem_file>\n",
+		},
+		{
+			name: "secret nested in repeated blocks",
+			hcl: `provider "simple" {
+  registry_auth {
+    address = "registry-1.docker.io"
+  }
+  registry_auth {
+    address  = "quay.io:8181"
+    password = "somepass"
+  }
+}`,
+			expected: "pulumi config set --path 'simple:registryAuths[0].address' registry-1.docker.io\n" +
+				"pulumi config set --path 'simple:registryAuths[1].address' quay.io:8181\n" +
+				"pulumi config set --secret --path 'simple:registryAuths[1].password' somepass\n",
+		},
+		{
+			name: "secret nested in attribute syntax",
+			hcl: `provider "simple" {
+  registry_auth = [{
+    address  = "quay.io:8181"
+    password = "somepass"
+  }]
+}`,
+			expected: "pulumi config set --path 'simple:registryAuths[0].address' quay.io:8181\n" +
+				"pulumi config set --secret --path 'simple:registryAuths[0].password' somepass\n",
+		},
+		{
+			name: "secret parent",
+			hcl: `provider "simple" {
+  credentials {
+    token = "abc"
+  }
+}`,
+			expected: "pulumi config set --secret --path 'simple:credentials.token' abc\n",
 		},
 		{
 			name: "quoting",
-			pulumiYAML: `config:
-    simple:a:
-        value: hello world
-    simple:b:
-        value: $HOME
-    simple:c:
-        value: it's
-    simple:d:
-        value: ""
-`,
-			expected: "```bash\n" +
-				"pulumi config set simple:a 'hello world'\n" +
-				"pulumi config set simple:b '$HOME'\n" +
-				"pulumi config set simple:c 'it'\\''s'\n" +
-				"pulumi config set simple:d ''\n" +
-				"```\n",
+			hcl: `provider "simple" {
+  auth_url  = "hello world"
+  user_name = "it's"
+  password  = ""
+}`,
+			expected: "pulumi config set simple:authUrl 'hello world'\n" +
+				"pulumi config set --secret simple:password ''\n" +
+				"pulumi config set simple:userName 'it'\\''s'\n",
 		},
 		{
-			name:       "no config",
-			pulumiYAML: "name: /\nruntime: terraform\n",
-			expected:   "",
+			name: "aliased and other providers are skipped",
+			hcl: `provider "simple" {
+  alias    = "west"
+  auth_url = "http://west"
+}
+
+provider "other" {
+  auth_url = "http://other"
+}`,
+			expected: "",
+		},
+		{
+			name:     "no config",
+			hcl:      `provider "simple" {}`,
+			expected: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			actual, err := renderConfigSetCommands(tt.pulumiYAML, tt.secretKeys)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, actual)
+			expected := tt.expected
+			if expected != "" {
+				expected = "```bash\n" + expected + "```\n"
+			}
+			assert.Equal(t, expected, renderConfigSetCommands(providerBlockConfigLeaves(g, tt.hcl)))
 		})
 	}
+}
+
+func TestPulumiYAMLConfigLeaves(t *testing.T) {
+	t.Parallel()
+
+	leaves, err := pulumiYAMLConfigLeaves(`config:
+    simple:authUrl:
+        value: http://own
+    aws:region:
+        value: us-west-2
+    aws:assumeRole:
+        value:
+            roleArn: arn:aws:iam::123:role/x
+            tags:
+                - infra
+`, func(key string) bool { return strings.HasPrefix(key, "simple:") })
+	require.NoError(t, err)
+	assert.Equal(t, "```bash\n"+
+		"pulumi config set aws:region us-west-2\n"+
+		"pulumi config set --path 'aws:assumeRole.roleArn' arn:aws:iam::123:role/x\n"+
+		"pulumi config set --path 'aws:assumeRole.tags[0]' infra\n"+
+		"```\n", renderConfigSetCommands(leaves))
 }
