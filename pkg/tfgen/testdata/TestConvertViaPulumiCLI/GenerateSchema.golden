@@ -43,15 +43,6 @@
         }
       },
       "stateInputs": {
-        "description": "Input properties used for looking up and filtering resource resources.\n",
-        "properties": {
-          "inputTwo": {
-            "type": "string"
-          },
-          "renamedInput1": {
-            "type": "string"
-          }
-        },
         "type": "object"
       }
     }

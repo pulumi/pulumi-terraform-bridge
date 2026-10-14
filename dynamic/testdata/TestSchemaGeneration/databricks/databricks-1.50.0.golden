@@ -15849,27 +15849,6 @@
                 "name": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering AccessControlRuleSet resources.\n",
-                "properties": {
-                    "accessControlRuleSetId": {
-                        "type": "string"
-                    },
-                    "etag": {
-                        "type": "string"
-                    },
-                    "grantRules": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/AccessControlRuleSetGrantRule:AccessControlRuleSetGrantRule"
-                        }
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/artifactAllowlist:ArtifactAllowlist": {
@@ -15930,34 +15909,7 @@
             "requiredInputs": [
                 "artifactMatchers",
                 "artifactType"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering ArtifactAllowlist resources.\n",
-                "properties": {
-                    "artifactAllowlistId": {
-                        "type": "string"
-                    },
-                    "artifactMatchers": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/ArtifactAllowlistArtifactMatcher:ArtifactAllowlistArtifactMatcher"
-                        }
-                    },
-                    "artifactType": {
-                        "type": "string"
-                    },
-                    "createdAt": {
-                        "type": "number"
-                    },
-                    "createdBy": {
-                        "type": "string"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/automaticClusterUpdateWorkspaceSetting:AutomaticClusterUpdateWorkspaceSetting": {
             "properties": {
@@ -15996,25 +15948,7 @@
             },
             "requiredInputs": [
                 "automaticClusterUpdateWorkspace"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering AutomaticClusterUpdateWorkspaceSetting resources.\n",
-                "properties": {
-                    "automaticClusterUpdateWorkspace": {
-                        "$ref": "#/types/databricks:index/AutomaticClusterUpdateWorkspaceSettingAutomaticClusterUpdateWorkspace:AutomaticClusterUpdateWorkspaceSettingAutomaticClusterUpdateWorkspace"
-                    },
-                    "automaticClusterUpdateWorkspaceSettingId": {
-                        "type": "string"
-                    },
-                    "etag": {
-                        "type": "string"
-                    },
-                    "settingName": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/awsS3Mount:AwsS3Mount": {
             "properties": {
@@ -16064,31 +15998,7 @@
             "requiredInputs": [
                 "mountName",
                 "s3BucketName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering AwsS3Mount resources.\n",
-                "properties": {
-                    "awsS3MountId": {
-                        "type": "string"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "instanceProfile": {
-                        "type": "string"
-                    },
-                    "mountName": {
-                        "type": "string"
-                    },
-                    "s3BucketName": {
-                        "type": "string"
-                    },
-                    "source": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/azureAdlsGen1Mount:AzureAdlsGen1Mount": {
             "properties": {
@@ -16176,46 +16086,7 @@
                 "mountName",
                 "storageResourceName",
                 "tenantId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering AzureAdlsGen1Mount resources.\n",
-                "properties": {
-                    "azureAdlsGen1MountId": {
-                        "type": "string"
-                    },
-                    "clientId": {
-                        "type": "string"
-                    },
-                    "clientSecretKey": {
-                        "type": "string"
-                    },
-                    "clientSecretScope": {
-                        "type": "string"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "directory": {
-                        "type": "string"
-                    },
-                    "mountName": {
-                        "type": "string"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "sparkConfPrefix": {
-                        "type": "string"
-                    },
-                    "storageResourceName": {
-                        "type": "string"
-                    },
-                    "tenantId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/azureAdlsGen2Mount:AzureAdlsGen2Mount": {
             "properties": {
@@ -16313,49 +16184,7 @@
                 "mountName",
                 "storageAccountName",
                 "tenantId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering AzureAdlsGen2Mount resources.\n",
-                "properties": {
-                    "azureAdlsGen2MountId": {
-                        "type": "string"
-                    },
-                    "clientId": {
-                        "type": "string"
-                    },
-                    "clientSecretKey": {
-                        "type": "string"
-                    },
-                    "clientSecretScope": {
-                        "type": "string"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "containerName": {
-                        "type": "string"
-                    },
-                    "directory": {
-                        "type": "string"
-                    },
-                    "initializeFileSystem": {
-                        "type": "boolean"
-                    },
-                    "mountName": {
-                        "type": "string"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "storageAccountName": {
-                        "type": "string"
-                    },
-                    "tenantId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/azureBlobMount:AzureBlobMount": {
             "properties": {
@@ -16438,44 +16267,7 @@
                 "storageAccountName",
                 "tokenSecretKey",
                 "tokenSecretScope"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering AzureBlobMount resources.\n",
-                "properties": {
-                    "authType": {
-                        "type": "string"
-                    },
-                    "azureBlobMountId": {
-                        "type": "string"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "containerName": {
-                        "type": "string"
-                    },
-                    "directory": {
-                        "type": "string"
-                    },
-                    "mountName": {
-                        "type": "string"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "storageAccountName": {
-                        "type": "string"
-                    },
-                    "tokenSecretKey": {
-                        "type": "string",
-                        "secret": true
-                    },
-                    "tokenSecretScope": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/catalog:Catalog": {
             "properties": {
@@ -16585,60 +16377,6 @@
                 "storageRoot": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Catalog resources.\n",
-                "properties": {
-                    "catalogId": {
-                        "type": "string"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "connectionName": {
-                        "type": "string"
-                    },
-                    "enablePredictiveOptimization": {
-                        "type": "string"
-                    },
-                    "forceDestroy": {
-                        "type": "boolean"
-                    },
-                    "isolationMode": {
-                        "type": "string"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "options": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "properties": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "providerName": {
-                        "type": "string"
-                    },
-                    "shareName": {
-                        "type": "string"
-                    },
-                    "storageRoot": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/catalogWorkspaceBinding:CatalogWorkspaceBinding": {
@@ -16687,31 +16425,6 @@
                 "workspaceId": {
                     "type": "number"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering CatalogWorkspaceBinding resources.\n",
-                "properties": {
-                    "bindingType": {
-                        "type": "string"
-                    },
-                    "catalogName": {
-                        "type": "string",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "catalogWorkspaceBindingId": {
-                        "type": "string"
-                    },
-                    "securableName": {
-                        "type": "string"
-                    },
-                    "securableType": {
-                        "type": "string"
-                    },
-                    "workspaceId": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/cluster:Cluster": {
@@ -16989,148 +16702,7 @@
             },
             "requiredInputs": [
                 "sparkVersion"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Cluster resources.\n",
-                "properties": {
-                    "applyPolicyDefaultValues": {
-                        "type": "boolean"
-                    },
-                    "autoscale": {
-                        "$ref": "#/types/databricks:index/ClusterAutoscale:ClusterAutoscale"
-                    },
-                    "autoterminationMinutes": {
-                        "type": "number"
-                    },
-                    "awsAttributes": {
-                        "$ref": "#/types/databricks:index/ClusterAwsAttributes:ClusterAwsAttributes"
-                    },
-                    "azureAttributes": {
-                        "$ref": "#/types/databricks:index/ClusterAzureAttributes:ClusterAzureAttributes"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "clusterLogConf": {
-                        "$ref": "#/types/databricks:index/ClusterClusterLogConf:ClusterClusterLogConf"
-                    },
-                    "clusterMountInfos": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/ClusterClusterMountInfo:ClusterClusterMountInfo"
-                        }
-                    },
-                    "clusterName": {
-                        "type": "string"
-                    },
-                    "customTags": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "dataSecurityMode": {
-                        "type": "string"
-                    },
-                    "databricksClusterId": {
-                        "type": "string"
-                    },
-                    "defaultTags": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "dockerImage": {
-                        "$ref": "#/types/databricks:index/ClusterDockerImage:ClusterDockerImage"
-                    },
-                    "driverInstancePoolId": {
-                        "type": "string"
-                    },
-                    "driverNodeTypeId": {
-                        "type": "string"
-                    },
-                    "enableElasticDisk": {
-                        "type": "boolean"
-                    },
-                    "enableLocalDiskEncryption": {
-                        "type": "boolean"
-                    },
-                    "gcpAttributes": {
-                        "$ref": "#/types/databricks:index/ClusterGcpAttributes:ClusterGcpAttributes"
-                    },
-                    "idempotencyToken": {
-                        "type": "string"
-                    },
-                    "initScripts": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/ClusterInitScript:ClusterInitScript"
-                        }
-                    },
-                    "instancePoolId": {
-                        "type": "string"
-                    },
-                    "isPinned": {
-                        "type": "boolean"
-                    },
-                    "libraries": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/ClusterLibrary:ClusterLibrary"
-                        }
-                    },
-                    "nodeTypeId": {
-                        "type": "string"
-                    },
-                    "numWorkers": {
-                        "type": "number"
-                    },
-                    "policyId": {
-                        "type": "string"
-                    },
-                    "runtimeEngine": {
-                        "type": "string"
-                    },
-                    "singleUserName": {
-                        "type": "string"
-                    },
-                    "sparkConf": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "sparkEnvVars": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "sparkVersion": {
-                        "type": "string"
-                    },
-                    "sshPublicKeys": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "state": {
-                        "type": "string"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/ClusterTimeouts:ClusterTimeouts"
-                    },
-                    "url": {
-                        "type": "string"
-                    },
-                    "workloadType": {
-                        "$ref": "#/types/databricks:index/ClusterWorkloadType:ClusterWorkloadType"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/clusterPolicy:ClusterPolicy": {
             "properties": {
@@ -17199,42 +16771,6 @@
                 "policyFamilyId": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering ClusterPolicy resources.\n",
-                "properties": {
-                    "clusterPolicyId": {
-                        "type": "string"
-                    },
-                    "definition": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "libraries": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/ClusterPolicyLibrary:ClusterPolicyLibrary"
-                        }
-                    },
-                    "maxClustersPerUser": {
-                        "type": "number"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "policyFamilyDefinitionOverrides": {
-                        "type": "string"
-                    },
-                    "policyFamilyId": {
-                        "type": "string"
-                    },
-                    "policyId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/complianceSecurityProfileWorkspaceSetting:ComplianceSecurityProfileWorkspaceSetting": {
@@ -17274,25 +16810,7 @@
             },
             "requiredInputs": [
                 "complianceSecurityProfileWorkspace"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering ComplianceSecurityProfileWorkspaceSetting resources.\n",
-                "properties": {
-                    "complianceSecurityProfileWorkspace": {
-                        "$ref": "#/types/databricks:index/ComplianceSecurityProfileWorkspaceSettingComplianceSecurityProfileWorkspace:ComplianceSecurityProfileWorkspaceSettingComplianceSecurityProfileWorkspace"
-                    },
-                    "complianceSecurityProfileWorkspaceSettingId": {
-                        "type": "string"
-                    },
-                    "etag": {
-                        "type": "string"
-                    },
-                    "settingName": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/connection:Connection": {
             "properties": {
@@ -17379,47 +16897,7 @@
             "requiredInputs": [
                 "connectionType",
                 "options"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Connection resources.\n",
-                "properties": {
-                    "comment": {
-                        "type": "string"
-                    },
-                    "connectionId": {
-                        "type": "string"
-                    },
-                    "connectionType": {
-                        "type": "string"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "options": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "secret": true
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "properties": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "readOnly": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/dashboard:Dashboard": {
             "properties": {
@@ -17533,58 +17011,7 @@
                 "displayName",
                 "parentPath",
                 "warehouseId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Dashboard resources.\n",
-                "properties": {
-                    "createTime": {
-                        "type": "string"
-                    },
-                    "dashboardChangeDetected": {
-                        "type": "boolean"
-                    },
-                    "dashboardId": {
-                        "type": "string"
-                    },
-                    "databricksDashboardId": {
-                        "type": "string"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "embedCredentials": {
-                        "type": "boolean"
-                    },
-                    "etag": {
-                        "type": "string"
-                    },
-                    "filePath": {
-                        "type": "string"
-                    },
-                    "lifecycleState": {
-                        "type": "string"
-                    },
-                    "md5": {
-                        "type": "string"
-                    },
-                    "parentPath": {
-                        "type": "string"
-                    },
-                    "path": {
-                        "type": "string"
-                    },
-                    "serializedDashboard": {
-                        "type": "string"
-                    },
-                    "updateTime": {
-                        "type": "string"
-                    },
-                    "warehouseId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/databricksProvider:DatabricksProvider": {
             "properties": {
@@ -17632,29 +17059,7 @@
             "requiredInputs": [
                 "authenticationType",
                 "recipientProfileStr"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering DatabricksProvider resources.\n",
-                "properties": {
-                    "authenticationType": {
-                        "type": "string"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "providerId": {
-                        "type": "string"
-                    },
-                    "recipientProfileStr": {
-                        "type": "string",
-                        "secret": true
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/dbfsFile:DbfsFile": {
             "properties": {
@@ -17705,34 +17110,7 @@
             },
             "requiredInputs": [
                 "path"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering DbfsFile resources.\n",
-                "properties": {
-                    "contentBase64": {
-                        "type": "string"
-                    },
-                    "dbfsFileId": {
-                        "type": "string"
-                    },
-                    "dbfsPath": {
-                        "type": "string"
-                    },
-                    "fileSize": {
-                        "type": "number"
-                    },
-                    "md5": {
-                        "type": "string"
-                    },
-                    "path": {
-                        "type": "string"
-                    },
-                    "source": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/defaultNamespaceSetting:DefaultNamespaceSetting": {
             "properties": {
@@ -17771,25 +17149,7 @@
             },
             "requiredInputs": [
                 "namespace"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering DefaultNamespaceSetting resources.\n",
-                "properties": {
-                    "defaultNamespaceSettingId": {
-                        "type": "string"
-                    },
-                    "etag": {
-                        "type": "string"
-                    },
-                    "namespace": {
-                        "$ref": "#/types/databricks:index/DefaultNamespaceSettingNamespace:DefaultNamespaceSettingNamespace"
-                    },
-                    "settingName": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/directory:Directory": {
             "properties": {
@@ -17831,28 +17191,7 @@
             },
             "requiredInputs": [
                 "path"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Directory resources.\n",
-                "properties": {
-                    "deleteRecursive": {
-                        "type": "boolean"
-                    },
-                    "directoryId": {
-                        "type": "string"
-                    },
-                    "objectId": {
-                        "type": "number"
-                    },
-                    "path": {
-                        "type": "string"
-                    },
-                    "workspacePath": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/enhancedSecurityMonitoringWorkspaceSetting:EnhancedSecurityMonitoringWorkspaceSetting": {
             "properties": {
@@ -17891,25 +17230,7 @@
             },
             "requiredInputs": [
                 "enhancedSecurityMonitoringWorkspace"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering EnhancedSecurityMonitoringWorkspaceSetting resources.\n",
-                "properties": {
-                    "enhancedSecurityMonitoringWorkspace": {
-                        "$ref": "#/types/databricks:index/EnhancedSecurityMonitoringWorkspaceSettingEnhancedSecurityMonitoringWorkspace:EnhancedSecurityMonitoringWorkspaceSettingEnhancedSecurityMonitoringWorkspace"
-                    },
-                    "enhancedSecurityMonitoringWorkspaceSettingId": {
-                        "type": "string"
-                    },
-                    "etag": {
-                        "type": "string"
-                    },
-                    "settingName": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/entitlements:Entitlements": {
             "properties": {
@@ -17966,36 +17287,6 @@
                 "workspaceAccess": {
                     "type": "boolean"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Entitlements resources.\n",
-                "properties": {
-                    "allowClusterCreate": {
-                        "type": "boolean"
-                    },
-                    "allowInstancePoolCreate": {
-                        "type": "boolean"
-                    },
-                    "databricksSqlAccess": {
-                        "type": "boolean"
-                    },
-                    "entitlementsId": {
-                        "type": "string"
-                    },
-                    "groupId": {
-                        "type": "string"
-                    },
-                    "servicePrincipalId": {
-                        "type": "string"
-                    },
-                    "userId": {
-                        "type": "string"
-                    },
-                    "workspaceAccess": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/externalLocation:ExternalLocation": {
@@ -18099,55 +17390,7 @@
             "requiredInputs": [
                 "credentialName",
                 "url"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering ExternalLocation resources.\n",
-                "properties": {
-                    "accessPoint": {
-                        "type": "string"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "credentialName": {
-                        "type": "string"
-                    },
-                    "encryptionDetails": {
-                        "$ref": "#/types/databricks:index/ExternalLocationEncryptionDetails:ExternalLocationEncryptionDetails"
-                    },
-                    "externalLocationId": {
-                        "type": "string"
-                    },
-                    "forceDestroy": {
-                        "type": "boolean"
-                    },
-                    "forceUpdate": {
-                        "type": "boolean"
-                    },
-                    "isolationMode": {
-                        "type": "string"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "readOnly": {
-                        "type": "boolean"
-                    },
-                    "skipValidation": {
-                        "type": "boolean"
-                    },
-                    "url": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/file:File": {
             "properties": {
@@ -18204,37 +17447,7 @@
             },
             "requiredInputs": [
                 "path"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering File resources.\n",
-                "properties": {
-                    "contentBase64": {
-                        "type": "string"
-                    },
-                    "fileId": {
-                        "type": "string"
-                    },
-                    "fileSize": {
-                        "type": "number"
-                    },
-                    "md5": {
-                        "type": "string"
-                    },
-                    "modificationTime": {
-                        "type": "string"
-                    },
-                    "path": {
-                        "type": "string"
-                    },
-                    "remoteFileModified": {
-                        "type": "boolean"
-                    },
-                    "source": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/gitCredential:GitCredential": {
             "properties": {
@@ -18277,28 +17490,7 @@
             },
             "requiredInputs": [
                 "gitProvider"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering GitCredential resources.\n",
-                "properties": {
-                    "force": {
-                        "type": "boolean"
-                    },
-                    "gitCredentialId": {
-                        "type": "string"
-                    },
-                    "gitProvider": {
-                        "type": "string"
-                    },
-                    "gitUsername": {
-                        "type": "string"
-                    },
-                    "personalAccessToken": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/globalInitScript:GlobalInitScript": {
             "properties": {
@@ -18357,36 +17549,6 @@
                 "timeouts": {
                     "$ref": "#/types/databricks:index/GlobalInitScriptTimeouts:GlobalInitScriptTimeouts"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering GlobalInitScript resources.\n",
-                "properties": {
-                    "contentBase64": {
-                        "type": "string"
-                    },
-                    "enabled": {
-                        "type": "boolean"
-                    },
-                    "globalInitScriptId": {
-                        "type": "string"
-                    },
-                    "md5": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "position": {
-                        "type": "number"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/GlobalInitScriptTimeouts:GlobalInitScriptTimeouts"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/grant:Grant": {
@@ -18504,64 +17666,7 @@
             "requiredInputs": [
                 "principal",
                 "privileges"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Grant resources.\n",
-                "properties": {
-                    "catalog": {
-                        "type": "string"
-                    },
-                    "externalLocation": {
-                        "type": "string"
-                    },
-                    "foreignConnection": {
-                        "type": "string"
-                    },
-                    "function": {
-                        "type": "string"
-                    },
-                    "grantId": {
-                        "type": "string"
-                    },
-                    "metastore": {
-                        "type": "string"
-                    },
-                    "model": {
-                        "type": "string"
-                    },
-                    "pipeline": {
-                        "type": "string"
-                    },
-                    "principal": {
-                        "type": "string"
-                    },
-                    "privileges": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "recipient": {
-                        "type": "string"
-                    },
-                    "schema": {
-                        "type": "string"
-                    },
-                    "share": {
-                        "type": "string"
-                    },
-                    "storageCredential": {
-                        "type": "string"
-                    },
-                    "table": {
-                        "type": "string"
-                    },
-                    "volume": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/grants:Grants": {
             "properties": {
@@ -18670,61 +17775,7 @@
             },
             "requiredInputs": [
                 "grants"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Grants resources.\n",
-                "properties": {
-                    "catalog": {
-                        "type": "string"
-                    },
-                    "externalLocation": {
-                        "type": "string"
-                    },
-                    "foreignConnection": {
-                        "type": "string"
-                    },
-                    "function": {
-                        "type": "string"
-                    },
-                    "grants": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/GrantsGrant:GrantsGrant"
-                        }
-                    },
-                    "grantsId": {
-                        "type": "string"
-                    },
-                    "metastore": {
-                        "type": "string"
-                    },
-                    "model": {
-                        "type": "string"
-                    },
-                    "pipeline": {
-                        "type": "string"
-                    },
-                    "recipient": {
-                        "type": "string"
-                    },
-                    "schema": {
-                        "type": "string"
-                    },
-                    "share": {
-                        "type": "string"
-                    },
-                    "storageCredential": {
-                        "type": "string"
-                    },
-                    "table": {
-                        "type": "string"
-                    },
-                    "volume": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/group:Group": {
             "properties": {
@@ -18799,43 +17850,7 @@
             },
             "requiredInputs": [
                 "displayName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Group resources.\n",
-                "properties": {
-                    "aclPrincipalId": {
-                        "type": "string"
-                    },
-                    "allowClusterCreate": {
-                        "type": "boolean"
-                    },
-                    "allowInstancePoolCreate": {
-                        "type": "boolean"
-                    },
-                    "databricksSqlAccess": {
-                        "type": "boolean"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "externalId": {
-                        "type": "string"
-                    },
-                    "force": {
-                        "type": "boolean"
-                    },
-                    "groupId": {
-                        "type": "string"
-                    },
-                    "url": {
-                        "type": "string"
-                    },
-                    "workspaceAccess": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/groupInstanceProfile:GroupInstanceProfile": {
             "properties": {
@@ -18868,22 +17883,7 @@
             "requiredInputs": [
                 "groupId",
                 "instanceProfileId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering GroupInstanceProfile resources.\n",
-                "properties": {
-                    "groupId": {
-                        "type": "string"
-                    },
-                    "groupInstanceProfileId": {
-                        "type": "string"
-                    },
-                    "instanceProfileId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/groupMember:GroupMember": {
             "properties": {
@@ -18916,22 +17916,7 @@
             "requiredInputs": [
                 "groupId",
                 "memberId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering GroupMember resources.\n",
-                "properties": {
-                    "groupId": {
-                        "type": "string"
-                    },
-                    "groupMemberId": {
-                        "type": "string"
-                    },
-                    "memberId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/groupRole:GroupRole": {
             "properties": {
@@ -18964,22 +17949,7 @@
             "requiredInputs": [
                 "groupId",
                 "role"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering GroupRole resources.\n",
-                "properties": {
-                    "groupId": {
-                        "type": "string"
-                    },
-                    "groupRoleId": {
-                        "type": "string"
-                    },
-                    "role": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/instancePool:InstancePool": {
             "properties": {
@@ -19109,70 +18079,7 @@
             "requiredInputs": [
                 "idleInstanceAutoterminationMinutes",
                 "instancePoolName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering InstancePool resources.\n",
-                "properties": {
-                    "awsAttributes": {
-                        "$ref": "#/types/databricks:index/InstancePoolAwsAttributes:InstancePoolAwsAttributes"
-                    },
-                    "azureAttributes": {
-                        "$ref": "#/types/databricks:index/InstancePoolAzureAttributes:InstancePoolAzureAttributes"
-                    },
-                    "customTags": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "databricksInstancePoolId": {
-                        "type": "string"
-                    },
-                    "diskSpec": {
-                        "$ref": "#/types/databricks:index/InstancePoolDiskSpec:InstancePoolDiskSpec"
-                    },
-                    "enableElasticDisk": {
-                        "type": "boolean"
-                    },
-                    "gcpAttributes": {
-                        "$ref": "#/types/databricks:index/InstancePoolGcpAttributes:InstancePoolGcpAttributes"
-                    },
-                    "idleInstanceAutoterminationMinutes": {
-                        "type": "number"
-                    },
-                    "instancePoolFleetAttributes": {
-                        "$ref": "#/types/databricks:index/InstancePoolInstancePoolFleetAttributes:InstancePoolInstancePoolFleetAttributes"
-                    },
-                    "instancePoolId": {
-                        "type": "string"
-                    },
-                    "instancePoolName": {
-                        "type": "string"
-                    },
-                    "maxCapacity": {
-                        "type": "number"
-                    },
-                    "minIdleInstances": {
-                        "type": "number"
-                    },
-                    "nodeTypeId": {
-                        "type": "string"
-                    },
-                    "preloadedDockerImages": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/InstancePoolPreloadedDockerImage:InstancePoolPreloadedDockerImage"
-                        }
-                    },
-                    "preloadedSparkVersions": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/instanceProfile:InstanceProfile": {
             "properties": {
@@ -19216,28 +18123,7 @@
             },
             "requiredInputs": [
                 "instanceProfileArn"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering InstanceProfile resources.\n",
-                "properties": {
-                    "iamRoleArn": {
-                        "type": "string"
-                    },
-                    "instanceProfileArn": {
-                        "type": "string"
-                    },
-                    "instanceProfileId": {
-                        "type": "string"
-                    },
-                    "isMetaInstanceProfile": {
-                        "type": "boolean"
-                    },
-                    "skipValidation": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/ipAccessList:IpAccessList": {
             "properties": {
@@ -19290,31 +18176,7 @@
                 "ipAddresses",
                 "label",
                 "listType"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering IpAccessList resources.\n",
-                "properties": {
-                    "enabled": {
-                        "type": "boolean"
-                    },
-                    "ipAccessListId": {
-                        "type": "string"
-                    },
-                    "ipAddresses": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "label": {
-                        "type": "string"
-                    },
-                    "listType": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/job:Job": {
             "properties": {
@@ -19629,165 +18491,6 @@
                 "webhookNotifications": {
                     "$ref": "#/types/databricks:index/JobWebhookNotifications:JobWebhookNotifications"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Job resources.\n",
-                "properties": {
-                    "alwaysRunning": {
-                        "type": "boolean",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "continuous": {
-                        "$ref": "#/types/databricks:index/JobContinuous:JobContinuous"
-                    },
-                    "controlRunState": {
-                        "type": "boolean"
-                    },
-                    "dbtTask": {
-                        "$ref": "#/types/databricks:index/JobDbtTask:JobDbtTask",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "deployment": {
-                        "$ref": "#/types/databricks:index/JobDeployment:JobDeployment"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "editMode": {
-                        "type": "string"
-                    },
-                    "emailNotifications": {
-                        "$ref": "#/types/databricks:index/JobEmailNotifications:JobEmailNotifications"
-                    },
-                    "environments": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/JobEnvironment:JobEnvironment"
-                        }
-                    },
-                    "existingClusterId": {
-                        "type": "string"
-                    },
-                    "format": {
-                        "type": "string"
-                    },
-                    "gitSource": {
-                        "$ref": "#/types/databricks:index/JobGitSource:JobGitSource"
-                    },
-                    "health": {
-                        "$ref": "#/types/databricks:index/JobHealth:JobHealth"
-                    },
-                    "jobClusters": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/JobJobCluster:JobJobCluster"
-                        }
-                    },
-                    "jobId": {
-                        "type": "string"
-                    },
-                    "libraries": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/JobLibrary:JobLibrary"
-                        }
-                    },
-                    "maxConcurrentRuns": {
-                        "type": "number"
-                    },
-                    "maxRetries": {
-                        "type": "number",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "minRetryIntervalMillis": {
-                        "type": "number",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "newCluster": {
-                        "$ref": "#/types/databricks:index/JobNewCluster:JobNewCluster"
-                    },
-                    "notebookTask": {
-                        "$ref": "#/types/databricks:index/JobNotebookTask:JobNotebookTask",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "notificationSettings": {
-                        "$ref": "#/types/databricks:index/JobNotificationSettings:JobNotificationSettings"
-                    },
-                    "parameters": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/JobParameter:JobParameter"
-                        }
-                    },
-                    "pipelineTask": {
-                        "$ref": "#/types/databricks:index/JobPipelineTask:JobPipelineTask",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "pythonWheelTask": {
-                        "$ref": "#/types/databricks:index/JobPythonWheelTask:JobPythonWheelTask",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "queue": {
-                        "$ref": "#/types/databricks:index/JobQueue:JobQueue"
-                    },
-                    "retryOnTimeout": {
-                        "type": "boolean",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "runAs": {
-                        "$ref": "#/types/databricks:index/JobRunAs:JobRunAs"
-                    },
-                    "runJobTask": {
-                        "$ref": "#/types/databricks:index/JobRunJobTask:JobRunJobTask",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "schedule": {
-                        "$ref": "#/types/databricks:index/JobSchedule:JobSchedule"
-                    },
-                    "sparkJarTask": {
-                        "$ref": "#/types/databricks:index/JobSparkJarTask:JobSparkJarTask",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "sparkPythonTask": {
-                        "$ref": "#/types/databricks:index/JobSparkPythonTask:JobSparkPythonTask",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "sparkSubmitTask": {
-                        "$ref": "#/types/databricks:index/JobSparkSubmitTask:JobSparkSubmitTask",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "tags": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "tasks": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/JobTask:JobTask"
-                        }
-                    },
-                    "timeoutSeconds": {
-                        "type": "number"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/JobTimeouts:JobTimeouts"
-                    },
-                    "trigger": {
-                        "$ref": "#/types/databricks:index/JobTrigger:JobTrigger"
-                    },
-                    "url": {
-                        "type": "string"
-                    },
-                    "webhookNotifications": {
-                        "$ref": "#/types/databricks:index/JobWebhookNotifications:JobWebhookNotifications"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/lakehouseMonitor:LakehouseMonitor": {
@@ -19939,85 +18642,7 @@
                 "assetsDir",
                 "outputSchemaName",
                 "tableName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering LakehouseMonitor resources.\n",
-                "properties": {
-                    "assetsDir": {
-                        "type": "string"
-                    },
-                    "baselineTableName": {
-                        "type": "string"
-                    },
-                    "customMetrics": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/LakehouseMonitorCustomMetric:LakehouseMonitorCustomMetric"
-                        }
-                    },
-                    "dashboardId": {
-                        "type": "string"
-                    },
-                    "dataClassificationConfig": {
-                        "$ref": "#/types/databricks:index/LakehouseMonitorDataClassificationConfig:LakehouseMonitorDataClassificationConfig"
-                    },
-                    "driftMetricsTableName": {
-                        "type": "string"
-                    },
-                    "inferenceLog": {
-                        "$ref": "#/types/databricks:index/LakehouseMonitorInferenceLog:LakehouseMonitorInferenceLog"
-                    },
-                    "lakehouseMonitorId": {
-                        "type": "string"
-                    },
-                    "latestMonitorFailureMsg": {
-                        "type": "string"
-                    },
-                    "monitorVersion": {
-                        "type": "string"
-                    },
-                    "notifications": {
-                        "$ref": "#/types/databricks:index/LakehouseMonitorNotifications:LakehouseMonitorNotifications"
-                    },
-                    "outputSchemaName": {
-                        "type": "string"
-                    },
-                    "profileMetricsTableName": {
-                        "type": "string"
-                    },
-                    "schedule": {
-                        "$ref": "#/types/databricks:index/LakehouseMonitorSchedule:LakehouseMonitorSchedule"
-                    },
-                    "skipBuiltinDashboard": {
-                        "type": "boolean"
-                    },
-                    "slicingExprs": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "snapshot": {
-                        "$ref": "#/types/databricks:index/LakehouseMonitorSnapshot:LakehouseMonitorSnapshot"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "tableName": {
-                        "type": "string"
-                    },
-                    "timeSeries": {
-                        "$ref": "#/types/databricks:index/LakehouseMonitorTimeSeries:LakehouseMonitorTimeSeries"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/LakehouseMonitorTimeouts:LakehouseMonitorTimeouts"
-                    },
-                    "warehouseId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/library:Library": {
             "properties": {
@@ -20084,40 +18709,7 @@
             },
             "requiredInputs": [
                 "clusterId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Library resources.\n",
-                "properties": {
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "cran": {
-                        "$ref": "#/types/databricks:index/LibraryCran:LibraryCran"
-                    },
-                    "egg": {
-                        "type": "string"
-                    },
-                    "jar": {
-                        "type": "string"
-                    },
-                    "libraryId": {
-                        "type": "string"
-                    },
-                    "maven": {
-                        "$ref": "#/types/databricks:index/LibraryMaven:LibraryMaven"
-                    },
-                    "pypi": {
-                        "$ref": "#/types/databricks:index/LibraryPypi:LibraryPypi"
-                    },
-                    "requirements": {
-                        "type": "string"
-                    },
-                    "whl": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/metastore:Metastore": {
             "properties": {
@@ -20244,66 +18836,6 @@
                 "updatedBy": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Metastore resources.\n",
-                "properties": {
-                    "cloud": {
-                        "type": "string"
-                    },
-                    "createdAt": {
-                        "type": "number"
-                    },
-                    "createdBy": {
-                        "type": "string"
-                    },
-                    "databricksMetastoreId": {
-                        "type": "string"
-                    },
-                    "defaultDataAccessConfigId": {
-                        "type": "string"
-                    },
-                    "deltaSharingOrganizationName": {
-                        "type": "string"
-                    },
-                    "deltaSharingRecipientTokenLifetimeInSeconds": {
-                        "type": "number"
-                    },
-                    "deltaSharingScope": {
-                        "type": "string"
-                    },
-                    "forceDestroy": {
-                        "type": "boolean"
-                    },
-                    "globalMetastoreId": {
-                        "type": "string"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "region": {
-                        "type": "string"
-                    },
-                    "storageRoot": {
-                        "type": "string"
-                    },
-                    "storageRootCredentialId": {
-                        "type": "string"
-                    },
-                    "updatedAt": {
-                        "type": "number"
-                    },
-                    "updatedBy": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/metastoreAssignment:MetastoreAssignment": {
@@ -20343,25 +18875,7 @@
             "requiredInputs": [
                 "metastoreId",
                 "workspaceId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MetastoreAssignment resources.\n",
-                "properties": {
-                    "defaultCatalogName": {
-                        "type": "string"
-                    },
-                    "metastoreAssignmentId": {
-                        "type": "string"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "workspaceId": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/metastoreDataAccess:MetastoreDataAccess": {
             "properties": {
@@ -20476,63 +18990,6 @@
                 "skipValidation": {
                     "type": "boolean"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MetastoreDataAccess resources.\n",
-                "properties": {
-                    "awsIamRole": {
-                        "$ref": "#/types/databricks:index/MetastoreDataAccessAwsIamRole:MetastoreDataAccessAwsIamRole"
-                    },
-                    "azureManagedIdentity": {
-                        "$ref": "#/types/databricks:index/MetastoreDataAccessAzureManagedIdentity:MetastoreDataAccessAzureManagedIdentity"
-                    },
-                    "azureServicePrincipal": {
-                        "$ref": "#/types/databricks:index/MetastoreDataAccessAzureServicePrincipal:MetastoreDataAccessAzureServicePrincipal"
-                    },
-                    "cloudflareApiToken": {
-                        "$ref": "#/types/databricks:index/MetastoreDataAccessCloudflareApiToken:MetastoreDataAccessCloudflareApiToken"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "databricksGcpServiceAccount": {
-                        "$ref": "#/types/databricks:index/MetastoreDataAccessDatabricksGcpServiceAccount:MetastoreDataAccessDatabricksGcpServiceAccount"
-                    },
-                    "forceDestroy": {
-                        "type": "boolean"
-                    },
-                    "forceUpdate": {
-                        "type": "boolean"
-                    },
-                    "gcpServiceAccountKey": {
-                        "$ref": "#/types/databricks:index/MetastoreDataAccessGcpServiceAccountKey:MetastoreDataAccessGcpServiceAccountKey"
-                    },
-                    "isDefault": {
-                        "type": "boolean"
-                    },
-                    "isolationMode": {
-                        "type": "string"
-                    },
-                    "metastoreDataAccessId": {
-                        "type": "string"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "readOnly": {
-                        "type": "boolean"
-                    },
-                    "skipValidation": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/mlflowExperiment:MlflowExperiment": {
@@ -20601,39 +19058,6 @@
                 "timeouts": {
                     "$ref": "#/types/databricks:index/MlflowExperimentTimeouts:MlflowExperimentTimeouts"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MlflowExperiment resources.\n",
-                "properties": {
-                    "artifactLocation": {
-                        "type": "string"
-                    },
-                    "creationTime": {
-                        "type": "number"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "experimentId": {
-                        "type": "string"
-                    },
-                    "lastUpdateTime": {
-                        "type": "number"
-                    },
-                    "lifecycleStage": {
-                        "type": "string"
-                    },
-                    "mlflowExperimentId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/MlflowExperimentTimeouts:MlflowExperimentTimeouts"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/mlflowModel:MlflowModel": {
@@ -20678,30 +19102,6 @@
                         "$ref": "#/types/databricks:index/MlflowModelTag:MlflowModelTag"
                     }
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MlflowModel resources.\n",
-                "properties": {
-                    "description": {
-                        "type": "string"
-                    },
-                    "mlflowModelId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "registeredModelId": {
-                        "type": "string"
-                    },
-                    "tags": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/MlflowModelTag:MlflowModelTag"
-                        }
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/mlflowWebhook:MlflowWebhook": {
@@ -20763,37 +19163,7 @@
             },
             "requiredInputs": [
                 "events"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MlflowWebhook resources.\n",
-                "properties": {
-                    "description": {
-                        "type": "string"
-                    },
-                    "events": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "httpUrlSpec": {
-                        "$ref": "#/types/databricks:index/MlflowWebhookHttpUrlSpec:MlflowWebhookHttpUrlSpec"
-                    },
-                    "jobSpec": {
-                        "$ref": "#/types/databricks:index/MlflowWebhookJobSpec:MlflowWebhookJobSpec"
-                    },
-                    "mlflowWebhookId": {
-                        "type": "string"
-                    },
-                    "modelName": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/modelServing:ModelServing": {
             "properties": {
@@ -20865,43 +19235,7 @@
             },
             "requiredInputs": [
                 "config"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering ModelServing resources.\n",
-                "properties": {
-                    "config": {
-                        "$ref": "#/types/databricks:index/ModelServingConfig:ModelServingConfig"
-                    },
-                    "modelServingId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "rateLimits": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/ModelServingRateLimit:ModelServingRateLimit"
-                        }
-                    },
-                    "routeOptimized": {
-                        "type": "boolean"
-                    },
-                    "servingEndpointId": {
-                        "type": "string"
-                    },
-                    "tags": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/ModelServingTag:ModelServingTag"
-                        }
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/ModelServingTimeouts:ModelServingTimeouts"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mount:Mount": {
             "properties": {
@@ -21000,57 +19334,6 @@
                 "wasb": {
                     "$ref": "#/types/databricks:index/MountWasb:MountWasb"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Mount resources.\n",
-                "properties": {
-                    "abfs": {
-                        "$ref": "#/types/databricks:index/MountAbfs:MountAbfs"
-                    },
-                    "adl": {
-                        "$ref": "#/types/databricks:index/MountAdl:MountAdl"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "encryptionType": {
-                        "type": "string"
-                    },
-                    "extraConfigs": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "gs": {
-                        "$ref": "#/types/databricks:index/MountGs:MountGs"
-                    },
-                    "mountId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "resourceId": {
-                        "type": "string"
-                    },
-                    "s3": {
-                        "$ref": "#/types/databricks:index/MountS3:MountS3"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/MountTimeouts:MountTimeouts"
-                    },
-                    "uri": {
-                        "type": "string"
-                    },
-                    "wasb": {
-                        "$ref": "#/types/databricks:index/MountWasb:MountWasb"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/mwsCredentials:MwsCredentials": {
@@ -21113,35 +19396,7 @@
             "requiredInputs": [
                 "credentialsName",
                 "roleArn"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsCredentials resources.\n",
-                "properties": {
-                    "accountId": {
-                        "type": "string",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "creationTime": {
-                        "type": "number"
-                    },
-                    "credentialsId": {
-                        "type": "string"
-                    },
-                    "credentialsName": {
-                        "type": "string"
-                    },
-                    "externalId": {
-                        "type": "string"
-                    },
-                    "mwsCredentialsId": {
-                        "type": "string"
-                    },
-                    "roleArn": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsCustomerManagedKeys:MwsCustomerManagedKeys": {
             "properties": {
@@ -21206,37 +19461,7 @@
             "requiredInputs": [
                 "accountId",
                 "useCases"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsCustomerManagedKeys resources.\n",
-                "properties": {
-                    "accountId": {
-                        "type": "string"
-                    },
-                    "awsKeyInfo": {
-                        "$ref": "#/types/databricks:index/MwsCustomerManagedKeysAwsKeyInfo:MwsCustomerManagedKeysAwsKeyInfo"
-                    },
-                    "creationTime": {
-                        "type": "number"
-                    },
-                    "customerManagedKeyId": {
-                        "type": "string"
-                    },
-                    "gcpKeyInfo": {
-                        "$ref": "#/types/databricks:index/MwsCustomerManagedKeysGcpKeyInfo:MwsCustomerManagedKeysGcpKeyInfo"
-                    },
-                    "mwsCustomerManagedKeysId": {
-                        "type": "string"
-                    },
-                    "useCases": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsLogDelivery:MwsLogDelivery": {
             "properties": {
@@ -21338,52 +19563,7 @@
                 "logType",
                 "outputFormat",
                 "storageConfigurationId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsLogDelivery resources.\n",
-                "properties": {
-                    "accountId": {
-                        "type": "string"
-                    },
-                    "configId": {
-                        "type": "string"
-                    },
-                    "configName": {
-                        "type": "string"
-                    },
-                    "credentialsId": {
-                        "type": "string"
-                    },
-                    "deliveryPathPrefix": {
-                        "type": "string"
-                    },
-                    "deliveryStartTime": {
-                        "type": "string"
-                    },
-                    "logType": {
-                        "type": "string"
-                    },
-                    "mwsLogDeliveryId": {
-                        "type": "string"
-                    },
-                    "outputFormat": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "storageConfigurationId": {
-                        "type": "string"
-                    },
-                    "workspaceIdsFilters": {
-                        "type": "array",
-                        "items": {
-                            "type": "number"
-                        }
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsNccBinding:MwsNccBinding": {
             "properties": {
@@ -21416,22 +19596,7 @@
             "requiredInputs": [
                 "networkConnectivityConfigId",
                 "workspaceId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsNccBinding resources.\n",
-                "properties": {
-                    "mwsNccBindingId": {
-                        "type": "string"
-                    },
-                    "networkConnectivityConfigId": {
-                        "type": "string"
-                    },
-                    "workspaceId": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsNccPrivateEndpointRule:MwsNccPrivateEndpointRule": {
             "properties": {
@@ -21519,46 +19684,7 @@
                 "groupId",
                 "networkConnectivityConfigId",
                 "resourceId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsNccPrivateEndpointRule resources.\n",
-                "properties": {
-                    "connectionState": {
-                        "type": "string"
-                    },
-                    "creationTime": {
-                        "type": "number"
-                    },
-                    "deactivated": {
-                        "type": "boolean"
-                    },
-                    "deactivatedAt": {
-                        "type": "number"
-                    },
-                    "endpointName": {
-                        "type": "string"
-                    },
-                    "groupId": {
-                        "type": "string"
-                    },
-                    "mwsNccPrivateEndpointRuleId": {
-                        "type": "string"
-                    },
-                    "networkConnectivityConfigId": {
-                        "type": "string"
-                    },
-                    "resourceId": {
-                        "type": "string"
-                    },
-                    "ruleId": {
-                        "type": "string"
-                    },
-                    "updatedTime": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsNetworkConnectivityConfig:MwsNetworkConnectivityConfig": {
             "properties": {
@@ -21624,37 +19750,7 @@
             },
             "requiredInputs": [
                 "region"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsNetworkConnectivityConfig resources.\n",
-                "properties": {
-                    "accountId": {
-                        "type": "string"
-                    },
-                    "creationTime": {
-                        "type": "number"
-                    },
-                    "egressConfig": {
-                        "$ref": "#/types/databricks:index/MwsNetworkConnectivityConfigEgressConfig:MwsNetworkConnectivityConfigEgressConfig"
-                    },
-                    "mwsNetworkConnectivityConfigId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "networkConnectivityConfigId": {
-                        "type": "string"
-                    },
-                    "region": {
-                        "type": "string"
-                    },
-                    "updatedTime": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsNetworks:MwsNetworks": {
             "properties": {
@@ -21771,62 +19867,7 @@
             "requiredInputs": [
                 "accountId",
                 "networkName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsNetworks resources.\n",
-                "properties": {
-                    "accountId": {
-                        "type": "string",
-                        "secret": true
-                    },
-                    "creationTime": {
-                        "type": "number"
-                    },
-                    "errorMessages": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/MwsNetworksErrorMessage:MwsNetworksErrorMessage"
-                        }
-                    },
-                    "gcpNetworkInfo": {
-                        "$ref": "#/types/databricks:index/MwsNetworksGcpNetworkInfo:MwsNetworksGcpNetworkInfo"
-                    },
-                    "mwsNetworksId": {
-                        "type": "string"
-                    },
-                    "networkId": {
-                        "type": "string"
-                    },
-                    "networkName": {
-                        "type": "string"
-                    },
-                    "securityGroupIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "subnetIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "vpcEndpoints": {
-                        "$ref": "#/types/databricks:index/MwsNetworksVpcEndpoints:MwsNetworksVpcEndpoints"
-                    },
-                    "vpcId": {
-                        "type": "string"
-                    },
-                    "vpcStatus": {
-                        "type": "string"
-                    },
-                    "workspaceId": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsPermissionAssignment:MwsPermissionAssignment": {
             "properties": {
@@ -21873,28 +19914,7 @@
                 "permissions",
                 "principalId",
                 "workspaceId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsPermissionAssignment resources.\n",
-                "properties": {
-                    "mwsPermissionAssignmentId": {
-                        "type": "string"
-                    },
-                    "permissions": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "principalId": {
-                        "type": "number"
-                    },
-                    "workspaceId": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsPrivateAccessSettings:MwsPrivateAccessSettings": {
             "properties": {
@@ -21967,41 +19987,7 @@
             "requiredInputs": [
                 "privateAccessSettingsName",
                 "region"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsPrivateAccessSettings resources.\n",
-                "properties": {
-                    "accountId": {
-                        "type": "string",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "allowedVpcEndpointIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "mwsPrivateAccessSettingsId": {
-                        "type": "string"
-                    },
-                    "privateAccessLevel": {
-                        "type": "string"
-                    },
-                    "privateAccessSettingsId": {
-                        "type": "string"
-                    },
-                    "privateAccessSettingsName": {
-                        "type": "string"
-                    },
-                    "publicAccessEnabled": {
-                        "type": "boolean"
-                    },
-                    "region": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsStorageConfigurations:MwsStorageConfigurations": {
             "properties": {
@@ -22052,32 +20038,7 @@
                 "accountId",
                 "bucketName",
                 "storageConfigurationName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsStorageConfigurations resources.\n",
-                "properties": {
-                    "accountId": {
-                        "type": "string",
-                        "secret": true
-                    },
-                    "bucketName": {
-                        "type": "string"
-                    },
-                    "creationTime": {
-                        "type": "number"
-                    },
-                    "mwsStorageConfigurationsId": {
-                        "type": "string"
-                    },
-                    "storageConfigurationId": {
-                        "type": "string"
-                    },
-                    "storageConfigurationName": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsVpcEndpoint:MwsVpcEndpoint": {
             "properties": {
@@ -22161,46 +20122,7 @@
             },
             "requiredInputs": [
                 "vpcEndpointName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsVpcEndpoint resources.\n",
-                "properties": {
-                    "accountId": {
-                        "type": "string"
-                    },
-                    "awsAccountId": {
-                        "type": "string"
-                    },
-                    "awsEndpointServiceId": {
-                        "type": "string"
-                    },
-                    "awsVpcEndpointId": {
-                        "type": "string"
-                    },
-                    "gcpVpcEndpointInfo": {
-                        "$ref": "#/types/databricks:index/MwsVpcEndpointGcpVpcEndpointInfo:MwsVpcEndpointGcpVpcEndpointInfo"
-                    },
-                    "mwsVpcEndpointId": {
-                        "type": "string"
-                    },
-                    "region": {
-                        "type": "string"
-                    },
-                    "state": {
-                        "type": "string"
-                    },
-                    "useCase": {
-                        "type": "string"
-                    },
-                    "vpcEndpointId": {
-                        "type": "string"
-                    },
-                    "vpcEndpointName": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/mwsWorkspaces:MwsWorkspaces": {
             "properties": {
@@ -22404,105 +20326,7 @@
             "requiredInputs": [
                 "accountId",
                 "workspaceName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering MwsWorkspaces resources.\n",
-                "properties": {
-                    "accountId": {
-                        "type": "string",
-                        "secret": true
-                    },
-                    "awsRegion": {
-                        "type": "string"
-                    },
-                    "cloud": {
-                        "type": "string"
-                    },
-                    "cloudResourceContainer": {
-                        "$ref": "#/types/databricks:index/MwsWorkspacesCloudResourceContainer:MwsWorkspacesCloudResourceContainer"
-                    },
-                    "creationTime": {
-                        "type": "number"
-                    },
-                    "credentialsId": {
-                        "type": "string"
-                    },
-                    "customTags": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "customerManagedKeyId": {
-                        "type": "string",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "deploymentName": {
-                        "type": "string"
-                    },
-                    "externalCustomerInfo": {
-                        "$ref": "#/types/databricks:index/MwsWorkspacesExternalCustomerInfo:MwsWorkspacesExternalCustomerInfo"
-                    },
-                    "gcpManagedNetworkConfig": {
-                        "$ref": "#/types/databricks:index/MwsWorkspacesGcpManagedNetworkConfig:MwsWorkspacesGcpManagedNetworkConfig"
-                    },
-                    "gcpWorkspaceSa": {
-                        "type": "string"
-                    },
-                    "gkeConfig": {
-                        "$ref": "#/types/databricks:index/MwsWorkspacesGkeConfig:MwsWorkspacesGkeConfig"
-                    },
-                    "isNoPublicIpEnabled": {
-                        "type": "boolean"
-                    },
-                    "location": {
-                        "type": "string"
-                    },
-                    "managedServicesCustomerManagedKeyId": {
-                        "type": "string"
-                    },
-                    "mwsWorkspacesId": {
-                        "type": "string"
-                    },
-                    "networkId": {
-                        "type": "string"
-                    },
-                    "pricingTier": {
-                        "type": "string"
-                    },
-                    "privateAccessSettingsId": {
-                        "type": "string"
-                    },
-                    "storageConfigurationId": {
-                        "type": "string"
-                    },
-                    "storageCustomerManagedKeyId": {
-                        "type": "string"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/MwsWorkspacesTimeouts:MwsWorkspacesTimeouts"
-                    },
-                    "token": {
-                        "$ref": "#/types/databricks:index/MwsWorkspacesToken:MwsWorkspacesToken"
-                    },
-                    "workspaceId": {
-                        "type": "number"
-                    },
-                    "workspaceName": {
-                        "type": "string"
-                    },
-                    "workspaceStatus": {
-                        "type": "string"
-                    },
-                    "workspaceStatusMessage": {
-                        "type": "string"
-                    },
-                    "workspaceUrl": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/notebook:Notebook": {
             "properties": {
@@ -22581,47 +20405,7 @@
             },
             "requiredInputs": [
                 "path"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Notebook resources.\n",
-                "properties": {
-                    "contentBase64": {
-                        "type": "string"
-                    },
-                    "format": {
-                        "type": "string"
-                    },
-                    "language": {
-                        "type": "string"
-                    },
-                    "md5": {
-                        "type": "string"
-                    },
-                    "notebookId": {
-                        "type": "string"
-                    },
-                    "objectId": {
-                        "type": "number"
-                    },
-                    "objectType": {
-                        "type": "string",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "path": {
-                        "type": "string"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "url": {
-                        "type": "string"
-                    },
-                    "workspacePath": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/notificationDestination:NotificationDestination": {
             "properties": {
@@ -22659,25 +20443,7 @@
             },
             "requiredInputs": [
                 "displayName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering NotificationDestination resources.\n",
-                "properties": {
-                    "config": {
-                        "$ref": "#/types/databricks:index/NotificationDestinationConfig:NotificationDestinationConfig"
-                    },
-                    "destinationType": {
-                        "type": "string"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "notificationDestinationId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/oboToken:OboToken": {
             "properties": {
@@ -22719,29 +20485,7 @@
             },
             "requiredInputs": [
                 "applicationId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering OboToken resources.\n",
-                "properties": {
-                    "applicationId": {
-                        "type": "string"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "lifetimeSeconds": {
-                        "type": "number"
-                    },
-                    "oboTokenId": {
-                        "type": "string"
-                    },
-                    "tokenValue": {
-                        "type": "string",
-                        "secret": true
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/onlineTable:OnlineTable": {
             "properties": {
@@ -22788,33 +20532,6 @@
                 "timeouts": {
                     "$ref": "#/types/databricks:index/OnlineTableTimeouts:OnlineTableTimeouts"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering OnlineTable resources.\n",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "onlineTableId": {
-                        "type": "string"
-                    },
-                    "spec": {
-                        "$ref": "#/types/databricks:index/OnlineTableSpec:OnlineTableSpec"
-                    },
-                    "statuses": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/OnlineTableStatus:OnlineTableStatus"
-                        }
-                    },
-                    "tableServingUrl": {
-                        "type": "string"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/OnlineTableTimeouts:OnlineTableTimeouts"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/permissionAssignment:PermissionAssignment": {
@@ -22854,25 +20571,7 @@
             "requiredInputs": [
                 "permissions",
                 "principalId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering PermissionAssignment resources.\n",
-                "properties": {
-                    "permissionAssignmentId": {
-                        "type": "string"
-                    },
-                    "permissions": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "principalId": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/permissions:Permissions": {
             "properties": {
@@ -23042,91 +20741,7 @@
             },
             "requiredInputs": [
                 "accessControls"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Permissions resources.\n",
-                "properties": {
-                    "accessControls": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/PermissionsAccessControl:PermissionsAccessControl"
-                        }
-                    },
-                    "authorization": {
-                        "type": "string"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "clusterPolicyId": {
-                        "type": "string"
-                    },
-                    "dashboardId": {
-                        "type": "string"
-                    },
-                    "directoryId": {
-                        "type": "string"
-                    },
-                    "directoryPath": {
-                        "type": "string"
-                    },
-                    "experimentId": {
-                        "type": "string"
-                    },
-                    "instancePoolId": {
-                        "type": "string"
-                    },
-                    "jobId": {
-                        "type": "string"
-                    },
-                    "notebookId": {
-                        "type": "string"
-                    },
-                    "notebookPath": {
-                        "type": "string"
-                    },
-                    "objectType": {
-                        "type": "string"
-                    },
-                    "permissionsId": {
-                        "type": "string"
-                    },
-                    "pipelineId": {
-                        "type": "string"
-                    },
-                    "registeredModelId": {
-                        "type": "string"
-                    },
-                    "repoId": {
-                        "type": "string"
-                    },
-                    "repoPath": {
-                        "type": "string"
-                    },
-                    "servingEndpointId": {
-                        "type": "string"
-                    },
-                    "sqlAlertId": {
-                        "type": "string"
-                    },
-                    "sqlDashboardId": {
-                        "type": "string"
-                    },
-                    "sqlEndpointId": {
-                        "type": "string"
-                    },
-                    "sqlQueryId": {
-                        "type": "string"
-                    },
-                    "workspaceFileId": {
-                        "type": "string"
-                    },
-                    "workspaceFilePath": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/pipeline:Pipeline": {
             "properties": {
@@ -23366,123 +20981,6 @@
                 "url": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Pipeline resources.\n",
-                "properties": {
-                    "allowDuplicateNames": {
-                        "type": "boolean"
-                    },
-                    "catalog": {
-                        "type": "string"
-                    },
-                    "cause": {
-                        "type": "string"
-                    },
-                    "channel": {
-                        "type": "string"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "clusters": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/PipelineCluster:PipelineCluster"
-                        }
-                    },
-                    "configuration": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "continuous": {
-                        "type": "boolean"
-                    },
-                    "creatorUserName": {
-                        "type": "string"
-                    },
-                    "deployment": {
-                        "$ref": "#/types/databricks:index/PipelineDeployment:PipelineDeployment"
-                    },
-                    "development": {
-                        "type": "boolean"
-                    },
-                    "edition": {
-                        "type": "string"
-                    },
-                    "expectedLastModified": {
-                        "type": "number"
-                    },
-                    "filters": {
-                        "$ref": "#/types/databricks:index/PipelineFilters:PipelineFilters"
-                    },
-                    "gatewayDefinition": {
-                        "$ref": "#/types/databricks:index/PipelineGatewayDefinition:PipelineGatewayDefinition"
-                    },
-                    "health": {
-                        "type": "string"
-                    },
-                    "ingestionDefinition": {
-                        "$ref": "#/types/databricks:index/PipelineIngestionDefinition:PipelineIngestionDefinition"
-                    },
-                    "lastModified": {
-                        "type": "number"
-                    },
-                    "latestUpdates": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/PipelineLatestUpdate:PipelineLatestUpdate"
-                        }
-                    },
-                    "libraries": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/PipelineLibrary:PipelineLibrary"
-                        }
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "notifications": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/PipelineNotification:PipelineNotification"
-                        }
-                    },
-                    "photon": {
-                        "type": "boolean"
-                    },
-                    "pipelineId": {
-                        "type": "string"
-                    },
-                    "runAsUserName": {
-                        "type": "string"
-                    },
-                    "serverless": {
-                        "type": "boolean"
-                    },
-                    "state": {
-                        "type": "string"
-                    },
-                    "storage": {
-                        "type": "string"
-                    },
-                    "target": {
-                        "type": "string"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/PipelineTimeouts:PipelineTimeouts"
-                    },
-                    "trigger": {
-                        "$ref": "#/types/databricks:index/PipelineTrigger:PipelineTrigger"
-                    },
-                    "url": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/qualityMonitor:QualityMonitor": {
@@ -23634,85 +21132,7 @@
                 "assetsDir",
                 "outputSchemaName",
                 "tableName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering QualityMonitor resources.\n",
-                "properties": {
-                    "assetsDir": {
-                        "type": "string"
-                    },
-                    "baselineTableName": {
-                        "type": "string"
-                    },
-                    "customMetrics": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/QualityMonitorCustomMetric:QualityMonitorCustomMetric"
-                        }
-                    },
-                    "dashboardId": {
-                        "type": "string"
-                    },
-                    "dataClassificationConfig": {
-                        "$ref": "#/types/databricks:index/QualityMonitorDataClassificationConfig:QualityMonitorDataClassificationConfig"
-                    },
-                    "driftMetricsTableName": {
-                        "type": "string"
-                    },
-                    "inferenceLog": {
-                        "$ref": "#/types/databricks:index/QualityMonitorInferenceLog:QualityMonitorInferenceLog"
-                    },
-                    "latestMonitorFailureMsg": {
-                        "type": "string"
-                    },
-                    "monitorVersion": {
-                        "type": "string"
-                    },
-                    "notifications": {
-                        "$ref": "#/types/databricks:index/QualityMonitorNotifications:QualityMonitorNotifications"
-                    },
-                    "outputSchemaName": {
-                        "type": "string"
-                    },
-                    "profileMetricsTableName": {
-                        "type": "string"
-                    },
-                    "qualityMonitorId": {
-                        "type": "string"
-                    },
-                    "schedule": {
-                        "$ref": "#/types/databricks:index/QualityMonitorSchedule:QualityMonitorSchedule"
-                    },
-                    "skipBuiltinDashboard": {
-                        "type": "boolean"
-                    },
-                    "slicingExprs": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "snapshot": {
-                        "$ref": "#/types/databricks:index/QualityMonitorSnapshot:QualityMonitorSnapshot"
-                    },
-                    "status": {
-                        "type": "string"
-                    },
-                    "tableName": {
-                        "type": "string"
-                    },
-                    "timeSeries": {
-                        "$ref": "#/types/databricks:index/QualityMonitorTimeSeries:QualityMonitorTimeSeries"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/QualityMonitorTimeouts:QualityMonitorTimeouts"
-                    },
-                    "warehouseId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/recipient:Recipient": {
             "properties": {
@@ -23830,74 +21250,7 @@
             },
             "requiredInputs": [
                 "authenticationType"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Recipient resources.\n",
-                "properties": {
-                    "activated": {
-                        "type": "boolean"
-                    },
-                    "activationUrl": {
-                        "type": "string"
-                    },
-                    "authenticationType": {
-                        "type": "string"
-                    },
-                    "cloud": {
-                        "type": "string"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "createdAt": {
-                        "type": "number"
-                    },
-                    "createdBy": {
-                        "type": "string"
-                    },
-                    "dataRecipientGlobalMetastoreId": {
-                        "type": "string"
-                    },
-                    "ipAccessList": {
-                        "$ref": "#/types/databricks:index/RecipientIpAccessList:RecipientIpAccessList"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "propertiesKvpairs": {
-                        "$ref": "#/types/databricks:index/RecipientPropertiesKvpairs:RecipientPropertiesKvpairs"
-                    },
-                    "recipientId": {
-                        "type": "string"
-                    },
-                    "region": {
-                        "type": "string"
-                    },
-                    "sharingCode": {
-                        "type": "string",
-                        "secret": true
-                    },
-                    "tokens": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/RecipientToken:RecipientToken"
-                        }
-                    },
-                    "updatedAt": {
-                        "type": "number"
-                    },
-                    "updatedBy": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/registeredModel:RegisteredModel": {
             "properties": {
@@ -23957,34 +21310,7 @@
             "requiredInputs": [
                 "catalogName",
                 "schemaName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering RegisteredModel resources.\n",
-                "properties": {
-                    "catalogName": {
-                        "type": "string"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "registeredModelId": {
-                        "type": "string"
-                    },
-                    "schemaName": {
-                        "type": "string"
-                    },
-                    "storageLocation": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/repo:Repo": {
             "properties": {
@@ -24053,40 +21379,7 @@
             },
             "requiredInputs": [
                 "url"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Repo resources.\n",
-                "properties": {
-                    "branch": {
-                        "type": "string"
-                    },
-                    "commitHash": {
-                        "type": "string"
-                    },
-                    "gitProvider": {
-                        "type": "string"
-                    },
-                    "path": {
-                        "type": "string"
-                    },
-                    "repoId": {
-                        "type": "string"
-                    },
-                    "sparseCheckout": {
-                        "$ref": "#/types/databricks:index/RepoSparseCheckout:RepoSparseCheckout"
-                    },
-                    "tag": {
-                        "type": "string"
-                    },
-                    "url": {
-                        "type": "string"
-                    },
-                    "workspacePath": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/restrictWorkspaceAdminsSetting:RestrictWorkspaceAdminsSetting": {
             "properties": {
@@ -24125,25 +21418,7 @@
             },
             "requiredInputs": [
                 "restrictWorkspaceAdmins"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering RestrictWorkspaceAdminsSetting resources.\n",
-                "properties": {
-                    "etag": {
-                        "type": "string"
-                    },
-                    "restrictWorkspaceAdmins": {
-                        "$ref": "#/types/databricks:index/RestrictWorkspaceAdminsSettingRestrictWorkspaceAdmins:RestrictWorkspaceAdminsSettingRestrictWorkspaceAdmins"
-                    },
-                    "restrictWorkspaceAdminsSettingId": {
-                        "type": "string"
-                    },
-                    "settingName": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/schema:Schema": {
             "properties": {
@@ -24226,46 +21501,7 @@
             },
             "requiredInputs": [
                 "catalogName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Schema resources.\n",
-                "properties": {
-                    "catalogName": {
-                        "type": "string"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "enablePredictiveOptimization": {
-                        "type": "string"
-                    },
-                    "forceDestroy": {
-                        "type": "boolean"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "properties": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "schemaId": {
-                        "type": "string"
-                    },
-                    "storageRoot": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/secret:Secret": {
             "properties": {
@@ -24316,32 +21552,7 @@
                 "key",
                 "scope",
                 "stringValue"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Secret resources.\n",
-                "properties": {
-                    "configReference": {
-                        "type": "string"
-                    },
-                    "key": {
-                        "type": "string"
-                    },
-                    "lastUpdatedTimestamp": {
-                        "type": "number"
-                    },
-                    "scope": {
-                        "type": "string"
-                    },
-                    "secretId": {
-                        "type": "string"
-                    },
-                    "stringValue": {
-                        "type": "string",
-                        "secret": true
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/secretAcl:SecretAcl": {
             "properties": {
@@ -24382,25 +21593,7 @@
                 "permission",
                 "principal",
                 "scope"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SecretAcl resources.\n",
-                "properties": {
-                    "permission": {
-                        "type": "string"
-                    },
-                    "principal": {
-                        "type": "string"
-                    },
-                    "scope": {
-                        "type": "string"
-                    },
-                    "secretAclId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/secretScope:SecretScope": {
             "properties": {
@@ -24441,27 +21634,6 @@
                 "secretScopeId": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SecretScope resources.\n",
-                "properties": {
-                    "backendType": {
-                        "type": "string"
-                    },
-                    "initialManagePrincipal": {
-                        "type": "string"
-                    },
-                    "keyvaultMetadata": {
-                        "$ref": "#/types/databricks:index/SecretScopeKeyvaultMetadata:SecretScopeKeyvaultMetadata"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "secretScopeId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/servicePrincipal:ServicePrincipal": {
@@ -24572,60 +21744,6 @@
                 "workspaceAccess": {
                     "type": "boolean"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering ServicePrincipal resources.\n",
-                "properties": {
-                    "aclPrincipalId": {
-                        "type": "string"
-                    },
-                    "active": {
-                        "type": "boolean"
-                    },
-                    "allowClusterCreate": {
-                        "type": "boolean"
-                    },
-                    "allowInstancePoolCreate": {
-                        "type": "boolean"
-                    },
-                    "applicationId": {
-                        "type": "string"
-                    },
-                    "databricksSqlAccess": {
-                        "type": "boolean"
-                    },
-                    "disableAsUserDeletion": {
-                        "type": "boolean"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "externalId": {
-                        "type": "string"
-                    },
-                    "force": {
-                        "type": "boolean"
-                    },
-                    "forceDeleteHomeDir": {
-                        "type": "boolean"
-                    },
-                    "forceDeleteRepos": {
-                        "type": "boolean"
-                    },
-                    "home": {
-                        "type": "string"
-                    },
-                    "repos": {
-                        "type": "string"
-                    },
-                    "servicePrincipalId": {
-                        "type": "string"
-                    },
-                    "workspaceAccess": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/servicePrincipalRole:ServicePrincipalRole": {
@@ -24659,22 +21777,7 @@
             "requiredInputs": [
                 "role",
                 "servicePrincipalId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering ServicePrincipalRole resources.\n",
-                "properties": {
-                    "role": {
-                        "type": "string"
-                    },
-                    "servicePrincipalId": {
-                        "type": "string"
-                    },
-                    "servicePrincipalRoleId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/servicePrincipalSecret:ServicePrincipalSecret": {
             "properties": {
@@ -24715,26 +21818,7 @@
             },
             "requiredInputs": [
                 "servicePrincipalId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering ServicePrincipalSecret resources.\n",
-                "properties": {
-                    "secret": {
-                        "type": "string",
-                        "secret": true
-                    },
-                    "servicePrincipalId": {
-                        "type": "string"
-                    },
-                    "servicePrincipalSecretId": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/share:Share": {
             "properties": {
@@ -24788,33 +21872,6 @@
                 "shareId": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Share resources.\n",
-                "properties": {
-                    "createdAt": {
-                        "type": "number"
-                    },
-                    "createdBy": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "objects": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/ShareObject:ShareObject"
-                        }
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "shareId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/sqlAlert:SqlAlert": {
@@ -24881,37 +21938,7 @@
             "requiredInputs": [
                 "options",
                 "queryId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SqlAlert resources.\n",
-                "properties": {
-                    "createdAt": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "options": {
-                        "$ref": "#/types/databricks:index/SqlAlertOptions:SqlAlertOptions"
-                    },
-                    "parent": {
-                        "type": "string"
-                    },
-                    "queryId": {
-                        "type": "string"
-                    },
-                    "rearm": {
-                        "type": "number"
-                    },
-                    "sqlAlertId": {
-                        "type": "string"
-                    },
-                    "updatedAt": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/sqlDashboard:SqlDashboard": {
             "properties": {
@@ -24977,39 +22004,6 @@
                 "updatedAt": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SqlDashboard resources.\n",
-                "properties": {
-                    "createdAt": {
-                        "type": "string"
-                    },
-                    "dashboardFiltersEnabled": {
-                        "type": "boolean"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "parent": {
-                        "type": "string"
-                    },
-                    "runAsRole": {
-                        "type": "string"
-                    },
-                    "sqlDashboardId": {
-                        "type": "string"
-                    },
-                    "tags": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "updatedAt": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/sqlEndpoint:SqlEndpoint": {
@@ -25150,85 +22144,7 @@
             },
             "requiredInputs": [
                 "clusterSize"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SqlEndpoint resources.\n",
-                "properties": {
-                    "autoStopMins": {
-                        "type": "number"
-                    },
-                    "channel": {
-                        "$ref": "#/types/databricks:index/SqlEndpointChannel:SqlEndpointChannel"
-                    },
-                    "clusterSize": {
-                        "type": "string"
-                    },
-                    "creatorName": {
-                        "type": "string"
-                    },
-                    "dataSourceId": {
-                        "type": "string"
-                    },
-                    "enablePhoton": {
-                        "type": "boolean"
-                    },
-                    "enableServerlessCompute": {
-                        "type": "boolean"
-                    },
-                    "healths": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/SqlEndpointHealth:SqlEndpointHealth"
-                        }
-                    },
-                    "instanceProfileArn": {
-                        "type": "string"
-                    },
-                    "jdbcUrl": {
-                        "type": "string"
-                    },
-                    "maxNumClusters": {
-                        "type": "number"
-                    },
-                    "minNumClusters": {
-                        "type": "number"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "numActiveSessions": {
-                        "type": "number"
-                    },
-                    "numClusters": {
-                        "type": "number"
-                    },
-                    "odbcParams": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/SqlEndpointOdbcParam:SqlEndpointOdbcParam"
-                        }
-                    },
-                    "spotInstancePolicy": {
-                        "type": "string"
-                    },
-                    "sqlEndpointId": {
-                        "type": "string"
-                    },
-                    "state": {
-                        "type": "string"
-                    },
-                    "tags": {
-                        "$ref": "#/types/databricks:index/SqlEndpointTags:SqlEndpointTags"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/SqlEndpointTimeouts:SqlEndpointTimeouts"
-                    },
-                    "warehouseType": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/sqlGlobalConfig:SqlGlobalConfig": {
             "properties": {
@@ -25294,40 +22210,6 @@
                 "sqlGlobalConfigId": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SqlGlobalConfig resources.\n",
-                "properties": {
-                    "dataAccessConfig": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "enableServerlessCompute": {
-                        "type": "boolean",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "googleServiceAccount": {
-                        "type": "string"
-                    },
-                    "instanceProfileArn": {
-                        "type": "string"
-                    },
-                    "securityPolicy": {
-                        "type": "string"
-                    },
-                    "sqlConfigParams": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "sqlGlobalConfigId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/sqlPermissions:SqlPermissions": {
@@ -25398,42 +22280,6 @@
                 "view": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SqlPermissions resources.\n",
-                "properties": {
-                    "anonymousFunction": {
-                        "type": "boolean"
-                    },
-                    "anyFile": {
-                        "type": "boolean"
-                    },
-                    "catalog": {
-                        "type": "boolean"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "database": {
-                        "type": "string"
-                    },
-                    "privilegeAssignments": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/SqlPermissionsPrivilegeAssignment:SqlPermissionsPrivilegeAssignment"
-                        }
-                    },
-                    "sqlPermissionsId": {
-                        "type": "string"
-                    },
-                    "table": {
-                        "type": "string"
-                    },
-                    "view": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/sqlQuery:SqlQuery": {
@@ -25538,56 +22384,7 @@
             "requiredInputs": [
                 "dataSourceId",
                 "query"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SqlQuery resources.\n",
-                "properties": {
-                    "createdAt": {
-                        "type": "string"
-                    },
-                    "dataSourceId": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "parameters": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/SqlQueryParameter:SqlQueryParameter"
-                        }
-                    },
-                    "parent": {
-                        "type": "string"
-                    },
-                    "query": {
-                        "type": "string"
-                    },
-                    "runAsRole": {
-                        "type": "string"
-                    },
-                    "schedule": {
-                        "$ref": "#/types/databricks:index/SqlQuerySchedule:SqlQuerySchedule",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "sqlQueryId": {
-                        "type": "string"
-                    },
-                    "tags": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "updatedAt": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/sqlTable:SqlTable": {
             "properties": {
@@ -25746,82 +22543,7 @@
                 "catalogName",
                 "schemaName",
                 "tableType"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SqlTable resources.\n",
-                "properties": {
-                    "catalogName": {
-                        "type": "string"
-                    },
-                    "clusterId": {
-                        "type": "string"
-                    },
-                    "clusterKeys": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "columns": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/SqlTableColumn:SqlTableColumn"
-                        }
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "dataSourceFormat": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "options": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "partitions": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "properties": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "schemaName": {
-                        "type": "string"
-                    },
-                    "sqlTableId": {
-                        "type": "string"
-                    },
-                    "storageCredentialName": {
-                        "type": "string"
-                    },
-                    "storageLocation": {
-                        "type": "string"
-                    },
-                    "tableType": {
-                        "type": "string"
-                    },
-                    "viewDefinition": {
-                        "type": "string"
-                    },
-                    "warehouseId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/sqlVisualization:SqlVisualization": {
             "properties": {
@@ -25888,37 +22610,7 @@
                 "options",
                 "queryId",
                 "type"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SqlVisualization resources.\n",
-                "properties": {
-                    "description": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "options": {
-                        "type": "string"
-                    },
-                    "queryId": {
-                        "type": "string"
-                    },
-                    "queryPlan": {
-                        "type": "string"
-                    },
-                    "sqlVisualizationId": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "visualizationId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/sqlWidget:SqlWidget": {
             "properties": {
@@ -25992,43 +22684,7 @@
             },
             "requiredInputs": [
                 "dashboardId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SqlWidget resources.\n",
-                "properties": {
-                    "dashboardId": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "parameters": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/SqlWidgetParameter:SqlWidgetParameter"
-                        }
-                    },
-                    "position": {
-                        "$ref": "#/types/databricks:index/SqlWidgetPosition:SqlWidgetPosition"
-                    },
-                    "sqlWidgetId": {
-                        "type": "string"
-                    },
-                    "text": {
-                        "type": "string"
-                    },
-                    "title": {
-                        "type": "string"
-                    },
-                    "visualizationId": {
-                        "type": "string"
-                    },
-                    "widgetId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/storageCredential:StorageCredential": {
             "properties": {
@@ -26141,63 +22797,6 @@
                 "skipValidation": {
                     "type": "boolean"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering StorageCredential resources.\n",
-                "properties": {
-                    "awsIamRole": {
-                        "$ref": "#/types/databricks:index/StorageCredentialAwsIamRole:StorageCredentialAwsIamRole"
-                    },
-                    "azureManagedIdentity": {
-                        "$ref": "#/types/databricks:index/StorageCredentialAzureManagedIdentity:StorageCredentialAzureManagedIdentity"
-                    },
-                    "azureServicePrincipal": {
-                        "$ref": "#/types/databricks:index/StorageCredentialAzureServicePrincipal:StorageCredentialAzureServicePrincipal"
-                    },
-                    "cloudflareApiToken": {
-                        "$ref": "#/types/databricks:index/StorageCredentialCloudflareApiToken:StorageCredentialCloudflareApiToken"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "databricksGcpServiceAccount": {
-                        "$ref": "#/types/databricks:index/StorageCredentialDatabricksGcpServiceAccount:StorageCredentialDatabricksGcpServiceAccount"
-                    },
-                    "databricksStorageCredentialId": {
-                        "type": "string"
-                    },
-                    "forceDestroy": {
-                        "type": "boolean"
-                    },
-                    "forceUpdate": {
-                        "type": "boolean"
-                    },
-                    "gcpServiceAccountKey": {
-                        "$ref": "#/types/databricks:index/StorageCredentialGcpServiceAccountKey:StorageCredentialGcpServiceAccountKey"
-                    },
-                    "isolationMode": {
-                        "type": "string"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "readOnly": {
-                        "type": "boolean"
-                    },
-                    "skipValidation": {
-                        "type": "boolean"
-                    },
-                    "storageCredentialId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/systemSchema:SystemSchema": {
@@ -26234,27 +22833,6 @@
                 "systemSchemaId": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering SystemSchema resources.\n",
-                "properties": {
-                    "fullName": {
-                        "type": "string"
-                    },
-                    "metastoreId": {
-                        "type": "string"
-                    },
-                    "schema": {
-                        "type": "string"
-                    },
-                    "state": {
-                        "type": "string"
-                    },
-                    "systemSchemaId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/table:Table": {
@@ -26368,58 +22946,7 @@
                 "dataSourceFormat",
                 "schemaName",
                 "tableType"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Table resources.\n",
-                "properties": {
-                    "catalogName": {
-                        "type": "string"
-                    },
-                    "columns": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/TableColumn:TableColumn"
-                        }
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "dataSourceFormat": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "properties": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "schemaName": {
-                        "type": "string"
-                    },
-                    "storageCredentialName": {
-                        "type": "string"
-                    },
-                    "storageLocation": {
-                        "type": "string"
-                    },
-                    "tableId": {
-                        "type": "string"
-                    },
-                    "tableType": {
-                        "type": "string"
-                    },
-                    "viewDefinition": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/token:Token": {
             "properties": {
@@ -26472,34 +22999,6 @@
                 "tokenId": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Token resources.\n",
-                "properties": {
-                    "comment": {
-                        "type": "string"
-                    },
-                    "creationTime": {
-                        "type": "number"
-                    },
-                    "databricksTokenId": {
-                        "type": "string"
-                    },
-                    "expiryTime": {
-                        "type": "number"
-                    },
-                    "lifetimeSeconds": {
-                        "type": "number"
-                    },
-                    "tokenId": {
-                        "type": "string"
-                    },
-                    "tokenValue": {
-                        "type": "string",
-                        "secret": true
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/user:User": {
@@ -26614,61 +23113,7 @@
             },
             "requiredInputs": [
                 "userName"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering User resources.\n",
-                "properties": {
-                    "aclPrincipalId": {
-                        "type": "string"
-                    },
-                    "active": {
-                        "type": "boolean"
-                    },
-                    "allowClusterCreate": {
-                        "type": "boolean"
-                    },
-                    "allowInstancePoolCreate": {
-                        "type": "boolean"
-                    },
-                    "databricksSqlAccess": {
-                        "type": "boolean"
-                    },
-                    "disableAsUserDeletion": {
-                        "type": "boolean"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "externalId": {
-                        "type": "string"
-                    },
-                    "force": {
-                        "type": "boolean"
-                    },
-                    "forceDeleteHomeDir": {
-                        "type": "boolean"
-                    },
-                    "forceDeleteRepos": {
-                        "type": "boolean"
-                    },
-                    "home": {
-                        "type": "string"
-                    },
-                    "repos": {
-                        "type": "string"
-                    },
-                    "userId": {
-                        "type": "string"
-                    },
-                    "userName": {
-                        "type": "string"
-                    },
-                    "workspaceAccess": {
-                        "type": "boolean"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/userInstanceProfile:UserInstanceProfile": {
             "properties": {
@@ -26701,22 +23146,7 @@
             "requiredInputs": [
                 "instanceProfileId",
                 "userId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering UserInstanceProfile resources.\n",
-                "properties": {
-                    "instanceProfileId": {
-                        "type": "string"
-                    },
-                    "userId": {
-                        "type": "string"
-                    },
-                    "userInstanceProfileId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/userRole:UserRole": {
             "properties": {
@@ -26749,22 +23179,7 @@
             "requiredInputs": [
                 "role",
                 "userId"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering UserRole resources.\n",
-                "properties": {
-                    "role": {
-                        "type": "string"
-                    },
-                    "userId": {
-                        "type": "string"
-                    },
-                    "userRoleId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/vectorSearchEndpoint:VectorSearchEndpoint": {
             "properties": {
@@ -26833,49 +23248,7 @@
             },
             "requiredInputs": [
                 "endpointType"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering VectorSearchEndpoint resources.\n",
-                "properties": {
-                    "creationTimestamp": {
-                        "type": "number"
-                    },
-                    "creator": {
-                        "type": "string"
-                    },
-                    "endpointId": {
-                        "type": "string"
-                    },
-                    "endpointStatuses": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/VectorSearchEndpointEndpointStatus:VectorSearchEndpointEndpointStatus"
-                        }
-                    },
-                    "endpointType": {
-                        "type": "string"
-                    },
-                    "lastUpdatedTimestamp": {
-                        "type": "number"
-                    },
-                    "lastUpdatedUser": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "numIndexes": {
-                        "type": "number"
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/VectorSearchEndpointTimeouts:VectorSearchEndpointTimeouts"
-                    },
-                    "vectorSearchEndpointId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/vectorSearchIndex:VectorSearchIndex": {
             "properties": {
@@ -26952,46 +23325,7 @@
                 "endpointName",
                 "indexType",
                 "primaryKey"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering VectorSearchIndex resources.\n",
-                "properties": {
-                    "creator": {
-                        "type": "string"
-                    },
-                    "deltaSyncIndexSpec": {
-                        "$ref": "#/types/databricks:index/VectorSearchIndexDeltaSyncIndexSpec:VectorSearchIndexDeltaSyncIndexSpec"
-                    },
-                    "directAccessIndexSpec": {
-                        "$ref": "#/types/databricks:index/VectorSearchIndexDirectAccessIndexSpec:VectorSearchIndexDirectAccessIndexSpec"
-                    },
-                    "endpointName": {
-                        "type": "string"
-                    },
-                    "indexType": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "primaryKey": {
-                        "type": "string"
-                    },
-                    "statuses": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/types/databricks:index/VectorSearchIndexStatus:VectorSearchIndexStatus"
-                        }
-                    },
-                    "timeouts": {
-                        "$ref": "#/types/databricks:index/VectorSearchIndexTimeouts:VectorSearchIndexTimeouts"
-                    },
-                    "vectorSearchIndexId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/volume:Volume": {
             "properties": {
@@ -27062,40 +23396,7 @@
                 "catalogName",
                 "schemaName",
                 "volumeType"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Volume resources.\n",
-                "properties": {
-                    "catalogName": {
-                        "type": "string"
-                    },
-                    "comment": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string"
-                    },
-                    "schemaName": {
-                        "type": "string"
-                    },
-                    "storageLocation": {
-                        "type": "string"
-                    },
-                    "volumeId": {
-                        "type": "string"
-                    },
-                    "volumePath": {
-                        "type": "string"
-                    },
-                    "volumeType": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "databricks:index/workspaceBinding:WorkspaceBinding": {
             "properties": {
@@ -27143,31 +23444,6 @@
                 "workspaceId": {
                     "type": "number"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering WorkspaceBinding resources.\n",
-                "properties": {
-                    "bindingType": {
-                        "type": "string"
-                    },
-                    "catalogName": {
-                        "type": "string",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "securableName": {
-                        "type": "string"
-                    },
-                    "securableType": {
-                        "type": "string"
-                    },
-                    "workspaceBindingId": {
-                        "type": "string"
-                    },
-                    "workspaceId": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/workspaceConf:WorkspaceConf": {
@@ -27195,21 +23471,6 @@
                 "workspaceConfId": {
                     "type": "string"
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering WorkspaceConf resources.\n",
-                "properties": {
-                    "customConfig": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "workspaceConfId": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
             }
         },
         "databricks:index/workspaceFile:WorkspaceFile": {
@@ -27268,37 +23529,7 @@
             },
             "requiredInputs": [
                 "path"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering WorkspaceFile resources.\n",
-                "properties": {
-                    "contentBase64": {
-                        "type": "string"
-                    },
-                    "md5": {
-                        "type": "string"
-                    },
-                    "objectId": {
-                        "type": "number"
-                    },
-                    "path": {
-                        "type": "string"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "url": {
-                        "type": "string"
-                    },
-                    "workspaceFileId": {
-                        "type": "string"
-                    },
-                    "workspacePath": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            }
+            ]
         }
     },
     "functions": {
