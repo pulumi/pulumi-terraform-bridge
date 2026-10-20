@@ -1203,7 +1203,7 @@ func (p *tfMarkdownParser) parseImports(body string) {
 	if token == "" {
 		token = "MISSING_TOK"
 	}
-	if rewritten, ok := rewriteImportMarkdown(body, token); ok {
+	if rewritten, ok := rewriteImportMarkdown(body, token, p.rawname); ok {
 		p.ret.Import = rewritten
 	}
 }
@@ -1231,7 +1231,7 @@ var (
 //	```sh
 //	$ pulumi import snowflake:index/apiIntegration:ApiIntegration example name
 //	```
-func rewriteImportMarkdown(body, typeToken string) (string, bool) {
+func rewriteImportMarkdown(body, typeToken, rawname string) (string, bool) {
 	if body == "" {
 		return "", false
 	}
@@ -1259,7 +1259,7 @@ func rewriteImportMarkdown(body, typeToken string) (string, bool) {
 				fenceLines = fenceLines[:0]
 				continue
 			}
-			out = append(out, rewriteInlineImportCommand(line, typeToken))
+			out = append(out, rewriteInlineImportCommand(line, typeToken, rawname))
 			continue
 		}
 
@@ -1273,6 +1273,8 @@ func rewriteImportMarkdown(body, typeToken string) (string, bool) {
 					out = dropImportSyntaxLine(out)
 				}
 				out = append(out, rewritten...)
+			} else {
+				out = dropImportBlockIntro(out)
 			}
 			inFence = false
 			continue
@@ -1524,6 +1526,32 @@ func rewriteImportLines(lines []string, typeToken string) ([]string, bool) {
 // which always carries a colon where a Terraform `type.name` address carries a dot.
 var pulumiImportCommand = regexp.MustCompile(`^\s*(?:[%$]\s+)?pulumi import[\\\s]+[^\s]*:[^\s]*[\\\s]`)
 
+// importBlockIntro matches the sentences upstream uses to introduce an `import {}` block that
+// the fixupImports edit rule does not already strip along with the block. One per phrasing:
+//
+//	An [`import` block](...) (Terraform v1.5.0 and later) can be used to import IAM members:
+//	From Terraform v1.5.0, the `import` block can be used to import this resource:
+//	As of Terraform v1.5, resources can be imported through configuration.
+//	In Terraform v1.12.0 and later, use an [`identity` block](...) to import Storage buckets [...]. For example:
+var importBlockIntro = regexp.MustCompile("^\\s*(?:" +
+	"An \\[?`import` block\\]?(?:\\([^)]*\\))? \\(Terraform v[0-9.]+ and later\\) can be used to import .*:|" +
+	"From Terraform v[0-9.]+, the `import` block can be used to import .*:|" +
+	"As of Terraform v[0-9.]+, resources can be imported through configuration\\.|" +
+	"In Terraform v[0-9.]+ and later, use an \\[?`identity` block\\]?(?:\\([^)]*\\))? to import .*For example:)\\s*$")
+
+// dropImportBlockIntro removes the sentence introducing an `import {}` block that was just
+// dropped, along with the blank lines between them, so the sentence does not lead into nothing.
+func dropImportBlockIntro(out []string) []string {
+	i := len(out) - 1
+	for i >= 0 && strings.TrimSpace(out[i]) == "" {
+		i--
+	}
+	if i < 0 || !importBlockIntro.MatchString(out[i]) {
+		return out
+	}
+	return out[:i]
+}
+
 // rewriteInlineImportCommand rewrites `terraform import` commands that upstream embeds in
 // prose rather than in a ```-fenced block. Left alone they leak the Terraform CLI and an
 // upstream resource name into the rendered Import section.
@@ -1535,7 +1563,7 @@ var pulumiImportCommand = regexp.MustCompile(`^\s*(?:[%$]\s+)?pulumi import[\\\s
 // Example (output):
 //
 //	e.g. `pulumi import random:index/string:String test test`
-func rewriteInlineImportCommand(line, typeToken string) string {
+func rewriteInlineImportCommand(line, typeToken, rawname string) string {
 	if !strings.Contains(line, "terraform import") && !strings.Contains(line, "pulumi import") {
 		return line
 	}
@@ -1549,7 +1577,10 @@ func rewriteInlineImportCommand(line, typeToken string) string {
 		rest = after
 		// parseImportCode is built around Terraform's `type.name` addressing, so running
 		// an already-Pulumi command back through it would truncate a dotted name.
-		if parsed, ok := parseImportCode(code); ok && !pulumiImportCommand.MatchString(code) {
+		// Upstream sometimes documents several resources on one page, quoting each one's
+		// command. Only the page's own resource can take its token.
+		if parsed, ok := parseImportCode(code); ok && !pulumiImportCommand.MatchString(code) &&
+			parsed.Type == strings.TrimSuffix(rawname, tfbridge.RenamedEntitySuffix) {
 			delim := strings.Repeat("`", len(span)-len(strings.TrimLeft(span, "`")))
 			out.WriteString(delim)
 			fmt.Fprintf(&out, "pulumi import %s %s %s", typeToken, parsed.Name, parsed.ID)
@@ -1787,17 +1818,19 @@ var importCodePattern = regexp.MustCompile(
 //	v.Name == "example"
 //	v.ID == "exampleID"
 func parseImportCode(code string) (struct {
+	Type string
 	Name string
 	ID   string
 }, bool,
 ) {
 	type ret struct {
+		Type string
 		Name string
 		ID   string
 	}
 	if importCodePattern.MatchString(code) {
 		matches := importCodePattern.FindStringSubmatch(code)
-		return ret{Name: matches[2], ID: matches[3]}, true
+		return ret{Type: matches[1], Name: matches[2], ID: matches[3]}, true
 	}
 	return ret{}, false
 }

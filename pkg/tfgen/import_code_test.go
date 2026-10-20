@@ -277,6 +277,14 @@ func TestParseImports_RewritesImportCommandsInProse(t *testing.T) {
 			expect: "Import with `pulumi import aws:iam/role:Role my.role developer_name`.",
 		},
 		{
+			// Upstream pages that document several resources quote each one's command;
+			// stamping this page's token on another resource's command would be wrong.
+			name:    "a command for a different resource is untouched",
+			line:    "Policies are imported with `terraform import aws_iam_role_policy.example role:policy`.",
+			expect:  "Policies are imported with `terraform import aws_iam_role_policy.example role:policy`.",
+			literal: true,
+		},
+		{
 			name:   "prose that merely mentions the command is untouched",
 			line:   "Use `terraform` to import resources, or run terraform import by hand.",
 			expect: "Use `terraform` to import resources, or run terraform import by hand.",
@@ -368,6 +376,113 @@ func TestParseImports_KeepsFencesThatAreNotImportBlocks(t *testing.T) {
 			parser.parseImports(input)
 
 			assert.Contains(t, parser.ret.Import, tc.survives)
+		})
+	}
+}
+
+// TestParseImports_DropsIntroOfDroppedImportBlock pins the sentences upstream uses to introduce
+// an `import {}` block. Once the block is dropped, the sentence would lead into nothing.
+func TestParseImports_DropsIntroOfDroppedImportBlock(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - test cases need to be made robust to newline handling")
+	}
+
+	importBlock := []string{
+		"```hcl",
+		"import {",
+		`  id = "developer_name"`,
+		"  to = aws_iam_role.example",
+		"}",
+		"```",
+	}
+	for _, tc := range []struct {
+		name  string
+		intro string
+		fence []string
+		// dropped reports whether the intro is expected to be removed.
+		dropped bool
+	}{
+		{
+			// terraform-provider-google's IAM pages.
+			name: "linked import block with version",
+			intro: "An [`import` block](https://developer.hashicorp.com/terraform/language/import) " +
+				"(Terraform v1.5.0 and later) can be used to import IAM members:",
+			fence:   importBlock,
+			dropped: true,
+		},
+		{
+			// terraform-provider-cloudamqp.
+			name:    "from version",
+			intro:   "From Terraform v1.5.0, the `import` block can be used to import this resource:",
+			fence:   importBlock,
+			dropped: true,
+		},
+		{
+			// terraform-provider-databricks.
+			name:    "as of version",
+			intro:   "As of Terraform v1.5, resources can be imported through configuration.",
+			fence:   importBlock,
+			dropped: true,
+		},
+		{
+			// terraform-provider-google, on pages without a separate `import` block example.
+			name: "identity block with version",
+			intro: "In Terraform v1.12.0 and later, use an [`identity` block]" +
+				"(https://developer.hashicorp.com/terraform/language/block/import#identity) " +
+				"to import Storage buckets using identity values. For example:",
+			fence:   importBlock,
+			dropped: true,
+		},
+		{
+			name:  "an intro whose block is kept stays",
+			intro: "From Terraform v1.5.0, the `import` block can be used to import this resource:",
+			fence: []string{
+				"```sh",
+				"terraform import aws_iam_role.example developer_name",
+				"```",
+			},
+		},
+		{
+			name:  "an unrecognized intro stays",
+			intro: "This resource can be imported by name:",
+			fence: importBlock,
+		},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			lines := []string{"", "Roles can be imported by name.", "", tc.intro, ""}
+			lines = append(lines, tc.fence...)
+			lines = append(lines,
+				"",
+				"Or use the CLI:",
+				"",
+				"```sh",
+				"terraform import aws_iam_role.example developer_name",
+				"```",
+				"",
+			)
+			parser := tfMarkdownParser{
+				info:    &mockResource{token: "aws:iam/role:Role"},
+				rawname: "aws_iam_role",
+				infoCtx: infoContext{
+					pkg:  "aws",
+					info: tfbridge.ProviderInfo{Name: "aws"},
+				},
+			}
+			parser.parseImports(strings.Join(lines, "\n"))
+			actual := parser.ret.Import
+
+			if tc.dropped {
+				assert.NotContains(t, actual, tc.intro)
+			} else {
+				assert.Contains(t, actual, tc.intro)
+			}
+			// The text around the intro is never touched.
+			assert.Contains(t, actual, "Roles can be imported by name.")
+			assert.Contains(t, actual, "Or use the CLI:")
+			assert.Contains(t, actual, "$ pulumi import aws:iam/role:Role example developer_name")
 		})
 	}
 }
