@@ -63,7 +63,7 @@ func main() {
 }
 ```
 ```hcl
-pulumi {
+terraform {
   required_providers {
     simple = {
       source = "pulumi/simple"
@@ -72,6 +72,9 @@ pulumi {
 }
 
 resource "simple_resource" "a_resource" {
+  lifecycle {
+    create_before_destroy = true
+  }
   renamed_input1 = "hello"
   input_two      = true
 }
