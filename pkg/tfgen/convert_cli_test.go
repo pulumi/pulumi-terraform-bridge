@@ -154,7 +154,14 @@ output "someOutput" {
 		assert.Equal(t, simpleResourceExpectPCL, out["example1"].PCL)
 		assert.Equal(t, simpleDataSourceExpectPCL, out["example2"].PCL)
 
-		assert.Empty(t, out["example1"].Diagnostics)
+		// Converter v1.3+ tries to resolve implicit providers outside the Pulumi
+		// provider list. This synthetic provider has no registry entry, but its
+		// explicit mapping must still produce the exact PCL asserted above.
+		require.Len(t, out["example1"].Diagnostics, 1)
+		assert.Equal(t, hcl.DiagWarning, out["example1"].Diagnostics[0].Severity)
+		assert.Equal(t, "Failed to resolve provider", out["example1"].Diagnostics[0].Summary)
+		assert.Contains(t, out["example1"].Diagnostics[0].Detail,
+			`Failed to resolve provider "simple" for resource "simple_resource"`)
 		assert.Empty(t, out["example2"].Diagnostics)
 	})
 

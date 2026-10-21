@@ -32,7 +32,7 @@ import (
 // RandomProvider returns a [integration.LocalDependency] reference to the random provider
 // installed via `mise install`.
 func RandomProvider(t *testing.T) integration.LocalDependency {
-	return pluginDependency(t, "random", semver.Version{Major: 4, Minor: 16, Patch: 3})
+	return pluginDependency(t, "random", semver.Version{Major: 4, Minor: 21, Patch: 4})
 }
 
 func pluginDependency(t *testing.T, name string, version semver.Version) integration.LocalDependency {
