@@ -25,6 +25,10 @@ terraform = 'latest'
 "vfox-pulumi:pulumi/pulumi-gcp" = "8.22.0"
 "vfox-pulumi:equinix/pulumi-equinix" = "0.6.0"
 
+[settings]
+# Required by the CI-pinned mise version for custom backends and hooks.
+experimental = true
+
 [hooks]
 postinstall = "mise run sync-plugins"
 
