@@ -2057,7 +2057,7 @@ func TestParseImports_EndToEnd(t *testing.T) {
 		{
 			name:         "aws_iam_role",
 			token:        "aws:iam/role:Role",
-			rawname:      "role",
+			rawname:      "aws_iam_role",
 			markdownName: "aws-iam-role-full.md",
 			pkg:          "aws",
 			expectedFile: "test_data/parse-imports/aws-iam-role-full-expected.md",
@@ -2065,7 +2065,7 @@ func TestParseImports_EndToEnd(t *testing.T) {
 		{
 			name:         "random_string",
 			token:        "random:index/string:String",
-			rawname:      "string",
+			rawname:      "random_string",
 			markdownName: "random-string-full.md",
 			pkg:          "random",
 			expectedFile: "test_data/parse-imports/random-string-full-expected.md",
