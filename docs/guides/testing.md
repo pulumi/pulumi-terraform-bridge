@@ -25,10 +25,12 @@ examples.
 
 ## Local Test Commands
 
+Run `mise trust` and `mise install` first. Test recipes enter mise automatically. For direct Go commands, including in nested modules, use `mise exec -- go test ...` after setup.
+
 ```bash
 # Fast lint + unit
 make lint
-make test RUN_TEST_CMD=./pkg/tfbridge -run TestSomeUnit
+make test RUN_TEST_CMD='./pkg/tfbridge -run TestSomeUnit'
 
 # SDKv2 integration (single file)
 make test RUN_TEST_CMD='./pkg/tests -run TestFoo'
@@ -46,7 +48,15 @@ make test_accept
 make test RUN_TEST_CMD='./pkg/pf/tests/internal/cross-tests -run TestWritePFHCLProvider -update'
 ```
 
-`make test` installs required Pulumi plugins and builds the test provider binary, so the first run can take several minutes.
+`mise install` installs the external plugins pinned in `mise.toml`, then runs the `sync-plugins` postinstall hook. The hook clears only `.pulumi/plugins` and links the selected binaries into Pulumi's expected cache layout. It uses hard links, with a copy fallback across filesystems, and exposes those same binaries on `PATH`. This is necessary because Pulumi's converter enumerates the plugin cache to discover provider mappings.
+
+After changing plugin pins, run `mise install` again to replace the local cache. If the postinstall hook reports a warning, run `mise run sync-plugins` and resolve its error before testing.
+
+Complete setup before starting tests. Do not run `mise install` or `mise run sync-plugins` while tests in that checkout are running, since setup replaces the plugin directory. Concurrent tests can read the prepared directory, and separate worktrees have separate local Pulumi homes. CI explicitly runs `mise run sync-plugins` after setup too, so synchronization errors fail the job rather than becoming hook warnings.
+
+`make test` builds the local test provider binary. It and `make test_accept` use the same repo-local Pulumi home with automatic Pulumi plugin acquisition disabled. Credentials and state are not cleared. The dynamic bridge's separate Terraform provider cache in `.pulumi/dynamic_tf_plugins` is also preserved.
+
+Use `mise ls --current` to inspect the declared versions or `mise exec -- pulumi plugin ls` to inspect the prepared cache. Locally built test providers remain separate from external dependencies and can still be discovered through `PATH`.
 
 ## Choosing the Right Layer
 

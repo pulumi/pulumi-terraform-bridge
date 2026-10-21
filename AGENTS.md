@@ -49,8 +49,9 @@ The project has multiple Go module roots, including the repo root and `tools/`.
 - Use cross-tests in `pkg/internal/tests/cross-tests` or `pkg/pf/tests/internal/cross-tests` when validating Pulumi/Terraform parity.
 - To update golden outputs intentionally, use `make test_accept` and review the resulting diff carefully.
 - Golden output depends on which Pulumi plugins are installed, not just on the code. Regenerate goldens only against the plugin set CI uses:
-  - `make test_accept` starts from an empty `.pulumi-test` and installs only what `make install_plugins` lists. Prefer it over plain `make test ... -update`, which uses `~/.pulumi`. If `~/.pulumi` has a newer converter or extra resource plugins, `pulumi convert` uses them. For example, `converter-terraform` v1.2.4 produces `simple:Resource` where the pinned v1.0.20 produces `simple:resource`.
-  - When running `go test` directly, as in the `dynamic/` module, set `PULUMI_HOME` to a fresh directory populated by `make install_plugins`. Also set `PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true`, because otherwise tests download plugins CI doesn't have (such as `azure` or `std`) and those change the generated examples.
+  - Run `mise install` first. Its postinstall hook clears only `.pulumi/plugins` and links the external plugin pins from `mise.toml` into the expected Pulumi cache layout. Automatic Pulumi plugin acquisition is disabled. Normal tests and `make test_accept` use that same repo-local cache.
+  - Finish setup before starting tests. Do not run `mise install` or `mise run sync-plugins` while tests in that checkout are running. Separate worktrees have separate plugin directories.
+  - For direct Go commands, including in `dynamic/`, use `mise exec -- go test ...` after setup.
   - `PULUMI_ACCEPT=1` only refreshes the repo's own golden helpers, such as `TestSchemaGenerationFullDocs`. `autogold` tests, such as `TestPlainDocsParser`, also need `-update`.
   - Unset `PULUMI_MISSING_DOCS_ERROR` before running tests. Several `pkg/tfgen` tests fail when it's set.
   - If a regenerated golden changes something unrelated to your change, suspect the plugin set before accepting it.
@@ -59,7 +60,7 @@ The project has multiple Go module roots, including the repo root and `tools/`.
 ## Commands
 - Build: `make build`
 - Initialize/update Go workspace: `make go.work`
-- Install test plugins: `make install_plugins`
+- Install tools and test plugins: `mise install`
 - Full test suite: `make test`
 - Accept/update golden test output: `make test_accept`
 - Lint: `make lint`

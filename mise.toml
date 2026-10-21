@@ -1,5 +1,10 @@
 [env]
 _.vfox-pulumi = { module_path = "" } # Sets GO_VERSION_MISE and PULUMI_VERSION_MISE
+PULUMI_HOME = "{{config_root}}/.pulumi"
+PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION = "true"
+# Prefer the local links even when inherited PATH entries contain other versions.
+_.path = ["{{config_root}}/.pulumi/plugins/bin"]
+PULUMI_IGNORE_AMBIENT_PLUGINS = false
 
 [tools]
 # Runtimes
@@ -8,6 +13,31 @@ go = "{{ env.GO_VERSION_MISE }}"
 golangci-lint = '2.9.0'
 pulumi = "{{ env.PULUMI_VERSION_MISE }}"
 terraform = 'latest'
+
+# External test dependencies. Keep normal tests and golden acceptance on the same pins.
+"vfox-pulumi:pulumi/pulumi-converter-terraform" = "1.4.0"
+"vfox-pulumi:pulumi/pulumi-random" = "4.21.4"
+"vfox-pulumi:pulumi/pulumi-aws" = "6.22.2"
+"vfox-pulumi:pulumi/pulumi-archive" = "0.0.4"
+"vfox-pulumi:pulumi/pulumi-wavefront" = "3.0.0"
+"vfox-pulumi:pulumi/pulumi-auth0" = "3.16.0"
+"vfox-pulumi:pulumi/pulumi-http" = "0.0.11"
+"vfox-pulumi:pulumi/pulumi-gcp" = "8.22.0"
+"vfox-pulumi:equinix/pulumi-equinix" = "0.6.0"
+
+[settings]
+# Required by the CI-pinned mise version for custom backends and hooks.
+experimental = true
+# Keep pinned binaries ahead of inherited PATH entries, even when shims are present.
+activate_aggressive = true
+
+[hooks]
+postinstall = "mise run sync-plugins"
+
+[tasks.sync-plugins]
+description = "Reset the local Pulumi plugin directory to the mise pins. Run before tests, never during them."
+dir = "{{config_root}}"
+run = "go run ./scripts/sync-plugins"
 
 [plugins]
 vfox-pulumi = "https://github.com/pulumi/vfox-pulumi"

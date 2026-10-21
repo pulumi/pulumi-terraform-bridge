@@ -5,21 +5,17 @@ assumes you are comfortable with Go and have Pulumi/Terraform installed, but are
 
 ## Prerequisites
 
-- Go version from `go.mod` (install via `mise` or your package manager).
-- Pulumi CLI ≥ 3.x (required for tests and plugin installs).
-- Terraform / OpenTofu CLI (helps when debugging or running cross-tests locally).
+- `mise`, to install the Go and Pulumi versions derived from `go.mod`, Terraform, and pinned external test plugins from `mise.toml`.
 
 Optional but recommended:
 
-- `mise` (see `mise.toml`) to manage tool versions.
 - Docker (some tests rely on Dockerized providers; note restrictions in `pkg/tests` if you run into issues).
 
 ## Getting Set Up
 
-1. Clone the repo and optionally run `make go.work` to set up a Go workspace that includes nested modules.
-2. Run `make build` once; it tidies modules and ensures packages compile.
-3. Run `make test RUN_TEST_CMD=./pkg/tfbridge -run TestProviderPreview` (or another targeted test) to validate your local
-   environment before tackling larger changes. Full `make test` is heavy (downloads plugins and runs integration suites).
+1. Clone the repo, run `mise trust` and `mise install`, and activate mise in your shell or prefix commands with `mise exec --`.
+2. Optionally run `make go.work` to set up a Go workspace that includes nested modules. Run `mise exec -- make build` once to tidy modules and compile packages.
+3. Run `make test RUN_TEST_CMD='./pkg/tfbridge -run TestProviderPreview'` or another targeted test to validate your local environment. Test recipes enter mise automatically. The full suite runs integration tests and can take considerably longer.
 
 ## Repository Tour
 

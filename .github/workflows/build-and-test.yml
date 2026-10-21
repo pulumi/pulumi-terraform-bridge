@@ -20,7 +20,7 @@ env:
   PULUMI_SKIP_UPDATE_CHECK: true
 
 jobs:
-  install-plugins:
+  install-tools:
     strategy:
       matrix:
         platform: [ubuntu-latest, macos-latest, windows-latest]
@@ -37,17 +37,10 @@ jobs:
           github_token: ${{ env.GITHUB_TOKEN }}
           # only saving the cache in the prerequisites job
           cache_save: true
-      - name: Cache plugins
-        uses: actions/cache@v4
-        with:
-          path: ~/.pulumi/plugins
-          key: ${{ matrix.platform }}-plugins
-          restore-keys: |
-            ${{ matrix.platform }}-plugins
-      - name: Install plugins
-        run: make install_plugins
+      - name: Synchronize local Pulumi plugins
+        run: mise run sync-plugins
   test:
-    needs: install-plugins
+    needs: install-tools
     strategy:
       # Collect all test failures instead of stopping when only one test is failing.
       fail-fast: false
@@ -187,13 +180,10 @@ jobs:
       - name: Fetch secrets from ESC
         id: esc-secrets
         uses: pulumi/esc-action@32dda43ffe7a2ab21e6bce11c781b44a3e5623cf # v3
-      - name: Install terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
       - name: Check out source code
         uses: actions/checkout@master
       - name: Install Go
+        id: setup-go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
@@ -202,35 +192,30 @@ jobs:
           # disable caching on windows because it's very slow
           # see https://github.com/actions/setup-go/issues/495
           cache: ${{ matrix.platform != 'windows-latest' }}
-      - name: Find pulumi version
-        id: pulumi_version
+      # Preserve the Go matrix when recipes enter mise exec.
+      - name: Select matrix Go version for mise
         shell: bash
-        run: |
-          GO_MODULE_VERSION=$(go list -m -f '{{.Version}}' github.com/pulumi/pulumi/pkg/v3)
-          GO_VERSION=$(echo "$GO_MODULE_VERSION" | sed 's/^v//')
-          echo "pulumi_version=$GO_VERSION"
-          echo "pulumi_version=$GO_VERSION" >> $GITHUB_OUTPUT
-      - name: Install pulumi
-        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+        run: echo "MISE_GO_VERSION=${{ steps.setup-go.outputs.go-version }}" >> "$GITHUB_ENV"
+      - name: Setup mise
+        uses: jdx/mise-action@c1a019b8d2586943b4dbebc456323b516910e310
+        env:
+          MISE_FETCH_REMOTE_VERSIONS_TIMEOUT: 30s
         with:
-          pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
+          version: 2026.2.20
+          github_token: ${{ env.GITHUB_TOKEN }}
+          cache_save: false
+      - name: Synchronize local Pulumi plugins
+        run: mise run sync-plugins
       - name: export feature flags
-        run: echo ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
+        run: echo "${{ matrix.feature-flags }}=true" >> "$GITHUB_ENV"
         if: ${{ matrix.platform != 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
       - name: Build
         run: make build
       - name: Build PF
         run: cd pkg/pf && make build
       - name: Shard tests
-        run: echo "RUN_TEST_CMD=$(go run github.com/pulumi/shard@0c8eaa6 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --seed 314 --error-on-name-clash)" >> $GITHUB_ENV
+        run: echo "RUN_TEST_CMD=$(go run github.com/pulumi/shard@0c8eaa6 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --seed 314 --error-on-name-clash)" >> "$GITHUB_ENV"
         if: ${{ matrix.platform == 'ubuntu-latest' }}
-      - name: Restore plugins
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/.pulumi/plugins
-          key: ${{ matrix.platform }}-plugins
-          restore-keys: |
-            ${{ matrix.platform }}-plugins
       - name: Test
         run: make test
       - name: Upload coverage reports to Codecov
@@ -270,7 +255,7 @@ jobs:
     - lint
     runs-on: ubuntu-latest
     steps:
-    # `test` is skipped when `install-plugins` fails or is cancelled, which
+    # `test` is skipped when `install-tools` fails or is cancelled, which
     # means no tests ran, so count skipped as a failure too.
     - name: Check for failures
       if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')

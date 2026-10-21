@@ -6,25 +6,21 @@ bin/pulumi-resource-terraform-provider:
 	go build -o $@ github.com/pulumi/pulumi-terraform-bridge/v3/dynamic
 
 install: build
-	pulumi plugin rm resource terraform-provider --all --yes
-	pulumi plugin install resource terraform-provider v0.0.0-dev \
+	mise exec -- pulumi plugin rm resource terraform-provider --all --yes
+	mise exec -- pulumi plugin install resource terraform-provider v0.0.0-dev \
 		--file bin/pulumi-resource-terraform-provider --reinstall
 
 test_unit:
-	cd internal/shim && go test ./...
-	go test -short ./...
+	cd internal/shim && mise exec -- go test ./...
+	mise exec -- go test -short ./...
 
 test:
-	cd internal/shim && go test -v ./...
-	go test -v ./...
+	cd internal/shim && mise exec -- go test -v ./...
+	mise exec -- go test -v ./...
 
-# For re-recording golden files, we use a local, test-specific plugin
-# cache to ensure parity with CI.
-TEST_PULUMI_HOME := $(abspath ../.pulumi-test)
+# Use the same local plugin home and pins as normal tests.
+RUN_TEST_CMD ?= . ./parameterize
 test_accept:
-	rm -rf $(TEST_PULUMI_HOME)
-	PULUMI_HOME=$(TEST_PULUMI_HOME) $(MAKE) -C .. install_plugins
-	PULUMI_HOME=$(TEST_PULUMI_HOME) PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true \
-		go test -v . ./parameterize -update
+	PULUMI_ACCEPT=1 mise exec -- go test -v -count=1 $(value RUN_TEST_CMD) -update
 
-.PHONY: bin/pulumi-resource-terraform-provider install build test_unit test test_acccept
+.PHONY: bin/pulumi-resource-terraform-provider install build test_unit test test_accept
