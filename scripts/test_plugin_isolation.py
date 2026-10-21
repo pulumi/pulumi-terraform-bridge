@@ -191,7 +191,12 @@ def main():
             for name in ["azure", "std"]:
                 poison(home / "plugins" / f"resource-{name}-v99.0.0",
                        f"pulumi-resource-{name}", "undeclared cached plugin")
-        env["PATH"] = str(ambient) + os.pathsep + env["PATH"]
+        # Match mise-action, which adds shims to PATH. Older mise versions preserve
+        # entries ahead of shims unless activate_aggressive is enabled.
+        data_home = Path(env.get("XDG_DATA_HOME", Path.home() / ".local/share"))
+        mise_data = Path(env.get("MISE_DATA_DIR", data_home / "mise"))
+        shims = Path(env.get("MISE_SHIMS_DIR", mise_data / "shims"))
+        env["PATH"] = os.pathsep.join([str(ambient), str(shims), env["PATH"]])
         for root in worktrees:
             marker = root / ".pulumi/dynamic_tf_plugins/isolation-marker"
             marker.parent.mkdir(parents=True, exist_ok=True)

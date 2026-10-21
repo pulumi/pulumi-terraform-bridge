@@ -28,6 +28,8 @@ terraform = 'latest'
 [settings]
 # Required by the CI-pinned mise version for custom backends and hooks.
 experimental = true
+# Keep pinned binaries ahead of inherited PATH entries, even when shims are present.
+activate_aggressive = true
 
 [hooks]
 postinstall = "mise run sync-plugins"
