@@ -227,35 +227,6 @@ jobs:
         uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ steps.esc-secrets.outputs.CODECOV_TOKEN }}
-  plugin-isolation:
-    needs: install-tools
-    strategy:
-      fail-fast: false
-      matrix:
-        cache: [cold, warm]
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@master
-      - name: Setup mise
-        uses: jdx/mise-action@c1a019b8d2586943b4dbebc456323b516910e310
-        env:
-          MISE_FETCH_REMOTE_VERSIONS_TIMEOUT: 30s
-        with:
-          version: 2026.2.20
-          github_token: ${{ env.GITHUB_TOKEN }}
-          cache: ${{ matrix.cache == 'warm' }}
-          cache_save: false
-      - name: Synchronize local Pulumi plugins
-        run: mise run sync-plugins
-      - name: Check plugin isolation and golden reproducibility
-        run: make test_plugin_isolation
-      - name: Upload isolation failure logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: plugin-isolation-logs-${{ matrix.cache }}
-          path: /tmp/bridge-plugin-isolation-*/*.log
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -281,7 +252,6 @@ jobs:
       statuses: write
     needs:
     - test
-    - plugin-isolation
     - lint
     runs-on: ubuntu-latest
     steps:

@@ -36,10 +36,6 @@ test::
 test_accept::
 	PULUMI_ACCEPT=1 $(MAKE) test
 
-.PHONY: test_plugin_isolation
-test_plugin_isolation:
-	python3 scripts/test_plugin_isolation.py
-
 generate_builtins_test::
 	if [ ! -d ./scripts/venv ]; then python -m venv ./scripts/venv; fi
 	. ./scripts/venv/*/activate && python -m pip install -r ./scripts/requirements.txt

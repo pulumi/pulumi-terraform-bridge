@@ -6,7 +6,6 @@ assumes you are comfortable with Go and have Pulumi/Terraform installed, but are
 ## Prerequisites
 
 - `mise`, to install the Go and Pulumi versions derived from `go.mod`, Terraform, and pinned external test plugins from `mise.toml`.
-- Python 3.9 or newer, for `make test_plugin_isolation`.
 
 Optional but recommended:
 

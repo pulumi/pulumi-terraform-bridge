@@ -52,7 +52,6 @@ The project has multiple Go module roots, including the repo root and `tools/`.
   - Run `mise install` first. Its postinstall hook clears only `.pulumi/plugins` and links the external plugin pins from `mise.toml` into the expected Pulumi cache layout. Automatic Pulumi plugin acquisition is disabled. Normal tests and `make test_accept` use that same repo-local cache.
   - Finish setup before starting tests. Do not run `mise install` or `mise run sync-plugins` while tests in that checkout are running. Separate worktrees have separate plugin directories.
   - For direct Go commands, including in `dynamic/`, use `mise exec -- go test ...` after setup.
-  - Use `make test_plugin_isolation` to check clean and contaminated environments, concurrent acceptance, and repeated golden generation in disposable worktrees.
   - `PULUMI_ACCEPT=1` only refreshes the repo's own golden helpers, such as `TestSchemaGenerationFullDocs`. `autogold` tests, such as `TestPlainDocsParser`, also need `-update`.
   - Unset `PULUMI_MISSING_DOCS_ERROR` before running tests. Several `pkg/tfgen` tests fail when it's set.
   - If a regenerated golden changes something unrelated to your change, suspect the plugin set before accepting it.
