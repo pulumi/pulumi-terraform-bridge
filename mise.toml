@@ -34,7 +34,8 @@ postinstall = "mise run sync-plugins"
 
 [tasks.sync-plugins]
 description = "Reset the local Pulumi plugin directory to the mise pins. Run before tests, never during them."
-run = 'go run "{{config_root}}/scripts/sync-plugins/main.go"'
+dir = "{{config_root}}"
+run = "go run ./scripts/sync-plugins"
 
 [plugins]
 vfox-pulumi = "https://github.com/pulumi/vfox-pulumi"
