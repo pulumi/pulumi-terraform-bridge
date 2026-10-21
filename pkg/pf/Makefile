@@ -1,24 +1,21 @@
 TESTPARALLELISM := 10
 export PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION := true
 
-install_plugins::
-	pulumi plugin install resource random 4.16.3
-
-build.tests:: install_plugins
-	go test -test.run NONE
-	cd tests && go test -test.run NONE
-	cd tests/integration && go test -test.run NONE
+build.tests::
+	mise exec -- go test -test.run NONE
+	cd tests && mise exec -- go test -test.run NONE
+	cd tests/integration && mise exec -- go test -test.run NONE
 
 test::	test.unit test.integration
 
 test.unit::
-	go test -v -short -count=1 -cover -coverpkg=./... -coverprofile ./coverage.out -timeout 2h -parallel ${TESTPARALLELISM} ./...
+	mise exec -- go test -v -short -count=1 -cover -coverpkg=./... -coverprofile ./coverage.out -timeout 2h -parallel ${TESTPARALLELISM} ./...
 
 test.integration::
-	cd tests/integration && go test -v -count=1 -timeout 2h -parallel ${TESTPARALLELISM}
+	cd tests/integration && mise exec -- go test -v -count=1 -timeout 2h -parallel ${TESTPARALLELISM}
 
 test.cover::
-	cd tests && go test -cover -coverpkg=github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge -coverprofile=cover.out
+	cd tests && mise exec -- go test -cover -coverpkg=github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge -coverprofile=cover.out
 	go tool cover -html=tests/cover.out
 
 build::

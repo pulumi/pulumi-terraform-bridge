@@ -10,17 +10,6 @@ build::
 	go build ${PROJECT}/v3/pkg/...
 	go build ${PROJECT}/v3/internal/...
 
-install_plugins::
-	pulumi plugin install converter terraform 1.0.20
-	pulumi plugin install resource random 4.16.3
-	pulumi plugin install resource aws 6.22.2
-	pulumi plugin install resource archive 0.0.4
-	pulumi plugin install resource wavefront 3.0.0
-	pulumi plugin install resource auth0 3.16.0
-	pulumi plugin install resource http 0.0.11
-	pulumi plugin install resource gcp 8.22.0
-	pulumi plugin install resource equinix 0.6.0 --server github://api.github.com/equinix
-
 fmt::
 	@gofmt -w -s .
 
@@ -32,23 +21,24 @@ lint_fix:
 
 RUN_TEST_CMD ?= ./...
 GO_TEST_CMD ?= go test
-test:: install_plugins
+test::
 	@mkdir -p bin
-	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
-	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
-		$(value GO_TEST_CMD) -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
+	mise exec -- go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
+	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(PROJECT_DIR)/bin/pulumi-terraform-bridge-test-provider \
+		mise exec -- $(value GO_TEST_CMD) -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
 
 # Run tests while accepting current output as expected output "golden"
 # tests. In case where system behavior changes intentionally this can
 # be useful to run to review the differences with git diff.
 #
-# For re-recording golden files, we use a local, test-specific plugin
-# cache to ensure parity with CI.
-TEST_PULUMI_HOME := $(PROJECT_DIR)/.pulumi-test
+# Normal tests and golden acceptance share the mise-managed plugin pins.
+# The mise postinstall hook sets up the local plugin home before tests start.
 test_accept::
-	rm -rf $(TEST_PULUMI_HOME)
-	PULUMI_HOME=$(TEST_PULUMI_HOME) $(MAKE) install_plugins
-	PULUMI_HOME=$(TEST_PULUMI_HOME) PULUMI_ACCEPT=1 go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
+	PULUMI_ACCEPT=1 $(MAKE) test
+
+.PHONY: test_plugin_isolation
+test_plugin_isolation:
+	python3 scripts/test_plugin_isolation.py
 
 generate_builtins_test::
 	if [ ! -d ./scripts/venv ]; then python -m venv ./scripts/venv; fi
