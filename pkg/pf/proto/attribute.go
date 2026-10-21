@@ -64,25 +64,22 @@ func (a attribute) Elem() interface{} {
 		// should be [shim.TypeMap] and it's `.Elem()` should implement [shim.Resource]. This is
 		// correctly handled by `.Type()` and [object] implements [shim.Resource].
 		//
-		// [tfprotov6.SchemaObjectNestingModeList] or [tfprotov6.SchemaObjectNestingModeSet]: `a`
-		// represents a List<Object>, so it's `.Type()` should be [shim.TypeList] and it's `.Elem()`
-		// should implement [shim.Resource]. This is correctly handled by `.Type()` and [object]
-		// implements [shim.Resource].
-		//
-		// [tfprotov6.SchemaObjectNestingModeMap]: `a` represents a Map<Object>, so it's `.Type()`
-		// should be [shim.TypeMap] and it's `.Elem()` should be a [shim.Schema] whose `.Type()` is
-		// [shim.TypeMap] and whose `.Elem()` is a [shim.Resource].
+		// [tfprotov6.SchemaObjectNestingModeList], [tfprotov6.SchemaObjectNestingModeSet] or
+		// [tfprotov6.SchemaObjectNestingModeMap]: `a` represents a List<Object>, Set<Object> or
+		// Map<Object>, so it's `.Elem()` should be a [shim.Schema] whose `.Type()` is [shim.TypeMap]
+		// and whose `.Elem()` is a [shim.Resource]. A [shim.Resource] element would make `a` a
+		// list- or set-nested block.
 
 		switch obj.Nesting {
-		case tfprotov6.SchemaObjectNestingModeMap:
+		case tfprotov6.SchemaObjectNestingModeList,
+			tfprotov6.SchemaObjectNestingModeSet,
+			tfprotov6.SchemaObjectNestingModeMap:
 			// We are careful to only assign to variables on [attribute.Elem]'s stack. We *do not*
 			// mutate the caller.
 			obj.Nesting = tfprotov6.SchemaObjectNestingModeSingle
 			a.attr.NestedType = &obj
 			return a
-		case tfprotov6.SchemaObjectNestingModeSingle,
-			tfprotov6.SchemaObjectNestingModeList,
-			tfprotov6.SchemaObjectNestingModeSet:
+		case tfprotov6.SchemaObjectNestingModeSingle:
 			return object{obj: obj}
 		case tfprotov6.SchemaObjectNestingModeInvalid:
 			fallthrough
