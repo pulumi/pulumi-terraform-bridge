@@ -153,6 +153,11 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		return prov, err
 	}
 
+	// A dynamically bridged provider has no hand-authored Go code where a maintainer
+	// could map an underscore-prefixed Terraform property (tfgen requires this; see
+	// fixUnderscorePrefixedFields) to a valid Pulumi name, so do it automatically.
+	fixUnderscorePrefixedFields(&prov)
+
 	prov.SetAutonaming(255, "-")
 
 	return prov, nil
