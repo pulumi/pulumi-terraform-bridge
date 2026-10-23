@@ -275,3 +275,15 @@ func (c configure) Configure(context.Context, *pulumirpc.ConfigureRequest) (*pul
 	assert.True(c.t, c.counter.CompareAndSwap(c.expect, c.expect+1), "")
 	return &pulumirpc.ConfigureResponse{}, nil
 }
+
+func TestGetSchemaInjectsVersion(t *testing.T) {
+	t.Parallel()
+	m := &muxer{
+		host:    &host{},
+		schema:  []byte(`{"name":"cosmic"}`),
+		version: "2.44.3",
+	}
+	resp, err := m.GetSchema(context.Background(), &pulumirpc.GetSchemaRequest{})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"name":"cosmic","version":"2.44.3"}`, resp.GetSchema())
+}
