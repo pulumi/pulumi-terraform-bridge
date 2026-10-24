@@ -46,10 +46,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.2.1
 	github.com/pulumi/providertest v0.7.0
-	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.115.0
-	github.com/pulumi/pulumi-hcl v0.18.6
+	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.116.0
+	github.com/pulumi/pulumi-hcl v0.18.8
 	github.com/pulumi/pulumi-java v1.37.7
-	github.com/pulumi/pulumi-yaml v1.38.12
+	github.com/pulumi/pulumi-yaml v1.38.13
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.15.0
@@ -170,7 +170,7 @@ require (
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
-	github.com/pulumi/pulumi-cloud-sdk/go v1.20261022.0 // indirect
+	github.com/pulumi/pulumi-cloud-sdk/go v1.20261023.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.8.1 // indirect
 	github.com/vbauerster/cupwriter v0.0.4 // indirect
