@@ -170,6 +170,28 @@ type Provider interface {
 
 - `run.LocalProvider` takes a path to a Terraform provider and runs it.
 
+#### Network Mirror Support
+
+In air-gapped or restricted environments where `registry.terraform.io` (or `registry.opentofu.org`) is not
+directly accessible, you can configure a [Terraform network mirror](https://developer.hashicorp.com/terraform/internals/provider-network-mirror-protocol)
+to download providers from an alternative source.
+
+Set the `PULUMI_TF_NETWORK_MIRROR_URL` environment variable to point to your mirror:
+
+``` sh
+export PULUMI_TF_NETWORK_MIRROR_URL=https://artifactory.example.com/api/terraform/providers/
+pulumi install
+```
+
+When this variable is set, the dynamic provider will:
+1. Skip the standard registry service discovery (no `.well-known/terraform.json` request)
+2. Query the mirror directly using the [Terraform network mirror protocol](https://developer.hashicorp.com/terraform/internals/provider-network-mirror-protocol)
+3. Cache downloaded providers locally (same cache as the standard registry path)
+
+The mirror must implement the network mirror protocol:
+- `GET {mirror_url}/{hostname}/{namespace}/{type}/index.json` — list available versions
+- `GET {mirror_url}/{hostname}/{namespace}/{type}/{version}.json` — get download info for a specific version
+
 When `run` launches a Terraform provider, the provider may implement either the `tfplugin5.ProviderClient` or
 `tfplugin6.ProviderClient` interface. `run` must return a
 [`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer).
