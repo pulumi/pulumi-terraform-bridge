@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	hcl2dotnet "github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3/codegen"
 	hcl2hcl "github.com/pulumi/pulumi-hcl/pkg/codegen"
+	"github.com/pulumi/pulumi-hcl/pkg/hcl/packages"
 	hcl2java "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	hcl2yaml "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	hcl2go "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -43,8 +44,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/autofill"
 )
@@ -573,7 +576,9 @@ func (cc *cliConverter) convertPCL(
 		generatedFiles, genDiags, err = hcl2java.GenerateProgram(program)
 		diagnostics = append(diagnostics, genDiags...)
 	case "hcl":
-		generatedFiles, genDiags, err = hcl2hcl.GenerateProgram(program, hcl2hcl.SkipRequiredProvidersVersion())
+		mappings := packages.NewResolver(nil, cc, nil, nil)
+		generatedFiles, genDiags, err = hcl2hcl.GenerateProgram(
+			context.TODO(), program, mappings, hcl2hcl.SkipRequiredProvidersVersion())
 		diagnostics = append(diagnostics, genDiags...)
 	default:
 		err = fmt.Errorf("unsupported language: %q", languageName)
@@ -590,6 +595,17 @@ func (cc *cliConverter) convertPCL(
 		key = n
 	}
 	return string(generatedFiles[key]), diagnostics, nil
+}
+
+// GetProviderInfo supplies HCL codegen with the in-memory mappings for the provider
+// being generated. Other providers in an example use their installed plugins.
+func (cc *cliConverter) GetProviderInfo(
+	_ context.Context, name string, _ *workspace.PackageDescriptor,
+) (*tfbridge.ProviderInfo, error) {
+	if name == il.GetTerraformProviderName(cc.info) || name == cc.info.ResourcePrefix {
+		return &cc.info, nil
+	}
+	return il.PluginProviderInfoSource.GetProviderInfo("", "", name, "")
 }
 
 // Act as a convertHCL stub that does not actually convert but spies on the literals involved.
