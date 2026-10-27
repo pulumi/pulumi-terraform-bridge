@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/tools
 
-go 1.26.6
+go 1.26.10
 
 require (
 	github.com/hashicorp/hcl/v2 v2.23.0
