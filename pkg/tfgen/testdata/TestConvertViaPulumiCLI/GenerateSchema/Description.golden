@@ -75,8 +75,8 @@ resource "simple_resource" "a_resource" {
   lifecycle {
     create_before_destroy = true
   }
-  renamed_input1 = "hello"
-  input_two      = true
+  input_one = "hello"
+  input_two = true
 }
 output "someOutput" {
   value = simple_resource.a_resource.result

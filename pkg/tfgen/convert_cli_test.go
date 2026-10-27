@@ -43,6 +43,54 @@ import (
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
+func TestConvertPCLToHCLProviderMappings(t *testing.T) {
+	t.Parallel()
+	info := tfbridge.ProviderInfo{
+		Name: "simple",
+		P: shimv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"simple_resource": {Schema: map[string]*schema.Schema{
+					"settings": {
+						Type: schema.TypeList, Optional: true, MaxItems: 1,
+						Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+							"window_size": {Type: schema.TypeString, Optional: true},
+						}},
+					},
+				}},
+			},
+		}),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"simple_resource": {
+				Tok: "simple:index:Resource",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"settings": {Name: "config", Elem: &tfbridge.SchemaInfo{
+						Fields: map[string]*tfbridge.SchemaInfo{"window_size": {Name: "sizeWindow"}},
+					}},
+				},
+			},
+		},
+	}
+	g, err := NewGenerator(GeneratorOptions{
+		Package: info.Name, Version: "1.0.0", Language: Schema,
+		PluginHost: newTestPluginHost(), ProviderInfo: info,
+		Root: afero.NewMemMapFs(),
+		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+	})
+	require.NoError(t, err)
+	_, err = g.Generate(t.Context())
+	require.NoError(t, err)
+
+	out, diagnostics, err := g.cliConverter().convertPCL(`resource "example" "simple:index:Resource" {
+  config = { sizeWindow = "large" }
+}`, "hcl")
+	require.NoError(t, err)
+	require.False(t, diagnostics.HasErrors(), diagnostics.Error())
+	assert.Contains(t, out, "settings {")
+	assert.Contains(t, out, `window_size = "large"`)
+	assert.NotContains(t, out, "size_window")
+	assert.NotContains(t, out, "config =")
+}
+
 func TestConvertViaPulumiCLI(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
