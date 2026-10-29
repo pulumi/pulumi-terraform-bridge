@@ -36,6 +36,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/schemaversion"
 )
 
 // The version expected to be specified by GetSchema
@@ -45,6 +47,7 @@ func mux(
 	host *provider.HostClient,
 	dispatchTable dispatchTable,
 	pulumiSchema []byte,
+	version string,
 	getMappingHandlers getMappingHandler,
 	servers ...pulumirpc.ResourceProviderServer,
 ) *muxer {
@@ -53,6 +56,7 @@ func mux(
 		host:            host,
 		servers:         servers,
 		schema:          pulumiSchema,
+		version:         version,
 		dispatchTable:   dispatchTable,
 		getMappingByKey: getMappingHandlers,
 	}
@@ -70,6 +74,9 @@ type muxer struct {
 	dispatchTable dispatchTable
 
 	schema []byte
+
+	// The version of the provider binary, injected into schema if it has none.
+	version string
 
 	servers []server
 
@@ -134,7 +141,7 @@ func (m *muxer) GetSchema(ctx context.Context, req *pulumirpc.GetSchemaRequest) 
 		return nil, fmt.Errorf("Expected schema version %d, got %d",
 			SchemaVersion, req.GetVersion())
 	}
-	return &pulumirpc.GetSchemaResponse{Schema: string(m.schema)}, nil
+	return &pulumirpc.GetSchemaResponse{Schema: string(schemaversion.Inject(m.schema, m.version))}, nil
 }
 
 func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
