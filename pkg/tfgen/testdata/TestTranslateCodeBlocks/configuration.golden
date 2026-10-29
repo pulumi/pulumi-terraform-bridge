@@ -2,25 +2,16 @@ Use the navigation to the left to read about the available resources.
 
 ## Example Usage
 
+```bash
+pulumi config set simple:authUrl http://myauthurl:5000/v3
+pulumi config set --secret simple:password pwd
+pulumi config set simple:region RegionOne
+pulumi config set simple:tenantName admin
+pulumi config set simple:userName admin
+```
+
 {{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}
 {{% choosable language typescript %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: nodejs
-config:
-    simple:authUrl:
-        value: http://myauthurl:5000/v3
-    simple:password:
-        value: pwd
-    simple:region:
-        value: RegionOne
-    simple:tenantName:
-        value: admin
-    simple:userName:
-        value: admin
-
-```
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as simple from "@pulumi/simple";
@@ -34,23 +25,6 @@ export const someOutput = aResource.result;
 ```
 {{% /choosable %}}
 {{% choosable language python %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: python
-config:
-    simple:authUrl:
-        value: http://myauthurl:5000/v3
-    simple:password:
-        value: pwd
-    simple:region:
-        value: RegionOne
-    simple:tenantName:
-        value: admin
-    simple:userName:
-        value: admin
-
-```
 ```python
 import pulumi
 import pulumi_simple as simple
@@ -63,23 +37,6 @@ pulumi.export("someOutput", a_resource["result"])
 ```
 {{% /choosable %}}
 {{% choosable language csharp %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: dotnet
-config:
-    simple:authUrl:
-        value: http://myauthurl:5000/v3
-    simple:password:
-        value: pwd
-    simple:region:
-        value: RegionOne
-    simple:tenantName:
-        value: admin
-    simple:userName:
-        value: admin
-
-```
 ```csharp
 using System.Collections.Generic;
 using System.Linq;
@@ -104,23 +61,6 @@ return await Deployment.RunAsync(() =>
 ```
 {{% /choosable %}}
 {{% choosable language go %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: go
-config:
-    simple:authUrl:
-        value: http://myauthurl:5000/v3
-    simple:password:
-        value: pwd
-    simple:region:
-        value: RegionOne
-    simple:tenantName:
-        value: admin
-    simple:userName:
-        value: admin
-
-```
 ```go
 package main
 
@@ -147,23 +87,6 @@ func main() {
 {{% /choosable %}}
 {{% choosable language yaml %}}
 ```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: yaml
-config:
-    simple:authUrl:
-        value: http://myauthurl:5000/v3
-    simple:password:
-        value: pwd
-    simple:region:
-        value: RegionOne
-    simple:tenantName:
-        value: admin
-    simple:userName:
-        value: admin
-
-```
-```yaml
 resources:
   ## Define a resource
   aResource:
@@ -177,23 +100,6 @@ outputs:
 ```
 {{% /choosable %}}
 {{% choosable language java %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: java
-config:
-    simple:authUrl:
-        value: http://myauthurl:5000/v3
-    simple:password:
-        value: pwd
-    simple:region:
-        value: RegionOne
-    simple:tenantName:
-        value: admin
-    simple:userName:
-        value: admin
-
-```
 ```java
 package generated_program;
 

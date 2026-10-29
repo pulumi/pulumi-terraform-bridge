@@ -42,26 +42,16 @@ Additionally, the `ssh` URI supports passwords using the `driver+ssh://[username
 As the provider does not use libvirt on the client side, not all connection URI options are supported or apply.
 ## Example Usage
 
-{{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}
-{{% choosable language typescript %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: nodejs
-config:
-    simple-provider:authUrl:
-        value: http://myauthurl:5000/v3
-    simple-provider:password:
-        value: pwd
-    simple-provider:region:
-        value: RegionOne
-    simple-provider:tenantName:
-        value: admin
-    simple-provider:userName:
-        value: admin
-
+```bash
+pulumi config set simple-provider:authUrl http://myauthurl:5000/v3
+pulumi config set simple-provider:password pwd
+pulumi config set simple-provider:region RegionOne
+pulumi config set simple-provider:tenantName admin
+pulumi config set simple-provider:userName admin
 ```
 
+{{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}
+{{% choosable language typescript %}}
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
 import * as simple from "@pulumi/simple";
@@ -75,24 +65,6 @@ const aResource = new simple.index.Resource("a_resource", {
 
 {{% /choosable %}}
 {{% choosable language python %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: python
-config:
-    simple-provider:authUrl:
-        value: http://myauthurl:5000/v3
-    simple-provider:password:
-        value: pwd
-    simple-provider:region:
-        value: RegionOne
-    simple-provider:tenantName:
-        value: admin
-    simple-provider:userName:
-        value: admin
-
-```
-
 ```python
 import pulumi
 import pulumi_simple as simple
@@ -105,24 +77,6 @@ a_resource = simple.Resource("a_resource",
 
 {{% /choosable %}}
 {{% choosable language csharp %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: dotnet
-config:
-    simple-provider:authUrl:
-        value: http://myauthurl:5000/v3
-    simple-provider:password:
-        value: pwd
-    simple-provider:region:
-        value: RegionOne
-    simple-provider:tenantName:
-        value: admin
-    simple-provider:userName:
-        value: admin
-
-```
-
 ```csharp
 using System.Collections.Generic;
 using System.Linq;
@@ -144,24 +98,6 @@ return await Deployment.RunAsync(() =>
 
 {{% /choosable %}}
 {{% choosable language go %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: go
-config:
-    simple-provider:authUrl:
-        value: http://myauthurl:5000/v3
-    simple-provider:password:
-        value: pwd
-    simple-provider:region:
-        value: RegionOne
-    simple-provider:tenantName:
-        value: admin
-    simple-provider:userName:
-        value: admin
-
-```
-
 ```go
 package main
 
@@ -188,24 +124,6 @@ func main() {
 {{% /choosable %}}
 {{% choosable language yaml %}}
 ```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: yaml
-config:
-    simple-provider:authUrl:
-        value: http://myauthurl:5000/v3
-    simple-provider:password:
-        value: pwd
-    simple-provider:region:
-        value: RegionOne
-    simple-provider:tenantName:
-        value: admin
-    simple-provider:userName:
-        value: admin
-
-```
-
-```yaml
 resources:
   ## Define a resource
   aResource:
@@ -218,24 +136,6 @@ resources:
 
 {{% /choosable %}}
 {{% choosable language java %}}
-```yaml
-# Pulumi.yaml provider configuration file
-name: configuration-example
-runtime: java
-config:
-    simple-provider:authUrl:
-        value: http://myauthurl:5000/v3
-    simple-provider:password:
-        value: pwd
-    simple-provider:region:
-        value: RegionOne
-    simple-provider:tenantName:
-        value: admin
-    simple-provider:userName:
-        value: admin
-
-```
-
 ```java
 package generated_program;
 
