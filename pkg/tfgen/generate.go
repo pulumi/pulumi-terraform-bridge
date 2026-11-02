@@ -1011,7 +1011,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	pluginHost := newCachingProviderHost(host)
 	pluginContext, err := plugin.NewContext(
-		ctx, sink, sink, pluginHost, nil, cwd, nil, false, nil,
+		ctx, sink, sink, pluginHost, nil, cwd, nil, false, nil, nil,
 	)
 	if err != nil {
 		// Only close baseHost if we created it; a caller-provided host is owned by the caller.

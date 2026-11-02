@@ -11,7 +11,8 @@ PULUMI_IGNORE_AMBIENT_PLUGINS = false
 go = "{{ env.GO_VERSION_MISE }}"
 # Executable tools
 golangci-lint = '2.9.0'
-pulumi = "{{ env.PULUMI_VERSION_MISE }}"
+# TODO: Restore "{{ env.PULUMI_VERSION_MISE }}" once a release includes the pulumi/pulumi commit in go.mod.
+pulumi = "3.273.0"
 terraform = 'latest'
 
 # External test dependencies. Keep normal tests and golden acceptance on the same pins.
