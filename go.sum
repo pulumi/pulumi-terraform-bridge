@@ -698,10 +698,10 @@ github.com/pulumi/pulumi-java v1.37.8 h1:ZNdiBViwGTWv+MfDxkUg+tl0KQ01EUDT3ooGGnU
 github.com/pulumi/pulumi-java v1.37.8/go.mod h1:MUOvT4u2U2dZSGDNlLwIGi5/QdTDtTCVZoUAts8cAEQ=
 github.com/pulumi/pulumi-yaml v1.38.14 h1:OvimOxftgohzMa9V0GggwmW4K05/Ecf5JSPksX9+ZWM=
 github.com/pulumi/pulumi-yaml v1.38.14/go.mod h1:OESoA1UbCJCeqW8hnEDng1+RE1nvCqtUSKBDCS4xKxM=
-github.com/pulumi/pulumi/pkg/v3 v3.273.1-0.20261101155800-3743f12e0193 h1:yc/2wXwv0d4JP3+1HbNWIVE16QqA5CZzDBauwmnx2mE=
-github.com/pulumi/pulumi/pkg/v3 v3.273.1-0.20261101155800-3743f12e0193/go.mod h1:Y3t9u4C2r72dw2aUgbcdjUJ82zA/vyB25SsSfo1YGtg=
-github.com/pulumi/pulumi/sdk/v3 v3.273.1-0.20261101155800-3743f12e0193 h1:nH/eaBkjG0NYwBUo6o7poP94qK1uc9FfdVK9fTgXUX0=
-github.com/pulumi/pulumi/sdk/v3 v3.273.1-0.20261101155800-3743f12e0193/go.mod h1:OOGpSXKEdPGkwN/iXJf7x40KRLbjINKP5E3OiR0dtes=
+github.com/pulumi/pulumi/pkg/v3 v3.274.0 h1:ZMPzwTkBeQTmHsaYUJtujynFYZGbGspL+YHDimZs3NM=
+github.com/pulumi/pulumi/pkg/v3 v3.274.0/go.mod h1:qxI4lfrXjK44vLSB9h1KvQtdlsgaqE0deNSJHmiCHWE=
+github.com/pulumi/pulumi/sdk/v3 v3.274.0 h1:fmXISTS5nm4xhxjUGkDEvIAVT0T1xdiVBGo6rXFJ2o8=
+github.com/pulumi/pulumi/sdk/v3 v3.274.0/go.mod h1:OOGpSXKEdPGkwN/iXJf7x40KRLbjINKP5E3OiR0dtes=
 github.com/pulumi/terraform-diff-reader v0.0.2 h1:kTE4nEXU3/SYXESvAIem+wyHMI3abqkI3OhJ0G04LLI=
 github.com/pulumi/terraform-diff-reader v0.0.2/go.mod h1:sZ9FUzGO+yM41hsQHs/yIcj/Y993qMdBxBU5mpDmAfQ=
 github.com/rhysd/go-fakeio v1.0.0 h1:+TjiKCOs32dONY7DaoVz/VPOdvRkPfBkEyUDIpM8FQY=
