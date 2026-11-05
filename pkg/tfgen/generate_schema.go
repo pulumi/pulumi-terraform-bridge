@@ -67,6 +67,7 @@ type schemaGenerator struct {
 
 type schemaNestedType struct {
 	typ             *propertyType
+	propertyTypes   []*propertyType
 	declarer        declarer
 	required        codegen.StringSet
 	requiredInputs  codegen.StringSet
@@ -77,25 +78,216 @@ type schemaNestedType struct {
 }
 
 type schemaNestedTypes struct {
-	nameToType map[string]*schemaNestedType
+	nameToTypes map[string][]*schemaNestedType
+	types       []*schemaNestedType
 }
 
-func gatherSchemaNestedTypesForModule(mod *module) map[string]*schemaNestedType {
-	nt := &schemaNestedTypes{
-		nameToType: make(map[string]*schemaNestedType),
+type schemaNestedTypeClass struct {
+	declarations []*schemaNestedType
+}
+
+func (c *schemaNestedTypeClass) representative() *schemaNestedType {
+	return c.declarations[len(c.declarations)-1]
+}
+
+func (c *schemaNestedTypeClass) explicitlyNamed() bool {
+	for _, declaration := range c.declarations {
+		if declaration.typ.typeName != nil || declaration.typ.nestedType != "" {
+			return true
+		}
 	}
+	return false
+}
+
+func newSchemaNestedTypes() *schemaNestedTypes {
+	return &schemaNestedTypes{
+		nameToTypes: make(map[string][]*schemaNestedType),
+		types:       make([]*schemaNestedType, 0),
+	}
+}
+
+func gatherSchemaNestedTypesForModule(mod *module) []*schemaNestedType {
+	nt := newSchemaNestedTypes()
 	for _, member := range mod.members {
 		nt.gatherFromMember(member)
 	}
-	return nt.nameToType
+	return nt.types
 }
 
-func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNestedType {
-	nt := &schemaNestedTypes{
-		nameToType: make(map[string]*schemaNestedType),
-	}
+func gatherSchemaNestedTypesForMember(member moduleMember) []*schemaNestedType {
+	nt := newSchemaNestedTypes()
 	nt.gatherFromMember(member)
-	return nt.nameToType
+	return nt.types
+}
+
+func schemaNestedTypeLocation(typePath paths.TypePath) string {
+	switch typePath := typePath.(type) {
+	case *paths.ResourceMemberPath:
+		// Inputs, outputs, state, and list inputs for the same resource property intentionally share a type.
+		return typePath.ResourcePath.String()
+	case *paths.DataSourceMemberPath:
+		// Arguments and results for the same data source property intentionally share a type.
+		return typePath.DataSourcePath.String()
+	case *paths.ConfigPath:
+		return typePath.String()
+	case *paths.PropertyPath:
+		return schemaNestedTypeLocation(typePath.Parent()) + "." + typePath.PropertyName.String()
+	case *paths.ElementPath:
+		return schemaNestedTypeLocation(typePath.Parent()) + ".$"
+	default:
+		contract.Failf("unsupported nested type path %T", typePath)
+		return ""
+	}
+}
+
+func schemaNestedTypeHasLocation(nestedType *schemaNestedType, typePath paths.TypePath) bool {
+	location := schemaNestedTypeLocation(typePath)
+	for _, existingPath := range nestedType.typePaths.Paths() {
+		if schemaNestedTypeLocation(existingPath) == location {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeSchemaNestedTypeDeclarations(declarations []*schemaNestedType) *schemaNestedType {
+	representative := declarations[len(declarations)-1]
+	for _, declaration := range declarations[:len(declarations)-1] {
+		representative.propertyTypes = append(representative.propertyTypes, declaration.propertyTypes...)
+		for _, typePath := range declaration.typePaths.Paths() {
+			representative.typePaths.Add(typePath)
+		}
+		if representative.requiredInputs == nil && declaration.requiredInputs != nil {
+			representative.requiredInputs = declaration.requiredInputs
+		}
+		if representative.requiredOutputs == nil && declaration.requiredOutputs != nil {
+			representative.requiredOutputs = declaration.requiredOutputs
+		}
+	}
+	return representative
+}
+
+func (t *schemaNestedType) setName(name string) {
+	t.typ.name = name
+	for _, propertyType := range t.propertyTypes {
+		propertyType.name = name
+	}
+}
+
+func schemaNestedTypeSourcePaths(class *schemaNestedTypeClass) string {
+	var sourcePaths []string
+	for _, declaration := range class.declarations {
+		for _, typePath := range declaration.typePaths.Paths() {
+			sourcePaths = append(sourcePaths, typePath.String())
+		}
+	}
+	sort.Strings(sourcePaths)
+	return strings.Join(sourcePaths, ", ")
+}
+
+// resolveSchemaNestedTypeCollisions ensures that types which project to the same Pulumi token have compatible shapes.
+// Historically nested types were gathered per source module, even though modulePlacementForType can place types from
+// several source modules into one schema module. A later declaration could then silently overwrite the earlier type.
+func (g *schemaGenerator) resolveSchemaNestedTypeCollisions(
+	declarations []*schemaNestedType,
+) ([]*schemaNestedType, error) {
+	type tokenGroup struct {
+		token        string
+		declarations []*schemaNestedType
+	}
+
+	groupsByToken := map[string]*tokenGroup{}
+	var groups []*tokenGroup
+	reservedTokens := map[string]struct{}{}
+	for _, declaration := range declarations {
+		token := g.genObjectTypeToken(declaration)
+		group, ok := groupsByToken[token]
+		if !ok {
+			group = &tokenGroup{token: token}
+			groupsByToken[token] = group
+			groups = append(groups, group)
+			reservedTokens[token] = struct{}{}
+		}
+		group.declarations = append(group.declarations, declaration)
+	}
+
+	var resolved []*schemaNestedType
+	for _, group := range groups {
+		var classes []*schemaNestedTypeClass
+		for _, declaration := range group.declarations {
+			var compatible *schemaNestedTypeClass
+			for _, class := range classes {
+				if class.representative().typ.equals(declaration.typ) {
+					compatible = class
+					break
+				}
+			}
+			if compatible == nil {
+				compatible = &schemaNestedTypeClass{}
+				classes = append(classes, compatible)
+			}
+			compatible.declarations = append(compatible.declarations, declaration)
+		}
+
+		if len(classes) == 1 {
+			resolved = append(resolved, mergeSchemaNestedTypeDeclarations(classes[0].declarations))
+			continue
+		}
+
+		var explicitlyNamed []*schemaNestedTypeClass
+		for _, class := range classes {
+			if class.explicitlyNamed() {
+				explicitlyNamed = append(explicitlyNamed, class)
+			}
+		}
+		if len(explicitlyNamed) > 1 {
+			return nil, fmt.Errorf(
+				"nested type token %q is explicitly assigned to incompatible types at %s and %s",
+				group.token, schemaNestedTypeSourcePaths(explicitlyNamed[0]),
+				schemaNestedTypeSourcePaths(explicitlyNamed[1]))
+		}
+
+		// Preserve the shape that would previously have won the map overwrite. An explicit provider-authored name
+		// takes precedence; otherwise this is the last shape in deterministic gathering order.
+		lastDeclaration := group.declarations[len(group.declarations)-1]
+		var baseClass *schemaNestedTypeClass
+		for _, class := range classes {
+			if class.representative() == lastDeclaration {
+				baseClass = class
+				break
+			}
+		}
+		contract.Assertf(baseClass != nil, "last nested type declaration belongs to a compatibility class")
+		if len(explicitlyNamed) == 1 {
+			baseClass = explicitlyNamed[0]
+		}
+
+		nextVariant := 2
+		for _, class := range classes {
+			if class == baseClass {
+				resolved = append(resolved, mergeSchemaNestedTypeDeclarations(class.declarations))
+				continue
+			}
+
+			baseName := class.representative().typ.name
+			for {
+				candidateName := fmt.Sprintf("%sV%d", baseName, nextVariant)
+				for _, declaration := range class.declarations {
+					declaration.setName(candidateName)
+				}
+				candidateToken := g.genObjectTypeToken(class.representative())
+				nextVariant++
+				if _, occupied := reservedTokens[candidateToken]; occupied {
+					continue
+				}
+				reservedTokens[candidateToken] = struct{}{}
+				resolved = append(resolved, mergeSchemaNestedTypeDeclarations(class.declarations))
+				break
+			}
+		}
+	}
+
+	return resolved, nil
 }
 
 func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
@@ -162,8 +354,11 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 	}
 
 	// Merging makes sure that structurally identical types are shared and not generated more than once.
-	if existing, ok := nt.nameToType[typeName]; ok {
-		contract.Assertf(existing.declarer == declarer || existing.typ.equals(typ), "duplicate type %v", typeName)
+	for _, existing := range nt.nameToTypes[typeName] {
+		sameLocation := existing.declarer == declarer && schemaNestedTypeHasLocation(existing, typePath)
+		if !sameLocation && !existing.typ.equals(typ) {
+			continue
+		}
 
 		// Remember that existing type is now also seen at the current typePath.
 		existing.typePaths.Add(typePath)
@@ -178,17 +373,21 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		}
 
 		existing.typ, existing.required = typ, required
+		existing.propertyTypes = append(existing.propertyTypes, typ)
 		return typeName
 	}
 
-	nt.nameToType[typeName] = &schemaNestedType{
+	nestedType := &schemaNestedType{
 		typ:             typ,
+		propertyTypes:   []*propertyType{typ},
 		declarer:        declarer,
 		required:        required,
 		requiredInputs:  requiredInputs,
 		requiredOutputs: requiredOutputs,
 		typePaths:       paths.SingletonTypePathSet(typePath),
 	}
+	nt.nameToTypes[typeName] = append(nt.nameToTypes[typeName], nestedType)
+	nt.types = append(nt.types, nestedType)
 	return typeName
 }
 
@@ -306,23 +505,34 @@ func (g *schemaGenerator) genPackageSpec(ctx context.Context, pack *pkg) (pschem
 	spec.Description = g.info.Description
 	spec.Attribution = fmt.Sprintf(attributionFormatString, g.info.Name, g.info.GetGitHubOrg(), g.info.GetGitHubHost())
 
+	// Gather all nested types before emitting any references to them. Source modules do not necessarily correspond to
+	// schema modules, so collisions can only be resolved correctly at package scope.
+	gn0 := time.Now()
+	var nestedTypeDeclarations []*schemaNestedType
+	for _, mod := range pack.modules.values() {
+		nestedTypeDeclarations = append(nestedTypeDeclarations, gatherSchemaNestedTypesForModule(mod)...)
+	}
+	if pack.provider != nil {
+		nestedTypeDeclarations = append(nestedTypeDeclarations, gatherSchemaNestedTypesForMember(pack.provider)...)
+	}
+	nestedTypes, err := g.resolveSchemaNestedTypeCollisions(nestedTypeDeclarations)
+	if err != nil {
+		return pschema.PackageSpec{}, err
+	}
+	gatherNestedDur += time.Since(gn0)
+	for _, t := range nestedTypes {
+		tok := g.genObjectTypeToken(t)
+		t0 := time.Now()
+		ts := g.genObjectType(t, false)
+		typesDur += time.Since(t0)
+		typesN++
+		spec.Types[tok] = pschema.ComplexTypeSpec{
+			ObjectTypeSpec: ts,
+		}
+	}
+
 	var config []*variable
 	for _, mod := range pack.modules.values() {
-		// Generate nested types.
-		gn0 := time.Now()
-		nestedTypes := gatherSchemaNestedTypesForModule(mod)
-		gatherNestedDur += time.Since(gn0)
-		for _, t := range nestedTypes {
-			tok := g.genObjectTypeToken(t)
-			t0 := time.Now()
-			ts := g.genObjectType(t, false)
-			typesDur += time.Since(t0)
-			typesN++
-			spec.Types[tok] = pschema.ComplexTypeSpec{
-				ObjectTypeSpec: ts,
-			}
-		}
-
 		// Enumerate each module member, in the order presented to us, and do the right thing.
 		for _, member := range mod.members {
 			switch t := member.(type) {
@@ -377,13 +587,6 @@ func (g *schemaGenerator) genPackageSpec(ctx context.Context, pack *pkg) (pschem
 
 	if pack.provider != nil {
 		indexModToken := tokens.NewModuleToken(g.pkg, indexMod)
-		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
-			tok := g.genObjectTypeToken(t)
-			ts := g.genObjectType(t, false)
-			spec.Types[tok] = pschema.ComplexTypeSpec{
-				ObjectTypeSpec: ts,
-			}
-		}
 		provider := g.genResourceType(indexModToken, pack.provider)
 		spec.Provider = &provider
 
