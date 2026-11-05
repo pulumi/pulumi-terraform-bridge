@@ -319,6 +319,7 @@ func TestWriteInstallationInstructions(t *testing.T) {
 		goImportBasePath string
 		displayName      string
 		packageName      string
+		cSharpName       string
 		expected         autogold.Value
 		ghOrg            string
 		repository       string
@@ -337,6 +338,7 @@ func TestWriteInstallationInstructions(t *testing.T) {
 			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
 			displayName:      "testcase",
 			packageName:      "testcase",
+			cSharpName:       "Testcase",
 			repository:       "pulumi-testcase",
 			ghOrg:            "pulumi",
 		},
@@ -352,6 +354,7 @@ func TestWriteInstallationInstructions(t *testing.T) {
 			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
 			displayName:      "Test Case",
 			packageName:      "testcase",
+			cSharpName:       "Testcase",
 			repository:       "pulumi-testcase",
 			ghOrg:            "pulumi",
 		},
@@ -382,6 +385,7 @@ func TestWriteInstallationInstructions(t *testing.T) {
 			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
 			displayName:      "Wavefront",
 			packageName:      "wavefront",
+			cSharpName:       "Wavefront",
 			repository:       "terraform-provider-wavefront",
 			ghOrg:            "vmware",
 		},
@@ -394,8 +398,45 @@ func TestWriteInstallationInstructions(t *testing.T) {
 				t.Skipf("Skipping on Windows due to a test setup issue")
 			}
 			t.Parallel()
-			actual := writeInstallationInstructions(tt.goImportBasePath, tt.displayName, tt.packageName, tt.ghOrg, tt.repository)
+			actual := writeInstallationInstructions(tt.goImportBasePath, tt.displayName, tt.packageName, tt.cSharpName, tt.ghOrg, tt.repository)
 			tt.expected.Equal(t, actual)
+		})
+	}
+}
+
+func TestCSharpPackageName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		info     tfbridge.ProviderInfo
+		pkgName  string
+		expected string
+	}{
+		{
+			name:     "Uses the declared C# namespace capitalization",
+			info:     tfbridge.ProviderInfo{CSharp: &tfbridge.CSharpInfo{Namespaces: map[string]string{"azuread": "AzureAD"}}},
+			pkgName:  "azuread",
+			expected: "AzureAD",
+		},
+		{
+			name:     "Keeps mixed-case segments from the declared namespace",
+			info:     tfbridge.ProviderInfo{CSharp: &tfbridge.CSharpInfo{Namespaces: map[string]string{"f5bigip": "F5BigIP"}}},
+			pkgName:  "f5bigip",
+			expected: "F5BigIP",
+		},
+		{
+			name:     "Title-cases the package name when no namespace is declared",
+			info:     tfbridge.ProviderInfo{},
+			pkgName:  "testcase",
+			expected: "Testcase",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expected, cSharpPackageName(tt.info, tt.pkgName))
 		})
 	}
 }

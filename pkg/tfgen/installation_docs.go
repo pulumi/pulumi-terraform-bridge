@@ -53,6 +53,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		g.info.Golang.ImportBasePath,
 		providerDisplayName,
 		g.pkg.Name().String(),
+		cSharpPackageName(g.info, g.pkg.Name().String()),
 		g.info.GitHubOrg,
 		g.info.Repository,
 	)
@@ -125,11 +126,7 @@ func writeFrontMatter(providerDisplayName string) string {
 //	```bash
 //	pulumi package add terraform-provider org/foo
 //	```
-func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg, sourceRepo string) string {
-	// Capitalize the package name for C#
-	capitalize := cases.Title(language.English)
-	cSharpName := capitalize.String(pkgName)
-
+func writeInstallationInstructions(goImportBasePath, displayName, pkgName, cSharpName, ghOrg, sourceRepo string) string {
 	installInstructions := fmt.Sprintf(
 		"## Installation\n\n"+
 			"The %[1]s provider is available as a package in all Pulumi languages:\n\n"+
@@ -172,6 +169,17 @@ func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg
 		}
 	}
 	return generateInstructions
+}
+
+// cSharpPackageName returns the .NET name for a package: its capitalization from CSharp.Namespaces when the provider
+// declares one (e.g. "azuread" -> "AzureAD"), otherwise the title-cased package name.
+func cSharpPackageName(providerInfo tfbridge.ProviderInfo, pkgName string) string {
+	if providerInfo.CSharp != nil {
+		if name, ok := providerInfo.CSharp.Namespaces[pkgName]; ok {
+			return name
+		}
+	}
+	return cases.Title(language.English).String(pkgName)
 }
 
 // TODO: remove this note after 90 days: https://github.com/pulumi/pulumi-terraform-bridge/issues/3304
