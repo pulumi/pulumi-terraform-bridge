@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -237,6 +238,10 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 	}
 
 	newInputs, failures, err := p.provider.CheckConfigWithContext(ctx, urn, state, inputs, true)
+	var failuresErr CheckFailuresError
+	if errors.As(err, &failuresErr) {
+		err = nil
+	}
 	if err != nil {
 		return nil, p.checkNYI("CheckConfig", err)
 	}
@@ -261,6 +266,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 	for i, f := range failures {
 		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
 	}
+	rpcFailures = append(rpcFailures, failuresErr.Failures...)
 
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }

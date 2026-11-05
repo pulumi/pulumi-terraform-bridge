@@ -26,20 +26,16 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/defaults"
+	pl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []plugin.CheckFailure {
-	failures := make([]plugin.CheckFailure, len(err.Failures))
-	for i, failure := range err.Failures {
-		failures[i] = plugin.CheckFailure{
-			Reason:   failure.Reason,
-			Property: resource.PropertyKey(failure.Property),
-		}
-	}
-	return failures
+// makeFailuresFromCheckErr turns a [tfbridge.CheckFailureError] into an error that the provider server reports as
+// CheckConfig failures, keeping details such as remediations that [plugin.CheckFailure] cannot carry.
+func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) error {
+	return pl.CheckFailuresError{Failures: tfbridge.MarshalCheckFailures(err.Failures)}
 }
 
 // CheckConfig validates the configuration for this resource provider.
@@ -83,13 +79,13 @@ func (p *provider) CheckConfigWithContext(
 	if !news.ContainsUnknowns() {
 		if err := p.runPreConfigureCallback(ctx, news); err != nil {
 			if failureErr, ok := err.(tfbridge.CheckFailureError); ok {
-				return nil, makeFailuresFromCheckErr(failureErr), nil
+				return nil, nil, makeFailuresFromCheckErr(failureErr)
 			}
 			return nil, nil, err
 		}
 		if err := p.runPreConfigureCallbackWithLogger(ctx, news); err != nil {
 			if failureErr, ok := err.(tfbridge.CheckFailureError); ok {
-				return nil, makeFailuresFromCheckErr(failureErr), nil
+				return nil, nil, makeFailuresFromCheckErr(failureErr)
 			}
 			return nil, nil, err
 		}

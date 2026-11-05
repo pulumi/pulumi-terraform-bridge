@@ -737,6 +737,49 @@ func TestPFPreConfigureCallback(t *testing.T) {
 		}`)
 	})
 
+	t.Run("PreConfigureCallback can return remediations", func(t *testing.T) {
+		m := func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+			return tfbridge0.CheckFailureError{
+				Failures: []tfbridge0.CheckFailureErrorElement{{
+					Reason: "Not signed in. Run `cloud login`.",
+					Remediations: []tfbridge0.CommandRemediation{{
+						Description: "Sign in",
+						Command:     []string{"cloud", "login", "--profile", "dev"},
+						Env:         map[string]string{"CLOUD_NO_WIZARD": "true"},
+						Interactive: true,
+					}},
+				}},
+			}
+		}
+		schema := schema.Schema{}
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+			info.PreConfigureCallback = m
+		})
+		testutils.Replay(t, s, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+			"inputs": {},
+			"failures": [{
+				"reason": "Not signed in. Run `+"`cloud login`"+`.",
+				"remediations": [{
+					"description": "Sign in",
+					"command": ["cloud", "login", "--profile", "dev"],
+					"env": { "CLOUD_NO_WIZARD": "true" },
+					"interactive": true
+				}]
+			}]
+		  }
+		}`)
+	})
+
 	t.Run("PreConfigureCallback can return multiple failures", func(t *testing.T) {
 		m := func(
 			ctx context.Context,
