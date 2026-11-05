@@ -640,3 +640,13 @@ func newTestPluginHost() *plugin.MockHost {
 		},
 	}
 }
+
+func TestSingleExampleUnavailableIsNotFenced(t *testing.T) {
+	t.Parallel()
+	cc := &cliConverter{}
+	out, err := cc.singleExampleFromPCLToLanguage(translatedExample{
+		PCL: "this is not valid PCL {{{",
+	}, "hcl")
+	require.Error(t, err)
+	assert.Equal(t, exampleUnavailable, out)
+}

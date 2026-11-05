@@ -691,8 +691,9 @@ func (cc *cliConverter) singleExampleFromPCLToLanguage(example translatedExample
 		err = fmt.Errorf("conversion errors: %s", diags.Error())
 	}
 
+	// Return the placeholder as prose rather than fencing it as code, so it is not presented as copyable code.
 	if source == "" {
-		source = exampleUnavailable
+		return exampleUnavailable, err
 	}
 	source = "```" + lang + "\n" + source + "```"
 	return source, err
