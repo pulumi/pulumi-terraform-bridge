@@ -819,8 +819,8 @@ func TestRenderConfigSetCommands(t *testing.T) {
   user_name = "admin"
   password  = "pwd"
 }`,
-			expected: "pulumi config set --secret simple:password pwd\n" +
-				"pulumi config set simple:userName admin\n",
+			expected: "pulumi config set simple:userName admin\n" +
+				"pulumi config set --secret simple:password pwd\n",
 		},
 		{
 			name:     "renamed and marked secret by info",
@@ -834,9 +834,9 @@ func TestRenderConfigSetCommands(t *testing.T) {
   user_name = "${var.simple_user}"
   auth_url  = data.vault_generic_secret.creds.data["url"]
 }`,
-			expected: "pulumi config set simple:authUrl <value>\n" +
-				"pulumi config set --secret simple:password <simple_password>\n" +
-				"pulumi config set simple:userName <simple_user>\n",
+			expected: "pulumi config set --secret simple:password <simple_password>\n" +
+				"pulumi config set simple:userName <simple_user>\n" +
+				"pulumi config set simple:authUrl <value>\n",
 		},
 		{
 			name: "list and map",
@@ -863,12 +863,12 @@ func TestRenderConfigSetCommands(t *testing.T) {
     "back\\slash"        = "b"
   }
 }`,
-			expected: `pulumi config set --path 'simple:tags["a[0]"]' x` + "\n" +
-				`pulumi config set --path 'simple:tags["back\slash"]' b` + "\n" +
+			expected: `pulumi config set --path 'simple:tags["kubernetes.io/role"]' web` + "\n" +
+				`pulumi config set --path 'simple:tags["a[0]"]' x` + "\n" +
+				`pulumi config set --path 'simple:tags["say \"hi\""]' y` + "\n" +
 				`pulumi config set --path 'simple:tags["it'\''s"]' z` + "\n" +
-				`pulumi config set --path 'simple:tags["kubernetes.io/role"]' web` + "\n" +
-				`pulumi config set --path 'simple:tags.my-key' w` + "\n" +
-				`pulumi config set --path 'simple:tags["say \"hi\""]' y` + "\n",
+				`pulumi config set --path 'simple:tags["my-key"]' w` + "\n" +
+				`pulumi config set --path 'simple:tags["back\slash"]' b` + "\n",
 		},
 		{
 			name: "secret nested in a block",
@@ -924,8 +924,31 @@ func TestRenderConfigSetCommands(t *testing.T) {
   password  = ""
 }`,
 			expected: "pulumi config set simple:authUrl 'hello world'\n" +
-				"pulumi config set --secret simple:password ''\n" +
-				"pulumi config set simple:userName 'it'\\''s'\n",
+				"pulumi config set simple:userName 'it'\\''s'\n" +
+				"pulumi config set --secret simple:password ''\n",
+		},
+		{
+			name: "attributes and blocks keep source order",
+			hcl: `provider "simple" {
+  user_name = "admin"
+  registry_auth {
+    address = "registry-1.docker.io"
+  }
+  auth_url = "http://myauthurl:5000/v3"
+  registry_auth {
+    address = "quay.io:8181"
+  }
+  app_auth {
+    pem_file        = "key.pem"
+    installation_id = "123"
+  }
+}`,
+			expected: "pulumi config set simple:userName admin\n" +
+				"pulumi config set --path 'simple:registryAuths[0].address' registry-1.docker.io\n" +
+				"pulumi config set --path 'simple:registryAuths[1].address' quay.io:8181\n" +
+				"pulumi config set simple:authUrl http://myauthurl:5000/v3\n" +
+				"pulumi config set --secret --path 'simple:appAuth.pemFile' key.pem\n" +
+				"pulumi config set --path 'simple:appAuth.installationId' 123\n",
 		},
 		{
 			name: "aliased and other providers are skipped",

@@ -3,11 +3,11 @@ This example should translate at least the Pulumi config
 ## Example Usage
 
 ```bash
-pulumi config set simple:authUrl http://myauthurl:5000/v3
-pulumi config set --secret simple:password pwd
-pulumi config set simple:region RegionOne
-pulumi config set simple:tenantName admin
 pulumi config set simple:userName admin
+pulumi config set simple:tenantName admin
+pulumi config set --secret simple:password pwd
+pulumi config set simple:authUrl http://myauthurl:5000/v3
+pulumi config set simple:region RegionOne
 ```
 
 

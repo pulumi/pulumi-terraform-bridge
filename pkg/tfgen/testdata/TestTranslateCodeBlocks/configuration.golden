@@ -3,11 +3,11 @@ Use the navigation to the left to read about the available resources.
 ## Example Usage
 
 ```bash
-pulumi config set simple:authUrl http://myauthurl:5000/v3
-pulumi config set --secret simple:password pwd
-pulumi config set simple:region RegionOne
-pulumi config set simple:tenantName admin
 pulumi config set simple:userName admin
+pulumi config set simple:tenantName admin
+pulumi config set --secret simple:password pwd
+pulumi config set simple:authUrl http://myauthurl:5000/v3
+pulumi config set simple:region RegionOne
 ```
 
 {{< chooser language "typescript,python,go,csharp,java,yaml,hcl" >}}

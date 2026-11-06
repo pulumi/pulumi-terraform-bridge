@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
@@ -27,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
@@ -244,21 +247,22 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	return returnContent, nil
 }
 
-// configLeaf is one `pulumi config set` command: a config key, or a `--path` path for a nested value, and its value.
+// configLeaf is one `pulumi config set` command.
 type configLeaf struct {
-	path, value string
-	secret      bool
+	// namespace is the config namespace, such as "aws".
+	namespace string
+	// path is the config key, followed by the path to the value within it when the value is nested.
+	path   resource.PropertyPath
+	value  string
+	secret bool
 }
 
-func newConfigLeaf(path, value string, secret bool) configLeaf {
-	return configLeaf{path: path, value: value, secret: secret}
+func newConfigLeaf(namespace string, path resource.PropertyPath, value string, secret bool) configLeaf {
+	return configLeaf{namespace: namespace, path: path, value: value, secret: secret}
 }
 
 // nested reports whether the leaf sets a value inside a config key, so it needs `--path`.
-func (l configLeaf) nested() bool {
-	_, name, _ := strings.Cut(l.path, ":")
-	return strings.ContainsAny(name, ".[")
-}
+func (l configLeaf) nested() bool { return len(l.path) > 1 }
 
 // renderConfigSetCommands renders config leaves as a bash block of `pulumi config set` commands. Returns "" if there
 // are none.
@@ -274,10 +278,12 @@ func renderConfigSetCommands(leaves []configLeaf) string {
 			w.WriteString("--secret ")
 		}
 		if leaf.nested() {
-			// Always quote paths: list indexes contain shell glob characters.
-			w.WriteString("--path '" + strings.ReplaceAll(leaf.path, "'", `'\''`) + "'")
+			// The path is formatted the way `pulumi config set --path` parses it. Always quote paths: list indexes
+			// contain shell glob characters.
+			path := leaf.namespace + ":" + leaf.path.String()
+			w.WriteString("--path '" + strings.ReplaceAll(path, "'", `'\''`) + "'")
 		} else {
-			w.WriteString(shellQuote(leaf.path))
+			w.WriteString(shellQuote(fmt.Sprintf("%s:%v", leaf.namespace, leaf.path[0])))
 		}
 		w.WriteString(" " + configValueArg(leaf.value) + "\n")
 	}
@@ -322,11 +328,10 @@ func providerBlockConfigLeaves(g *Generator, code string) []configLeaf {
 	if !ok {
 		return nil
 	}
-	root := configNode{fieldInfos: g.info.Config}
+	w := configWalker{src: []byte(code), namespace: g.pkg.Name().String(), infos: g.info.Config}
 	if g.info.P != nil {
-		root.fields = g.info.P.Schema()
+		w.schema = g.info.P.Schema()
 	}
-	w := configWalker{src: []byte(code)}
 	var leaves []configLeaf
 	for _, block := range body.Blocks {
 		if block.Type != "provider" || len(block.Labels) != 1 || block.Labels[0] != g.info.Name {
@@ -336,116 +341,81 @@ func providerBlockConfigLeaves(g *Generator, code string) []configLeaf {
 		if _, aliased := block.Body.Attributes["alias"]; aliased {
 			continue
 		}
-		leaves = append(leaves, w.body(g.pkg.Name().String()+":", block.Body, root, false)...)
+		leaves = append(leaves, w.body(nil, walk.NewSchemaPath(), block.Body, false)...)
 	}
 	return leaves
 }
 
-// configNode is the schema at one position in provider config: either a single property (s and info) or an object's
-// fields. It is empty when the schema is unknown, in which case keys are used as written.
-type configNode struct {
-	s          shim.Schema
-	info       *tfbridge.SchemaInfo
-	fields     shim.SchemaMap
-	fieldInfos map[string]*tfbridge.SchemaInfo
+// configWalker flattens HCL provider config into config leaves, in source order so that the commands follow the
+// upstream example.
+//
+// Each value is tracked by two paths: its Pulumi path, which names the config to set, and its Terraform schema path,
+// which looks up its schema and SchemaInfo. Values the schema doesn't describe keep their keys as written.
+type configWalker struct {
+	// src is the HCL source, for rendering expressions that can't be evaluated.
+	src       []byte
+	namespace string
+	schema    shim.SchemaMap
+	infos     map[string]*tfbridge.SchemaInfo
 }
 
-func (n configNode) isList() bool {
-	return n.s != nil && (n.s.Type() == shim.TypeList || n.s.Type() == shim.TypeSet)
+func (w configWalker) lookup(sp walk.SchemaPath) (shim.Schema, *tfbridge.SchemaInfo) {
+	if w.schema == nil || len(sp) == 0 {
+		return nil, nil
+	}
+	s, info, err := tfbridge.LookupSchemas(sp, w.schema, w.infos)
+	if err != nil {
+		return nil, nil
+	}
+	return s, info
 }
 
-// element returns the schema of the elements of a list, set, or map.
-func (n configNode) element() configNode {
-	if n.s == nil {
-		return configNode{}
-	}
-	var info *tfbridge.SchemaInfo
-	if n.info != nil {
-		info = n.info.Elem
-	}
-	switch e := n.s.Elem().(type) {
-	case shim.Resource:
-		var fieldInfos map[string]*tfbridge.SchemaInfo
-		if info != nil {
-			fieldInfos = info.Fields
-		}
-		return configNode{fields: e.Schema(), fieldInfos: fieldInfos}
-	case shim.Schema:
-		return configNode{s: e, info: info}
-	}
-	return configNode{}
-}
-
-// field returns the Pulumi name, schema, and secretness of the key within n. Secretness follows the generated
-// schema: Terraform `Sensitive`, unless the field's SchemaInfo overrides it.
-func (n configNode) field(key string) (string, configNode, bool) {
-	fields, fieldInfos := n.fields, n.fieldInfos
-	if fields == nil && n.s != nil && n.s.Type() == shim.TypeMap {
-		r, isObject := n.s.Elem().(shim.Resource)
-		if !isObject {
-			// Map keys are data, not field names.
-			elem := n.element()
-			return key, elem, elem.s != nil && elem.s.Sensitive()
-		}
-		// A map whose element is a resource is a single object, whose field infos are on its own info.
-		fields = r.Schema()
-		if n.info != nil {
-			fieldInfos = n.info.Fields
+// field returns the Pulumi name, schema path, and secretness of key within the object or map at sp.
+func (w configWalker) field(sp walk.SchemaPath, key string) (string, walk.SchemaPath, bool) {
+	fields, infos := w.schema, w.infos
+	if len(sp) > 0 {
+		fields, infos = nil, nil
+		s, info := w.lookup(sp)
+		if s != nil && s.Type() == shim.TypeMap {
+			r, isObject := s.Elem().(shim.Resource)
+			if !isObject {
+				// Map keys are data, not field names.
+				elem := sp.Element()
+				return key, elem, isSecret(w.lookup(elem))
+			}
+			fields = r.Schema()
+			if info != nil {
+				infos = info.Fields
+			}
 		}
 	}
-	if fields == nil {
-		return key, configNode{}, false
+	child := sp.GetAttr(key)
+	name := key
+	if fields != nil {
+		name = tfbridge.TerraformToPulumiNameV2(key, fields, infos)
 	}
-	s, _ := fields.GetOk(key)
-	info := fieldInfos[key]
-	secret := s != nil && s.Sensitive()
-	if info != nil && info.Secret != nil {
-		secret = *info.Secret
-	}
-	return tfbridge.TerraformToPulumiNameV2(key, fields, fieldInfos), configNode{s: s, info: info}, secret
+	return name, child, isSecret(w.lookup(child))
 }
 
-// configWalker flattens HCL provider config into config leaves. src is the HCL source, for rendering expressions it
-// can't evaluate.
-type configWalker struct{ src []byte }
-
-// configEntry holds the leaves under one key, so keys can be emitted in Pulumi name order.
-type configEntry struct {
-	name   string
-	leaves []configLeaf
+func (w configWalker) leaf(path resource.PropertyPath, value string, secret bool) []configLeaf {
+	return []configLeaf{newConfigLeaf(w.namespace, path, value, secret)}
 }
 
-func sortedConfigLeaves(entries []configEntry) []configLeaf {
-	sort.Slice(entries, func(i, j int) bool { return entries[i].name < entries[j].name })
-	var leaves []configLeaf
-	for _, e := range entries {
-		leaves = append(leaves, e.leaves...)
+func (w configWalker) body(
+	path resource.PropertyPath, sp walk.SchemaPath, body *hclsyntax.Body, secret bool,
+) []configLeaf {
+	// Attributes are a map, so each entry records where it starts in the source to restore the upstream order.
+	type entry struct {
+		start  int
+		leaves []configLeaf
 	}
-	return leaves
-}
-
-// configChildPath appends a key to a `pulumi config set --path` path.
-func configChildPath(parent, name string) string {
-	if strings.HasSuffix(parent, ":") {
-		return parent + name
-	}
-	// --path splits on "." and "[", so a key that isn't a plain identifier must be written as ["key"]. The only escape
-	// inside the quotes is \"; other backslashes are literal. At the time of writing, no provider's install docs use
-	// such a key in provider config; this is here for safety, since a wrong path silently stores the value elsewhere.
-	if !configPathIdentifier.MatchString(name) {
-		return parent + `["` + strings.ReplaceAll(name, `"`, `\"`) + `"]`
-	}
-	return parent + "." + name
-}
-
-var configPathIdentifier = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
-
-func (w configWalker) body(path string, body *hclsyntax.Body, n configNode, secret bool) []configLeaf {
-	var entries []configEntry
+	var entries []entry
 	for key, attr := range body.Attributes {
-		name, child, childSecret := n.field(key)
-		entries = append(entries,
-			configEntry{name, w.expr(configChildPath(path, name), attr.Expr, child, secret || childSecret)})
+		name, child, childSecret := w.field(sp, key)
+		entries = append(entries, entry{
+			attr.SrcRange.Start.Byte,
+			w.expr(appendPath(path, name), child, attr.Expr, secret || childSecret),
+		})
 	}
 
 	blocks := map[string][]*hclsyntax.Block{}
@@ -461,55 +431,64 @@ func (w configWalker) body(path string, body *hclsyntax.Body, n configNode, secr
 		blocks[b.Type] = append(blocks[b.Type], b)
 	}
 	for _, typ := range types {
-		name, child, childSecret := n.field(typ)
-		p, s := configChildPath(path, name), secret || childSecret
+		name, child, childSecret := w.field(sp, typ)
+		p, s := appendPath(path, name), secret || childSecret
+		schema, info := w.lookup(child)
 		var leaves []configLeaf
 		switch {
-		case tfbridge.IsMaxItemsOne(child.s, child.info):
-			leaves = w.body(p, blocks[typ][0].Body, child.element(), s)
-		case child.isList():
+		case tfbridge.IsMaxItemsOne(schema, info):
+			leaves = w.body(p, child.Element(), blocks[typ][0].Body, s)
+		case isListSchema(schema):
 			for i, b := range blocks[typ] {
-				leaves = append(leaves, w.body(fmt.Sprintf("%s[%d]", p, i), b.Body, child.element(), s)...)
+				leaves = append(leaves, w.body(appendPath(p, i), child.Element(), b.Body, s)...)
 			}
 		case len(blocks[typ]) == 1:
 			// A single nested block, or a block the schema doesn't know.
-			leaves = w.body(p, blocks[typ][0].Body, child, s)
+			leaves = w.body(p, child, blocks[typ][0].Body, s)
 		default:
 			for i, b := range blocks[typ] {
-				leaves = append(leaves, w.body(fmt.Sprintf("%s[%d]", p, i), b.Body, child, s)...)
+				leaves = append(leaves, w.body(appendPath(p, i), child, b.Body, s)...)
 			}
 		}
-		entries = append(entries, configEntry{name, leaves})
+		// Repeated blocks are numbered in order, so they are kept together where the first one appears.
+		entries = append(entries, entry{blocks[typ][0].Range().Start.Byte, leaves})
 	}
-	return sortedConfigLeaves(entries)
+
+	sort.Slice(entries, func(i, j int) bool { return entries[i].start < entries[j].start })
+	var leaves []configLeaf
+	for _, e := range entries {
+		leaves = append(leaves, e.leaves...)
+	}
+	return leaves
 }
 
-func (w configWalker) expr(path string, expr hclsyntax.Expression, n configNode, secret bool) []configLeaf {
+func (w configWalker) expr(
+	path resource.PropertyPath, sp walk.SchemaPath, expr hclsyntax.Expression, secret bool,
+) []configLeaf {
 	switch e := expr.(type) {
 	case *hclsyntax.TupleConsExpr:
-		if tfbridge.IsMaxItemsOne(n.s, n.info) && len(e.Exprs) == 1 {
-			return w.expr(path, e.Exprs[0], n.element(), secret)
+		if s, info := w.lookup(sp); tfbridge.IsMaxItemsOne(s, info) && len(e.Exprs) == 1 {
+			return w.expr(path, sp.Element(), e.Exprs[0], secret)
 		}
 		var leaves []configLeaf
 		for i, item := range e.Exprs {
-			leaves = append(leaves, w.expr(fmt.Sprintf("%s[%d]", path, i), item, n.element(), secret)...)
+			leaves = append(leaves, w.expr(appendPath(path, i), sp.Element(), item, secret)...)
 		}
 		return leaves
 	case *hclsyntax.ObjectConsExpr:
-		if n.isList() {
-			n = n.element()
+		if s, _ := w.lookup(sp); isListSchema(s) {
+			sp = sp.Element()
 		}
-		var entries []configEntry
+		var leaves []configLeaf
 		for _, item := range e.Items {
 			key, diags := item.KeyExpr.Value(nil)
 			if diags.HasErrors() || !key.Type().Equals(cty.String) || key.IsNull() {
 				continue
 			}
-			name, child, childSecret := n.field(key.AsString())
-			entries = append(entries,
-				configEntry{name, w.expr(configChildPath(path, name), item.ValueExpr, child, secret || childSecret)})
+			name, child, childSecret := w.field(sp, key.AsString())
+			leaves = append(leaves, w.expr(appendPath(path, name), child, item.ValueExpr, secret || childSecret)...)
 		}
-		return sortedConfigLeaves(entries)
+		return leaves
 	}
 
 	if v, diags := expr.Value(nil); !diags.HasErrors() && v.IsWhollyKnown() {
@@ -517,17 +496,36 @@ func (w configWalker) expr(path string, expr hclsyntax.Expression, n configNode,
 		case v.IsNull():
 			return nil
 		case v.Type() == cty.String:
-			return []configLeaf{newConfigLeaf(path, v.AsString(), secret)}
+			return w.leaf(path, v.AsString(), secret)
 		case v.Type() == cty.Number:
-			return []configLeaf{newConfigLeaf(path, v.AsBigFloat().Text('f', -1), secret)}
+			return w.leaf(path, v.AsBigFloat().Text('f', -1), secret)
 		case v.Type() == cty.Bool:
-			return []configLeaf{newConfigLeaf(path, strconv.FormatBool(v.True()), secret)}
+			return w.leaf(path, strconv.FormatBool(v.True()), secret)
 		}
 	}
 	// Values that can't be evaluated here, such as variable references, are marked the same way the converter marks
 	// them, so configValueArg renders a placeholder.
 	r := expr.Range()
-	return []configLeaf{newConfigLeaf(path, "TODO: "+string(w.src[r.Start.Byte:r.End.Byte]), secret)}
+	return w.leaf(path, "TODO: "+string(w.src[r.Start.Byte:r.End.Byte]), secret)
+}
+
+func isListSchema(s shim.Schema) bool {
+	return s != nil && (s.Type() == shim.TypeList || s.Type() == shim.TypeSet)
+}
+
+// isSecret reports whether a property is secret in the generated schema: Terraform `Sensitive`, unless its
+// SchemaInfo overrides it.
+func isSecret(s shim.Schema, info *tfbridge.SchemaInfo) bool {
+	if info != nil && info.Secret != nil {
+		return *info.Secret
+	}
+	return s != nil && s.Sensitive()
+}
+
+// appendPath returns path with key added, without sharing path's backing array, since sibling values extend the same
+// parent path.
+func appendPath(path resource.PropertyPath, key any) resource.PropertyPath {
+	return append(slices.Clip(path), key)
 }
 
 // pulumiYAMLConfigLeaves returns the config in a converted example's Pulumi.yaml, skipping keys for which skip
@@ -555,7 +553,8 @@ func pulumiYAMLConfigLeaves(pulumiYAML string, skip func(key string) bool) ([]co
 		if value == nil || skip(key) {
 			continue
 		}
-		leaves = append(leaves, yamlConfigLeaves(key, value)...)
+		namespace, name, _ := strings.Cut(key, ":")
+		leaves = append(leaves, yamlConfigLeaves(namespace, resource.PropertyPath{name}, value)...)
 	}
 	return leaves, nil
 }
@@ -574,22 +573,23 @@ func mappingValue(node *yaml.Node, key string) *yaml.Node {
 }
 
 // yamlConfigLeaves flattens a nested config value into `pulumi config set --path` paths and scalar values.
-func yamlConfigLeaves(path string, node *yaml.Node) []configLeaf {
+func yamlConfigLeaves(namespace string, path resource.PropertyPath, node *yaml.Node) []configLeaf {
 	switch node.Kind {
 	case yaml.MappingNode:
 		var leaves []configLeaf
 		for i := 0; i+1 < len(node.Content); i += 2 {
-			leaves = append(leaves, yamlConfigLeaves(configChildPath(path, node.Content[i].Value), node.Content[i+1])...)
+			leaves = append(leaves,
+				yamlConfigLeaves(namespace, appendPath(path, node.Content[i].Value), node.Content[i+1])...)
 		}
 		return leaves
 	case yaml.SequenceNode:
 		var leaves []configLeaf
 		for i, item := range node.Content {
-			leaves = append(leaves, yamlConfigLeaves(fmt.Sprintf("%s[%d]", path, i), item)...)
+			leaves = append(leaves, yamlConfigLeaves(namespace, appendPath(path, i), item)...)
 		}
 		return leaves
 	default:
-		return []configLeaf{newConfigLeaf(path, node.Value, false)}
+		return []configLeaf{newConfigLeaf(namespace, path, node.Value, false)}
 	}
 }
 

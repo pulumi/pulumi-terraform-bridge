@@ -731,16 +731,7 @@ func (g *schemaGenerator) genProperty(prop *variable) pschema.PropertySpec {
 		}
 	}
 
-	var secret bool
-	// First check if the property is marked sensitive in TF schema.
-	if prop.schema.Sensitive() {
-		secret = true
-	}
-
-	// Check custom info. This order allows custom info to override the above as well if necessary.
-	if prop.info != nil && prop.info.Secret != nil {
-		secret = *prop.info.Secret
-	}
+	secret := isSecret(prop.schema, prop.info)
 	ic := infoContext{
 		language: g.language,
 		pkg:      g.pkg,
