@@ -259,10 +259,27 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
 	for i, f := range failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+		rpcFailures[i] = &pulumirpc.CheckFailure{
+			Property:     string(f.Property),
+			Reason:       f.Reason,
+			Remediations: marshalCommandRemediations(f.Remediations),
+		}
 	}
 
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+}
+
+func marshalCommandRemediations(remediations []pl.CommandRemediation) []*pulumirpc.CommandRemediation {
+	var rpcRemediations []*pulumirpc.CommandRemediation
+	for _, r := range remediations {
+		rpcRemediations = append(rpcRemediations, &pulumirpc.CommandRemediation{
+			Description: r.Description,
+			Command:     r.Command,
+			Env:         r.Env,
+			Interactive: r.Interactive,
+		})
+	}
+	return rpcRemediations
 }
 
 func (p *providerServer) DiffConfig(

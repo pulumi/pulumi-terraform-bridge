@@ -197,6 +197,40 @@ type DataSource struct {
 type CheckFailureErrorElement struct {
 	Reason   string
 	Property string
+	// Remediations are commands that the user can run to resolve the failure, such as signing in to refresh
+	// expired credentials. Engines that support them offer to run them; others show only Reason, which should
+	// therefore keep describing the fix.
+	Remediations []CommandRemediation
+}
+
+// CommandRemediation is a command that the user can run to resolve a [CheckFailureErrorElement], such as
+// signing in to a cloud. The engine shows the command to the user and runs it only with their consent.
+type CommandRemediation = plugin.CommandRemediation
+
+// marshalCheckFailures converts the failures of a [CheckFailureError] to their gRPC representation.
+func marshalCheckFailures(failures []CheckFailureErrorElement) []*pulumirpc.CheckFailure {
+	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
+	for i, failure := range failures {
+		rpcFailures[i] = &pulumirpc.CheckFailure{
+			Reason:       failure.Reason,
+			Property:     failure.Property,
+			Remediations: marshalCommandRemediations(failure.Remediations),
+		}
+	}
+	return rpcFailures
+}
+
+func marshalCommandRemediations(remediations []CommandRemediation) []*pulumirpc.CommandRemediation {
+	var rpcRemediations []*pulumirpc.CommandRemediation
+	for _, r := range remediations {
+		rpcRemediations = append(rpcRemediations, &pulumirpc.CommandRemediation{
+			Description: r.Description,
+			Command:     r.Command,
+			Env:         r.Env,
+			Interactive: r.Interactive,
+		})
+	}
+	return rpcRemediations
 }
 
 // CheckFailureError can be returned from a PreConfigureCallback to indicate that the
@@ -207,7 +241,12 @@ type CheckFailureError struct {
 }
 
 func (e CheckFailureError) Error() string {
-	return fmt.Sprintf("CheckFailureErrors %s", e.Failures)
+	// Remediations are left out to keep the message as it was before they existed.
+	failures := make([]string, len(e.Failures))
+	for i, f := range e.Failures {
+		failures[i] = fmt.Sprintf("{%s %s}", f.Reason, f.Property)
+	}
+	return fmt.Sprintf("CheckFailureErrors [%s]", strings.Join(failures, " "))
 }
 
 // callWithRecover is a generic function that takes a resource URN, a recovery
@@ -520,15 +559,8 @@ func (p *Provider) GetSchema(ctx context.Context,
 }
 
 func makeCheckResponseFromCheckErr(err CheckFailureError) *pulumirpc.CheckResponse {
-	failures := make([]*pulumirpc.CheckFailure, len(err.Failures))
-	for i, failure := range err.Failures {
-		failures[i] = &pulumirpc.CheckFailure{
-			Reason:   failure.Reason,
-			Property: failure.Property,
-		}
-	}
 	return &pulumirpc.CheckResponse{
-		Failures: failures,
+		Failures: marshalCheckFailures(err.Failures),
 	}
 }
 

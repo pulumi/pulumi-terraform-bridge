@@ -3471,6 +3471,56 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 		}`)
 	})
 
+	t.Run("can_emit_remediations", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		shimProv := shimv2.NewProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P: shimProv,
+				PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+					return CheckFailureError{
+						Failures: []CheckFailureErrorElement{{
+							Reason: "Not signed in. Run `cloud login`.",
+							Remediations: []CommandRemediation{{
+								Description: "Sign in",
+								Command:     []string{"cloud", "login", "--profile", "dev"},
+								Env:         map[string]string{"CLOUD_NO_WIZARD": "true"},
+								Interactive: true,
+							}},
+						}},
+					}
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/CheckConfig",
+			"request": {
+				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+				"olds": {},
+				"news": { "version": "6.18.2" }
+			},
+			"response": {
+				"failures": [
+					{
+						"reason": "Not signed in. Run `+"`cloud login`"+`.",
+						"remediations": [
+							{
+								"description": "Sign in",
+								"command": ["cloud", "login", "--profile", "dev"],
+								"env": { "CLOUD_NO_WIZARD": "true" },
+								"interactive": true
+							}
+						]
+					}
+				]
+			}
+		}`)
+	})
+
 	t.Run("can_emit_multiple_failures", func(t *testing.T) {
 		p := testprovider.ProviderV2()
 		shimProv := shimv2.NewProvider(p)
