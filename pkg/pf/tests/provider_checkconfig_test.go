@@ -737,6 +737,46 @@ func TestPFPreConfigureCallback(t *testing.T) {
 		}`)
 	})
 
+	t.Run("PreConfigureCallback can return a failure with a hint", func(t *testing.T) {
+		m := func(
+			ctx context.Context,
+			host *hostclient.HostClient,
+			vars resource.PropertyMap,
+			config shim.ResourceConfig,
+		) error {
+			return tfbridge0.CheckFailureError{
+				Failures: []tfbridge0.CheckFailureErrorElement{
+					{
+						Reason: "No credentials",
+						Hint:   pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS,
+					},
+				},
+			}
+		}
+		schema := schema.Schema{}
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+			info.PreConfigureCallbackWithLogger = m
+		})
+		testutils.Replay(t, s, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "olds": {},
+		    "news": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+			"inputs": {},
+			"failures": [{
+				"reason": "No credentials",
+				"hint": "HINT_DYNAMIC_CREDENTIALS"
+			}]
+		  }
+		}`)
+	})
+
 	t.Run("PreConfigureCallback can return multiple failures", func(t *testing.T) {
 		m := func(
 			ctx context.Context,
