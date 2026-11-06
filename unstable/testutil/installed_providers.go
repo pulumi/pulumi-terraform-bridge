@@ -30,9 +30,9 @@ import (
 )
 
 // RandomProvider returns a [integration.LocalDependency] reference to the random provider
-// installed via `make install_plugins`.
+// installed via `mise install`.
 func RandomProvider(t *testing.T) integration.LocalDependency {
-	return pluginDependency(t, "random", semver.Version{Major: 4, Minor: 16, Patch: 3})
+	return pluginDependency(t, "random", semver.Version{Major: 4, Minor: 21, Patch: 4})
 }
 
 func pluginDependency(t *testing.T, name string, version semver.Version) integration.LocalDependency {
@@ -50,7 +50,7 @@ func pluginDependency(t *testing.T, name string, version semver.Version) integra
 		nil,
 	)
 	require.NoError(t, err,
-		`The %s provider at this version should have been installed by "make install_plugins"`, name)
+		`The %s provider at this version should have been installed by "mise install"`, name)
 	return integration.LocalDependency{
 		Package: name,
 		Path:    filepath.Dir(path),

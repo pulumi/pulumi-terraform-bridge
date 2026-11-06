@@ -104,7 +104,7 @@ func PulCheck(t T, bridgedProvider info.Provider, program string, opts ...opttes
 	}
 
 	defaultOpts := []opttest.Option{
-		opttest.Env("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
+		opttest.Env("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
 		opttest.AttachProvider(

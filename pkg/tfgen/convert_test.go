@@ -51,7 +51,7 @@ func TestConvert(t *testing.T) {
 	defer contract.IgnoreClose(host)
 
 	pluginContext, err := plugin.NewContext(
-		ctx, nil, nil, host, nil, cwd, nil, false, nil)
+		ctx, nil, nil, host, nil, cwd, nil, false, nil, nil)
 	require.NoError(t, err)
 	defer contract.IgnoreClose(pluginContext)
 

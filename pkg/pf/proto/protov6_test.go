@@ -206,3 +206,165 @@ func (p providerServer) GetProviderSchema(
 	}
 	return p.SchemaResponse, nil
 }
+
+// TestNestedAttributeSchema asserts that a list- or set-nested attribute
+// carries its object as a [shim.Schema] element, which tells it apart from a
+// list- or set-nested block, and that the Pulumi schema of both is the same.
+func TestNestedAttributeSchema(t *testing.T) {
+	t.Parallel()
+	nested := func(nesting tfprotov6.SchemaObjectNestingMode) *tfprotov6.SchemaObject {
+		return &tfprotov6.SchemaObject{
+			Nesting: nesting,
+			Attributes: []*tfprotov6.SchemaAttribute{{
+				Name:     "name",
+				Type:     tftypes.String,
+				Optional: true,
+			}},
+		}
+	}
+	p := proto.New(t.Context(), providerServer{
+		SchemaResponse: &tfprotov6.GetProviderSchemaResponse{
+			ResourceSchemas: map[string]*tfprotov6.Schema{
+				"testprov_my_res": {Block: &tfprotov6.SchemaBlock{
+					Attributes: []*tfprotov6.SchemaAttribute{
+						{Name: "list_attr", Optional: true, NestedType: nested(tfprotov6.SchemaObjectNestingModeList)},
+						{Name: "set_attr", Optional: true, NestedType: nested(tfprotov6.SchemaObjectNestingModeSet)},
+					},
+					BlockTypes: []*tfprotov6.SchemaNestedBlock{{
+						TypeName: "list_block",
+						Nesting:  tfprotov6.SchemaNestedBlockNestingModeList,
+						Block: &tfprotov6.SchemaBlock{
+							Attributes: []*tfprotov6.SchemaAttribute{{
+								Name:     "name",
+								Type:     tftypes.String,
+								Optional: true,
+							}},
+						},
+					}},
+				}},
+			},
+		},
+	})
+
+	autogold.Expect(`{
+    "resources": {
+        "testprov_my_res": {
+            "list_attr": {
+                "type": 5,
+                "optional": true,
+                "element": {
+                    "schema": {
+                        "type": 6,
+                        "optional": true,
+                        "element": {
+                            "resource": {
+                                "name": {
+                                    "type": 4,
+                                    "optional": true
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "list_block": {
+                "type": 5,
+                "optional": true,
+                "element": {
+                    "resource": {
+                        "name": {
+                            "type": 4,
+                            "optional": true
+                        }
+                    }
+                }
+            },
+            "set_attr": {
+                "type": 5,
+                "optional": true,
+                "element": {
+                    "schema": {
+                        "type": 6,
+                        "optional": true,
+                        "element": {
+                            "resource": {
+                                "name": {
+                                    "type": 4,
+                                    "optional": true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+`).Equal(t, string(marshalProviderShim(t, p)))
+
+	providerInfo := info.Provider{
+		P:    p,
+		Name: "testprov",
+		Resources: map[string]*info.Resource{
+			"testprov_my_res": {
+				Tok: "testprov:index:MyRes",
+			},
+		},
+	}
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	spec, err := tfgen.GenerateSchema(providerInfo, nilSink)
+	require.NoError(t, err)
+	specBytes, err := json.MarshalIndent(map[string]any{
+		"inputProperties": spec.Resources["testprov:index:MyRes"].InputProperties,
+		"types":           spec.Types,
+	}, "", "  ")
+	require.NoError(t, err)
+	autogold.Expect(`{
+  "inputProperties": {
+    "listAttrs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/types/testprov:index/MyResListAttr:MyResListAttr"
+      }
+    },
+    "listBlocks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/types/testprov:index/MyResListBlock:MyResListBlock"
+      }
+    },
+    "setAttrs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/types/testprov:index/MyResSetAttr:MyResSetAttr"
+      }
+    }
+  },
+  "types": {
+    "testprov:index/MyResListAttr:MyResListAttr": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "testprov:index/MyResListBlock:MyResListBlock": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "testprov:index/MyResSetAttr:MyResSetAttr": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  }
+}`).Equal(t, string(specBytes))
+}
