@@ -7,6 +7,7 @@ import (
 	"io"
 	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -610,6 +611,24 @@ func TestSkipSectionHeadersByContent(t *testing.T) {
 		require.NoError(t, err)
 		assertEqualHTML(t, tc.expected, string(actual))
 	})
+}
+
+func TestSkipSectionByHeaderContentPreservesFrontMatter(t *testing.T) {
+	t.Parallel()
+	frontMatter := "---\npage_title: \"Provider: DNSimple\"\n---\n"
+	input := frontMatter + "\n# DNSimple Provider\n\nIntro.\n\n## Installation\n\nSkipped.\n\n## Example\n\nKept.\n"
+
+	actual, err := SkipSectionByHeaderContent([]byte(input), func(headerText string) bool {
+		return headerText == "Installation"
+	})
+	require.NoError(t, err)
+
+	assert.True(t, strings.HasPrefix(string(actual), frontMatter),
+		"front matter must survive unchanged so trimFrontMatter can remove it later; got:\n%s", actual)
+	trimmed := string(trimFrontMatter(actual))
+	assert.NotContains(t, trimmed, "page_title", "front matter leaked into the body after trimming")
+	assert.NotContains(t, trimmed, "Skipped.", "the Installation section should be removed")
+	assert.Contains(t, trimmed, "Kept.")
 }
 
 func TestSkipDefaultSectionHeaders(t *testing.T) {
