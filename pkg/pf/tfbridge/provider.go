@@ -35,6 +35,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/schemaversion"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/configencoding"
 	pl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/plugin"
@@ -186,7 +187,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	schema := meta.XGetSchema
 	if meta.XGetSchema == nil {
 		schema = func(context.Context, plugin.GetSchemaRequest) ([]byte, error) {
-			return meta.PackageSchema, nil
+			return schemaversion.Inject(meta.PackageSchema, info.Version), nil
 		}
 	}
 

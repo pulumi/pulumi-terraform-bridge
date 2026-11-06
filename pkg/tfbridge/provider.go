@@ -48,6 +48,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/schemaversion"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/providerserver"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/typechecker"
@@ -515,7 +516,7 @@ func (p *Provider) GetSchema(ctx context.Context,
 		return nil, errors.Errorf("unsupported schema version %v", v)
 	}
 	return &pulumirpc.GetSchemaResponse{
-		Schema: string(p.pulumiSchema),
+		Schema: string(schemaversion.Inject(p.pulumiSchema, p.version)),
 	}, nil
 }
 
