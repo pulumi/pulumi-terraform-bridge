@@ -205,37 +205,32 @@ type CheckFailureErrorElement struct {
 
 // CommandRemediation is a command that the user can run to resolve a [CheckFailureErrorElement], such as
 // signing in to a cloud. The engine shows the command to the user and runs it only with their consent.
-type CommandRemediation struct {
-	// Description is a short, imperative summary of what the command does, such as "Sign in to AWS".
-	Description string
-	// Command is the argument vector to run. Command[0] is looked up on PATH; no shell is involved.
-	Command []string
-	// Env holds environment variables to set for the command, in addition to the engine's environment.
-	Env map[string]string
-	// Interactive is true if the command needs the user's terminal, for example to prompt or show a device code.
-	Interactive bool
-}
+type CommandRemediation = plugin.CommandRemediation
 
-// MarshalCheckFailures converts the failures of a [CheckFailureError] to their gRPC representation.
-func MarshalCheckFailures(failures []CheckFailureErrorElement) []*pulumirpc.CheckFailure {
+// marshalCheckFailures converts the failures of a [CheckFailureError] to their gRPC representation.
+func marshalCheckFailures(failures []CheckFailureErrorElement) []*pulumirpc.CheckFailure {
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
 	for i, failure := range failures {
-		var remediations []*pulumirpc.CommandRemediation
-		for _, r := range failure.Remediations {
-			remediations = append(remediations, &pulumirpc.CommandRemediation{
-				Description: r.Description,
-				Command:     r.Command,
-				Env:         r.Env,
-				Interactive: r.Interactive,
-			})
-		}
 		rpcFailures[i] = &pulumirpc.CheckFailure{
 			Reason:       failure.Reason,
 			Property:     failure.Property,
-			Remediations: remediations,
+			Remediations: marshalCommandRemediations(failure.Remediations),
 		}
 	}
 	return rpcFailures
+}
+
+func marshalCommandRemediations(remediations []CommandRemediation) []*pulumirpc.CommandRemediation {
+	var rpcRemediations []*pulumirpc.CommandRemediation
+	for _, r := range remediations {
+		rpcRemediations = append(rpcRemediations, &pulumirpc.CommandRemediation{
+			Description: r.Description,
+			Command:     r.Command,
+			Env:         r.Env,
+			Interactive: r.Interactive,
+		})
+	}
+	return rpcRemediations
 }
 
 // CheckFailureError can be returned from a PreConfigureCallback to indicate that the
@@ -565,7 +560,7 @@ func (p *Provider) GetSchema(ctx context.Context,
 
 func makeCheckResponseFromCheckErr(err CheckFailureError) *pulumirpc.CheckResponse {
 	return &pulumirpc.CheckResponse{
-		Failures: MarshalCheckFailures(err.Failures),
+		Failures: marshalCheckFailures(err.Failures),
 	}
 }
 

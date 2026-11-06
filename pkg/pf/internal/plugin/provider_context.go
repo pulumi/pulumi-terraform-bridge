@@ -16,7 +16,6 @@ package plugin
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -38,8 +37,6 @@ type ProviderWithContext interface {
 
 	GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error)
 
-	// CheckConfigWithContext may report failures by returning a [CheckFailuresError], which can carry details
-	// such as remediations that [plugin.CheckFailure] cannot.
 	CheckConfigWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error)
 
@@ -132,17 +129,6 @@ func (prov *provider) CheckConfig(
 ) (plugin.CheckConfigResponse, error) {
 	c, f, err := prov.CheckConfigWithContext(
 		ctx, req.URN, req.Olds, req.News, req.AllowUnknowns)
-	var failuresErr CheckFailuresError
-	if errors.As(err, &failuresErr) {
-		// [plugin.CheckFailure] has no room for details such as remediations, so they are dropped here.
-		for _, failure := range failuresErr.Failures {
-			f = append(f, plugin.CheckFailure{
-				Property: resource.PropertyKey(failure.GetProperty()),
-				Reason:   failure.GetReason(),
-			})
-		}
-		return plugin.CheckConfigResponse{Failures: f}, nil
-	}
 	return plugin.CheckConfigResponse{
 		Properties: c,
 		Failures:   f,
