@@ -3,7 +3,7 @@ alabaster==0.7.16
 anyio==4.14.2
 Babel==2.15.0
 beautifulsoup4==4.12.3
-certifi==2024.7.4
+certifi==2026.10.19
 charset-normalizer==3.3.2
 click==8.3.3
 colorama==0.4.6

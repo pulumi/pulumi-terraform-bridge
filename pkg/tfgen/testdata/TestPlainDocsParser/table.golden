@@ -131,7 +131,7 @@ func main() {
 resources:
   ## Define a resource
   aResource:
-    type: simple:resource
+    type: simple:Resource
     name: a_resource
     properties:
       inputOne: hello

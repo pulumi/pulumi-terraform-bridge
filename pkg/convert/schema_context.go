@@ -31,6 +31,10 @@ type schemaMapContext struct {
 	schemaPath  walk.SchemaPath
 	schemaMap   shim.SchemaMap
 	schemaInfos map[string]*tfbridge.SchemaInfo
+
+	// promoteToCollection makes encoders accept a non-array value where the schema expects a list or
+	// a set, and encode it as a single-element collection.
+	promoteToCollection bool
 }
 
 var _ localPropertyNames = &schemaMapContext{}
@@ -90,9 +94,10 @@ func (sc *schemaMapContext) GetAttr(tfname terraformPropertyName) (*schemaPropCo
 	}
 	sinfo := tfbridge.LookupSchemaInfoMapPath(step, sc.schemaInfos)
 	return &schemaPropContext{
-		schemaPath: sc.schemaPath.GetAttr(tfname),
-		schema:     s,
-		schemaInfo: sinfo,
+		schemaPath:          sc.schemaPath.GetAttr(tfname),
+		schema:              s,
+		schemaInfo:          sinfo,
+		promoteToCollection: sc.promoteToCollection,
 	}, nil
 }
 
@@ -100,6 +105,9 @@ type schemaPropContext struct {
 	schemaPath walk.SchemaPath
 	schema     shim.Schema
 	schemaInfo *tfbridge.SchemaInfo
+
+	// See schemaMapContext.promoteToCollection.
+	promoteToCollection bool
 }
 
 func (pc *schemaPropContext) Secret() bool {
@@ -131,9 +139,10 @@ func (pc *schemaPropContext) Element() (*schemaPropContext, error) {
 	}
 	sinfo := tfbridge.LookupSchemaInfoPath(step, pc.schemaInfo)
 	return &schemaPropContext{
-		schemaPath: pc.schemaPath.Element(),
-		schema:     s,
-		schemaInfo: sinfo,
+		schemaPath:          pc.schemaPath.Element(),
+		schema:              s,
+		schemaInfo:          sinfo,
+		promoteToCollection: pc.promoteToCollection,
 	}, nil
 }
 
@@ -154,9 +163,10 @@ func (pc *schemaPropContext) Object() (*schemaMapContext, error) {
 				fields = pc.schemaInfo.Fields
 			}
 			return &schemaMapContext{
-				schemaPath:  pc.schemaPath,
-				schemaMap:   elem.Schema(),
-				schemaInfos: fields,
+				schemaPath:          pc.schemaPath,
+				schemaMap:           elem.Schema(),
+				schemaInfos:         fields,
+				promoteToCollection: pc.promoteToCollection,
 			}, nil
 		}
 	}

@@ -1966,10 +1966,12 @@ func extractSchemaInputs(
 		return resource.NewArrayProperty(v)
 	case state.IsObject():
 		obj := state.ObjectValue()
-		if tfflds, ok := tfs.Elem().(shim.Resource); ok {
-			return resource.NewProperty(
-				extractSchemaInputsObject(obj, tfflds.Schema(), ps.Fields),
-			)
+		if tfs != nil {
+			if tfflds, ok := tfs.Elem().(shim.Resource); ok {
+				return resource.NewProperty(
+					extractSchemaInputsObject(obj, tfflds.Schema(), ps.Fields),
+				)
+			}
 		}
 
 		// state does not represent an object, so it represents a map.

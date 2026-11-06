@@ -26,7 +26,9 @@ jobs:
           github_token: ${{ env.GITHUB_TOKEN }}
           # only saving the cache in the prerequisites job
           cache_save: true
-      - run: make -C pkg/pf build.testproviders
+      - name: Synchronize local Pulumi plugins
+        run: mise run sync-plugins
+      - run: mise exec -- make -C pkg/pf build.testproviders
       - name: Ensure Clean Repo
         run: git diff-files --quiet
       - name: Show Dirty Repo File Changes

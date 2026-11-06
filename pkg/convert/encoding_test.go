@@ -449,6 +449,39 @@ func TestConfigEncoder(t *testing.T) {
 			},
 			expect: autogold.Expect(`tftypes.Object["foo":tftypes.String]<"foo":tftypes.String<"bar">>`),
 		},
+		{
+			// A Plugin Framework list block carries no MaxItems on the wire, but stack config may
+			// supply it as an object (pulumi/pulumi-hcl#626).
+			testName: "object promoted to list",
+			schema: &schema.SchemaMap{
+				"default_tags": (&schema.Schema{
+					Type:     shim.TypeList,
+					Optional: true,
+					Elem: (&schema.Resource{
+						Schema: &schema.SchemaMap{
+							"tags": (&schema.Schema{
+								Type:     shim.TypeString,
+								Optional: true,
+							}).Shim(),
+						},
+					}).Shim(),
+				}).Shim(),
+			},
+			typ: tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"default_tags": tftypes.List{ElementType: tftypes.Object{
+						AttributeTypes: map[string]tftypes.Type{"tags": tftypes.String},
+					}},
+				},
+			},
+			val: resource.PropertyMap{
+				"defaultTags": resource.NewObjectProperty(resource.PropertyMap{
+					"tags": resource.NewStringProperty("v"),
+				}),
+			},
+			//nolint:lll
+			expect: autogold.Expect(`tftypes.Object["default_tags":tftypes.List[tftypes.Object["tags":tftypes.String]]]<"default_tags":tftypes.List[tftypes.Object["tags":tftypes.String]]<tftypes.Object["tags":tftypes.String]<"tags":tftypes.String<"v">>>>`),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -462,6 +495,40 @@ func TestConfigEncoder(t *testing.T) {
 			tc.expect.Equal(t, got.String())
 		})
 	}
+}
+
+// Only provider config promotes an object to a list. Resource inputs keep the strict shape check.
+func TestResourceEncoderRejectsObjectForList(t *testing.T) {
+	t.Parallel()
+	p := (&schema.Provider{
+		ResourcesMap: schema.ResourceMap{
+			"my_resource": (&schema.Resource{
+				Schema: &schema.SchemaMap{
+					"block": (&schema.Schema{
+						Type:     shim.TypeList,
+						Optional: true,
+						Elem: (&schema.Resource{
+							Schema: &schema.SchemaMap{
+								"x": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+							},
+						}).Shim(),
+					}).Shim(),
+				},
+			}).Shim(),
+		},
+	}).Shim()
+	typ := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"block": tftypes.List{ElementType: tftypes.Object{
+			AttributeTypes: map[string]tftypes.Type{"x": tftypes.String},
+		}},
+	}}
+
+	encoder, err := NewEncoding(p, nil).NewResourceEncoder("my_resource", typ)
+	require.NoError(t, err)
+	_, err = EncodePropertyMap(encoder, resource.PropertyMap{
+		"blocks": resource.NewObjectProperty(resource.PropertyMap{"x": resource.NewStringProperty("v")}),
+	})
+	assert.EqualError(t, err, `objectEncoder failed on property "block": Expected an Array PropertyValue`)
 }
 
 // Boost coverage of deriveEncoder, deriveDecoder over collections especially.

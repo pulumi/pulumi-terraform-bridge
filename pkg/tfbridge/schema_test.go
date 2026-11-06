@@ -2842,6 +2842,35 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 	assert.Equal(t, expected, ins)
 }
 
+func TestExtractInputsFromOutputsDoesNotPanicOnNestedDynamicValue(t *testing.T) {
+	t.Parallel()
+
+	// A Plugin Framework DynamicAttribute shims to TypeDynamic with no Elem, so the
+	// schema stops one level above the data. Extraction must not walk past it.
+	tfs := schema.SchemaMap{
+		"value": (&schema.Schema{Type: shim.TypeDynamic, Required: true}).Shim(),
+	}
+
+	outs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"value": map[string]interface{}{
+			"strict_transport_security": map[string]interface{}{
+				"enabled": true,
+				"max_age": 15552000,
+			},
+		},
+	})
+
+	inputs, err := ExtractInputsFromOutputs(nil, outs, tfs, nil, false)
+	require.NoError(t, err)
+
+	value, ok := inputs["value"]
+	require.True(t, ok, "a schema-less value must not be dropped")
+
+	transportSecurity := value.ObjectValue()["strict_transport_security"].ObjectValue()
+	assert.Equal(t, resource.NewProperty(true), transportSecurity["enabled"])
+	assert.Equal(t, resource.NewProperty(15552000.0), transportSecurity["max_age"])
+}
+
 func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 	t.Parallel()
 	provider := func(info *ResourceInfo) *Provider {

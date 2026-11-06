@@ -53,7 +53,7 @@ func DefaultLoader(ctx context.Context) (schema.Loader, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, cwd, nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, cwd, nil, false, nil, nil)
 	if err != nil {
 		contract.IgnoreClose(pluginHost)
 		return nil, nil, err
