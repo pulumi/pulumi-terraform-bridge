@@ -3471,6 +3471,50 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 		}`)
 	})
 
+	t.Run("can_emit_failure_with_hint", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		shimProv := shimv2.NewProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P: shimProv,
+				PreConfigureCallbackWithLogger: func(
+					ctx context.Context,
+					host *hostclient.HostClient, vars resource.PropertyMap,
+					config shim.ResourceConfig,
+				) error {
+					return CheckFailureError{
+						[]CheckFailureErrorElement{
+							{
+								Reason: "no credentials",
+								Hint:   pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS,
+							},
+						},
+					}
+				},
+			},
+		}
+
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/CheckConfig",
+			"request": {
+				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+				"olds": {},
+				"news": { "version": "6.18.2" }
+			},
+			"response": {
+				"failures": [
+					{
+						"reason": "no credentials",
+						"hint": "HINT_DYNAMIC_CREDENTIALS"
+					}
+				]
+			}
+		}`)
+	})
+
 	t.Run("can_emit_multiple_failures", func(t *testing.T) {
 		p := testprovider.ProviderV2()
 		shimProv := shimv2.NewProvider(p)

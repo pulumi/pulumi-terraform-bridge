@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/defaults"
+	pl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -37,6 +38,7 @@ func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []plugin.CheckFail
 		failures[i] = plugin.CheckFailure{
 			Reason:   failure.Reason,
 			Property: resource.PropertyKey(failure.Property),
+			Hint:     pl.HintFromRPC(failure.Hint),
 		}
 	}
 	return failures

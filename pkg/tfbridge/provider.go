@@ -197,6 +197,9 @@ type DataSource struct {
 type CheckFailureErrorElement struct {
 	Reason   string
 	Property string
+	// Hint names a product hint that is relevant to this failure, such as HINT_DYNAMIC_CREDENTIALS. The Pulumi CLI may
+	// show it to the user.
+	Hint pulumirpc.Hint
 }
 
 // CheckFailureError can be returned from a PreConfigureCallback to indicate that the
@@ -525,6 +528,7 @@ func makeCheckResponseFromCheckErr(err CheckFailureError) *pulumirpc.CheckRespon
 		failures[i] = &pulumirpc.CheckFailure{
 			Reason:   failure.Reason,
 			Property: failure.Property,
+			Hint:     failure.Hint,
 		}
 	}
 	return &pulumirpc.CheckResponse{
