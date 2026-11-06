@@ -18,13 +18,13 @@ resource "random_string" "test" {
 }
 ```
 
-Then importing the resource using `terraform import random_string.test test`,
+Then importing the resource using `pulumi import random:index/string:String test test`,
 would result in the triggering of a replacement (i.e., destroy-create) during
 the next `pulumi up`.
 
 ### Avoiding Replacement
 
-If the resource were imported using `terraform import random_string.test test`,
+If the resource were imported using `pulumi import random:index/string:String test test`,
 replacement can be avoided by using:
 
 1. Attribute values that match the imported ID and defaults:
