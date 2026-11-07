@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -97,6 +98,44 @@ runtime: yaml
 			require.NotContains(t, res.Stdout, "One or more imported inputs failed to validate")
 		})
 	}
+}
+
+func TestImporterErrorIsReturnedOnRead(t *testing.T) {
+	t.Parallel()
+
+	tfp := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"other_prop": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+				Importer: &schema.ResourceImporter{
+					StateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
+						return nil, errors.New("parsing the Group ID: the number of segments didn't match\n\n" +
+							"Expected a Group ID that matched (containing 2 segments):\n\n" +
+							"> /groups/groupId\n\n" +
+							"* Segment 0 - this should be the literal value \"groups\"")
+					},
+				},
+			},
+		},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	srv, err := pulcheck.ProviderServerFromInfo(context.Background(), bridgedProvider)
+	require.NoError(t, err)
+
+	_, err = srv.Read(context.Background(), &pulumirpc.ReadRequest{
+		Id:   "id1",
+		Urn:  "urn:pulumi:test::test::prov:index/test:Test::res1",
+		Type: "prov:index/test:Test",
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "the number of segments didn't match")
+	require.ErrorContains(t, err, "Expected a Group ID that matched (containing 2 segments)")
+	require.ErrorContains(t, err, "* Segment 0 - this should be the literal value \"groups\"")
 }
 
 func TestFailedValidatorOnReadHandling(t *testing.T) {
