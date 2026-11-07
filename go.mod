@@ -46,10 +46,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.2.1
 	github.com/pulumi/providertest v0.7.0
-	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.116.1
-	github.com/pulumi/pulumi-hcl v0.18.8
-	github.com/pulumi/pulumi-java v1.37.8
-	github.com/pulumi/pulumi-yaml v1.38.14
+	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.117.0
+	github.com/pulumi/pulumi-hcl v0.19.1
+	github.com/pulumi/pulumi-java v1.39.0
+	github.com/pulumi/pulumi-yaml v1.38.16
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/afero v1.15.0
@@ -130,7 +130,7 @@ require (
 	github.com/go-git/gcfg/v2 v2.0.2 // indirect
 	github.com/go-git/go-billy/v6 v6.0.0-beta.1 // indirect
 	github.com/go-git/go-git/v6 v6.0.0-beta.1 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.8 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/golang/glog v1.2.5 // indirect
@@ -159,7 +159,7 @@ require (
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
-	github.com/pulumi/pulumi-cloud-sdk/go v1.20261027.1310 // indirect
+	github.com/pulumi/pulumi-cloud-sdk/go v1.20261106.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.8.1 // indirect
 	github.com/vbauerster/cupwriter v0.0.4 // indirect
@@ -276,8 +276,8 @@ require (
 	github.com/pjbgf/sha1cd v0.7.0 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.274.0
-	github.com/pulumi/pulumi/sdk/v3 v3.274.0
+	github.com/pulumi/pulumi/pkg/v3 v3.274.1
+	github.com/pulumi/pulumi/sdk/v3 v3.274.1
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
