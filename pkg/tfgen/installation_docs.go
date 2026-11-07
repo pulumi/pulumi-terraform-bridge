@@ -440,9 +440,16 @@ func SkipSectionByHeaderContent(
 		)),
 		goldmark.WithRenderer(markdown.NewRenderer()),
 	)
+	// Goldmark has no notion of YAML front matter and would re-render it as a thematic break and a setext
+	// heading, which trimFrontMatter can no longer recognize. Set it aside and restore it verbatim.
+	body := trimFrontMatter(content)
 	var buf bytes.Buffer
+	if frontMatter := content[:len(content)-len(body)]; len(frontMatter) > 0 {
+		buf.Write(frontMatter)
+		buf.WriteString("\n")
+	}
 	// Convert parses the source, applies transformers, and renders output to buf
-	err := gm.Convert(content, &buf)
+	err := gm.Convert(body, &buf)
 	return buf.Bytes(), err
 }
 
