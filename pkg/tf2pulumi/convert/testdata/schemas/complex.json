@@ -101,39 +101,6 @@
         "innerObject": {
           "$ref": "#/types/complex:index/resourceInnerObject:resourceInnerObject"
         }
-      },
-      "stateInputs": {
-        "description": "Input properties used for looking up and filtering resource resources.\n",
-        "properties": {
-          "aBool": {
-            "type": "boolean"
-          },
-          "aListOfInts": {
-            "type": "array",
-            "items": {
-              "type": "integer"
-            }
-          },
-          "aMapOfBool": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "boolean"
-            }
-          },
-          "aNumber": {
-            "type": "number"
-          },
-          "aString": {
-            "type": "string"
-          },
-          "innerObject": {
-            "$ref": "#/types/complex:index/resourceInnerObject:resourceInnerObject"
-          },
-          "result": {
-            "type": "string"
-          }
-        },
-        "type": "object"
       }
     }
   },
