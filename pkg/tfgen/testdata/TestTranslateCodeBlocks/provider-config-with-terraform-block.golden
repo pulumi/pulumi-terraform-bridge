@@ -1,0 +1,13 @@
+This example should render only the Pulumi config commands
+
+## Example Usage
+
+```bash
+pulumi config set simple:userName admin
+pulumi config set --secret simple:password pwd
+```
+
+
+## Configuration Reference
+
+The following configuration inputs are supported:

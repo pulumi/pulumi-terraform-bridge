@@ -640,7 +640,7 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	configCommands := renderConfigSetCommands(configLeaves)
 
 	// If we have provider config but no additional code, we only render the config commands.
-	if pclExample.PCL == "" {
+	if isEmptyProgram(pclExample.PCL) {
 		return configCommands, nil
 	}
 
@@ -671,6 +671,30 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		return configCommands + exampleContent + chooserEnd, nil
 	}
 	return configCommands, nil
+}
+
+// isEmptyProgram reports whether a converted PCL program declares nothing that would appear in a language example.
+// A `terraform { required_providers }` block converts to a PCL `package` block, which no language renders as code, so
+// a program of only `package` blocks would render as an empty program in every language.
+func isEmptyProgram(pcl string) bool {
+	file, diags := hclsyntax.ParseConfig([]byte(pcl), "example.pp", hcl.InitialPos)
+	if diags.HasErrors() {
+		// Let the language conversion report the problem.
+		return strings.TrimSpace(pcl) == ""
+	}
+	body, ok := file.Body.(*hclsyntax.Body)
+	if !ok {
+		return false
+	}
+	if len(body.Attributes) > 0 {
+		return false
+	}
+	for _, block := range body.Blocks {
+		if block.Type != "package" {
+			return false
+		}
+	}
+	return true
 }
 
 type titleRemover struct{}
