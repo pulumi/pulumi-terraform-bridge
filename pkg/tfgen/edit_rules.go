@@ -75,7 +75,6 @@ func defaultEditRules() editRules {
 			`# Configuration Reference`),
 		proseReplace(`# Schema`,
 			`# Configuration Reference`),
-		proseReplace("### Optional\n", ""),
 		proseReplace(`block contains the following arguments`,
 			`input has the following nested fields`),
 		proseReplace(`provider block`, `provider configuration`),

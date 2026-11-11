@@ -249,6 +249,16 @@ func TestApplyEditRules(t *testing.T) {
 			phase:    info.PostCodeTranslation,
 		},
 		{
+			name: "Keeps both Required and Optional subheadings under '# Schema'",
+			docFile: DocFile{
+				Content: []byte("## Schema\n\n### Required\n\n- `host` (String) The host\n\n" +
+					"### Optional\n\n- `timeout` (Number) The timeout\n"),
+			},
+			expected: []byte("## Configuration Reference\n\n### Required\n\n- `host` (String) The host\n\n" +
+				"### Optional\n\n- `timeout` (Number) The timeout\n"),
+			phase: info.PostCodeTranslation,
+		},
+		{
 			name: "Leaves regular 'Schema'strings as-is",
 			docFile: DocFile{
 				Content: []byte("Manage a single Schema Registry cluster"),
