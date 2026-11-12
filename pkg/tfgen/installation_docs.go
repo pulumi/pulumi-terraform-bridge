@@ -640,7 +640,7 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	configCommands := renderConfigSetCommands(configLeaves)
 
 	// If we have provider config but no additional code, we only render the config commands.
-	if pclExample.PCL == "" {
+	if !pclDeclaresAnything(pclExample.PCL) {
 		return configCommands, nil
 	}
 
@@ -671,6 +671,22 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		return configCommands + exampleContent + chooserEnd, nil
 	}
 	return configCommands, nil
+}
+
+// pclDeclaresAnything reports whether a PCL program declares anything, such as a resource, output, config variable or
+// local. `package` blocks don't count: they only describe the packages the program uses, and the converter emits them
+// for a `terraform { required_providers }` block. A program that doesn't parse is assumed to declare something, so it
+// is still rendered.
+func pclDeclaresAnything(program string) bool {
+	file, diags := hclsyntax.ParseConfig([]byte(program), "example.pp", hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return true
+	}
+	body, ok := file.Body.(*hclsyntax.Body)
+	if !ok || len(body.Attributes) > 0 {
+		return true
+	}
+	return slices.ContainsFunc(body.Blocks, func(b *hclsyntax.Block) bool { return b.Type != "package" })
 }
 
 type titleRemover struct{}

@@ -564,6 +564,12 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			g:          generator,
 		},
 		{
+			name:       "provider-config-and-terraform-block",
+			desc:       "Renders only config commands when the example declares nothing besides provider config",
+			contentStr: readfile(t, "test_data/installation-docs/provider-config-and-terraform-block.md"),
+			g:          generator,
+		},
+		{
 			name:       "example-only",
 			desc:       "Translates standalone example into languages",
 			contentStr: readfile(t, "test_data/installation-docs/example-only.md"),
@@ -585,6 +591,43 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			actual, err := translateCodeBlocks(tt.contentStr, tt.g)
 			require.NoError(t, err)
 			autogold.ExpectFile(t, autogold.Raw(actual))
+		})
+	}
+}
+
+func TestPCLDeclaresAnything(t *testing.T) {
+	t.Parallel()
+	packageBlock := `package {
+  baseProviderName    = "terraform-provider"
+  baseProviderVersion = "0.8.1"
+  parameterization {
+    version = "0.0.0"
+    name    = "simple"
+    value   = "e30="
+  }
+}
+`
+	for _, tt := range []struct {
+		name     string
+		program  string
+		expected bool
+	}{
+		{name: "empty", program: "", expected: false},
+		{name: "comments only", program: "# Configure the provider\n", expected: false},
+		{name: "package block only", program: packageBlock, expected: false},
+		{
+			name:     "resource",
+			program:  packageBlock + "resource \"r\" \"simple:index:resource\" {\n  renamedInput1 = \"hello\"\n}\n",
+			expected: true,
+		},
+		{name: "output", program: "output \"o\" {\n  value = 1\n}\n", expected: true},
+		{name: "config", program: "config \"c\" \"string\" {\n}\n", expected: true},
+		{name: "local", program: "l = invoke(\"simple:index:dataSource\", {})\n", expected: true},
+		{name: "unparseable", program: "resource {", expected: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expected, pclDeclaresAnything(tt.program))
 		})
 	}
 }
