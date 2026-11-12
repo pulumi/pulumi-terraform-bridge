@@ -135,7 +135,7 @@ func (m Main) Server(host *provider.HostClient, module, version string) (pulumir
 		dispatchTable = mComputed.dispatchTable
 	}
 
-	server := mux(host, dispatchTable, pulumiSchema, m.GetMappingHandler, servers...)
+	server := mux(host, dispatchTable, pulumiSchema, version, m.GetMappingHandler, servers...)
 
 	return providerserver.NewPanicRecoveringProviderServer(&providerserver.PanicRecoveringProviderServerOptions{
 		Logger:                 host,

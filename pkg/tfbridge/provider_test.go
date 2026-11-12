@@ -6544,3 +6544,14 @@ func TestProviderCallTerraformConfig(t *testing.T) {
 	require.ErrorContains(t, err, "unknown method token for Call pulumi:providers:testprovider/unknownMethod")
 	require.Nil(t, invalidCallResp)
 }
+
+func TestGetSchemaInjectsVersion(t *testing.T) {
+	t.Parallel()
+	provider := &Provider{
+		version:      "2.44.3",
+		pulumiSchema: []byte(`{"name":"cosmic"}`),
+	}
+	resp, err := provider.GetSchema(context.Background(), &pulumirpc.GetSchemaRequest{})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"name":"cosmic","version":"2.44.3"}`, resp.GetSchema())
+}
