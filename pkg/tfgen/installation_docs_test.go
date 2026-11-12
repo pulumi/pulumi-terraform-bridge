@@ -564,6 +564,12 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			g:          generator,
 		},
 		{
+			name:       "provider-config-with-terraform-block",
+			desc:       "Renders only config commands when the example declares no resources",
+			contentStr: readfile(t, "test_data/installation-docs/provider-config-with-terraform-block.md"),
+			g:          generator,
+		},
+		{
 			name:       "example-only",
 			desc:       "Translates standalone example into languages",
 			contentStr: readfile(t, "test_data/installation-docs/example-only.md"),
@@ -1024,4 +1030,30 @@ func TestPulumiYAMLConfigLeaves(t *testing.T) {
 		"pulumi config set --path 'aws:assumeRole.tags[0]' infra\n"+
 		"pulumi config set --path 'aws:defaultTags.tags[\"kubernetes.io/role\"]' web\n"+
 		"```\n", renderConfigSetCommands(leaves))
+}
+
+func TestIsEmptyProgram(t *testing.T) {
+	t.Parallel()
+	pkg := `package {
+  baseProviderName = "terraform-provider"
+}
+`
+	tests := []struct {
+		name string
+		pcl  string
+		want bool
+	}{
+		{name: "empty", pcl: "", want: true},
+		{name: "only package block", pcl: pkg, want: true},
+		{name: "package block and resource", pcl: pkg + `resource "r" "simple:index:resource" {}`, want: false},
+		{name: "output", pcl: `output "o" { value = 1 }`, want: false},
+		{name: "config", pcl: `config "c" "string" {}`, want: false},
+		{name: "local", pcl: `l = 1`, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, isEmptyProgram(tt.pcl))
+		})
+	}
 }
