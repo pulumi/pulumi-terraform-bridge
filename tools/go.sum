@@ -220,8 +220,8 @@ github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsK
 github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 h1:GFCKgmp0tecUJ0sJuv4pzYCqS9+RGSn52M3FUwPs+uo=
 github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10/go.mod h1:t/avpk3KcrXxUnYOhZhMXJlSEyie6gQbtLq5NM3loB8=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/pulumi/pulumi/sdk/v3 v3.274.0 h1:fmXISTS5nm4xhxjUGkDEvIAVT0T1xdiVBGo6rXFJ2o8=
-github.com/pulumi/pulumi/sdk/v3 v3.274.0/go.mod h1:OOGpSXKEdPGkwN/iXJf7x40KRLbjINKP5E3OiR0dtes=
+github.com/pulumi/pulumi/sdk/v3 v3.275.0 h1:WPQ6zZG5vSRSu7HMMwV3Lk0aFjHnlr3guq3aXc60m9k=
+github.com/pulumi/pulumi/sdk/v3 v3.275.0/go.mod h1:WnPO90tGSd4h5BDTfK4BeDZ/b2Rsq7bhZ2yEcfvScEc=
 github.com/pulumi/terraform v0.13.0 h1:psSxMLdLsWiZrE6aZIpoGKCqYMV7tzxKZyOt0cTn/f0=
 github.com/pulumi/terraform v0.13.0/go.mod h1:w029Faz4rGcWSr4gPHWjlzU7CdvbxwQNjgiYWBC0FzU=
 github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
