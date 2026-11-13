@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // CheckConfigFailure is a provider configuration check failure, with everything a CheckConfig2 response can say
@@ -23,4 +24,7 @@ import (
 type CheckConfigFailure struct {
 	Property resource.PropertyKey
 	Reason   string
+	// Hint is a product hint relevant to the failure, if any, and HintMessage is its text.
+	Hint        pulumirpc.Hint
+	HintMessage string
 }
