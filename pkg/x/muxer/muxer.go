@@ -36,6 +36,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/checkconfig"
 )
 
 // The version expected to be specified by GetSchema
@@ -194,6 +196,12 @@ func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*
 		Inputs:   inputs,
 		Failures: failures,
 	}, m.muxedErrors(&errs)
+}
+
+func (m *muxer) CheckConfig2(
+	ctx context.Context, req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	return checkconfig.CheckConfig2(ctx, req, m.CheckConfig)
 }
 
 // Mux multiple errors into a single error, preserving meaningful gRPC status information
