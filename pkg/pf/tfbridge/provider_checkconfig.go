@@ -39,6 +39,8 @@ func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []pl.CheckConfigFa
 			Reason:       failure.Reason,
 			Property:     resource.PropertyKey(failure.Property),
 			Remediations: failure.Remediations,
+			Hint:         failure.Hint,
+			HintMessage:  failure.HintMessage,
 		}
 	}
 	return failures

@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
@@ -27,4 +28,7 @@ type CheckConfigFailure struct {
 	Reason   string
 	// Remediations are commands the user can run to resolve the failure.
 	Remediations []info.CommandRemediation
+	// Hint is a product hint relevant to the failure, if any, and HintMessage is its text.
+	Hint        pulumirpc.Hint
+	HintMessage string
 }
