@@ -270,6 +270,8 @@ func (p *providerServer) CheckConfig2(ctx context.Context,
 			Property:     string(f.Property),
 			Reason:       f.Reason,
 			Remediations: marshalCommandRemediations(f.Remediations),
+			Hint:         HintToRPC(f.Hint),
+			HintMessage:  f.HintMessage,
 		}
 	}
 
