@@ -3471,6 +3471,41 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 		}`)
 	})
 
+	t.Run("can_emit_failure_with_hint", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		shimProv := shimv2.NewProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P: shimProv,
+				PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+					return CheckFailureError{
+						Failures: []CheckFailureErrorElement{{
+							Reason:      "no credentials",
+							Hint:        pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS,
+							HintMessage: "Use Pulumi ESC",
+						}},
+					}
+				},
+			},
+		}
+
+		// providertest's replay does not know CheckConfig2 yet, so call it directly.
+		news, err := structpb.NewStruct(map[string]any{"version": "6.18.2"})
+		require.NoError(t, err)
+		resp, err := provider.CheckConfig2(context.Background(), &pulumirpc.CheckConfigRequest{
+			Urn:  "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+			News: news,
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.GetFailures(), 1)
+		failure := resp.GetFailures()[0]
+		assert.Equal(t, "no credentials", failure.GetReason())
+		assert.Equal(t, pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS, failure.GetHint())
+		assert.Equal(t, "Use Pulumi ESC", failure.GetHintMessage())
+	})
+
 	t.Run("can_emit_remediations", func(t *testing.T) {
 		p := testprovider.ProviderV2()
 		shimProv := shimv2.NewProvider(p)

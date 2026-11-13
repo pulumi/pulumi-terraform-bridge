@@ -737,6 +737,35 @@ func TestPFPreConfigureCallback(t *testing.T) {
 		}`)
 	})
 
+	t.Run("PreConfigureCallback can return a failure with a hint", func(t *testing.T) {
+		m := func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+			return tfbridge0.CheckFailureError{
+				Failures: []tfbridge0.CheckFailureErrorElement{{
+					Reason:      "No credentials",
+					Hint:        pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS,
+					HintMessage: "Use Pulumi ESC",
+				}},
+			}
+		}
+		schema := schema.Schema{}
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+			info.PreConfigureCallback = m
+		})
+		// providertest's replay does not know CheckConfig2 yet, so call it directly.
+		news, err := structpb.NewStruct(map[string]any{"version": "6.54.0"})
+		require.NoError(t, err)
+		resp, err := s.CheckConfig2(context.Background(), &pulumirpc.CheckConfigRequest{
+			Urn:  "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+			News: news,
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.GetFailures(), 1)
+		failure := resp.GetFailures()[0]
+		assert.Equal(t, "No credentials", failure.GetReason())
+		assert.Equal(t, pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS, failure.GetHint())
+		assert.Equal(t, "Use Pulumi ESC", failure.GetHintMessage())
+	})
+
 	t.Run("PreConfigureCallback can return remediations", func(t *testing.T) {
 		m := func(vars resource.PropertyMap, config shim.ResourceConfig) error {
 			return tfbridge0.CheckFailureError{
