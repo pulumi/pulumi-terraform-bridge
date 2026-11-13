@@ -47,6 +47,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/checkconfig"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/providerserver"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -604,6 +605,13 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	return &pulumirpc.CheckResponse{
 		Inputs: newsStruct,
 	}, nil
+}
+
+// CheckConfig2 validates the configuration for this Terraform provider. It behaves exactly like CheckConfig.
+func (p *Provider) CheckConfig2(
+	ctx context.Context, req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	return checkconfig.CheckConfig2(ctx, req, p.CheckConfig)
 }
 
 func (p *Provider) typeCheckConfig(

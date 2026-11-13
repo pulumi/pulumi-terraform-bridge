@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/checkconfig"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -263,6 +264,12 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 	}
 
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+}
+
+func (p *providerServer) CheckConfig2(ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	return checkconfig.CheckConfig2(ctx, req, p.CheckConfig)
 }
 
 func (p *providerServer) DiffConfig(

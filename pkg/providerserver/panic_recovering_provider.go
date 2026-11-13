@@ -224,6 +224,24 @@ func (s *PanicRecoveringProviderServer) CheckConfig(
 	return s.innerServer.CheckConfig(withPanicHandlerInstalled(ctx), req)
 }
 
+func (s *PanicRecoveringProviderServer) CheckConfig2(
+	ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	s.currentProviderUrn = req.Urn
+	if !isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "CheckConfig2", err, debug.Stack(), &logPanicOptions{
+					providerURN: req.Urn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.CheckConfig2(withPanicHandlerInstalled(ctx), req)
+}
+
 func (s *PanicRecoveringProviderServer) DiffConfig(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
