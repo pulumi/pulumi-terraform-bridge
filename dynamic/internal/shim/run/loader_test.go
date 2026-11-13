@@ -70,6 +70,76 @@ func TestRetryOnTextFileBusy_BackoffIsCalledBeforeRetries(t *testing.T) {
 	assert.Equal(t, []int{1}, backoffCalls)
 }
 
+func TestRetryOnTextFileBusy_RetriesBeyondFourAttempts(t *testing.T) {
+	t.Parallel()
+
+	var calls int
+	busy := errors.New("text file busy")
+	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
+		calls++
+		if calls < 8 {
+			return nil, nil, busy
+		}
+		return nil, nil, nil
+	}
+	noBackoff := func(int) time.Duration { return 0 }
+
+	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, noBackoff)
+	require.NoError(t, err)
+	assert.Equal(t, 8, calls)
+}
+
+func TestRetryOnTextFileBusy_GivesUpAfterMaxAttempts(t *testing.T) {
+	t.Parallel()
+
+	var calls int
+	busy := errors.New("text file busy")
+	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
+		calls++
+		return nil, nil, busy
+	}
+	noBackoff := func(int) time.Duration { return 0 }
+
+	_, _, err := retryOnTextFileBusy(context.Background(), "p/q", start, noBackoff)
+	require.ErrorIs(t, err, busy)
+	assert.Equal(t, etxtbsyMaxAttempts, calls)
+}
+
+func TestRetryOnTextFileBusy_StopsWhenContextIsCancelled(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	var calls int
+	busy := errors.New("text file busy")
+	start := func() (*plugin.Client, plugin.ClientProtocol, error) {
+		calls++
+		return nil, nil, busy
+	}
+	longBackoff := func(int) time.Duration { return time.Hour }
+
+	_, _, err := retryOnTextFileBusy(ctx, "p/q", start, longBackoff)
+	require.ErrorIs(t, err, context.Canceled)
+	require.ErrorIs(t, err, busy)
+	assert.Equal(t, 1, calls)
+}
+
+func TestDefaultETXTBSYBackoff_DoublesUpToCap(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, 50*time.Millisecond, defaultETXTBSYBackoff(1))
+	assert.Equal(t, 400*time.Millisecond, defaultETXTBSYBackoff(4))
+	assert.Equal(t, etxtbsyMaxBackoff, defaultETXTBSYBackoff(7))
+	assert.Equal(t, etxtbsyMaxBackoff, defaultETXTBSYBackoff(etxtbsyMaxAttempts))
+
+	var total time.Duration
+	for attempt := 1; attempt < etxtbsyMaxAttempts; attempt++ {
+		total += defaultETXTBSYBackoff(attempt)
+	}
+	assert.Greater(t, total, 20*time.Second)
+	assert.Less(t, total, 30*time.Second)
+}
+
 func Integration(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
