@@ -737,6 +737,41 @@ func TestPFPreConfigureCallback(t *testing.T) {
 		}`)
 	})
 
+	t.Run("PreConfigureCallback can return remediations", func(t *testing.T) {
+		m := func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+			return tfbridge0.CheckFailureError{
+				Failures: []tfbridge0.CheckFailureErrorElement{{
+					Reason: "Not signed in. Run `cloud login`.",
+					Remediations: []tfbridge0.CommandRemediation{{
+						Description: "Sign in",
+						Command:     []string{"cloud", "login", "--profile", "dev"},
+						Env:         map[string]string{"CLOUD_NO_WIZARD": "true"},
+					}},
+				}},
+			}
+		}
+		schema := schema.Schema{}
+		s := makeProviderServer(t, schema, func(info *tfbridge0.ProviderInfo) {
+			info.PreConfigureCallback = m
+		})
+		// providertest's replay does not know CheckConfig2 yet, so call it directly.
+		news, err := structpb.NewStruct(map[string]any{"version": "6.18.2"})
+		require.NoError(t, err)
+		resp, err := s.CheckConfig2(context.Background(), &pulumirpc.CheckConfigRequest{
+			Urn:  "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+			News: news,
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.GetFailures(), 1)
+		failure := resp.GetFailures()[0]
+		assert.Equal(t, "Not signed in. Run `cloud login`.", failure.GetReason())
+		require.Len(t, failure.GetRemediations(), 1)
+		remediation := failure.GetRemediations()[0]
+		assert.Equal(t, "Sign in", remediation.GetDescription())
+		assert.Equal(t, []string{"cloud", "login", "--profile", "dev"}, remediation.GetCommand())
+		assert.Equal(t, map[string]string{"CLOUD_NO_WIZARD": "true"}, remediation.GetEnv())
+	})
+
 	t.Run("PreConfigureCallback can return multiple failures", func(t *testing.T) {
 		m := func(
 			ctx context.Context,

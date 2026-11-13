@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package checkconfig adapts CheckConfig implementations to the CheckConfig2 RPC.
+// Package checkconfig converts between the CheckConfig and CheckConfig2 RPCs.
 package checkconfig
 
 import (
@@ -21,8 +21,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// CheckConfig2 answers a CheckConfig2 call by delegating to a CheckConfig implementation, so that both RPCs give the
-// same answer.
+// CheckConfig2 answers a CheckConfig2 call by delegating to a CheckConfig implementation, for servers that only
+// implement the older method.
 func CheckConfig2(
 	ctx context.Context,
 	req *pulumirpc.CheckConfigRequest,
@@ -40,13 +40,47 @@ func CheckConfig2(
 	if resp == nil {
 		return nil, err
 	}
+	return &pulumirpc.CheckConfigResponse{Inputs: resp.GetInputs(), Failures: Failures(resp.GetFailures())}, err
+}
 
-	var failures []*pulumirpc.CheckConfigFailure
+// CheckConfig answers a CheckConfig call by delegating to a CheckConfig2 implementation, so that both RPCs give the
+// same answer. Remediations are dropped, since CheckConfig cannot carry them.
+func CheckConfig(
+	ctx context.Context,
+	req *pulumirpc.CheckRequest,
+	checkConfig2 func(context.Context, *pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error),
+) (*pulumirpc.CheckResponse, error) {
+	resp, err := checkConfig2(ctx, &pulumirpc.CheckConfigRequest{
+		Urn:        req.GetUrn(),
+		Olds:       req.GetOlds(),
+		News:       req.GetNews(),
+		RandomSeed: req.GetRandomSeed(),
+		Name:       req.GetName(),
+		Type:       req.GetType(),
+		OldOutputs: req.GetOldOutputs(),
+	})
+	if resp == nil {
+		return nil, err
+	}
+
+	var failures []*pulumirpc.CheckFailure
 	if fs := resp.GetFailures(); fs != nil {
-		failures = make([]*pulumirpc.CheckConfigFailure, len(fs))
+		failures = make([]*pulumirpc.CheckFailure, len(fs))
 		for i, f := range fs {
-			failures[i] = &pulumirpc.CheckConfigFailure{Property: f.GetProperty(), Reason: f.GetReason()}
+			failures[i] = &pulumirpc.CheckFailure{Property: f.GetProperty(), Reason: f.GetReason()}
 		}
 	}
-	return &pulumirpc.CheckConfigResponse{Inputs: resp.GetInputs(), Failures: failures}, err
+	return &pulumirpc.CheckResponse{Inputs: resp.GetInputs(), Failures: failures}, err
+}
+
+// Failures converts check failures to their CheckConfig2 representation.
+func Failures(failures []*pulumirpc.CheckFailure) []*pulumirpc.CheckConfigFailure {
+	if failures == nil {
+		return nil
+	}
+	result := make([]*pulumirpc.CheckConfigFailure, len(failures))
+	for i, f := range failures {
+		result[i] = &pulumirpc.CheckConfigFailure{Property: f.GetProperty(), Reason: f.GetReason()}
+	}
+	return result
 }

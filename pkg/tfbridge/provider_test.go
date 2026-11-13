@@ -3471,6 +3471,61 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 		}`)
 	})
 
+	t.Run("can_emit_remediations", func(t *testing.T) {
+		p := testprovider.ProviderV2()
+		shimProv := shimv2.NewProvider(p)
+		provider := &Provider{
+			tf:     shimProv,
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				P: shimProv,
+				PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
+					return CheckFailureError{
+						Failures: []CheckFailureErrorElement{{
+							Reason: "Not signed in. Run `cloud login`.",
+							Remediations: []CommandRemediation{{
+								Description: "Sign in",
+								Command:     []string{"cloud", "login", "--profile", "dev"},
+								Env:         map[string]string{"CLOUD_NO_WIZARD": "true"},
+							}},
+						}},
+					}
+				},
+			},
+		}
+
+		// providertest's replay does not know CheckConfig2 yet, so call it directly.
+		news, err := structpb.NewStruct(map[string]any{"version": "6.18.2"})
+		require.NoError(t, err)
+		resp, err := provider.CheckConfig2(context.Background(), &pulumirpc.CheckConfigRequest{
+			Urn:  "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+			News: news,
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.GetFailures(), 1)
+		failure := resp.GetFailures()[0]
+		assert.Equal(t, "Not signed in. Run `cloud login`.", failure.GetReason())
+		require.Len(t, failure.GetRemediations(), 1)
+		remediation := failure.GetRemediations()[0]
+		assert.Equal(t, "Sign in", remediation.GetDescription())
+		assert.Equal(t, []string{"cloud", "login", "--profile", "dev"}, remediation.GetCommand())
+		assert.Equal(t, map[string]string{"CLOUD_NO_WIZARD": "true"}, remediation.GetEnv())
+
+		// CheckConfig reports the same failure, but cannot carry remediations.
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/CheckConfig",
+			"request": {
+				"urn": "urn:pulumi:dev::aws_no_creds::pulumi:providers:aws::default_6_18_2",
+				"olds": {},
+				"news": { "version": "6.18.2" }
+			},
+			"response": {
+				"failures": [{ "reason": "Not signed in. Run `+"`cloud login`"+`." }]
+			}
+		}`)
+	})
+
 	t.Run("can_emit_multiple_failures", func(t *testing.T) {
 		p := testprovider.ProviderV2()
 		shimProv := shimv2.NewProvider(p)

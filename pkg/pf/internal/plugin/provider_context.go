@@ -38,7 +38,7 @@ type ProviderWithContext interface {
 	GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error)
 
 	CheckConfigWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
-		allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error)
+		allowUnknowns bool) (resource.PropertyMap, []plugin.CheckConfigFailure, error)
 
 	DiffConfigWithContext(ctx context.Context, urn resource.URN, oldInputs, olds, news resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error)
@@ -129,9 +129,16 @@ func (prov *provider) CheckConfig(
 ) (plugin.CheckConfigResponse, error) {
 	c, f, err := prov.CheckConfigWithContext(
 		ctx, req.URN, req.Olds, req.News, req.AllowUnknowns)
+	var failures []plugin.CheckFailure
+	if f != nil {
+		failures = make([]plugin.CheckFailure, len(f))
+		for i, failure := range f {
+			failures[i] = plugin.CheckFailure{Property: failure.Property, Reason: failure.Reason}
+		}
+	}
 	return plugin.CheckConfigResponse{
 		Properties: c,
-		Failures:   f,
+		Failures:   failures,
 	}, err
 }
 
