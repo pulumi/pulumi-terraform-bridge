@@ -198,6 +198,22 @@ type DataSource struct {
 type CheckFailureErrorElement struct {
 	Reason   string
 	Property string
+	// Remediations are commands that the user can run to resolve the failure, such as signing in to refresh
+	// expired credentials. Engines that support them offer to run them; others show only Reason, which should
+	// therefore keep describing the fix.
+	Remediations []CommandRemediation
+}
+
+// CommandRemediation is a command that the user can run to resolve a [CheckFailureErrorElement], such as
+// signing in to a cloud. The engine shows the command to the user and runs it only with their consent.
+type CommandRemediation struct {
+	// Description is a short, imperative summary of what the command does, such as "Sign in to AWS".
+	Description string
+	// Command is the program and its arguments. The program is looked up on PATH and run without a shell,
+	// attached to the user's terminal.
+	Command []string
+	// Env holds environment variables to set for the command, in addition to the engine's environment.
+	Env map[string]string
 }
 
 // marshalCheckFailures converts the failures of a [CheckFailureError] to their gRPC representation.
@@ -205,11 +221,24 @@ func marshalCheckFailures(failures []CheckFailureErrorElement) []*pulumirpc.Chec
 	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
 	for i, failure := range failures {
 		rpcFailures[i] = &pulumirpc.CheckConfigFailure{
-			Reason:   failure.Reason,
-			Property: failure.Property,
+			Reason:       failure.Reason,
+			Property:     failure.Property,
+			Remediations: marshalCommandRemediations(failure.Remediations),
 		}
 	}
 	return rpcFailures
+}
+
+func marshalCommandRemediations(remediations []CommandRemediation) []*pulumirpc.CommandRemediation {
+	rpcRemediations := make([]*pulumirpc.CommandRemediation, 0, len(remediations))
+	for _, r := range remediations {
+		rpcRemediations = append(rpcRemediations, &pulumirpc.CommandRemediation{
+			Description: r.Description,
+			Command:     r.Command,
+			Env:         r.Env,
+		})
+	}
+	return rpcRemediations
 }
 
 // CheckFailureError can be returned from a PreConfigureCallback to indicate that the
