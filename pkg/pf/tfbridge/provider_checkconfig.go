@@ -31,12 +31,13 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []plugin.CheckFailure {
-	failures := make([]plugin.CheckFailure, len(err.Failures))
+func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []plugin.CheckConfigFailure {
+	failures := make([]plugin.CheckConfigFailure, len(err.Failures))
 	for i, failure := range err.Failures {
-		failures[i] = plugin.CheckFailure{
-			Reason:   failure.Reason,
-			Property: resource.PropertyKey(failure.Property),
+		failures[i] = plugin.CheckConfigFailure{
+			Reason:       failure.Reason,
+			Property:     resource.PropertyKey(failure.Property),
+			Remediations: failure.Remediations,
 		}
 	}
 	return failures
@@ -49,7 +50,7 @@ func (p *provider) CheckConfigWithContext(
 	_ resource.PropertyMap, // olds aka priorState, not used currently
 	inputs resource.PropertyMap, // aka news
 	_ bool, // a flag that is always true, historical artifact, ignore here
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+) (resource.PropertyMap, []plugin.CheckConfigFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	inputsText := showMap(inputs)
@@ -102,13 +103,15 @@ func (p *provider) CheckConfigWithContext(
 	// Store for use in subsequent ApplyDefaultInfoValues.
 	p.lastKnownProviderConfig = news
 
-	var checkFailures []plugin.CheckFailure
-	var err error
+	var checkFailures []plugin.CheckConfigFailure
 
 	if !p.info.SkipValidateProviderConfigForPluginFramework {
-		checkFailures, err = p.validateProviderConfig(ctx, urn, news)
+		failures, err := p.validateProviderConfig(ctx, urn, news)
 		if err != nil {
 			return nil, nil, err
+		}
+		for _, f := range failures {
+			checkFailures = append(checkFailures, plugin.CheckConfigFailure{Property: f.Property, Reason: f.Reason})
 		}
 	}
 

@@ -59,7 +59,7 @@ func (p *provider[T]) Unwrap() T { return p.ProviderWithContextAndConfig.(T) }
 func (p *provider[T]) CheckConfigWithContext(
 	ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+) (resource.PropertyMap, []plugin.CheckConfigFailure, error) {
 	encoding := p.GetConfigEncoding(ctx)
 	olds, err := encoding.UnfoldProperties(olds)
 	if err != nil {

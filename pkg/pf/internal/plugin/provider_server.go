@@ -225,6 +225,12 @@ func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbemp
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
+	return checkconfig.CheckConfig(ctx, req, p.CheckConfig2)
+}
+
+func (p *providerServer) CheckConfig2(ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
 	state, err := pl.UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("state"))
@@ -258,18 +264,28 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, fmt.Errorf("CheckConfig failed to marshal updated news: %w", err)
 	}
 
-	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
+	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
 	for i, f := range failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+		rpcFailures[i] = &pulumirpc.CheckConfigFailure{
+			Property:     string(f.Property),
+			Reason:       f.Reason,
+			Remediations: marshalCommandRemediations(f.Remediations),
+		}
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+	return &pulumirpc.CheckConfigResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }
 
-func (p *providerServer) CheckConfig2(ctx context.Context,
-	req *pulumirpc.CheckConfigRequest,
-) (*pulumirpc.CheckConfigResponse, error) {
-	return checkconfig.CheckConfig2(ctx, req, p.CheckConfig)
+func marshalCommandRemediations(remediations []pl.CommandRemediation) []*pulumirpc.CommandRemediation {
+	rpcRemediations := make([]*pulumirpc.CommandRemediation, 0, len(remediations))
+	for _, r := range remediations {
+		rpcRemediations = append(rpcRemediations, &pulumirpc.CommandRemediation{
+			Description: r.Description,
+			Command:     r.Command,
+			Env:         r.Env,
+		})
+	}
+	return rpcRemediations
 }
 
 func (p *providerServer) DiffConfig(
