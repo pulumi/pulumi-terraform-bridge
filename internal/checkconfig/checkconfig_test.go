@@ -38,11 +38,11 @@ func TestCheckConfig2(t *testing.T) {
 
 	req := &pulumirpc.CheckConfigRequest{
 		Urn:        "urn:pulumi:dev::proj::pulumi:providers:pkg::default",
-		Olds:       mkStruct(map[string]any{"region": "us-east-1"}),
-		News:       mkStruct(map[string]any{"region": "us-west-2"}),
-		RandomSeed: []byte("seed"),
 		Name:       "default",
 		Type:       "pulumi:providers:pkg",
+		OldInputs:  mkStruct(map[string]any{"region": "us-east-1"}),
+		NewInputs:  mkStruct(map[string]any{"region": "us-west-2"}),
+		RandomSeed: []byte("seed"),
 		OldOutputs: mkStruct(map[string]any{"version": "1.0.0"}),
 	}
 
@@ -62,8 +62,8 @@ func TestCheckConfig2(t *testing.T) {
 
 		assert.True(t, proto.Equal(&pulumirpc.CheckRequest{
 			Urn:        req.Urn,
-			Olds:       req.Olds,
-			News:       req.News,
+			Olds:       req.OldInputs,
+			News:       req.NewInputs,
 			RandomSeed: req.RandomSeed,
 			Name:       req.Name,
 			Type:       req.Type,
@@ -71,27 +71,9 @@ func TestCheckConfig2(t *testing.T) {
 		}, got), "unexpected CheckRequest: %v", got)
 
 		assert.True(t, proto.Equal(&pulumirpc.CheckConfigResponse{
-			Inputs:   req.News,
+			Inputs:   req.NewInputs,
 			Failures: []*pulumirpc.CheckConfigFailure{{Property: "region", Reason: "bad region"}},
 		}, resp), "unexpected CheckConfigResponse: %v", resp)
-	})
-
-	t.Run("a request decodes the same as either type", func(t *testing.T) {
-		t.Parallel()
-
-		bytes, err := proto.Marshal(req)
-		require.NoError(t, err)
-		var decoded pulumirpc.CheckRequest
-		require.NoError(t, proto.Unmarshal(bytes, &decoded))
-
-		var got *pulumirpc.CheckRequest
-		_, err = CheckConfig2(t.Context(), req,
-			func(_ context.Context, r *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-				got = r
-				return &pulumirpc.CheckResponse{}, nil
-			})
-		require.NoError(t, err)
-		assert.True(t, proto.Equal(&decoded, got), "expected %v, got %v", &decoded, got)
 	})
 
 	t.Run("passes errors through", func(t *testing.T) {

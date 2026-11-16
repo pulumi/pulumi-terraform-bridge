@@ -30,8 +30,8 @@ func CheckConfig2(
 ) (*pulumirpc.CheckConfigResponse, error) {
 	resp, err := checkConfig(ctx, &pulumirpc.CheckRequest{
 		Urn:        req.GetUrn(),
-		Olds:       req.GetOlds(),
-		News:       req.GetNews(),
+		Olds:       req.GetOldInputs(),
+		News:       req.GetNewInputs(),
 		RandomSeed: req.GetRandomSeed(),
 		Name:       req.GetName(),
 		Type:       req.GetType(),
