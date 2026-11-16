@@ -149,12 +149,51 @@ func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*
 		}
 	}
 
+	inputs, failures, errs := mergeCheckConfig(asyncJoin(subs), (*pulumirpc.CheckResponse).GetFailures)
+	return &pulumirpc.CheckResponse{
+		Inputs:   inputs,
+		Failures: failures,
+	}, m.muxedErrors(&errs)
+}
+
+func (m *muxer) CheckConfig2(
+	ctx context.Context, req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	subs := make([]func() tuple[*pulumirpc.CheckConfigResponse, error], len(m.servers))
+	for i, s := range m.servers {
+		i, s := i, s
+		subs[i] = func() tuple[*pulumirpc.CheckConfigResponse, error] {
+			req := proto.Clone(req).(*pulumirpc.CheckConfigRequest)
+			resp, err := s.CheckConfig2(ctx, req)
+			if status.Code(err) == codes.Unimplemented {
+				// The server only implements CheckConfig.
+				return newTuple(checkconfig.CheckConfig2(ctx, req, s.CheckConfig))
+			}
+			return newTuple(resp, err)
+		}
+	}
+
+	inputs, failures, errs := mergeCheckConfig(asyncJoin(subs), (*pulumirpc.CheckConfigResponse).GetFailures)
+	return &pulumirpc.CheckConfigResponse{
+		Inputs:   inputs,
+		Failures: failures,
+	}, m.muxedErrors(&errs)
+}
+
+// mergeCheckConfig combines the CheckConfig or CheckConfig2 responses of the muxed servers.
+func mergeCheckConfig[
+	R interface{ GetInputs() *structpb.Struct },
+	F interface {
+		GetProperty() string
+		GetReason() string
+	},
+](results []tuple[R, error], failuresOf func(R) []F) (*structpb.Struct, []F, multierror.Error) {
 	inputs := &structpb.Struct{Fields: map[string]*structpb.Value{}}
-	failures := []*pulumirpc.CheckFailure{}
+	failures := []F{}
 	uniqueFailures := map[string]struct{}{}
 	var errs multierror.Error
 	uniqueErrors := map[string]struct{}{}
-	for i, r := range asyncJoin(subs) {
+	for i, r := range results {
 		if err := r.B; err != nil {
 			errString := err.Error()
 			// De-duplicate errors
@@ -182,7 +221,7 @@ func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*
 		}
 
 		// Here we de-duplicate rpc failures.
-		for _, e := range r.A.GetFailures() {
+		for _, e := range failuresOf(r.A) {
 			s := e.GetProperty() + ":" + e.GetReason()
 			if _, has := uniqueFailures[s]; has {
 				continue
@@ -192,16 +231,7 @@ func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*
 		}
 	}
 
-	return &pulumirpc.CheckResponse{
-		Inputs:   inputs,
-		Failures: failures,
-	}, m.muxedErrors(&errs)
-}
-
-func (m *muxer) CheckConfig2(
-	ctx context.Context, req *pulumirpc.CheckConfigRequest,
-) (*pulumirpc.CheckConfigResponse, error) {
-	return checkconfig.CheckConfig2(ctx, req, m.CheckConfig)
+	return inputs, failures, errs
 }
 
 // Mux multiple errors into a single error, preserving meaningful gRPC status information

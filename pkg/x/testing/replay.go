@@ -96,6 +96,9 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 	case "/pulumirpc.ResourceProvider/CheckConfig":
 		replay(t, entry, new(pulumirpc.CheckRequest), server.CheckConfig)
 
+	case "/pulumirpc.ResourceProvider/CheckConfig2":
+		replay(t, entry, new(pulumirpc.CheckConfigRequest), server.CheckConfig2)
+
 	case "/pulumirpc.ResourceProvider/DiffConfig":
 		replay(t, entry, new(pulumirpc.DiffRequest), server.DiffConfig)
 

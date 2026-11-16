@@ -87,3 +87,59 @@ func TestCheckConfig2(t *testing.T) {
 		assert.Equal(t, codes.Unimplemented, status.Code(err))
 	})
 }
+
+func TestCheckConfig(t *testing.T) {
+	t.Parallel()
+
+	news, err := structpb.NewStruct(map[string]any{"region": "us-west-2"})
+	require.NoError(t, err)
+	req := &pulumirpc.CheckRequest{
+		Urn:        "urn:pulumi:dev::proj::pulumi:providers:pkg::default",
+		News:       news,
+		RandomSeed: []byte("seed"),
+		Name:       "default",
+		Type:       "pulumi:providers:pkg",
+	}
+
+	t.Run("forwards the request and converts the response", func(t *testing.T) {
+		t.Parallel()
+
+		var got *pulumirpc.CheckConfigRequest
+		resp, err := CheckConfig(t.Context(), req,
+			func(_ context.Context, r *pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error) {
+				got = r
+				return &pulumirpc.CheckConfigResponse{
+					Inputs: r.GetNewInputs(),
+					Failures: []*pulumirpc.CheckConfigFailure{{
+						Property: "region",
+						Reason:   "bad region",
+					}},
+				}, nil
+			})
+		require.NoError(t, err)
+
+		assert.True(t, proto.Equal(&pulumirpc.CheckConfigRequest{
+			Urn:        req.Urn,
+			Name:       req.Name,
+			Type:       req.Type,
+			NewInputs:  req.News,
+			RandomSeed: req.RandomSeed,
+		}, got), "unexpected CheckConfigRequest: %v", got)
+
+		assert.True(t, proto.Equal(&pulumirpc.CheckResponse{
+			Inputs:   req.News,
+			Failures: []*pulumirpc.CheckFailure{{Property: "region", Reason: "bad region"}},
+		}, resp), "unexpected CheckResponse: %v", resp)
+	})
+
+	t.Run("passes errors through", func(t *testing.T) {
+		t.Parallel()
+
+		resp, err := CheckConfig(t.Context(), req,
+			func(context.Context, *pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error) {
+				return nil, status.Error(codes.Internal, "boom")
+			})
+		assert.Nil(t, resp)
+		assert.Equal(t, codes.Internal, status.Code(err))
+	})
+}

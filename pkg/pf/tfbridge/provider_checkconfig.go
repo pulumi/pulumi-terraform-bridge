@@ -26,15 +26,16 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/defaults"
+	pl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []plugin.CheckFailure {
-	failures := make([]plugin.CheckFailure, len(err.Failures))
+func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []pl.CheckConfigFailure {
+	failures := make([]pl.CheckConfigFailure, len(err.Failures))
 	for i, failure := range err.Failures {
-		failures[i] = plugin.CheckFailure{
+		failures[i] = pl.CheckConfigFailure{
 			Reason:   failure.Reason,
 			Property: resource.PropertyKey(failure.Property),
 		}
@@ -49,7 +50,7 @@ func (p *provider) CheckConfigWithContext(
 	_ resource.PropertyMap, // olds aka priorState, not used currently
 	inputs resource.PropertyMap, // aka news
 	_ bool, // a flag that is always true, historical artifact, ignore here
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+) (resource.PropertyMap, []pl.CheckConfigFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	inputsText := showMap(inputs)
@@ -102,13 +103,15 @@ func (p *provider) CheckConfigWithContext(
 	// Store for use in subsequent ApplyDefaultInfoValues.
 	p.lastKnownProviderConfig = news
 
-	var checkFailures []plugin.CheckFailure
-	var err error
+	var checkFailures []pl.CheckConfigFailure
 
 	if !p.info.SkipValidateProviderConfigForPluginFramework {
-		checkFailures, err = p.validateProviderConfig(ctx, urn, news)
+		failures, err := p.validateProviderConfig(ctx, urn, news)
 		if err != nil {
 			return nil, nil, err
+		}
+		for _, f := range failures {
+			checkFailures = append(checkFailures, pl.CheckConfigFailure{Property: f.Property, Reason: f.Reason})
 		}
 	}
 

@@ -200,6 +200,18 @@ type CheckFailureErrorElement struct {
 	Property string
 }
 
+// marshalCheckFailures converts the failures of a [CheckFailureError] to their gRPC representation.
+func marshalCheckFailures(failures []CheckFailureErrorElement) []*pulumirpc.CheckConfigFailure {
+	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
+	for i, failure := range failures {
+		rpcFailures[i] = &pulumirpc.CheckConfigFailure{
+			Reason:   failure.Reason,
+			Property: failure.Property,
+		}
+	}
+	return rpcFailures
+}
+
 // CheckFailureError can be returned from a PreConfigureCallback to indicate that the
 // configuration is invalid along with an actionable error message. These will be
 // returned as failures in the CheckConfig response instead of errors.
@@ -208,7 +220,12 @@ type CheckFailureError struct {
 }
 
 func (e CheckFailureError) Error() string {
-	return fmt.Sprintf("CheckFailureErrors %s", e.Failures)
+	// Only the reason and property are printed, so that the message does not change as failures gain fields.
+	failures := make([]string, len(e.Failures))
+	for i, f := range e.Failures {
+		failures[i] = fmt.Sprintf("{%s %s}", f.Reason, f.Property)
+	}
+	return fmt.Sprintf("CheckFailureErrors [%s]", strings.Join(failures, " "))
 }
 
 // callWithRecover is a generic function that takes a resource URN, a recovery
@@ -520,21 +537,22 @@ func (p *Provider) GetSchema(ctx context.Context,
 	}, nil
 }
 
-func makeCheckResponseFromCheckErr(err CheckFailureError) *pulumirpc.CheckResponse {
-	failures := make([]*pulumirpc.CheckFailure, len(err.Failures))
-	for i, failure := range err.Failures {
-		failures[i] = &pulumirpc.CheckFailure{
-			Reason:   failure.Reason,
-			Property: failure.Property,
-		}
-	}
-	return &pulumirpc.CheckResponse{
-		Failures: failures,
+func makeCheckResponseFromCheckErr(err CheckFailureError) *pulumirpc.CheckConfigResponse {
+	return &pulumirpc.CheckConfigResponse{
+		Failures: marshalCheckFailures(err.Failures),
 	}
 }
 
-// CheckConfig validates the configuration for this Terraform provider.
+// CheckConfig validates the configuration for this Terraform provider. It gives the same answer as CheckConfig2,
+// without anything that only CheckConfig2 can carry.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	return checkconfig.CheckConfig(ctx, req, p.CheckConfig2)
+}
+
+// CheckConfig2 validates the configuration for this Terraform provider.
+func (p *Provider) CheckConfig2(
+	ctx context.Context, req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
 	urn := resource.URN(req.GetUrn())
 	ctx = p.loggingContext(ctx, urn)
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
@@ -542,7 +560,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 
 	configEnc := NewConfigEncoding(p.config, p.info.Config)
 
-	news, validationErrors := configEnc.UnmarshalProperties(req.GetNews())
+	news, validationErrors := configEnc.UnmarshalProperties(req.GetNewInputs())
 	if validationErrors != nil {
 		return nil, errors.Wrap(validationErrors, "CheckConfig failed because of malformed resource inputs")
 	}
@@ -583,13 +601,16 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	}
 
 	if check := p.typeCheckConfig(ctx, urn, news); check != nil {
-		return check, nil
+		return &pulumirpc.CheckConfigResponse{
+			Inputs:   check.GetInputs(),
+			Failures: checkconfig.Failures(check.GetFailures()),
+		}, nil
 	}
 
 	checkFailures := validateProviderConfig(ctx, urn, p, config)
 	if len(checkFailures) > 0 {
-		return &pulumirpc.CheckResponse{
-			Failures: checkFailures,
+		return &pulumirpc.CheckConfigResponse{
+			Failures: checkconfig.Failures(checkFailures),
 		}, nil
 	}
 
@@ -602,16 +623,9 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	return &pulumirpc.CheckResponse{
+	return &pulumirpc.CheckConfigResponse{
 		Inputs: newsStruct,
 	}, nil
-}
-
-// CheckConfig2 validates the configuration for this Terraform provider. It behaves exactly like CheckConfig.
-func (p *Provider) CheckConfig2(
-	ctx context.Context, req *pulumirpc.CheckConfigRequest,
-) (*pulumirpc.CheckConfigResponse, error) {
-	return checkconfig.CheckConfig2(ctx, req, p.CheckConfig)
 }
 
 func (p *Provider) typeCheckConfig(
