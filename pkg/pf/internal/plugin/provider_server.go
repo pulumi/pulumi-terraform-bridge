@@ -32,7 +32,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/checkconfig"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -270,23 +269,11 @@ func (p *providerServer) CheckConfig2(ctx context.Context,
 		rpcFailures[i] = &pulumirpc.CheckConfigFailure{
 			Property:     string(f.Property),
 			Reason:       f.Reason,
-			Remediations: marshalCommandRemediations(f.Remediations),
+			Remediations: checkconfig.Remediations(f.Remediations),
 		}
 	}
 
 	return &pulumirpc.CheckConfigResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
-}
-
-func marshalCommandRemediations(remediations []tfbridge.CommandRemediation) []*pulumirpc.CommandRemediation {
-	rpcRemediations := make([]*pulumirpc.CommandRemediation, 0, len(remediations))
-	for _, r := range remediations {
-		rpcRemediations = append(rpcRemediations, &pulumirpc.CommandRemediation{
-			Description: r.Description,
-			Command:     r.Command,
-			Env:         r.Env,
-		})
-	}
-	return rpcRemediations
 }
 
 func (p *providerServer) DiffConfig(

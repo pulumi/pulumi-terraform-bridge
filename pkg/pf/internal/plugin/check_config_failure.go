@@ -17,7 +17,7 @@ package plugin
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // CheckConfigFailure is a provider configuration check failure, with everything a CheckConfig2 response can say
@@ -26,5 +26,5 @@ type CheckConfigFailure struct {
 	Property resource.PropertyKey
 	Reason   string
 	// Remediations are commands the user can run to resolve the failure.
-	Remediations []tfbridge.CommandRemediation
+	Remediations []info.CommandRemediation
 }

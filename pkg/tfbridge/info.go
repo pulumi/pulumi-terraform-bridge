@@ -191,6 +191,9 @@ type CSharpInfo = info.CSharp
 // supported options.
 type JavaInfo = info.Java
 
+// CommandRemediation is a command that the user can run to resolve a [CheckFailureErrorElement].
+type CommandRemediation = info.CommandRemediation
+
 // PreConfigureCallback is a function to invoke prior to calling the TF provider Configure
 type PreConfigureCallback = info.PreCheckCallback
 
