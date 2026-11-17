@@ -317,6 +317,6 @@ replace github.com/hashicorp/terraform-provider-tls => ./pkg/pf/tests/internal/t
 
 replace github.com/terraform-providers/terraform-provider-random => ./pkg/pf/tests/internal/randomshim/vendor/github.com/hashicorp/terraform-provider-random
 
-replace github.com/pulumi/pulumi/sdk/v3 => github.com/pulumi/pulumi/sdk/v3 v3.276.1-0.20261116182553-fb746c2740fa
+replace github.com/pulumi/pulumi/sdk/v3 => github.com/pulumi/pulumi/sdk/v3 v3.276.1-0.20261117134932-d772e1003aac
 
-replace github.com/pulumi/pulumi/pkg/v3 => github.com/pulumi/pulumi/pkg/v3 v3.276.1-0.20261116182553-fb746c2740fa
+replace github.com/pulumi/pulumi/pkg/v3 => github.com/pulumi/pulumi/pkg/v3 v3.276.1-0.20261117134932-d772e1003aac
