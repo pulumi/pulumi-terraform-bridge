@@ -45,7 +45,7 @@ require (
 	github.com/pgavlin/fx/v2 v2.0.12
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.2.1
-	github.com/pulumi/providertest v0.7.1-0.20261118144853-cbae6ee6bab5
+	github.com/pulumi/providertest v0.7.1-0.20261118154538-b7e4edf4f817
 	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.116.1
 	github.com/pulumi/pulumi-hcl v0.18.8
 	github.com/pulumi/pulumi-java v1.37.8
