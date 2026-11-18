@@ -181,7 +181,7 @@ func (m *muxer) CheckConfig2(
 		fallbackIndices = append(fallbackIndices, i)
 		fallbacks = append(fallbacks, func() tuple[*pulumirpc.CheckConfigResponse, error] {
 			req := proto.Clone(req).(*pulumirpc.CheckConfigRequest)
-			return newTuple(checkconfig.CheckConfig2(ctx, req, s.CheckConfig))
+			return newTuple(checkconfig.CheckConfig2ViaCheckConfig(ctx, req, s.CheckConfig))
 		})
 	}
 	if len(fallbacks) == len(m.servers) {

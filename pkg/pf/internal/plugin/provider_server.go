@@ -225,7 +225,7 @@ func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbemp
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	return checkconfig.CheckConfig(ctx, req, p.CheckConfig2)
+	return checkconfig.CheckConfigViaCheckConfig2(ctx, req, p.CheckConfig2)
 }
 
 func (p *providerServer) CheckConfig2(ctx context.Context,

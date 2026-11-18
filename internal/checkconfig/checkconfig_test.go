@@ -27,7 +27,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func TestCheckConfig2(t *testing.T) {
+func TestCheckConfig2ViaCheckConfig(t *testing.T) {
 	t.Parallel()
 
 	mkStruct := func(m map[string]any) *structpb.Struct {
@@ -50,7 +50,7 @@ func TestCheckConfig2(t *testing.T) {
 		t.Parallel()
 
 		var got *pulumirpc.CheckRequest
-		resp, err := CheckConfig2(t.Context(), req,
+		resp, err := CheckConfig2ViaCheckConfig(t.Context(), req,
 			func(_ context.Context, r *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 				got = r
 				return &pulumirpc.CheckResponse{
@@ -79,7 +79,7 @@ func TestCheckConfig2(t *testing.T) {
 	t.Run("passes errors through", func(t *testing.T) {
 		t.Parallel()
 
-		resp, err := CheckConfig2(t.Context(), req,
+		resp, err := CheckConfig2ViaCheckConfig(t.Context(), req,
 			func(context.Context, *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 				return nil, status.Error(codes.Unimplemented, "CheckConfig is not implemented")
 			})
@@ -88,7 +88,7 @@ func TestCheckConfig2(t *testing.T) {
 	})
 }
 
-func TestCheckConfig(t *testing.T) {
+func TestCheckConfigViaCheckConfig2(t *testing.T) {
 	t.Parallel()
 
 	news, err := structpb.NewStruct(map[string]any{"region": "us-west-2"})
@@ -105,7 +105,7 @@ func TestCheckConfig(t *testing.T) {
 		t.Parallel()
 
 		var got *pulumirpc.CheckConfigRequest
-		resp, err := CheckConfig(t.Context(), req,
+		resp, err := CheckConfigViaCheckConfig2(t.Context(), req,
 			func(_ context.Context, r *pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error) {
 				got = r
 				return &pulumirpc.CheckConfigResponse{
@@ -135,7 +135,7 @@ func TestCheckConfig(t *testing.T) {
 	t.Run("passes errors through", func(t *testing.T) {
 		t.Parallel()
 
-		resp, err := CheckConfig(t.Context(), req,
+		resp, err := CheckConfigViaCheckConfig2(t.Context(), req,
 			func(context.Context, *pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error) {
 				return nil, status.Error(codes.Internal, "boom")
 			})

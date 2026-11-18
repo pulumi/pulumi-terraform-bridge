@@ -21,9 +21,9 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// CheckConfig2 answers a CheckConfig2 call by delegating to a CheckConfig implementation, for servers that only
-// implement the older method.
-func CheckConfig2(
+// CheckConfig2ViaCheckConfig answers a CheckConfig2 call by delegating to a CheckConfig implementation, for servers
+// that only implement the older method.
+func CheckConfig2ViaCheckConfig(
 	ctx context.Context,
 	req *pulumirpc.CheckConfigRequest,
 	checkConfig func(context.Context, *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error),
@@ -43,9 +43,11 @@ func CheckConfig2(
 	return &pulumirpc.CheckConfigResponse{Inputs: resp.GetInputs(), Failures: Failures(resp.GetFailures())}, err
 }
 
-// CheckConfig answers a CheckConfig call by delegating to a CheckConfig2 implementation, so that both RPCs give the
-// same answer. Anything that only CheckConfig2 can carry is dropped.
-func CheckConfig(
+// CheckConfigViaCheckConfig2 answers a CheckConfig call by delegating to a CheckConfig2 implementation, so that both
+// RPCs give the same answer. Anything that only CheckConfig2 can carry is dropped.
+//
+//nolint:revive // The name mirrors CheckConfig2ViaCheckConfig; the stutter with the package name is intended.
+func CheckConfigViaCheckConfig2(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 	checkConfig2 func(context.Context, *pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error),

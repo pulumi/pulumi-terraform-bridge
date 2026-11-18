@@ -546,7 +546,7 @@ func makeCheckResponseFromCheckErr(err CheckFailureError) *pulumirpc.CheckConfig
 // CheckConfig validates the configuration for this Terraform provider. It gives the same answer as CheckConfig2,
 // without anything that only CheckConfig2 can carry.
 func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-	return checkconfig.CheckConfig(ctx, req, p.CheckConfig2)
+	return checkconfig.CheckConfigViaCheckConfig2(ctx, req, p.CheckConfig2)
 }
 
 // CheckConfig2 validates the configuration for this Terraform provider.
