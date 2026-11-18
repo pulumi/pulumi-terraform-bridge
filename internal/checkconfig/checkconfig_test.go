@@ -91,14 +91,20 @@ func TestCheckConfig2ViaCheckConfig(t *testing.T) {
 func TestCheckConfigViaCheckConfig2(t *testing.T) {
 	t.Parallel()
 
-	news, err := structpb.NewStruct(map[string]any{"region": "us-west-2"})
-	require.NoError(t, err)
+	mkStruct := func(m map[string]any) *structpb.Struct {
+		s, err := structpb.NewStruct(m)
+		require.NoError(t, err)
+		return s
+	}
+
 	req := &pulumirpc.CheckRequest{
 		Urn:        "urn:pulumi:dev::proj::pulumi:providers:pkg::default",
-		News:       news,
+		Olds:       mkStruct(map[string]any{"region": "us-east-1"}),
+		News:       mkStruct(map[string]any{"region": "us-west-2"}),
 		RandomSeed: []byte("seed"),
 		Name:       "default",
 		Type:       "pulumi:providers:pkg",
+		OldOutputs: mkStruct(map[string]any{"version": "1.0.0"}),
 	}
 
 	t.Run("forwards the request and converts the response", func(t *testing.T) {
@@ -122,8 +128,10 @@ func TestCheckConfigViaCheckConfig2(t *testing.T) {
 			Urn:        req.Urn,
 			Name:       req.Name,
 			Type:       req.Type,
+			OldInputs:  req.Olds,
 			NewInputs:  req.News,
 			RandomSeed: req.RandomSeed,
+			OldOutputs: req.OldOutputs,
 		}, got), "unexpected CheckConfigRequest: %v", got)
 
 		assert.True(t, proto.Equal(&pulumirpc.CheckResponse{

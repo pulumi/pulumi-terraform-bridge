@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -333,6 +334,44 @@ func TestMuxerCheckConfig2(t *testing.T) {
 		assert.Len(t, resp.GetFailures(), 1, "identical failures are reported once")
 	})
 
+	t.Run("forwards the request to implemented and fallback servers", func(t *testing.T) {
+		t.Parallel()
+		news, err := structpb.NewStruct(map[string]any{"region": "us-west-2"})
+		require.NoError(t, err)
+		olds, err := structpb.NewStruct(map[string]any{"region": "us-east-1"})
+		require.NoError(t, err)
+		req := &pulumirpc.CheckConfigRequest{
+			Urn:       "urn:pulumi:stack::proj::pulumi:providers:test::default",
+			Name:      "default",
+			Type:      "pulumi:providers:test",
+			OldInputs: olds,
+			NewInputs: news,
+		}
+		old, impl := &checkConfigOnly{reason: "old"}, &checkConfig2{reason: "new"}
+		m := &muxer{servers: []server{old, impl}}
+		_, err = m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+
+		assert.True(t, proto.Equal(req, impl.got), "unexpected CheckConfigRequest: %v", impl.got)
+		assert.NotSame(t, req, impl.got, "each server gets its own copy of the request")
+		assert.True(t, proto.Equal(&pulumirpc.CheckRequest{
+			Urn:  req.Urn,
+			Name: req.Name,
+			Type: req.Type,
+			Olds: olds,
+			News: news,
+		}, old.got), "unexpected CheckRequest: %v", old.got)
+	})
+
+	t.Run("a server that implements neither method is ignored", func(t *testing.T) {
+		t.Parallel()
+		m := &muxer{servers: []server{&checkConfigNeither{}, &checkConfig2{reason: "new"}}}
+		resp, err := m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, resp.GetFailures(), 1)
+		assert.Equal(t, "new", resp.GetFailures()[0].GetReason())
+	})
+
 	t.Run("fallback error is returned", func(t *testing.T) {
 		t.Parallel()
 		old := &checkConfigOnly{err: status.Error(codes.Internal, "boom")}
@@ -359,12 +398,14 @@ type checkConfigOnly struct {
 	inputs *structpb.Struct
 	err    error
 	called int
+	got    *pulumirpc.CheckRequest
 }
 
 func (s *checkConfigOnly) CheckConfig(
 	ctx context.Context, req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	s.called++
+	s.got = req
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -380,11 +421,13 @@ type checkConfig2 struct {
 	reason string
 	inputs *structpb.Struct
 	err    error
+	got    *pulumirpc.CheckConfigRequest
 }
 
 func (s *checkConfig2) CheckConfig2(
 	ctx context.Context, req *pulumirpc.CheckConfigRequest,
 ) (*pulumirpc.CheckConfigResponse, error) {
+	s.got = req
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -392,4 +435,9 @@ func (s *checkConfig2) CheckConfig2(
 		Inputs:   s.inputs,
 		Failures: []*pulumirpc.CheckConfigFailure{{Reason: s.reason}},
 	}, nil
+}
+
+// checkConfigNeither is a server that implements neither CheckConfig nor CheckConfig2.
+type checkConfigNeither struct {
+	pulumirpc.UnimplementedResourceProviderServer
 }
