@@ -156,6 +156,8 @@ func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*
 	}, m.muxedErrors(&errs)
 }
 
+// CheckConfig2 answers Unimplemented when none of the muxed servers implement it, so that the caller falls back to
+// CheckConfig. When only some of them do, the rest answer through their CheckConfig.
 func (m *muxer) CheckConfig2(
 	ctx context.Context, req *pulumirpc.CheckConfigRequest,
 ) (*pulumirpc.CheckConfigResponse, error) {
@@ -164,16 +166,32 @@ func (m *muxer) CheckConfig2(
 		i, s := i, s
 		subs[i] = func() tuple[*pulumirpc.CheckConfigResponse, error] {
 			req := proto.Clone(req).(*pulumirpc.CheckConfigRequest)
-			resp, err := s.CheckConfig2(ctx, req)
-			if status.Code(err) == codes.Unimplemented {
-				// The server only implements CheckConfig.
-				return newTuple(checkconfig.CheckConfig2(ctx, req, s.CheckConfig))
-			}
-			return newTuple(resp, err)
+			return newTuple(s.CheckConfig2(ctx, req))
 		}
 	}
+	results := asyncJoin(subs)
 
-	inputs, failures, errs := mergeCheckConfig(asyncJoin(subs), (*pulumirpc.CheckConfigResponse).GetFailures)
+	fallbacks := make([]func() tuple[*pulumirpc.CheckConfigResponse, error], 0, len(m.servers))
+	fallbackIndices := make([]int, 0, len(m.servers))
+	for i, r := range results {
+		if status.Code(r.B) != codes.Unimplemented {
+			continue
+		}
+		s := m.servers[i]
+		fallbackIndices = append(fallbackIndices, i)
+		fallbacks = append(fallbacks, func() tuple[*pulumirpc.CheckConfigResponse, error] {
+			req := proto.Clone(req).(*pulumirpc.CheckConfigRequest)
+			return newTuple(checkconfig.CheckConfig2(ctx, req, s.CheckConfig))
+		})
+	}
+	if len(fallbacks) == len(m.servers) {
+		return nil, status.Error(codes.Unimplemented, "CheckConfig2 is not implemented by any muxed server")
+	}
+	for j, r := range asyncJoin(fallbacks) {
+		results[fallbackIndices[j]] = r
+	}
+
+	inputs, failures, errs := mergeCheckConfig(results, (*pulumirpc.CheckConfigResponse).GetFailures)
 	return &pulumirpc.CheckConfigResponse{
 		Inputs:   inputs,
 		Failures: failures,
