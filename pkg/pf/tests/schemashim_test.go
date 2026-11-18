@@ -76,15 +76,6 @@ func TestShimBoolAttr(t *testing.T) {
       "boolAttr": {
         "type": "boolean"
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "boolAttr": {
-          "type": "boolean"
-        }
-      },
-      "type": "object"
     }
   },
   "types": {}
@@ -121,15 +112,6 @@ func TestShimStringAttr(t *testing.T) {
       "strAttr": {
         "type": "string"
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "strAttr": {
-          "type": "string"
-        }
-      },
-      "type": "object"
     }
   },
   "types": {}
@@ -166,15 +148,6 @@ func TestShimNumberAttr(t *testing.T) {
       "numAttr": {
         "type": "number"
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "numAttr": {
-          "type": "number"
-        }
-      },
-      "type": "object"
     }
   },
   "types": {}
@@ -225,18 +198,6 @@ func TestShimListOfStringAttr(t *testing.T) {
           "type": "string"
         }
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "listAttrs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "type": "object"
     }
   },
   "types": {}
@@ -287,18 +248,6 @@ func TestShimMapOfStringAttr(t *testing.T) {
           "type": "string"
         }
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "mapAttr": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      },
-      "type": "object"
     }
   },
   "types": {}
@@ -349,18 +298,6 @@ func TestShimSetOfStringAttr(t *testing.T) {
           "type": "string"
         }
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "setAttrs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "type": "object"
     }
   },
   "types": {}
@@ -423,18 +360,6 @@ func TestShimListNestedAttr(t *testing.T) {
           "$ref": "#/types/testprov:index/R1ListNestedAttr:R1ListNestedAttr"
         }
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "listNestedAttrs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/types/testprov:index/R1ListNestedAttr:R1ListNestedAttr"
-          }
-        }
-      },
-      "type": "object"
     }
   },
   "types": {
@@ -506,18 +431,6 @@ func TestShimSetNestedAttr(t *testing.T) {
           "$ref": "#/types/testprov:index/R1SetNestedAttr:R1SetNestedAttr"
         }
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "setNestedAttrs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/types/testprov:index/R1SetNestedAttr:R1SetNestedAttr"
-          }
-        }
-      },
-      "type": "object"
     }
   },
   "types": {
@@ -589,18 +502,6 @@ func TestShimMapNestedAttr(t *testing.T) {
           "$ref": "#/types/testprov:index/R1MapNestedAttr:R1MapNestedAttr"
         }
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "mapNestedAttr": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/types/testprov:index/R1MapNestedAttr:R1MapNestedAttr"
-          }
-        }
-      },
-      "type": "object"
     }
   },
   "types": {
@@ -659,15 +560,6 @@ func TestShimSingleNestedAttr(t *testing.T) {
       "singleNestedAttr": {
         "$ref": "#/types/testprov:index/R1SingleNestedAttr:R1SingleNestedAttr"
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "singleNestedAttr": {
-          "$ref": "#/types/testprov:index/R1SingleNestedAttr:R1SingleNestedAttr"
-        }
-      },
-      "type": "object"
     }
   },
   "types": {
@@ -725,15 +617,6 @@ func TestShimObjectAttr(t *testing.T) {
       "objAttr": {
         "$ref": "#/types/testprov:index/R1ObjAttr:R1ObjAttr"
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "objAttr": {
-          "$ref": "#/types/testprov:index/R1ObjAttr:R1ObjAttr"
-        }
-      },
-      "type": "object"
     }
   },
   "types": {
@@ -784,15 +667,6 @@ func TestShimDynamicAttr(t *testing.T) {
       "objAttr": {
         "$ref": "pulumi.json#/Any"
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "objAttr": {
-          "$ref": "pulumi.json#/Any"
-        }
-      },
-      "type": "object"
     }
   },
   "types": {}
@@ -841,15 +715,6 @@ func TestShimSingleNestedBlock(t *testing.T) {
       "blk": {
         "$ref": "#/types/testprov:index/R1Blk:R1Blk"
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "blk": {
-          "$ref": "#/types/testprov:index/R1Blk:R1Blk"
-        }
-      },
-      "type": "object"
     }
   },
   "types": {
@@ -915,18 +780,6 @@ func TestShimListNestedBlock(t *testing.T) {
           "$ref": "#/types/testprov:index/R1Blk:R1Blk"
         }
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "blks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/types/testprov:index/R1Blk:R1Blk"
-          }
-        }
-      },
-      "type": "object"
     }
   },
   "types": {
@@ -992,15 +845,6 @@ func TestShimListNestedFlattenedBlock(t *testing.T) {
       "blk": {
         "$ref": "#/types/testprov:index/R1Blk:R1Blk"
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "blk": {
-          "$ref": "#/types/testprov:index/R1Blk:R1Blk"
-        }
-      },
-      "type": "object"
     }
   },
   "types": {
@@ -1066,18 +910,6 @@ func TestShimSetNestedBlock(t *testing.T) {
           "$ref": "#/types/testprov:index/R1Blk:R1Blk"
         }
       }
-    },
-    "stateInputs": {
-      "description": "Input properties used for looking up and filtering R1 resources.\n",
-      "properties": {
-        "blks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/types/testprov:index/R1Blk:R1Blk"
-          }
-        }
-      },
-      "type": "object"
     }
   },
   "types": {
