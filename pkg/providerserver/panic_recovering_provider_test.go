@@ -110,6 +110,18 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 providerURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=CheckConfig): CheckConfig panic"),
 		},
 		{
+			testName: "CheckConfig2",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				_, err := rps.CheckConfig2(ctx, &pulumirpc.CheckConfigRequest{
+					Urn: exampleProviderURN(),
+				})
+				contract.IgnoreError(err)
+			},
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 providerURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=CheckConfig2): CheckConfig2 panic"),
+		},
+		{
 			testName: "DiffConfig",
 			send: func(rps pulumirpc.ResourceProviderServer) {
 				_, err := rps.DiffConfig(ctx, &pulumirpc.DiffRequest{
@@ -447,6 +459,13 @@ func (s *testRPS) CheckConfig(
 		return &pulumirpc.CheckResponse{}, nil
 	}
 	panic("CheckConfig panic")
+}
+
+func (s *testRPS) CheckConfig2(
+	ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	panic("CheckConfig2 panic")
 }
 
 func (s *testRPS) DiffConfig(

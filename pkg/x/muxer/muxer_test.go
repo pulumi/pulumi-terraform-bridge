@@ -313,6 +313,42 @@ func TestMuxerCheckConfig2(t *testing.T) {
 		assert.Equal(t, "a", resp.GetFailures()[0].GetReason())
 		assert.Equal(t, "b", resp.GetFailures()[1].GetReason())
 	})
+
+	t.Run("merges inputs across implemented and fallback servers", func(t *testing.T) {
+		t.Parallel()
+		mkInputs := func(m map[string]any) *structpb.Struct {
+			s, err := structpb.NewStruct(m)
+			require.NoError(t, err)
+			return s
+		}
+		old := &checkConfigOnly{reason: "same", inputs: mkInputs(map[string]any{"shared": "old", "onlyOld": "x"})}
+		m := &muxer{servers: []server{
+			old,
+			&checkConfig2{reason: "same", inputs: mkInputs(map[string]any{"shared": "new", "onlyNew": "y"})},
+		}}
+		resp, err := m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+		// The first server to answer a key wins.
+		assert.Equal(t, map[string]any{"shared": "old", "onlyOld": "x", "onlyNew": "y"}, resp.GetInputs().AsMap())
+		assert.Len(t, resp.GetFailures(), 1, "identical failures are reported once")
+	})
+
+	t.Run("fallback error is returned", func(t *testing.T) {
+		t.Parallel()
+		old := &checkConfigOnly{err: status.Error(codes.Internal, "boom")}
+		m := &muxer{servers: []server{old, &checkConfig2{reason: "new"}}}
+		_, err := m.CheckConfig2(ctx, req)
+		assert.Equal(t, codes.Internal, status.Code(err))
+		assert.Equal(t, 1, old.called)
+	})
+
+	t.Run("CheckConfig2 error is returned without falling back", func(t *testing.T) {
+		t.Parallel()
+		old := &checkConfigOnly{reason: "old"}
+		m := &muxer{servers: []server{old, &checkConfig2{err: status.Error(codes.Internal, "boom")}}}
+		_, err := m.CheckConfig2(ctx, req)
+		assert.Equal(t, codes.Internal, status.Code(err))
+	})
 }
 
 // checkConfigOnly is a server that predates CheckConfig2.
@@ -320,6 +356,8 @@ type checkConfigOnly struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
 	reason string
+	inputs *structpb.Struct
+	err    error
 	called int
 }
 
@@ -327,17 +365,31 @@ func (s *checkConfigOnly) CheckConfig(
 	ctx context.Context, req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	s.called++
-	return &pulumirpc.CheckResponse{Failures: []*pulumirpc.CheckFailure{{Reason: s.reason}}}, nil
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &pulumirpc.CheckResponse{
+		Inputs:   s.inputs,
+		Failures: []*pulumirpc.CheckFailure{{Reason: s.reason}},
+	}, nil
 }
 
 type checkConfig2 struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
 	reason string
+	inputs *structpb.Struct
+	err    error
 }
 
 func (s *checkConfig2) CheckConfig2(
 	ctx context.Context, req *pulumirpc.CheckConfigRequest,
 ) (*pulumirpc.CheckConfigResponse, error) {
-	return &pulumirpc.CheckConfigResponse{Failures: []*pulumirpc.CheckConfigFailure{{Reason: s.reason}}}, nil
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &pulumirpc.CheckConfigResponse{
+		Inputs:   s.inputs,
+		Failures: []*pulumirpc.CheckConfigFailure{{Reason: s.reason}},
+	}, nil
 }
