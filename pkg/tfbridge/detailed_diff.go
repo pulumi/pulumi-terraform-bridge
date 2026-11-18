@@ -159,11 +159,64 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 	return undecidedDiff
 }
 
+// validSetInputsFromPlan returns true if each input set element can be paired with a distinct compatible plan element.
+func validSetInputsFromPlan(
+	path propertyPath,
+	inputs resource.PropertyValue,
+	plan resource.PropertyValue,
+	tfs shim.SchemaMap,
+	ps map[string]*info.Schema,
+) bool {
+	inputsList := inputs.ArrayValue()
+	planList := plan.ArrayValue()
+	if len(inputsList) != len(planList) {
+		return false
+	}
+
+	candidates := make([][]int, len(inputsList))
+	for inputIndex, input := range inputsList {
+		for planIndex, plan := range planList {
+			if validInputsFromPlan(path.Index(planIndex), input, plan, tfs, ps) {
+				candidates[inputIndex] = append(candidates[inputIndex], planIndex)
+			}
+		}
+		if len(candidates[inputIndex]) == 0 {
+			return false
+		}
+	}
+
+	matchedInputForPlan := make([]int, len(planList))
+	for i := range matchedInputForPlan {
+		matchedInputForPlan[i] = -1
+	}
+
+	var match func(int, []bool) bool
+	match = func(inputIndex int, seen []bool) bool {
+		for _, planIndex := range candidates[inputIndex] {
+			if seen[planIndex] {
+				continue
+			}
+			seen[planIndex] = true
+			if matchedInputForPlan[planIndex] == -1 || match(matchedInputForPlan[planIndex], seen) {
+				matchedInputForPlan[planIndex] = inputIndex
+				return true
+			}
+		}
+		return false
+	}
+
+	for inputIndex := range inputsList {
+		if !match(inputIndex, make([]bool, len(planList))) {
+			return false
+		}
+	}
+	return true
+}
+
 // validInputsFromPlan returns true if the given plan property value could originate from the given inputs.
 // Under the hood, it walks the plan and the inputs and checks that all differences stem from computed properties.
 // Any differences coming from properties which are not computed will be rejected.
 // Note that we are relying on the fact that the inputs will have defaults already applied.
-// Also note that nested sets will only get matched if they are exactly the same.
 func validInputsFromPlan(
 	path propertyPath,
 	inputs resource.PropertyValue,
@@ -183,19 +236,36 @@ func validInputsFromPlan(
 			return SkipChildrenError{}
 		}
 
-		tfs, _, err := lookupSchemas(subpath, tfs, ps)
+		currentTFS, currentPS, err := lookupSchemas(subpath, tfs, ps)
 		if err != nil {
 			return abortErr
 		}
 
-		if tfs.Computed() && inputsSubVal.IsNull() {
+		if currentTFS.Computed() && inputsSubVal.IsNull() {
 			// This is a computed property populated by the plan. We should not recurse into it.
 			return SkipChildrenError{}
 		}
 
-		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeSet {
-			// Note that nested sets will likely get their elements reordered.
-			// This means that nested sets will not be matched correctly but that should be a rare case.
+		if currentTFS.Type() == shim.TypeList || currentTFS.Type() == shim.TypeSet {
+			if IsMaxItemsOne(currentTFS, currentPS) && !inputsSubVal.IsArray() && !planSubVal.IsArray() {
+				if inputsSubVal.IsNull() {
+					if planSubVal.IsNull() {
+						return nil
+					}
+					return abortErr
+				}
+				if planSubVal.IsNull() {
+					return abortErr
+				}
+				if inputsSubVal.IsObject() && planSubVal.IsObject() {
+					return nil
+				}
+				if inputsSubVal.DeepEquals(planSubVal) {
+					return nil
+				}
+				return abortErr
+			}
+
 			if inputsSubVal.IsNull() {
 				// The plan is allowed to populate a nil list with an empty value.
 				if (planSubVal.IsArray() && len(planSubVal.ArrayValue()) == 0) || planSubVal.IsNull() {
@@ -212,11 +282,18 @@ func validInputsFromPlan(
 				return abortErr
 			}
 
-			// all non-empty lists will get their element values checked.
+			if currentTFS.Type() == shim.TypeSet {
+				if validSetInputsFromPlan(subpath, inputsSubVal, planSubVal, tfs, ps) {
+					return SkipChildrenError{}
+				}
+				return abortErr
+			}
+
+			// all non-empty lists will get their element values checked positionally.
 			return nil
 		}
 
-		if tfs.Type() == shim.TypeMap {
+		if currentTFS.Type() == shim.TypeMap {
 			if inputsSubVal.IsNull() {
 				// The plan is allowed to populate a nil map with an empty value.
 				if (planSubVal.IsObject() && len(planSubVal.ObjectValue()) == 0) || planSubVal.IsNull() {
