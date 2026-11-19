@@ -446,7 +446,7 @@ func (p *v2Provider) Importer(t string) shim.ImportFunc {
 		ty := p.tf.ResourcesMap[t].CoreConfigSchema().ImpliedType()
 		states, err := p.server.ImportResourceState(ctx, t, ty, id)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		// Auto cast does not work, have to loop to promote to pointers.
 		out := []shim.InstanceState{}
