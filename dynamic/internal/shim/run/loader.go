@@ -16,6 +16,7 @@ package run
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -107,8 +108,19 @@ func LocalProvider(ctx context.Context, path string) (Provider, error) {
 	})
 }
 
+// A concurrent install of the same package extracts the binary in place, so
+// ETXTBSY can persist for as long as the extraction takes.
+const (
+	etxtbsyMaxAttempts = 20
+	etxtbsyMaxBackoff  = 2 * time.Second
+)
+
 func defaultETXTBSYBackoff(attempt int) time.Duration {
-	return time.Duration(50*(1<<(attempt-1))) * time.Millisecond
+	d := 50 * time.Millisecond
+	for i := 1; i < attempt && d < etxtbsyMaxBackoff; i++ {
+		d *= 2
+	}
+	return min(d, etxtbsyMaxBackoff)
 }
 
 // startPluginClient launches the cached provider via go-plugin, retrying on
@@ -153,15 +165,19 @@ func retryOnTextFileBusy(
 	start func() (*plugin.Client, plugin.ClientProtocol, error),
 	backoff func(attempt int) time.Duration,
 ) (*plugin.Client, plugin.ClientProtocol, error) {
-	const maxAttempts = 4
 	var (
 		client    *plugin.Client
 		rpcClient plugin.ClientProtocol
 		err       error
 	)
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt := 0; attempt < etxtbsyMaxAttempts; attempt++ {
 		if attempt > 0 {
-			time.Sleep(backoff(attempt))
+			select {
+			case <-time.After(backoff(attempt)):
+			case <-ctx.Done():
+				return nil, nil, fmt.Errorf("provider %s exec failed with ETXTBSY: %w",
+					providerName, errors.Join(err, ctx.Err()))
+			}
 		}
 		client, rpcClient, err = start()
 		if err == nil {
@@ -176,7 +192,7 @@ func retryOnTextFileBusy(
 			slog.String("error", err.Error()))
 	}
 	return nil, nil, fmt.Errorf("provider %s exec failed with ETXTBSY after %d attempts: %w",
-		providerName, maxAttempts, err)
+		providerName, etxtbsyMaxAttempts, err)
 }
 
 func cutLast(s, sep string) (string, string, bool) {
