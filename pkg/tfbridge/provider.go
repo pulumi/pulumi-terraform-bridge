@@ -198,6 +198,10 @@ type DataSource struct {
 type CheckFailureErrorElement struct {
 	Reason   string
 	Property string
+	// Remediations are commands that the user can run to resolve the failure, such as signing in to refresh
+	// expired credentials. Engines that support them offer to run them; others show only Reason, which should
+	// therefore keep describing the fix.
+	Remediations []CommandRemediation
 }
 
 // marshalCheckFailures converts the failures of a [CheckFailureError] to their gRPC representation.
@@ -205,8 +209,9 @@ func marshalCheckFailures(failures []CheckFailureErrorElement) []*pulumirpc.Chec
 	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
 	for i, failure := range failures {
 		rpcFailures[i] = &pulumirpc.CheckConfigFailure{
-			Reason:   failure.Reason,
-			Property: failure.Property,
+			Reason:       failure.Reason,
+			Property:     failure.Property,
+			Remediations: checkconfig.Remediations(failure.Remediations),
 		}
 	}
 	return rpcFailures

@@ -267,8 +267,9 @@ func (p *providerServer) CheckConfig2(ctx context.Context,
 	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
 	for i, f := range failures {
 		rpcFailures[i] = &pulumirpc.CheckConfigFailure{
-			Property: string(f.Property),
-			Reason:   f.Reason,
+			Property:     string(f.Property),
+			Reason:       f.Reason,
+			Remediations: checkconfig.Remediations(f.Remediations),
 		}
 	}
 
