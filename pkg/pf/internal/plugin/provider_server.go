@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/checkconfig"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -224,14 +225,20 @@ func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbemp
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
+	return checkconfig.CheckConfigViaCheckConfig2(ctx, req, p.CheckConfig2)
+}
+
+func (p *providerServer) CheckConfig2(ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
-	state, err := pl.UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("state"))
+	state, err := pl.UnmarshalProperties(req.GetOldInputs(), p.unmarshalOptions("state"))
 	if err != nil {
 		return nil, fmt.Errorf("CheckConfig failed to unmarshal olds: %w", err)
 	}
 
-	inputs, err := pl.UnmarshalProperties(req.GetNews(), p.unmarshalOptions("inputs"))
+	inputs, err := pl.UnmarshalProperties(req.GetNewInputs(), p.unmarshalOptions("inputs"))
 	if err != nil {
 		return nil, fmt.Errorf("CheckConfig failed to unmarshal news: %w", err)
 	}
@@ -257,12 +264,15 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, fmt.Errorf("CheckConfig failed to marshal updated news: %w", err)
 	}
 
-	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
+	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
 	for i, f := range failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+		rpcFailures[i] = &pulumirpc.CheckConfigFailure{
+			Property: string(f.Property),
+			Reason:   f.Reason,
+		}
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+	return &pulumirpc.CheckConfigResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }
 
 func (p *providerServer) DiffConfig(

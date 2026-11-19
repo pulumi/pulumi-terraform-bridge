@@ -54,7 +54,8 @@ import (
 // based endpoints filter the schema so each provider is only shown keys that it expects
 // to see. It is possible for multiple subsidiary providers to accept the same key.
 //
-//   - CheckConfig: Broadcast to each server. Any diffs between returned results errors.
+//   - CheckConfig, CheckConfig2: Broadcast to each server, and the responses are merged. CheckConfig2 falls back to
+//     CheckConfig for a server that does not implement it, and is itself unimplemented when no server implements it.
 //
 //   - DiffConfig: Broadcast to each server. Results are then merged with the most drastic
 //     action dominating.

@@ -36,6 +36,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/checkconfig"
 )
 
 // The version expected to be specified by GetSchema
@@ -147,12 +149,69 @@ func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*
 		}
 	}
 
+	inputs, failures, errs := mergeCheckConfig(asyncJoin(subs), (*pulumirpc.CheckResponse).GetFailures)
+	return &pulumirpc.CheckResponse{
+		Inputs:   inputs,
+		Failures: failures,
+	}, m.muxedErrors(&errs)
+}
+
+// CheckConfig2 answers Unimplemented when none of the muxed servers implement it, so that the caller falls back to
+// CheckConfig. When only some of them do, the rest answer through their CheckConfig.
+func (m *muxer) CheckConfig2(
+	ctx context.Context, req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	subs := make([]func() tuple[*pulumirpc.CheckConfigResponse, error], len(m.servers))
+	for i, s := range m.servers {
+		i, s := i, s
+		subs[i] = func() tuple[*pulumirpc.CheckConfigResponse, error] {
+			req := proto.Clone(req).(*pulumirpc.CheckConfigRequest)
+			return newTuple(s.CheckConfig2(ctx, req))
+		}
+	}
+	results := asyncJoin(subs)
+
+	fallbacks := make([]func() tuple[*pulumirpc.CheckConfigResponse, error], 0, len(m.servers))
+	fallbackIndices := make([]int, 0, len(m.servers))
+	for i, r := range results {
+		if status.Code(r.B) != codes.Unimplemented {
+			continue
+		}
+		s := m.servers[i]
+		fallbackIndices = append(fallbackIndices, i)
+		fallbacks = append(fallbacks, func() tuple[*pulumirpc.CheckConfigResponse, error] {
+			req := proto.Clone(req).(*pulumirpc.CheckConfigRequest)
+			return newTuple(checkconfig.CheckConfig2ViaCheckConfig(ctx, req, s.CheckConfig))
+		})
+	}
+	if len(fallbacks) == len(m.servers) {
+		return nil, status.Error(codes.Unimplemented, "CheckConfig2 is not implemented by any muxed server")
+	}
+	for j, r := range asyncJoin(fallbacks) {
+		results[fallbackIndices[j]] = r
+	}
+
+	inputs, failures, errs := mergeCheckConfig(results, (*pulumirpc.CheckConfigResponse).GetFailures)
+	return &pulumirpc.CheckConfigResponse{
+		Inputs:   inputs,
+		Failures: failures,
+	}, m.muxedErrors(&errs)
+}
+
+// mergeCheckConfig combines the CheckConfig or CheckConfig2 responses of the muxed servers.
+func mergeCheckConfig[
+	R interface{ GetInputs() *structpb.Struct },
+	F interface {
+		GetProperty() string
+		GetReason() string
+	},
+](results []tuple[R, error], failuresOf func(R) []F) (*structpb.Struct, []F, multierror.Error) {
 	inputs := &structpb.Struct{Fields: map[string]*structpb.Value{}}
-	failures := []*pulumirpc.CheckFailure{}
+	failures := []F{}
 	uniqueFailures := map[string]struct{}{}
 	var errs multierror.Error
 	uniqueErrors := map[string]struct{}{}
-	for i, r := range asyncJoin(subs) {
+	for i, r := range results {
 		if err := r.B; err != nil {
 			errString := err.Error()
 			// De-duplicate errors
@@ -180,7 +239,7 @@ func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*
 		}
 
 		// Here we de-duplicate rpc failures.
-		for _, e := range r.A.GetFailures() {
+		for _, e := range failuresOf(r.A) {
 			s := e.GetProperty() + ":" + e.GetReason()
 			if _, has := uniqueFailures[s]; has {
 				continue
@@ -190,10 +249,7 @@ func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*
 		}
 	}
 
-	return &pulumirpc.CheckResponse{
-		Inputs:   inputs,
-		Failures: failures,
-	}, m.muxedErrors(&errs)
+	return inputs, failures, errs
 }
 
 // Mux multiple errors into a single error, preserving meaningful gRPC status information

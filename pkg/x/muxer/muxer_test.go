@@ -25,6 +25,9 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -274,4 +277,167 @@ type configure struct {
 func (c configure) Configure(context.Context, *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
 	assert.True(c.t, c.counter.CompareAndSwap(c.expect, c.expect+1), "")
 	return &pulumirpc.ConfigureResponse{}, nil
+}
+
+func TestMuxerCheckConfig2(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	req := &pulumirpc.CheckConfigRequest{Urn: "urn:pulumi:stack::proj::pulumi:providers:test::default"}
+
+	t.Run("unimplemented by every server", func(t *testing.T) {
+		t.Parallel()
+		old1, old2 := &checkConfigOnly{reason: "r1"}, &checkConfigOnly{reason: "r2"}
+		m := &muxer{servers: []server{old1, old2}}
+		_, err := m.CheckConfig2(ctx, req)
+		assert.Equal(t, codes.Unimplemented, status.Code(err))
+		assert.Zero(t, old1.called+old2.called, "CheckConfig should not be called")
+	})
+
+	t.Run("unimplemented by some servers", func(t *testing.T) {
+		t.Parallel()
+		old := &checkConfigOnly{reason: "old"}
+		m := &muxer{servers: []server{old, &checkConfig2{reason: "new"}}}
+		resp, err := m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+		assert.Equal(t, 1, old.called)
+		require.Len(t, resp.GetFailures(), 2)
+		assert.Equal(t, "old", resp.GetFailures()[0].GetReason())
+		assert.Equal(t, "new", resp.GetFailures()[1].GetReason())
+	})
+
+	t.Run("implemented by every server", func(t *testing.T) {
+		t.Parallel()
+		m := &muxer{servers: []server{&checkConfig2{reason: "a"}, &checkConfig2{reason: "b"}}}
+		resp, err := m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, resp.GetFailures(), 2)
+		assert.Equal(t, "a", resp.GetFailures()[0].GetReason())
+		assert.Equal(t, "b", resp.GetFailures()[1].GetReason())
+	})
+
+	t.Run("merges inputs across implemented and fallback servers", func(t *testing.T) {
+		t.Parallel()
+		mkInputs := func(m map[string]any) *structpb.Struct {
+			s, err := structpb.NewStruct(m)
+			require.NoError(t, err)
+			return s
+		}
+		old := &checkConfigOnly{reason: "same", inputs: mkInputs(map[string]any{"shared": "old", "onlyOld": "x"})}
+		m := &muxer{servers: []server{
+			old,
+			&checkConfig2{reason: "same", inputs: mkInputs(map[string]any{"shared": "new", "onlyNew": "y"})},
+		}}
+		resp, err := m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+		// The first server to answer a key wins.
+		assert.Equal(t, map[string]any{"shared": "old", "onlyOld": "x", "onlyNew": "y"}, resp.GetInputs().AsMap())
+		assert.Len(t, resp.GetFailures(), 1, "identical failures are reported once")
+	})
+
+	t.Run("forwards the request to implemented and fallback servers", func(t *testing.T) {
+		t.Parallel()
+		news, err := structpb.NewStruct(map[string]any{"region": "us-west-2"})
+		require.NoError(t, err)
+		olds, err := structpb.NewStruct(map[string]any{"region": "us-east-1"})
+		require.NoError(t, err)
+		req := &pulumirpc.CheckConfigRequest{
+			Urn:       "urn:pulumi:stack::proj::pulumi:providers:test::default",
+			Name:      "default",
+			Type:      "pulumi:providers:test",
+			OldInputs: olds,
+			NewInputs: news,
+		}
+		old, impl := &checkConfigOnly{reason: "old"}, &checkConfig2{reason: "new"}
+		m := &muxer{servers: []server{old, impl}}
+		_, err = m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+
+		assert.True(t, proto.Equal(req, impl.got), "unexpected CheckConfigRequest: %v", impl.got)
+		assert.NotSame(t, req, impl.got, "each server gets its own copy of the request")
+		assert.True(t, proto.Equal(&pulumirpc.CheckRequest{
+			Urn:  req.Urn,
+			Name: req.Name,
+			Type: req.Type,
+			Olds: olds,
+			News: news,
+		}, old.got), "unexpected CheckRequest: %v", old.got)
+	})
+
+	t.Run("a server that implements neither method is ignored", func(t *testing.T) {
+		t.Parallel()
+		m := &muxer{servers: []server{&checkConfigNeither{}, &checkConfig2{reason: "new"}}}
+		resp, err := m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, resp.GetFailures(), 1)
+		assert.Equal(t, "new", resp.GetFailures()[0].GetReason())
+	})
+
+	t.Run("fallback error is returned", func(t *testing.T) {
+		t.Parallel()
+		old := &checkConfigOnly{err: status.Error(codes.Internal, "boom")}
+		m := &muxer{servers: []server{old, &checkConfig2{reason: "new"}}}
+		_, err := m.CheckConfig2(ctx, req)
+		assert.Equal(t, codes.Internal, status.Code(err))
+		assert.Equal(t, 1, old.called)
+	})
+
+	t.Run("CheckConfig2 error is returned without falling back", func(t *testing.T) {
+		t.Parallel()
+		old := &checkConfigOnly{reason: "old"}
+		m := &muxer{servers: []server{old, &checkConfig2{err: status.Error(codes.Internal, "boom")}}}
+		_, err := m.CheckConfig2(ctx, req)
+		assert.Equal(t, codes.Internal, status.Code(err))
+	})
+}
+
+// checkConfigOnly is a server that predates CheckConfig2.
+type checkConfigOnly struct {
+	pulumirpc.UnimplementedResourceProviderServer
+
+	reason string
+	inputs *structpb.Struct
+	err    error
+	called int
+	got    *pulumirpc.CheckRequest
+}
+
+func (s *checkConfigOnly) CheckConfig(
+	ctx context.Context, req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
+	s.called++
+	s.got = req
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &pulumirpc.CheckResponse{
+		Inputs:   s.inputs,
+		Failures: []*pulumirpc.CheckFailure{{Reason: s.reason}},
+	}, nil
+}
+
+type checkConfig2 struct {
+	pulumirpc.UnimplementedResourceProviderServer
+
+	reason string
+	inputs *structpb.Struct
+	err    error
+	got    *pulumirpc.CheckConfigRequest
+}
+
+func (s *checkConfig2) CheckConfig2(
+	ctx context.Context, req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	s.got = req
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &pulumirpc.CheckConfigResponse{
+		Inputs:   s.inputs,
+		Failures: []*pulumirpc.CheckConfigFailure{{Reason: s.reason}},
+	}, nil
+}
+
+// checkConfigNeither is a server that implements neither CheckConfig nor CheckConfig2.
+type checkConfigNeither struct {
+	pulumirpc.UnimplementedResourceProviderServer
 }

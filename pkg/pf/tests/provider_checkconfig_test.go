@@ -878,3 +878,98 @@ resources:
 		pt.Up(t)
 	})
 }
+
+func TestPFCheckConfig2(t *testing.T) {
+	t.Parallel()
+
+	t.Run("inputs", func(t *testing.T) {
+		t.Parallel()
+		schema := schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"config_value": schema.StringAttribute{
+					Optional: true,
+				},
+			},
+		}
+		testutils.Replay(t, makeProviderServer(t, schema), `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig2",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "name": "test",
+		    "type": "pulumi:providers:testprovider",
+		    "oldInputs": {},
+		    "newInputs": {
+		      "configValue": "foo",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+		      "configValue": "foo",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("failures", func(t *testing.T) {
+		t.Parallel()
+		schema := schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"req_prop": schema.StringAttribute{
+					Required:    true,
+					Description: "A very important required attribute",
+				},
+			},
+		}
+		testutils.Replay(t, makeProviderServer(t, schema), fmt.Sprintf(`
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig2",
+		  "request": {
+		    "urn": "urn:pulumi:test1::example::pulumi:providers:prov::default_1_1_42",
+		    "oldInputs": {},
+		    "newInputs": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+		      "version": "6.54.0"
+		    },
+		    "failures": [{
+		      "reason": "Provider is missing a required configuration key, try %s: A very important required attribute"
+		    }]
+		  }
+		}`, "`pulumi config set testprovider:reqProp`"))
+	})
+
+	t.Run("PreConfigureCallback failures", func(t *testing.T) {
+		t.Parallel()
+		s := makeProviderServer(t, schema.Schema{}, func(info *tfbridge0.ProviderInfo) {
+			info.PreConfigureCallback = func(resource.PropertyMap, shim.ResourceConfig) error {
+				return tfbridge0.CheckFailureError{Failures: []tfbridge0.CheckFailureErrorElement{
+					{Reason: "bad value", Property: "configValue"},
+				}}
+			}
+		})
+		testutils.Replay(t, s, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig2",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "oldInputs": {},
+		    "newInputs": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {},
+		    "failures": [{
+		      "property": "configValue",
+		      "reason": "bad value"
+		    }]
+		  }
+		}`)
+	})
+}

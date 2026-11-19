@@ -2419,6 +2419,113 @@ func TestSDKv2PreConfigureCallback(t *testing.T) {
 	})
 }
 
+func TestSDKv2CheckConfig2(t *testing.T) {
+	t.Parallel()
+
+	t.Run("inputs", func(t *testing.T) {
+		t.Parallel()
+		p := testprovider.ProviderV2()
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig2",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "name": "test",
+		    "type": "pulumi:providers:testprovider",
+		    "oldInputs": {},
+		    "newInputs": {
+		      "config_value": "foo",
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "inputs": {
+		      "config_value": "foo",
+		      "version": "6.54.0"
+		    }
+		  }
+		}`)
+	})
+
+	t.Run("failures", func(t *testing.T) {
+		t.Parallel()
+		p := testprovider.ProviderV2()
+		p.Schema["req_prop"] = &schemav2.Schema{
+			Type:        schemav2.TypeString,
+			Required:    true,
+			Description: "A very important required attribute",
+		}
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+			module: "testprovider",
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig2",
+		  "request": {
+		    "urn": "urn:pulumi:test1::example::pulumi:providers:prov::explicitprovider",
+		    "oldInputs": {},
+		    "newInputs": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "failures": [{
+		      "reason": "Missing required property 'reqProp': A very important required attribute"
+		    }]
+		  }
+		}`)
+	})
+
+	t.Run("PreConfigureCallback failures", func(t *testing.T) {
+		t.Parallel()
+		p := testprovider.ProviderV2()
+		provider := &Provider{
+			tf:     shimv2.NewProvider(p),
+			config: shimv2.NewSchemaMap(p.Schema),
+			info: ProviderInfo{
+				PreConfigureCallback: func(resource.PropertyMap, shim.ResourceConfig) error {
+					return CheckFailureError{Failures: []CheckFailureErrorElement{
+						{Reason: "bad value", Property: "configValue"},
+					}}
+				},
+			},
+		}
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/CheckConfig2",
+		  "request": {
+		    "urn": "urn:pulumi:dev::teststack::pulumi:providers:testprovider::test",
+		    "oldInputs": {},
+		    "newInputs": {
+		      "version": "6.54.0"
+		    }
+		  },
+		  "response": {
+		    "failures": [{
+		      "property": "configValue",
+		      "reason": "bad value"
+		    }]
+		  }
+		}`)
+	})
+}
+
+func TestCheckFailureErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	err := CheckFailureError{Failures: []CheckFailureErrorElement{
+		{Reason: "bad value", Property: "configValue"},
+		{Reason: "Err"},
+	}}
+	assert.Equal(t, "CheckFailureErrors [{bad value configValue} {Err }]", err.Error())
+}
+
 func TestSDKv1CheckConfigSuppressesOmittedFalsyTFDefaults(t *testing.T) {
 	t.Parallel()
 
