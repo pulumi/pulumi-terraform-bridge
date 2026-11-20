@@ -36,10 +36,9 @@ func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []pl.CheckConfigFa
 	failures := make([]pl.CheckConfigFailure, len(err.Failures))
 	for i, failure := range err.Failures {
 		failures[i] = pl.CheckConfigFailure{
-			Reason:      failure.Reason,
-			Property:    resource.PropertyKey(failure.Property),
-			Hint:        failure.Hint,
-			HintMessage: failure.HintMessage,
+			Reason:   failure.Reason,
+			Property: resource.PropertyKey(failure.Property),
+			Hint:     failure.Hint,
 		}
 	}
 	return failures

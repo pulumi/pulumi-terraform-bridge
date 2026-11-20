@@ -278,7 +278,7 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi/pkg/v3 v3.277.0
-	github.com/pulumi/pulumi/sdk/v3 v3.277.0
+	github.com/pulumi/pulumi/sdk/v3 v3.278.0
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
@@ -317,6 +317,6 @@ replace github.com/hashicorp/terraform-provider-tls => ./pkg/pf/tests/internal/t
 
 replace github.com/terraform-providers/terraform-provider-random => ./pkg/pf/tests/internal/randomshim/vendor/github.com/hashicorp/terraform-provider-random
 
-replace github.com/pulumi/pulumi/sdk/v3 => github.com/pulumi/pulumi/sdk/v3 v3.276.1-0.20261117110451-4e643b74288b
+replace github.com/pulumi/pulumi/sdk/v3 => github.com/pulumi/pulumi/sdk/v3 v3.277.1-0.20261120144801-e23f6bad085e
 
-replace github.com/pulumi/pulumi/pkg/v3 => github.com/pulumi/pulumi/pkg/v3 v3.276.1-0.20261117110451-4e643b74288b
+replace github.com/pulumi/pulumi/pkg/v3 => github.com/pulumi/pulumi/pkg/v3 v3.277.1-0.20261120144801-e23f6bad085e

@@ -24,7 +24,6 @@ import (
 type CheckConfigFailure struct {
 	Property resource.PropertyKey
 	Reason   string
-	// Hint is a product hint relevant to the failure, if any, and HintMessage is its text.
-	Hint        pulumirpc.Hint
-	HintMessage string
+	// Hint is a product hint relevant to the failure, if any.
+	Hint *pulumirpc.Hint
 }

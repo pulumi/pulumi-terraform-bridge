@@ -198,11 +198,9 @@ type DataSource struct {
 type CheckFailureErrorElement struct {
 	Reason   string
 	Property string
-	// Hint names a product hint that is relevant to this failure, such as HINT_DYNAMIC_CREDENTIALS. The Pulumi CLI may
-	// show it to the user.
-	Hint pulumirpc.Hint
-	// HintMessage is the text of Hint, which the Pulumi CLI shows if it decides to show the hint.
-	HintMessage string
+	// Hint is a product hint relevant to this failure, if any, such as a suggestion of dynamic credentials. The Pulumi
+	// CLI may show its message to the user.
+	Hint *pulumirpc.Hint
 }
 
 // marshalCheckFailures converts the failures of a [CheckFailureError] to their gRPC representation.
@@ -210,10 +208,9 @@ func marshalCheckFailures(failures []CheckFailureErrorElement) []*pulumirpc.Chec
 	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
 	for i, failure := range failures {
 		rpcFailures[i] = &pulumirpc.CheckConfigFailure{
-			Reason:      failure.Reason,
-			Property:    failure.Property,
-			Hint:        failure.Hint,
-			HintMessage: failure.HintMessage,
+			Reason:   failure.Reason,
+			Property: failure.Property,
+			Hint:     failure.Hint,
 		}
 	}
 	return rpcFailures
