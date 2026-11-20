@@ -271,7 +271,6 @@ func (p *providerServer) CheckConfig2(ctx context.Context,
 			Reason:       f.Reason,
 			Remediations: checkconfig.Remediations(f.Remediations),
 			Hint:         f.Hint,
-			HintMessage:  f.HintMessage,
 		}
 	}
 

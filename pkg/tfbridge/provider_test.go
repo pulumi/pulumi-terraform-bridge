@@ -3644,9 +3644,8 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 				PreConfigureCallback: func(vars resource.PropertyMap, config shim.ResourceConfig) error {
 					return CheckFailureError{
 						Failures: []CheckFailureErrorElement{{
-							Reason:      "no credentials",
-							Hint:        pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS,
-							HintMessage: "Use Pulumi ESC",
+							Reason: "no credentials",
+							Hint:   &pulumirpc.Hint{Kind: pulumirpc.Hint_DYNAMIC_CREDENTIALS, Message: "Use Pulumi ESC"},
 						}},
 					}
 				},
@@ -3664,8 +3663,8 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 		require.Len(t, resp.GetFailures(), 1)
 		failure := resp.GetFailures()[0]
 		assert.Equal(t, "no credentials", failure.GetReason())
-		assert.Equal(t, pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS, failure.GetHint())
-		assert.Equal(t, "Use Pulumi ESC", failure.GetHintMessage())
+		assert.Equal(t, pulumirpc.Hint_DYNAMIC_CREDENTIALS, failure.GetHint().GetKind())
+		assert.Equal(t, "Use Pulumi ESC", failure.GetHint().GetMessage())
 	})
 
 	t.Run("can_emit_multiple_failures", func(t *testing.T) {

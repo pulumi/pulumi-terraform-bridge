@@ -28,7 +28,6 @@ type CheckConfigFailure struct {
 	Reason   string
 	// Remediations are commands the user can run to resolve the failure.
 	Remediations []info.CommandRemediation
-	// Hint is a product hint relevant to the failure, if any, and HintMessage is its text.
-	Hint        pulumirpc.Hint
-	HintMessage string
+	// Hint is a product hint relevant to the failure, if any.
+	Hint *pulumirpc.Hint
 }

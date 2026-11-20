@@ -776,9 +776,8 @@ func TestPFPreConfigureCallback(t *testing.T) {
 		m := func(vars resource.PropertyMap, config shim.ResourceConfig) error {
 			return tfbridge0.CheckFailureError{
 				Failures: []tfbridge0.CheckFailureErrorElement{{
-					Reason:      "No credentials",
-					Hint:        pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS,
-					HintMessage: "Use Pulumi ESC",
+					Reason: "No credentials",
+					Hint:   &pulumirpc.Hint{Kind: pulumirpc.Hint_DYNAMIC_CREDENTIALS, Message: "Use Pulumi ESC"},
 				}},
 			}
 		}
@@ -797,8 +796,8 @@ func TestPFPreConfigureCallback(t *testing.T) {
 		require.Len(t, resp.GetFailures(), 1)
 		failure := resp.GetFailures()[0]
 		assert.Equal(t, "No credentials", failure.GetReason())
-		assert.Equal(t, pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS, failure.GetHint())
-		assert.Equal(t, "Use Pulumi ESC", failure.GetHintMessage())
+		assert.Equal(t, pulumirpc.Hint_DYNAMIC_CREDENTIALS, failure.GetHint().GetKind())
+		assert.Equal(t, "Use Pulumi ESC", failure.GetHint().GetMessage())
 	})
 
 	t.Run("PreConfigureCallback can return multiple failures", func(t *testing.T) {

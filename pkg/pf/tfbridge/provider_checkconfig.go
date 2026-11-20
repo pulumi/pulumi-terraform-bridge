@@ -40,7 +40,6 @@ func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []pl.CheckConfigFa
 			Property:     resource.PropertyKey(failure.Property),
 			Remediations: failure.Remediations,
 			Hint:         failure.Hint,
-			HintMessage:  failure.HintMessage,
 		}
 	}
 	return failures
