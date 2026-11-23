@@ -316,13 +316,11 @@ func TestWriteInstallationInstructions(t *testing.T) {
 
 	type testCase struct {
 		// The name of the test case.
-		name             string
-		goImportBasePath string
-		displayName      string
-		packageName      string
-		expected         autogold.Value
-		ghOrg            string
-		repository       string
+		name        string
+		info        tfbridge.ProviderInfo
+		displayName string
+		packageName string
+		expected    autogold.Value
 	}
 
 	tests := []testCase{
@@ -335,11 +333,13 @@ func TestWriteInstallationInstructions(t *testing.T) {
 				"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
 				"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
 				"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n"),
-			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
-			displayName:      "testcase",
-			packageName:      "testcase",
-			repository:       "pulumi-testcase",
-			ghOrg:            "pulumi",
+			info: tfbridge.ProviderInfo{
+				Golang:     &tfbridge.GolangInfo{ImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase"},
+				GitHubOrg:  "pulumi",
+				Repository: "pulumi-testcase",
+			},
+			displayName: "testcase",
+			packageName: "testcase",
 		},
 		{
 			name: "Generates Install Information From Display And Package Names",
@@ -350,11 +350,13 @@ func TestWriteInstallationInstructions(t *testing.T) {
 				"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
 				"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
 				"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n"),
-			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
-			displayName:      "Test Case",
-			packageName:      "testcase",
-			repository:       "pulumi-testcase",
-			ghOrg:            "pulumi",
+			info: tfbridge.ProviderInfo{
+				Golang:     &tfbridge.GolangInfo{ImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase"},
+				GitHubOrg:  "pulumi",
+				Repository: "pulumi-testcase",
+			},
+			displayName: "Test Case",
+			packageName: "testcase",
 		},
 		{
 			name: "Generates Generation Instruction For Dynamically Bridged Provider Using GitHub Org And Source Repo",
@@ -362,11 +364,40 @@ func TestWriteInstallationInstructions(t *testing.T) {
 				"The Test Case provider must be installed as a Local Package by following the " +
 				"[instructions for Any Terraform Provider](https://www.pulumi.com/registry/packages/terraform-provider/):\n\n" +
 				"```bash\npulumi package add terraform-provider unicorncorp/testcase\n```\n"),
-			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
-			displayName:      "Test Case",
-			packageName:      "testcase",
-			repository:       "terraform-provider-testcase",
-			ghOrg:            "unicorncorp",
+			info: tfbridge.ProviderInfo{
+				Golang:     &tfbridge.GolangInfo{ImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase"},
+				GitHubOrg:  "unicorncorp",
+				Repository: "terraform-provider-testcase",
+			},
+			displayName: "Test Case",
+			packageName: "testcase",
+		},
+		{
+			name:     "Uses The CSharp Namespace For The NuGet Package",
+			expected: autogold.Expect("## Installation\n\nThe ElasticCloud (EC) provider is available as a package in all Pulumi languages:\n\n* JavaScript/TypeScript: [`@pulumi/ec`](https://www.npmjs.com/package/@pulumi/ec)\n* Python: [`pulumi-ec`](https://pypi.org/project/pulumi-ec/)\n* Go: [`github.com/pulumi/pulumi-ec/sdk/go/ec`](https://github.com/pulumi/pulumi-ec)\n* .NET: [`Pulumi.ElasticCloud`](https://www.nuget.org/packages/Pulumi.ElasticCloud)\n* Java: [`com.pulumi/ec`](https://central.sonatype.com/artifact/com.pulumi/ec)\n\n"),
+			info: tfbridge.ProviderInfo{
+				Golang:     &tfbridge.GolangInfo{ImportBasePath: "github.com/pulumi/pulumi-ec/sdk/go/ec"},
+				CSharp:     &tfbridge.CSharpInfo{Namespaces: map[string]string{"ec": "ElasticCloud"}},
+				GitHubOrg:  "elastic",
+				Repository: "https://github.com/pulumi/pulumi-ec",
+			},
+			displayName: "ElasticCloud (EC)",
+			packageName: "ec",
+		},
+		{
+			name:     "Uses Each Language's Package Name When Published Outside The Pulumi Namespace",
+			expected: autogold.Expect("## Installation\n\nThe Vercel provider is available as a package in all Pulumi languages:\n\n* JavaScript/TypeScript: [`@pulumiverse/vercel`](https://www.npmjs.com/package/@pulumiverse/vercel)\n* Python: [`pulumiverse-vercel`](https://pypi.org/project/pulumiverse-vercel/)\n* Go: [`github.com/pulumiverse/pulumi-vercel/sdk/v5/go/vercel`](https://github.com/pulumiverse/pulumi-vercel)\n* .NET: [`Pulumiverse.Vercel`](https://www.nuget.org/packages/Pulumiverse.Vercel)\n* Java: [`com.pulumiverse/vercel`](https://central.sonatype.com/artifact/com.pulumiverse/vercel)\n\n"),
+			info: tfbridge.ProviderInfo{
+				JavaScript: &tfbridge.JavaScriptInfo{PackageName: "@pulumiverse/vercel"},
+				Python:     &tfbridge.PythonInfo{PackageName: "pulumiverse_vercel"},
+				Golang:     &tfbridge.GolangInfo{ImportBasePath: "github.com/pulumiverse/pulumi-vercel/sdk/v5/go/vercel"},
+				CSharp:     &tfbridge.CSharpInfo{RootNamespace: "Pulumiverse"},
+				Java:       &tfbridge.JavaInfo{BasePackage: "com.pulumiverse"},
+				GitHubOrg:  "vercel",
+				Repository: "https://github.com/pulumiverse/pulumi-vercel",
+			},
+			displayName: "Vercel",
+			packageName: "vercel",
 		},
 	}
 
@@ -377,7 +408,7 @@ func TestWriteInstallationInstructions(t *testing.T) {
 				t.Skipf("Skipping on Windows due to a test setup issue")
 			}
 			t.Parallel()
-			actual := writeInstallationInstructions(tt.goImportBasePath, tt.displayName, tt.packageName, tt.ghOrg, tt.repository)
+			actual := writeInstallationInstructions(tt.info, tt.displayName, tt.packageName)
 			tt.expected.Equal(t, actual)
 		})
 	}

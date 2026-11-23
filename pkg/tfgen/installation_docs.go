@@ -59,13 +59,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	content = stripSchemaGeneratedByTFPluginDocs(content)
 
 	// Generate pulumi-specific installation instructions
-	installationInstructions := writeInstallationInstructions(
-		g.info.Golang.ImportBasePath,
-		providerDisplayName,
-		g.pkg.Name().String(),
-		g.info.GitHubOrg,
-		g.info.Repository,
-	)
+	installationInstructions := writeInstallationInstructions(g.info, providerDisplayName, g.pkg.Name().String())
 
 	// Determine if we should write an overview header.
 	overviewHeader := getOverviewHeader(content)
@@ -135,25 +129,28 @@ func writeFrontMatter(providerDisplayName string) string {
 //	```bash
 //	pulumi package add terraform-provider org/foo
 //	```
-func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg, sourceRepo string) string {
-	// Capitalize the package name for C#
-	capitalize := cases.Title(language.English)
-	cSharpName := capitalize.String(pkgName)
+func writeInstallationInstructions(info tfbridge.ProviderInfo, displayName, pkgName string) string {
+	names := sdkPackageNames(info, pkgName)
 
 	installInstructions := fmt.Sprintf(
 		"## Installation\n\n"+
 			"The %[1]s provider is available as a package in all Pulumi languages:\n\n"+
-			"* JavaScript/TypeScript: [`@pulumi/%[2]s`](https://www.npmjs.com/package/@pulumi/%[2]s)\n"+
-			"* Python: [`pulumi-%[2]s`](https://pypi.org/project/pulumi-%[2]s/)\n"+
-			"* Go: [`%[4]s`](https://github.com/pulumi/pulumi-%[2]s)\n"+
-			"* .NET: [`Pulumi.%[3]s`](https://www.nuget.org/packages/Pulumi.%[3]s)\n"+
-			"* Java: [`com.pulumi/%[2]s`](https://central.sonatype.com/artifact/com.pulumi/%[2]s)\n\n",
+			"* JavaScript/TypeScript: [`%[2]s`](https://www.npmjs.com/package/%[2]s)\n"+
+			"* Python: [`%[3]s`](https://pypi.org/project/%[3]s/)\n"+
+			"* Go: [`%[4]s`](%[5]s)\n"+
+			"* .NET: [`%[6]s`](https://www.nuget.org/packages/%[6]s)\n"+
+			"* Java: [`%[7]s/%[8]s`](https://central.sonatype.com/artifact/%[7]s/%[8]s)\n\n",
 		displayName,
+		names.npm,
+		names.pypi,
+		names.goImportPath,
+		names.goRepoURL,
+		names.nuget,
+		names.javaGroupID,
 		pkgName,
-		cSharpName,
-		goImportBasePath,
 	)
 
+	ghOrg, sourceRepo := info.GitHubOrg, info.Repository
 	generateInstructions := fmt.Sprintf("## Generate Provider\n\n"+
 		"The %[1]s provider must be installed as a Local Package by following the "+
 		"[instructions for Any Terraform Provider]"+
@@ -170,6 +167,58 @@ func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg
 		return installInstructions
 	}
 	return generateInstructions
+}
+
+// sdkNames holds the names each language's SDK is published under.
+type sdkNames struct {
+	npm          string
+	pypi         string
+	goImportPath string
+	goRepoURL    string
+	nuget        string
+	javaGroupID  string
+}
+
+// sdkPackageNames reads each SDK's published name from the same provider info the SDK code generators use, so the
+// links resolve for providers that publish under another scope or namespace, such as pulumiverse.
+func sdkPackageNames(info tfbridge.ProviderInfo, pkgName string) sdkNames {
+	names := sdkNames{
+		npm:         "@pulumi/" + pkgName,
+		pypi:        "pulumi-" + pkgName,
+		goRepoURL:   "https://github.com/pulumi/pulumi-" + pkgName,
+		nuget:       "Pulumi." + cases.Title(language.English).String(pkgName),
+		javaGroupID: "com.pulumi",
+	}
+	if js := info.JavaScript; js != nil && js.PackageName != "" {
+		names.npm = js.PackageName
+	}
+	// PyPI treats hyphens and underscores alike; the hyphenated form is the one PyPI displays.
+	if py := info.Python; py != nil && py.PackageName != "" {
+		names.pypi = strings.ReplaceAll(py.PackageName, "_", "-")
+	}
+	if goInfo := info.Golang; goInfo != nil {
+		names.goImportPath = goInfo.ImportBasePath
+		if parts := strings.Split(goInfo.ImportBasePath, "/"); len(parts) >= 3 && parts[0] == "github.com" {
+			names.goRepoURL = "https://" + strings.Join(parts[:3], "/")
+		}
+	}
+	// The .NET generator names the package <RootNamespace>.<Namespaces[pkgName]>, so a provider that sets either
+	// publishes under a name that capitalizing the package name doesn't produce.
+	if cs := info.CSharp; cs != nil {
+		rootNamespace := "Pulumi"
+		if cs.RootNamespace != "" {
+			rootNamespace = cs.RootNamespace
+		}
+		namespace := cases.Title(language.English).String(pkgName)
+		if ns, ok := cs.Namespaces[pkgName]; ok {
+			namespace = ns
+		}
+		names.nuget = rootNamespace + "." + namespace
+	}
+	if java := info.Java; java != nil && java.BasePackage != "" {
+		names.javaGroupID = strings.TrimSuffix(java.BasePackage, ".")
+	}
+	return names
 }
 
 func getOverviewHeader(content []byte) string {
