@@ -1608,7 +1608,7 @@ func CoerceTerraformString(schType shim.ValueType, ps *SchemaInfo, stringValue s
 			return convertTfStringToBool(stringValue)
 		case "int", "integer":
 			return convertTfStringToInt(stringValue)
-		case "float":
+		case "float", "number":
 			return convertTfStringToFloat(stringValue)
 		}
 
