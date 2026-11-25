@@ -112,44 +112,7 @@
             },
             "requiredInputs": [
                 "byteLength"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Id resources.\n",
-                "properties": {
-                    "b64Std": {
-                        "type": "string",
-                        "description": "The generated id presented in base64 without additional transformations."
-                    },
-                    "b64Url": {
-                        "type": "string",
-                        "description": "The generated id presented in base64, using the URL-friendly character set: case-sensitive letters, digits and the characters `_` and `-`."
-                    },
-                    "byteLength": {
-                        "type": "number",
-                        "description": "The number of random bytes to produce. The minimum value is 1, which produces eight bits of randomness."
-                    },
-                    "dec": {
-                        "type": "string",
-                        "description": "The generated id presented in non-padded decimal digits."
-                    },
-                    "hex": {
-                        "type": "string",
-                        "description": "The generated id presented in padded hexadecimal digits. This result will always be twice as long as the requested byte length."
-                    },
-                    "keepers": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information."
-                    },
-                    "prefix": {
-                        "type": "string",
-                        "description": "Arbitrary string to prefix the output value with. This string is supplied as-is, meaning it is not guaranteed to be URL-safe or base64 encoded."
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "random:index/integer:Integer": {
             "properties": {
@@ -206,36 +169,7 @@
             "requiredInputs": [
                 "max",
                 "min"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Integer resources.\n",
-                "properties": {
-                    "keepers": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information."
-                    },
-                    "max": {
-                        "type": "number",
-                        "description": "The maximum inclusive value of the range."
-                    },
-                    "min": {
-                        "type": "number",
-                        "description": "The minimum inclusive value of the range."
-                    },
-                    "result": {
-                        "type": "number",
-                        "description": "The random integer result."
-                    },
-                    "seed": {
-                        "type": "string",
-                        "description": "A custom seed to always produce the same value."
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "random:index/password:Password": {
             "properties": {
@@ -365,75 +299,7 @@
             },
             "requiredInputs": [
                 "length"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Password resources.\n",
-                "properties": {
-                    "bcryptHash": {
-                        "type": "string",
-                        "description": "A bcrypt hash of the generated random string.",
-                        "secret": true
-                    },
-                    "keepers": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information."
-                    },
-                    "length": {
-                        "type": "number",
-                        "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (\u003cspan pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\" pulumi-lang-hcl=\"`min_upper`\"\u003e`minUpper`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minLower`\" pulumi-lang-dotnet=\"`MinLower`\" pulumi-lang-go=\"`minLower`\" pulumi-lang-python=\"`min_lower`\" pulumi-lang-yaml=\"`minLower`\" pulumi-lang-java=\"`minLower`\" pulumi-lang-hcl=\"`min_lower`\"\u003e`minLower`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minNumeric`\" pulumi-lang-dotnet=\"`MinNumeric`\" pulumi-lang-go=\"`minNumeric`\" pulumi-lang-python=\"`min_numeric`\" pulumi-lang-yaml=\"`minNumeric`\" pulumi-lang-java=\"`minNumeric`\" pulumi-lang-hcl=\"`min_numeric`\"\u003e`minNumeric`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minSpecial`\" pulumi-lang-dotnet=\"`MinSpecial`\" pulumi-lang-go=\"`minSpecial`\" pulumi-lang-python=\"`min_special`\" pulumi-lang-yaml=\"`minSpecial`\" pulumi-lang-java=\"`minSpecial`\" pulumi-lang-hcl=\"`min_special`\"\u003e`minSpecial`\u003c/span\u003e)."
-                    },
-                    "lower": {
-                        "type": "boolean",
-                        "description": "Include lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e."
-                    },
-                    "minLower": {
-                        "type": "number",
-                        "description": "Minimum number of lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\" pulumi-lang-hcl=\"`0`\"\u003e`0`\u003c/span\u003e."
-                    },
-                    "minNumeric": {
-                        "type": "number",
-                        "description": "Minimum number of numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\" pulumi-lang-hcl=\"`0`\"\u003e`0`\u003c/span\u003e."
-                    },
-                    "minSpecial": {
-                        "type": "number",
-                        "description": "Minimum number of special characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\" pulumi-lang-hcl=\"`0`\"\u003e`0`\u003c/span\u003e."
-                    },
-                    "minUpper": {
-                        "type": "number",
-                        "description": "Minimum number of uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\" pulumi-lang-hcl=\"`0`\"\u003e`0`\u003c/span\u003e."
-                    },
-                    "number": {
-                        "type": "boolean",
-                        "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e. **NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\" pulumi-lang-hcl=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead.",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "numeric": {
-                        "type": "boolean",
-                        "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e."
-                    },
-                    "overrideSpecial": {
-                        "type": "string",
-                        "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The \u003cspan pulumi-lang-nodejs=\"`special`\" pulumi-lang-dotnet=\"`Special`\" pulumi-lang-go=\"`special`\" pulumi-lang-python=\"`special`\" pulumi-lang-yaml=\"`special`\" pulumi-lang-java=\"`special`\" pulumi-lang-hcl=\"`special`\"\u003e`special`\u003c/span\u003e argument must still be set to true for any overwritten characters to be used in generation."
-                    },
-                    "result": {
-                        "type": "string",
-                        "description": "The generated random string.",
-                        "secret": true
-                    },
-                    "special": {
-                        "type": "boolean",
-                        "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e."
-                    },
-                    "upper": {
-                        "type": "boolean",
-                        "description": "Include uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e."
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "random:index/pet:Pet": {
             "properties": {
@@ -477,31 +343,6 @@
                     "type": "string",
                     "description": "The character to separate words in the pet name. Defaults to \"-\""
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Pet resources.\n",
-                "properties": {
-                    "keepers": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information."
-                    },
-                    "length": {
-                        "type": "number",
-                        "description": "The length (in words) of the pet name. Defaults to 2"
-                    },
-                    "prefix": {
-                        "type": "string",
-                        "description": "A string to prefix the name with."
-                    },
-                    "separator": {
-                        "type": "string",
-                        "description": "The character to separate words in the pet name. Defaults to \"-\""
-                    }
-                },
-                "type": "object"
             }
         },
         "random:index/shuffle:Shuffle": {
@@ -566,42 +407,7 @@
             },
             "requiredInputs": [
                 "inputs"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Shuffle resources.\n",
-                "properties": {
-                    "inputs": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "description": "The list of strings to shuffle."
-                    },
-                    "keepers": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information."
-                    },
-                    "resultCount": {
-                        "type": "number",
-                        "description": "The number of results to return. Defaults to the number of items in the \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\" pulumi-lang-hcl=\"`input`\"\u003e`input`\u003c/span\u003e list. If fewer items are requested, some elements will be excluded from the result. If more items are requested, items will be repeated in the result but not more frequently than the number of items in the input list."
-                    },
-                    "results": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "description": "Random permutation of the list of strings given in \u003cspan pulumi-lang-nodejs=\"`input`\" pulumi-lang-dotnet=\"`Input`\" pulumi-lang-go=\"`input`\" pulumi-lang-python=\"`input`\" pulumi-lang-yaml=\"`input`\" pulumi-lang-java=\"`input`\" pulumi-lang-hcl=\"`input`\"\u003e`input`\u003c/span\u003e."
-                    },
-                    "seed": {
-                        "type": "string",
-                        "description": "Arbitrary string with which to seed the random number generator, in order to produce less-volatile permutations of the list.\n\n**Important:** Even with an identical seed, it is not guaranteed that the same permutation will be produced across different versions of Terraform. This argument causes the result to be *less volatile*, but not fixed for all time."
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "random:index/string:String": {
             "properties": {
@@ -724,69 +530,7 @@
             },
             "requiredInputs": [
                 "length"
-            ],
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering String resources.\n",
-                "properties": {
-                    "keepers": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information."
-                    },
-                    "length": {
-                        "type": "number",
-                        "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (\u003cspan pulumi-lang-nodejs=\"`minUpper`\" pulumi-lang-dotnet=\"`MinUpper`\" pulumi-lang-go=\"`minUpper`\" pulumi-lang-python=\"`min_upper`\" pulumi-lang-yaml=\"`minUpper`\" pulumi-lang-java=\"`minUpper`\" pulumi-lang-hcl=\"`min_upper`\"\u003e`minUpper`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minLower`\" pulumi-lang-dotnet=\"`MinLower`\" pulumi-lang-go=\"`minLower`\" pulumi-lang-python=\"`min_lower`\" pulumi-lang-yaml=\"`minLower`\" pulumi-lang-java=\"`minLower`\" pulumi-lang-hcl=\"`min_lower`\"\u003e`minLower`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minNumeric`\" pulumi-lang-dotnet=\"`MinNumeric`\" pulumi-lang-go=\"`minNumeric`\" pulumi-lang-python=\"`min_numeric`\" pulumi-lang-yaml=\"`minNumeric`\" pulumi-lang-java=\"`minNumeric`\" pulumi-lang-hcl=\"`min_numeric`\"\u003e`minNumeric`\u003c/span\u003e + \u003cspan pulumi-lang-nodejs=\"`minSpecial`\" pulumi-lang-dotnet=\"`MinSpecial`\" pulumi-lang-go=\"`minSpecial`\" pulumi-lang-python=\"`min_special`\" pulumi-lang-yaml=\"`minSpecial`\" pulumi-lang-java=\"`minSpecial`\" pulumi-lang-hcl=\"`min_special`\"\u003e`minSpecial`\u003c/span\u003e)."
-                    },
-                    "lower": {
-                        "type": "boolean",
-                        "description": "Include lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e."
-                    },
-                    "minLower": {
-                        "type": "number",
-                        "description": "Minimum number of lowercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\" pulumi-lang-hcl=\"`0`\"\u003e`0`\u003c/span\u003e."
-                    },
-                    "minNumeric": {
-                        "type": "number",
-                        "description": "Minimum number of numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\" pulumi-lang-hcl=\"`0`\"\u003e`0`\u003c/span\u003e."
-                    },
-                    "minSpecial": {
-                        "type": "number",
-                        "description": "Minimum number of special characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\" pulumi-lang-hcl=\"`0`\"\u003e`0`\u003c/span\u003e."
-                    },
-                    "minUpper": {
-                        "type": "number",
-                        "description": "Minimum number of uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`0`\" pulumi-lang-dotnet=\"`0`\" pulumi-lang-go=\"`0`\" pulumi-lang-python=\"`0`\" pulumi-lang-yaml=\"`0`\" pulumi-lang-java=\"`0`\" pulumi-lang-hcl=\"`0`\"\u003e`0`\u003c/span\u003e."
-                    },
-                    "number": {
-                        "type": "boolean",
-                        "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e. **NOTE**: This is deprecated, use \u003cspan pulumi-lang-nodejs=\"`numeric`\" pulumi-lang-dotnet=\"`Numeric`\" pulumi-lang-go=\"`numeric`\" pulumi-lang-python=\"`numeric`\" pulumi-lang-yaml=\"`numeric`\" pulumi-lang-java=\"`numeric`\" pulumi-lang-hcl=\"`numeric`\"\u003e`numeric`\u003c/span\u003e instead.",
-                        "deprecationMessage": "Deprecated"
-                    },
-                    "numeric": {
-                        "type": "boolean",
-                        "description": "Include numeric characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e."
-                    },
-                    "overrideSpecial": {
-                        "type": "string",
-                        "description": "Supply your own list of special characters to use for string generation.  This overrides the default character list in the special argument.  The \u003cspan pulumi-lang-nodejs=\"`special`\" pulumi-lang-dotnet=\"`Special`\" pulumi-lang-go=\"`special`\" pulumi-lang-python=\"`special`\" pulumi-lang-yaml=\"`special`\" pulumi-lang-java=\"`special`\" pulumi-lang-hcl=\"`special`\"\u003e`special`\u003c/span\u003e argument must still be set to true for any overwritten characters to be used in generation."
-                    },
-                    "result": {
-                        "type": "string",
-                        "description": "The generated random string."
-                    },
-                    "special": {
-                        "type": "boolean",
-                        "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e."
-                    },
-                    "upper": {
-                        "type": "boolean",
-                        "description": "Include uppercase alphabet characters in the result. Default value is \u003cspan pulumi-lang-nodejs=\"`true`\" pulumi-lang-dotnet=\"`True`\" pulumi-lang-go=\"`true`\" pulumi-lang-python=\"`true`\" pulumi-lang-yaml=\"`true`\" pulumi-lang-java=\"`true`\" pulumi-lang-hcl=\"`true`\"\u003e`true`\u003c/span\u003e."
-                    }
-                },
-                "type": "object"
-            }
+            ]
         },
         "random:index/uuid:Uuid": {
             "properties": {
@@ -813,23 +557,6 @@
                     },
                     "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information."
                 }
-            },
-            "stateInputs": {
-                "description": "Input properties used for looking up and filtering Uuid resources.\n",
-                "properties": {
-                    "keepers": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information."
-                    },
-                    "result": {
-                        "type": "string",
-                        "description": "The generated uuid presented in string format."
-                    }
-                },
-                "type": "object"
             }
         }
     },
