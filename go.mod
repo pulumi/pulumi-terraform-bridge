@@ -46,9 +46,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.2.1
 	github.com/pulumi/providertest v0.8.0
-	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.120.1
+	github.com/pulumi/pulumi-dotnet/pulumi-language-dotnet/v3 v3.121.0
 	github.com/pulumi/pulumi-hcl v0.20.4
-	github.com/pulumi/pulumi-java v1.40.3
+	github.com/pulumi/pulumi-java v1.40.4
 	github.com/pulumi/pulumi-yaml v1.39.2
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
