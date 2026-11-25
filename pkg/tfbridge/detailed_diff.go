@@ -241,6 +241,16 @@ func validInputsFromPlan(
 			return nil
 		}
 
+		// For Optional non-Computed string fields without a Default, SDKv2 fills in ""
+		// in the planned state even when the user doesn't specify the field (input is null).
+		// Other scalar zero values (false, 0) are stripped during TF→Pulumi conversion,
+		// and collection types (list, set, map) are handled by early returns above.
+		// See https://github.com/pulumi/pulumi-terraform-bridge/issues/3324
+		if inputsSubVal.IsNull() && !tfs.Computed() &&
+			planSubVal.IsString() && planSubVal.StringValue() == "" {
+			return nil
+		}
+
 		return abortErr
 	}
 	err := walkTwoPropertyValues(
