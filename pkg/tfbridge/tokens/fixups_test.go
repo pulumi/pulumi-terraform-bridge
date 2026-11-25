@@ -167,6 +167,18 @@ func TestFixPropertyConflicts(t *testing.T) {
 			expected: nil,
 		},
 		{
+			name: "coerce numeric output ID to the Pulumi resource ID",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeInt,
+					Computed: true,
+				}).Shim(),
+			},
+			expected: map[string]*info.Schema{
+				"id": {Type: "string"},
+			},
+		},
+		{
 			name: "ignore overridden ID property name",
 			schema: schema.SchemaMap{
 				"id": (&schema.Schema{
@@ -554,7 +566,7 @@ func TestPrecomputedDefaultFixupsAvoidResourceSchema(t *testing.T) {
 			},
 		},
 		{
-			name: "computed non-string ID uses missing ID",
+			name: "computed non-string ID is coerced to the Pulumi resource ID",
 			schema: schema.SchemaMap{
 				"id": (&schema.Schema{
 					Type:     shim.TypeInt,
@@ -563,11 +575,9 @@ func TestPrecomputedDefaultFixupsAvoidResourceSchema(t *testing.T) {
 			},
 			verify: func(t *testing.T, res *info.Resource) {
 				t.Helper()
-				require.Equal(t, "resId", res.Fields["id"].Name)
-				require.NotNil(t, res.ComputeID)
-				got, err := res.ComputeID(context.Background(), resource.PropertyMap{})
-				require.NoError(t, err)
-				assert.Equal(t, resource.ID("missing ID"), got)
+				require.Equal(t, ptokens.Type("string"), res.Fields["id"].Type)
+				assert.Empty(t, res.Fields["id"].Name)
+				assert.Nil(t, res.ComputeID)
 			},
 		},
 		{
