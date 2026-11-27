@@ -576,10 +576,21 @@ func (a autoResourceSettings) apply(p *ProviderInfo, tfToken string) {
 	r, ok := p.Resources[tfToken]
 	contract.Assertf(ok && r.Tok != "",
 		"Unexpected resource token lacking a mapping: %q", tfToken)
-	for _, old := range a.Aliases {
+	if n := len(a.Aliases); n > 0 {
+		// RenameResourceWithAlias creates a single legacy resource per tfToken and replaces it on
+		// each call, so the last past name is the one the legacy resource points at. The earlier
+		// past names are kept as plain aliases of the current resource.
+		old := a.Aliases[n-1]
 		oldMod := old.Module().Name().String()
 		newMod := r.Tok.Module().Name().String()
 		p.RenameResourceWithAlias(tfToken, old, r.Tok, oldMod, newMod, r)
+		r = p.Resources[tfToken]
+		var earlier []AliasInfo
+		for _, old := range a.Aliases[:n-1] {
+			ty := old.String()
+			earlier = append(earlier, AliasInfo{Type: &ty})
+		}
+		r.Aliases = append(earlier, r.Aliases...)
 	}
 	for _, old := range a.Renames {
 		ty := old.String()
