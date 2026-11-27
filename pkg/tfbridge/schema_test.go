@@ -1272,6 +1272,22 @@ func TestInvalidAsset(t *testing.T) {
 	}, outputs)
 }
 
+// TF keeps ints as strings in its state: a "number" override on a TypeInt field must
+// still produce a number output, as the "int" and "float" overrides do.
+func TestNumberOverrideOnTFIntOutput(t *testing.T) {
+	t.Parallel()
+	result := MakeTerraformOutputs(
+		context.Background(),
+		shimv1.NewProvider(testprovider.ProviderV1()),
+		map[string]any{"prop": "1073741824"},
+		shimv1.NewSchemaMap(map[string]*schemav1.Schema{"prop": {Type: schemav1.TypeInt}}),
+		map[string]*SchemaInfo{"prop": {Type: "number"}},
+		nil, /* assets */
+		true,
+	)
+	assert.Equal(t, resource.PropertyMap{"prop": resource.NewProperty(1073741824.0)}, result)
+}
+
 func TestOverridingTFSchema(t *testing.T) {
 	t.Parallel()
 
