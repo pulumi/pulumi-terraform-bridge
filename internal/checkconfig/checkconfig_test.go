@@ -107,7 +107,7 @@ func TestCheckConfigViaCheckConfig2(t *testing.T) {
 		OldOutputs: mkStruct(map[string]any{"version": "1.0.0"}),
 	}
 
-	t.Run("forwards the request and converts the response", func(t *testing.T) {
+	t.Run("forwards the request and drops remediations", func(t *testing.T) {
 		t.Parallel()
 
 		var got *pulumirpc.CheckConfigRequest
@@ -119,6 +119,10 @@ func TestCheckConfigViaCheckConfig2(t *testing.T) {
 					Failures: []*pulumirpc.CheckConfigFailure{{
 						Property: "region",
 						Reason:   "bad region",
+						Remediations: []*pulumirpc.CommandRemediation{{
+							Description: "Sign in",
+							Command:     []string{"cloud", "login"},
+						}},
 					}},
 				}, nil
 			})

@@ -381,6 +381,28 @@ func TestMuxerCheckConfig2(t *testing.T) {
 		assert.Equal(t, 1, old.called)
 	})
 
+	t.Run("keeps remediations when de-duplicating failures", func(t *testing.T) {
+		t.Parallel()
+		failure := func() *pulumirpc.CheckConfigFailure {
+			return &pulumirpc.CheckConfigFailure{
+				Reason: "not signed in",
+				Remediations: []*pulumirpc.CommandRemediation{{
+					Description: "Sign in",
+					Command:     []string{"cloud", "login"},
+				}},
+			}
+		}
+		m := &muxer{servers: []server{
+			&checkConfig2{failures: []*pulumirpc.CheckConfigFailure{failure()}},
+			&checkConfig2{failures: []*pulumirpc.CheckConfigFailure{failure()}},
+		}}
+		resp, err := m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, resp.GetFailures(), 1)
+		assert.True(t, proto.Equal(failure(), resp.GetFailures()[0]),
+			"expected %v, got %v", failure(), resp.GetFailures()[0])
+	})
+
 	t.Run("CheckConfig2 error is returned without falling back", func(t *testing.T) {
 		t.Parallel()
 		old := &checkConfigOnly{reason: "old"}
@@ -419,9 +441,11 @@ type checkConfig2 struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
 	reason string
-	inputs *structpb.Struct
-	err    error
-	got    *pulumirpc.CheckConfigRequest
+	// failures, when set, replace the single failure built from reason.
+	failures []*pulumirpc.CheckConfigFailure
+	inputs   *structpb.Struct
+	err      error
+	got      *pulumirpc.CheckConfigRequest
 }
 
 func (s *checkConfig2) CheckConfig2(
@@ -431,9 +455,13 @@ func (s *checkConfig2) CheckConfig2(
 	if s.err != nil {
 		return nil, s.err
 	}
+	failures := s.failures
+	if failures == nil {
+		failures = []*pulumirpc.CheckConfigFailure{{Reason: s.reason}}
+	}
 	return &pulumirpc.CheckConfigResponse{
 		Inputs:   s.inputs,
-		Failures: []*pulumirpc.CheckConfigFailure{{Reason: s.reason}},
+		Failures: failures,
 	}, nil
 }
 

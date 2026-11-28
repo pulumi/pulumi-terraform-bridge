@@ -19,6 +19,8 @@ import (
 	"context"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // CheckConfig2ViaCheckConfig answers a CheckConfig2 call by delegating to a CheckConfig implementation, for servers
@@ -85,4 +87,17 @@ func Failures(failures []*pulumirpc.CheckFailure) []*pulumirpc.CheckConfigFailur
 		result[i] = &pulumirpc.CheckConfigFailure{Property: f.GetProperty(), Reason: f.GetReason()}
 	}
 	return result
+}
+
+// Remediations converts command remediations to their CheckConfig2 representation.
+func Remediations(remediations []info.CommandRemediation) []*pulumirpc.CommandRemediation {
+	rpcRemediations := make([]*pulumirpc.CommandRemediation, 0, len(remediations))
+	for _, r := range remediations {
+		rpcRemediations = append(rpcRemediations, &pulumirpc.CommandRemediation{
+			Description: r.Description,
+			Command:     r.Command,
+			Env:         r.Env,
+		})
+	}
+	return rpcRemediations
 }
