@@ -202,6 +202,9 @@ type CheckFailureErrorElement struct {
 	// expired credentials. Engines that support them offer to run them; others show only Reason, which should
 	// therefore keep describing the fix.
 	Remediations []CommandRemediation
+	// Hint is a product hint relevant to this failure, if any, such as a suggestion of dynamic credentials. The Pulumi
+	// CLI may show its message to the user.
+	Hint *pulumirpc.Hint
 }
 
 // marshalCheckFailures converts the failures of a [CheckFailureError] to their gRPC representation.
@@ -212,6 +215,7 @@ func marshalCheckFailures(failures []CheckFailureErrorElement) []*pulumirpc.Chec
 			Reason:       failure.Reason,
 			Property:     failure.Property,
 			Remediations: checkconfig.Remediations(failure.Remediations),
+			Hint:         failure.Hint,
 		}
 	}
 	return rpcFailures

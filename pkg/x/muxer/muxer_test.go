@@ -403,6 +403,25 @@ func TestMuxerCheckConfig2(t *testing.T) {
 			"expected %v, got %v", failure(), resp.GetFailures()[0])
 	})
 
+	t.Run("keeps the hint when de-duplicating failures", func(t *testing.T) {
+		t.Parallel()
+		failure := func() *pulumirpc.CheckConfigFailure {
+			return &pulumirpc.CheckConfigFailure{
+				Reason: "no credentials",
+				Hint:   &pulumirpc.Hint{Kind: pulumirpc.Hint_DYNAMIC_CREDENTIALS, Message: "Use Pulumi ESC"},
+			}
+		}
+		m := &muxer{servers: []server{
+			&checkConfig2{failures: []*pulumirpc.CheckConfigFailure{failure()}},
+			&checkConfig2{failures: []*pulumirpc.CheckConfigFailure{failure()}},
+		}}
+		resp, err := m.CheckConfig2(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, resp.GetFailures(), 1)
+		assert.True(t, proto.Equal(failure(), resp.GetFailures()[0]),
+			"expected %v, got %v", failure(), resp.GetFailures()[0])
+	})
+
 	t.Run("CheckConfig2 error is returned without falling back", func(t *testing.T) {
 		t.Parallel()
 		old := &checkConfigOnly{reason: "old"}
